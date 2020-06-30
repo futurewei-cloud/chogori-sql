@@ -1,0 +1,506 @@
+--
+-- Colocation
+--
+-- CREATE TABLE on non-colocated database
+CREATE TABLE tab_colo (a INT) WITH (colocated = true);
+ERROR:  cannot set colocated true on a non-colocated database
+CREATE TABLE tab_noco (a INT) WITH (colocated = false);
+DROP TABLE tab_noco;
+-- CREATE DATABASE colocated
+CREATE DATABASE colocation_test colocated = true;
+\c colocation_test
+-- CREATE TABLE
+CREATE TABLE tab_nonkey (a INT);
+\d tab_nonkey
+             Table "public.tab_nonkey"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           |          |
+
+CREATE TABLE tab_key (a INT PRIMARY KEY);
+\d tab_key
+              Table "public.tab_key"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+Indexes:
+    "tab_key_pkey" PRIMARY KEY, lsm (a)
+
+CREATE TABLE tab_range (a INT, PRIMARY KEY (a ASC));
+CREATE TABLE tab_range_nonkey (a INT, b INT, PRIMARY KEY (a ASC));
+-- opt out of using colocated tablet
+CREATE TABLE tab_nonkey_noco (a INT) WITH (colocated = false);
+-- multi column primary key table
+CREATE TABLE tab_range_range (a INT, b INT, PRIMARY KEY (a, b DESC));
+CREATE TABLE tab_range_colo (a INT, PRIMARY KEY (a ASC)) WITH (colocated = true);
+INSERT INTO tab_range (a) VALUES (0), (1), (2);
+INSERT INTO tab_range (a, b) VALUES (0, '0'); -- fail
+ERROR:  column "b" of relation "tab_range" does not exist
+LINE 1: INSERT INTO tab_range (a, b) VALUES (0, '0');
+                                  ^
+INSERT INTO tab_range_nonkey (a, b) VALUES (0, '0'), (1, '1');
+INSERT INTO tab_nonkey_noco (a) VALUES (0), (1), (2), (3);
+INSERT INTO tab_range_range (a, b) VALUES (0, 0), (0, 1), (1, 0), (1, 1);
+INSERT INTO tab_range_colo (a) VALUES (0), (1), (2), (3);
+SELECT * FROM tab_range;
+ a
+---
+ 0
+ 1
+ 2
+(3 rows)
+
+SELECT * FROM tab_range WHERE a = 2;
+ a
+---
+ 2
+(1 row)
+
+SELECT * FROM tab_range WHERE n = '0'; -- fail
+ERROR:  column "n" does not exist
+LINE 1: SELECT * FROM tab_range WHERE n = '0';
+                                      ^
+SELECT * FROM tab_range_nonkey;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+(2 rows)
+
+SELECT * FROM tab_nonkey_noco ORDER BY a ASC;
+ a
+---
+ 0
+ 1
+ 2
+ 3
+(4 rows)
+
+SELECT * FROM tab_range_range;
+ a | b
+---+---
+ 0 | 1
+ 0 | 0
+ 1 | 1
+ 1 | 0
+(4 rows)
+
+SELECT * FROM tab_range_colo;
+ a
+---
+ 0
+ 1
+ 2
+ 3
+(4 rows)
+
+BEGIN;
+INSERT INTO tab_range_colo VALUES (4);
+SELECT * FROM tab_range_colo;
+ a
+---
+ 0
+ 1
+ 2
+ 3
+ 4
+(5 rows)
+
+ROLLBACK;
+BEGIN;
+INSERT INTO tab_range_colo VALUES (5);
+COMMIT;
+SELECT * FROM tab_range_colo;
+ a
+---
+ 0
+ 1
+ 2
+ 3
+ 5
+(5 rows)
+
+INSERT INTO tab_range_colo VALUES (6), (6);
+ERROR:  duplicate key value violates unique constraint "tab_range_colo_pkey"
+-- CREATE INDEX
+-- table with index
+CREATE TABLE tab_range_nonkey2 (a INT, b INT, PRIMARY KEY (a ASC));
+CREATE INDEX idx_range ON tab_range_nonkey2 (a);
+\d tab_range_nonkey2
+         Table "public.tab_range_nonkey2"
+ Column |  Type   | Collation | Nullable | Default
+--------+---------+-----------+----------+---------
+ a      | integer |           | not null |
+ b      | integer |           |          |
+Indexes:
+    "tab_range_nonkey2_pkey" PRIMARY KEY, lsm (a)
+    "idx_range" lsm (a)
+
+INSERT INTO tab_range_nonkey2 (a, b) VALUES (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
+EXPLAIN (COSTS OFF) SELECT * FROM tab_range_nonkey2 WHERE a = 1;
+                          QUERY PLAN
+--------------------------------------------------------------
+ Index Scan using tab_range_nonkey2_pkey on tab_range_nonkey2
+   Index Cond: (a = 1)
+(2 rows)
+
+SELECT * FROM tab_range_nonkey2 WHERE a = 1;
+ a | b
+---+---
+ 1 | 1
+(1 row)
+
+UPDATE tab_range_nonkey2 SET b = b + 1 WHERE a > 3;
+SELECT * FROM tab_range_nonkey2;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+ 2 | 2
+ 3 | 3
+ 4 | 5
+ 5 | 6
+(6 rows)
+
+DELETE FROM tab_range_nonkey2 WHERE a > 3;
+SELECT * FROM tab_range_nonkey2;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+ 2 | 2
+ 3 | 3
+(4 rows)
+
+-- colocated table with non-colocated index
+CREATE TABLE tab_range_nonkey3 (a INT, b INT, PRIMARY KEY (a ASC));
+CREATE INDEX idx_range_colo ON tab_range_nonkey3 (a) WITH (colocated = true);
+ERROR:  cannot set option "colocated" on index
+-- colocated table with colocated index
+CREATE TABLE tab_range_nonkey4 (a INT, b INT, PRIMARY KEY (a ASC));
+CREATE INDEX idx_range_noco ON tab_range_nonkey4 (a) WITH (colocated = false);
+ERROR:  cannot set option "colocated" on index
+-- non-colocated table with index
+CREATE TABLE tab_range_nonkey_noco (a INT, b INT, PRIMARY KEY (a ASC)) WITH (colocated = false);
+CREATE INDEX idx_range2 ON tab_range_nonkey_noco (a);
+INSERT INTO tab_range_nonkey_noco (a, b) VALUES (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5);
+EXPLAIN (COSTS OFF) SELECT * FROM tab_range_nonkey_noco WHERE a = 1;
+                              QUERY PLAN
+----------------------------------------------------------------------
+ Index Scan using tab_range_nonkey_noco_pkey on tab_range_nonkey_noco
+   Index Cond: (a = 1)
+(2 rows)
+
+SELECT * FROM tab_range_nonkey_noco WHERE a = 1;
+ a | b
+---+---
+ 1 | 1
+(1 row)
+
+UPDATE tab_range_nonkey_noco SET b = b + 1 WHERE a > 3;
+SELECT * FROM tab_range_nonkey_noco;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+ 2 | 2
+ 3 | 3
+ 4 | 5
+ 5 | 6
+(6 rows)
+
+DELETE FROM tab_range_nonkey_noco WHERE a > 3;
+SELECT * FROM tab_range_nonkey_noco;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+ 2 | 2
+ 3 | 3
+(4 rows)
+
+-- more tables and indexes
+CREATE TABLE tab_range_nonkey_noco2 (a INT, b INT, PRIMARY KEY (a ASC)) WITH (colocated = false);
+CREATE INDEX idx_range3 ON tab_range_nonkey_noco2 (a);
+INSERT INTO tab_range_nonkey_noco2 (a, b) VALUES (0, 0);
+CREATE TABLE tab_range_nonkey_noco3 (a INT, b INT, PRIMARY KEY (a ASC)) WITH (colocated = false);
+CREATE INDEX idx_range4 ON tab_range_nonkey_noco3 (a);
+CREATE TABLE tab_range_nonkey5 (a INT, b INT, PRIMARY KEY (a ASC));
+CREATE INDEX idx_range5 ON tab_range_nonkey5 (a);
+\dt
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | tab_key                | table | yugabyte
+ public | tab_nonkey             | table | yugabyte
+ public | tab_nonkey_noco        | table | yugabyte
+ public | tab_range              | table | yugabyte
+ public | tab_range_colo         | table | yugabyte
+ public | tab_range_nonkey       | table | yugabyte
+ public | tab_range_nonkey2      | table | yugabyte
+ public | tab_range_nonkey3      | table | yugabyte
+ public | tab_range_nonkey4      | table | yugabyte
+ public | tab_range_nonkey5      | table | yugabyte
+ public | tab_range_nonkey_noco  | table | yugabyte
+ public | tab_range_nonkey_noco2 | table | yugabyte
+ public | tab_range_nonkey_noco3 | table | yugabyte
+ public | tab_range_range        | table | yugabyte
+(14 rows)
+
+\di
+                                List of relations
+ Schema |            Name             | Type  |  Owner   |         Table
+--------+-----------------------------+-------+----------+------------------------
+ public | idx_range                   | index | yugabyte | tab_range_nonkey2
+ public | idx_range2                  | index | yugabyte | tab_range_nonkey_noco
+ public | idx_range3                  | index | yugabyte | tab_range_nonkey_noco2
+ public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
+ public | idx_range5                  | index | yugabyte | tab_range_nonkey5
+ public | tab_key_pkey                | index | yugabyte | tab_key
+ public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
+ public | tab_range_nonkey2_pkey      | index | yugabyte | tab_range_nonkey2
+ public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
+ public | tab_range_nonkey_noco2_pkey | index | yugabyte | tab_range_nonkey_noco2
+ public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
+ public | tab_range_pkey              | index | yugabyte | tab_range
+ public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+(17 rows)
+
+-- TRUNCATE TABLE
+-- truncate colocated table with default index
+TRUNCATE TABLE tab_range;
+SELECT * FROM tab_range;
+ a
+---
+(0 rows)
+
+INSERT INTO tab_range VALUES (4);
+SELECT * FROM tab_range;
+ a
+---
+ 4
+(1 row)
+
+INSERT INTO tab_range VALUES (1);
+INSERT INTO tab_range VALUES (2), (5);
+SELECT * FROM tab_range;
+ a
+---
+ 1
+ 2
+ 4
+ 5
+(4 rows)
+
+DELETE FROM tab_range WHERE a = 2;
+TRUNCATE TABLE tab_range;
+SELECT * FROM tab_range;
+ a
+---
+(0 rows)
+
+INSERT INTO tab_range VALUES (2);
+SELECT * FROM tab_range;
+ a
+---
+ 2
+(1 row)
+
+TRUNCATE TABLE tab_range;
+-- truncate non-colocated table without index
+TRUNCATE TABLE tab_nonkey_noco;
+SELECT * FROM tab_nonkey_noco;
+ a
+---
+(0 rows)
+
+-- truncate colocated table with explicit index
+TRUNCATE TABLE tab_range_nonkey2;
+SELECT * FROM tab_range_nonkey2;
+ a | b
+---+---
+(0 rows)
+
+-- truncate non-colocated table with explicit index
+TRUNCATE TABLE tab_range_nonkey_noco2;
+SELECT * FROM tab_range_nonkey_noco2;
+ a | b
+---+---
+(0 rows)
+
+\dt
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | tab_key                | table | yugabyte
+ public | tab_nonkey             | table | yugabyte
+ public | tab_nonkey_noco        | table | yugabyte
+ public | tab_range              | table | yugabyte
+ public | tab_range_colo         | table | yugabyte
+ public | tab_range_nonkey       | table | yugabyte
+ public | tab_range_nonkey2      | table | yugabyte
+ public | tab_range_nonkey3      | table | yugabyte
+ public | tab_range_nonkey4      | table | yugabyte
+ public | tab_range_nonkey5      | table | yugabyte
+ public | tab_range_nonkey_noco  | table | yugabyte
+ public | tab_range_nonkey_noco2 | table | yugabyte
+ public | tab_range_nonkey_noco3 | table | yugabyte
+ public | tab_range_range        | table | yugabyte
+(14 rows)
+
+\di
+                                List of relations
+ Schema |            Name             | Type  |  Owner   |         Table
+--------+-----------------------------+-------+----------+------------------------
+ public | idx_range                   | index | yugabyte | tab_range_nonkey2
+ public | idx_range2                  | index | yugabyte | tab_range_nonkey_noco
+ public | idx_range3                  | index | yugabyte | tab_range_nonkey_noco2
+ public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
+ public | idx_range5                  | index | yugabyte | tab_range_nonkey5
+ public | tab_key_pkey                | index | yugabyte | tab_key
+ public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
+ public | tab_range_nonkey2_pkey      | index | yugabyte | tab_range_nonkey2
+ public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
+ public | tab_range_nonkey_noco2_pkey | index | yugabyte | tab_range_nonkey_noco2
+ public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
+ public | tab_range_pkey              | index | yugabyte | tab_range
+ public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+(17 rows)
+
+-- ALTER TABLE
+INSERT INTO tab_range (a) VALUES (0), (1), (2);
+INSERT INTO tab_range_nonkey2 (a, b) VALUES (0, 0), (1, 1);
+SELECT * FROM tab_range;
+ a
+---
+ 0
+ 1
+ 2
+(3 rows)
+
+SELECT * FROM tab_range_nonkey2;
+ a | b
+---+---
+ 0 | 0
+ 1 | 1
+(2 rows)
+
+-- Alter colocated tables
+ALTER TABLE tab_range ADD COLUMN x INT;
+ALTER TABLE tab_range_nonkey2 DROP COLUMN b;
+SELECT * FROM tab_range;
+ a | x
+---+---
+ 0 |
+ 1 |
+ 2 |
+(3 rows)
+
+SELECT * FROM tab_range_nonkey2;
+ a
+---
+ 0
+ 1
+(2 rows)
+
+ALTER TABLE tab_range_nonkey2 RENAME TO tab_range_nonkey2_renamed;
+SELECT * FROM tab_range_nonkey2_renamed;
+ a
+---
+ 0
+ 1
+(2 rows)
+
+SELECT * FROM tab_range_nonkey2;
+ERROR:  relation "tab_range_nonkey2" does not exist
+LINE 1: SELECT * FROM tab_range_nonkey2;
+                      ^
+-- DROP TABLE
+-- drop colocated table with default index
+DROP TABLE tab_range;
+SELECT * FROM tab_range;
+ERROR:  relation "tab_range" does not exist
+LINE 1: SELECT * FROM tab_range;
+                      ^
+-- drop non-colocated table without index
+DROP TABLE tab_nonkey_noco;
+SELECT * FROM tab_nonkey_noco;
+ERROR:  relation "tab_nonkey_noco" does not exist
+LINE 1: SELECT * FROM tab_nonkey_noco;
+                      ^
+--- drop colocated table with explicit index
+DROP TABLE tab_range_nonkey2_renamed;
+SELECT * FROM tab_range_nonkey2_renamed;
+ERROR:  relation "tab_range_nonkey2_renamed" does not exist
+LINE 1: SELECT * FROM tab_range_nonkey2_renamed;
+                      ^
+-- drop non-colocated table with explicit index
+DROP TABLE tab_range_nonkey_noco2;
+SELECT * FROM tab_range_nonkey_noco2;
+ERROR:  relation "tab_range_nonkey_noco2" does not exist
+LINE 1: SELECT * FROM tab_range_nonkey_noco2;
+                      ^
+-- DROP INDEX
+-- drop index on non-colocated table
+DROP INDEX idx_range2;
+EXPLAIN SELECT * FROM tab_range_nonkey_noco WHERE a = 1;
+                                               QUERY PLAN
+--------------------------------------------------------------------------------------------------------
+ Index Scan using tab_range_nonkey_noco_pkey on tab_range_nonkey_noco  (cost=0.00..4.11 rows=1 width=8)
+   Index Cond: (a = 1)
+(2 rows)
+
+-- drop index on colocated table
+DROP INDEX idx_range5;
+EXPLAIN SELECT * FROM tab_range_nonkey5 WHERE a = 1;
+                                           QUERY PLAN
+------------------------------------------------------------------------------------------------
+ Index Scan using tab_range_nonkey5_pkey on tab_range_nonkey5  (cost=0.00..4.11 rows=1 width=8)
+   Index Cond: (a = 1)
+(2 rows)
+
+\dt
+                 List of relations
+ Schema |          Name          | Type  |  Owner
+--------+------------------------+-------+----------
+ public | tab_key                | table | yugabyte
+ public | tab_nonkey             | table | yugabyte
+ public | tab_range_colo         | table | yugabyte
+ public | tab_range_nonkey       | table | yugabyte
+ public | tab_range_nonkey3      | table | yugabyte
+ public | tab_range_nonkey4      | table | yugabyte
+ public | tab_range_nonkey5      | table | yugabyte
+ public | tab_range_nonkey_noco  | table | yugabyte
+ public | tab_range_nonkey_noco3 | table | yugabyte
+ public | tab_range_range        | table | yugabyte
+(10 rows)
+
+\di
+                                List of relations
+ Schema |            Name             | Type  |  Owner   |         Table
+--------+-----------------------------+-------+----------+------------------------
+ public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
+ public | tab_key_pkey                | index | yugabyte | tab_key
+ public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
+ public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
+ public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
+ public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+(10 rows)
+
+-- drop database
+\c yugabyte
+DROP DATABASE colocation_test;
+\c colocation_test
+\connect: FATAL:  database "colocation_test" does not exist

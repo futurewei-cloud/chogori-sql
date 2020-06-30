@@ -1,0 +1,11 @@
+# src/test/regress/yb_misc_serial_schedule
+#
+####################################################################################################
+# This testsuite includes miscellaneous tests that are not yet characterized to a proper testsuite.
+# The tests in this schedule are not ported from PostgreSQL original tests.
+####################################################################################################
+test: yb_aggregates
+test: yb_compound_key
+test: yb_schema
+test: yb_select
+test: yb_guc
