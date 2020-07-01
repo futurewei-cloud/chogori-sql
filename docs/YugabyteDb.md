@@ -12,8 +12,8 @@ Instead, the system is automatically partitioned without manual efforts.
 
 There are many this types of so-called newSQL projects that are inspired by the Google Spinner paper, YugabyteDb is one of them and it was built as 
 a DocDB at first with the support of Casandra CQL language and Redis APIs from 2016. Postgres 10 was integrated in 2018 and then was upgraded to 11.2. 
-The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support GraphQL (https://docs.yugabyte.com/latest/develop/graphql/). 
-Even our system is fundentally different, it is a good reference to help for initial investigation.
+The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support [GraphQL](https://docs.yugabyte.com/latest/develop/graphql/). 
+Even our system is fundentally different, it is a good reference implementation to help us for initial investigation.
 
 # Integration
 
@@ -48,8 +48,8 @@ After that, you could run [example SQLs](https://docs.yugabyte.com/latest/quick-
 
 ## Foreign Data Wrapper (FDW)
 
-YugabyteDb data are external to Postgres and thus, it takes advantage of the foreign data wrapper (FDW) feature (https://wiki.postgresql.org/wiki/Foreign_data_wrappers) 
-to hook in the data access logic in src/backend/executor/ybc_fdw.c.
+YugabyteDb data are external to Postgres and thus, it takes advantage of the [foreign data wrapper feature](https://wiki.postgresql.org/wiki/Foreign_data_wrappers) 
+to hook in the data access logic in [src/backend/executor/ybc_fdw.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/ybc_fdw.c).
 
 ``` c
 Datum ybc_fdw_handler()
@@ -74,7 +74,7 @@ Datum ybc_fdw_handler()
 }
 
 ```
-However, YugabyteDb did not use the regular FDW access path to define foreign tables since the Postgres is customed to solely access its own data. 
+However, YugabyteDb did not use the regular FDW access path to define foreign tables since Postgres is customed to solely access its own data. 
 As a result, shortcuts are used to access its catalog and data directly. For example, check the following codesnippet in 
 src/backend/foreign/foreign.c to access the FDW handler directly instead of reading it from catalogs, which should be the reason that YugabyteDb
 is treated as native Postgres tables without additional foreign tables.
@@ -200,7 +200,7 @@ YBCStatus YBCPgSetTransactionIsolationLevel(int isolation);
 ## Type conversion
 
 When acess data to and from DocDB, data types need to be converted between Postgres and DocDB. The type conversion is defined in 
-src/include/catalog/ybctype.h.
+[src/include/catalog/ybctype.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/catalog/ybctype.h).
 
 ``` c
 extern const YBCPgTypeEntity *YBCDataTypeFromName(TypeName *typeName);
@@ -208,7 +208,7 @@ extern const YBCPgTypeEntity *YBCDataTypeFromOidMod(int attnum, Oid type_id);
 bool YBCDataTypeIsValidForKey(Oid type_id);
 void YBCGetTypeTable(const YBCPgTypeEntity **type_table, int *count);
 ```
-More methods are implemented in src/backend/catalog/ybctype.c, for example,
+More methods are implemented in [src/backend/catalog/ybctype.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/catalog/ybctype.c), for example,
 
 ``` c
 void YBCDatumToBool(Datum datum, bool *data, int64 *bytes) {
@@ -222,7 +222,7 @@ void YBCDatumToBinary(Datum datum, void **data, int64 *bytes) {
 
 ## Catalog Access 
 
-On top of the YugabyteDB defined methods to access system catalogs in src/backend/executor/ybcam.h(.c) so that they can be 
+On top of the YugabyteDB defined methods to access system catalogs in [src/backend/access/ybcam.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/access/ybcam.h) so that they can be 
 called by executors,
 
 ``` c
@@ -269,7 +269,7 @@ IndexTuple ybc_getnext_indextuple(YbScanDesc ybScan, bool is_forward_scan, bool 
 void ybcEndScan(YbScanDesc ybScan);
 ```
 
-Similarily, index access is defined in src/include/access/ybcin.h (.c).
+Similarily, index access is defined in [src/include/access/ybcin.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/access/ybcin.h).
 
 ``` c
 extern IndexBuildResult *ybcinbuild(Relation heap, Relation index, struct IndexInfo *indexInfo);
@@ -299,7 +299,7 @@ The pushdown happens only if the following conditions are met:
 * Aggregate output type (i.e. transition type) is a supported YB key type and not a postgres internal or numeric type.
 * Column type is a supported YB key type.
 
-The pushdown logic is mainly in src/backend/executor/nodeAgg.c
+The pushdown logic is mainly in [src/backend/executor/nodeAgg.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/nodeAgg.c).
 
 ``` c 
 /*
@@ -432,7 +432,7 @@ This [commit](https://github.com/yugabyte/yugabyte-db/commit/05a53869165ac8b9719
 
 ## IsYugaByteEnabled() Flag
 
-YugbytesDb changed Postgres internal logic a lot. To make the code clear, a flag is introduced in src/include/pg_yb_utils.h to indicate the logic path for YugaByteDB.
+YugbytesDb changed Postgres internal logic a lot. To make the code clear, a flag is introduced in [src/include/pg_yb_utils.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/pg_yb_utils.h) to indicate the logic path for YugaByteDB.
 
 ``` c 
 /*
@@ -444,7 +444,7 @@ YugbytesDb changed Postgres internal logic a lot. To make the code clear, a flag
  */
 extern bool IsYugaByteEnabled();
 ```
-The flag is set if pggate::PgApiImpl is initialized in /yb/pggate/ybc_pggate.cc. 
+The flag is set if pggate::PgApiImpl is initialized in [/yb/pggate/ybc_pggate.cc](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/yql/pggate/ybc_pggate.cc). 
 
 ## Caching
 
@@ -485,7 +485,7 @@ code snippet in catcache.c.
 
 YugaByteDB enabled sequence support in this [commit](https://github.com/yugabyte/yugabyte-db/commit/c7310c1f23755552252f7ccf6307c148cc903aa0).
 
-The following APIs are introduced in yb/yql/pggate/ybc_pggate.h.
+The following APIs are introduced in [yb/yql/pggate/ybc_pggate.h](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/yql/pggate/ybc_pggate.h).
 
 ``` c 
 YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
