@@ -22,7 +22,17 @@ The integration is illustrated from high level by the following diagram.
 
 ![Architecture](./images/YugabytedbPGIntegration.png)
 
-First of all, a postgres process is running together with a yb-tserver (tablet server) on the storage node in YugabyteDb. 
+That is to say, postgres was customized to communicate with YugaByteDB's DocDB via a layer called PG Gate. 
+
+## Postgres Process
+
+First of all, a postgres process is running together with a yb-tserver (tablet server) on the storage node in YugabyteDb. More specifically, 
+postgres was started as child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc). 
+
+The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize postgres installation. 
+YugaByteDB is more complicated for postgres initialization since its catalog manager is on yb-master node and it needs to setup system tables on catalog manager.  
+
+The processes on a yb-server is shown as follows.
 
 ```
 # ps axvww
@@ -34,7 +44,7 @@ First of all, a postgres process is running together with a yb-tserver (tablet s
      71 ?        Ss     0:00      0  8575 266392 9708  0.0 postgres: stats collector   
 ```
 
-To launch a mini YugaByte cluster, please follow the instructiond for [kubernetes](https://docs.yugabyte.com/latest/deploy/kubernetes/). Or you could
+The above could be viewed on a YugabyteDB cluster. To launch a mini YugaByteDB cluster, please follow the instructiond for [kubernetes](https://docs.yugabyte.com/latest/deploy/kubernetes/). Or you could
 use [MicroK8s](https://ubuntu.com/tutorials/install-a-local-kubernetes-with-microk8s#1-overview) in Ubuntu to launch a local cluster using the provided [script](./kube/yb-test.yaml).
 
 ```
