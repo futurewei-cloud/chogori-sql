@@ -26,11 +26,11 @@ That is to say, postgres was customized to communicate with YugaByteDB's DocDB v
 
 ## Postgres Process
 
-First of all, a postgres process is running together with a yb-tserver (tablet server) on the storage node in YugabyteDb. More specifically, 
-postgres was started as child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc). 
+First of all, a postgres process runs together with a yb-tserver (tablet server) on the storage node in YugabyteDb. More specifically, 
+postgres was started as a child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc). 
 
 The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize postgres installation. 
-YugaByteDB is more complicated for postgres initialization since its catalog manager is on yb-master node and it needs to setup system tables on catalog manager.  
+YugaByteDB is more complicated for postgres initialization since its catalog manager is on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/) node and it needs to setup system tables on catalog manager.  
 
 The processes on a yb-server is shown as follows.
 
