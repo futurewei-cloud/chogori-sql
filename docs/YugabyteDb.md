@@ -2,18 +2,19 @@ This document describes how YugbytesDb integrates with Postgres
 
 # Introduction
 Chorgori platform is built for low-latency in-memory distributed persistent OLTP databases. With the K2 storage layer in place, we need to add a 
-SQL layer on top of it so that people could run SQL to interact with it. This type of SQL is fundentally different from the traditional SQL databases
+SQL layer on top of it so that people could run SQL to interact with it. This type of SQL is fundamentally different from the traditional SQL databases
 in that
-* The database is distributed, not a simple sharding system of single instance traditional database, which is hard and painful to manage. 
+* The database is distributed, not a simple sharding system of a single instance traditional database, which is hard and painful to manage. 
 Instead, the system is automatically partitioned without manual efforts. 
 * It supports strong consistency with distributed transactions 
 * It supports GEO distributed transactions
 * It scales with big data in mind
 
-There are many this types of so-called newSQL projects that are inspired by the Google Spinner paper, YugabyteDb is one of them and it was built as 
+There are many of this types of so-called NewSQL projects that are inspired by the Google [Spinner paper](https://static.googleusercontent.com/media/research.google.com/en//archive/spanner-osdi2012.pdf) and 
+the subsequent [F1 paper](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41344.pdf). YugabyteDb is one of them and it was built as 
 a DocDB at first with the support of Casandra CQL language and Redis APIs from 2016. Postgres 10 was integrated in 2018 and then was upgraded to 11.2. 
-The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support [GraphQL](https://docs.yugabyte.com/latest/develop/graphql/). 
-Even our system is fundentally different, it is a good reference implementation to help us for initial investigation.
+The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support [GraphQL](https://docs.yugabyte.com/latest/develop/graphql/) as well. 
+Even our system is fundentally different, YugaByteDB is a good reference implementation to help us for initial investigations.
 
 # Integration
 
@@ -45,7 +46,7 @@ The processes on a yb-server is shown as follows.
 ```
 
 The above could be viewed on a YugabyteDB cluster. To launch a mini YugaByteDB cluster, please follow the instructiond for [kubernetes](https://docs.yugabyte.com/latest/deploy/kubernetes/). Or you could
-use [MicroK8s](https://ubuntu.com/tutorials/install-a-local-kubernetes-with-microk8s#1-overview) in Ubuntu to launch a local cluster using the provided [script](./kube/yb-test.yaml).
+use [MicroK8s](https://ubuntu.com/tutorials/install-a-local-kubernetes-with-microk8s#1-overview) in Ubuntu to launch a local cluster using [this script](./kube/yb-test.yaml).
 
 ```
 $ kubectl create namespace test
@@ -85,7 +86,7 @@ Datum ybc_fdw_handler()
 
 ```
 However, YugabyteDb did not use the regular FDW access path to define foreign tables since Postgres is customed to solely access its own data. 
-As a result, shortcuts are used to access its catalog and data directly. For example, check the following codesnippet in 
+As a result, shortcuts are used to access its catalog and data directly. For example, check the following code snippet in 
 src/backend/foreign/foreign.c to access the FDW handler directly instead of reading it from catalogs, which should be the reason that YugabyteDb
 is treated as native Postgres tables without additional foreign tables.
 
