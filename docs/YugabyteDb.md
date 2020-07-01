@@ -20,7 +20,7 @@ Even our system is fundentally different, it is a good reference to help for ini
 ## Architecture
 The integration is illustrated from high level by the following diagram.
 
-![Architecture](./images/YugabytedbPGIntegration.png")
+![Architecture](./images/YugabytedbPGIntegration.png)
 
 First of all, a postgres process is running together with a yb-tserver (tablet server) on the storage node in YugabyteDb. 
 
