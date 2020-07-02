@@ -544,6 +544,23 @@ The commit history for this file is available [here](https://github.com/yugabyte
 The parser and lexer are implemented using the well-known Unix tools [bison](https://www.gnu.org/software/bison/) and [flex](http://dinosaur.compilertools.net/).
 The lexer is defined in the file scan.l and the parser grammar is defined in [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 
+# Control Flow
+
+To better understand how PG integration works in ybd, we like to use the following sequence diagram to illustrate one example operation, i.e., the FetchNext operation in the dta scan operation.
+
+![Fetch Next Sequence Diagram](./images/ScanFetchNextSeqDiagram.png)
+
+The process is as follows, some details are ommitted for brevity
+* ExecForeignScan(PlanState *pstate) is called once during query execution in nodeForeignscan.c, which calls the generic ExecScan() flow in execScan.c.
+* execScan.c calls ExecScanFetch() under the hood, which calls the ExecForeignScan() in nodeForeignscan.c
+* nodeForeignscan.c calls the DFW ybc_fdw.cc using the method ybcIterateForeignScan(), which calls YBCPgDmlFetch() in ybc_pggate.cc
+* the Fetch() in pg_dml.cc is called, which tried to fetch the row from in-memory by calling getNextRow(). If not available, it calls FetchDataFromServer()
+to fetch data from tserver.
+* the corresponding Fetch() details are defined in pg_doc_op.cc for DocDB access, which associates the Execute() call to a pg_session
+* the pg_session in pg_session.cc first checks the tserver count and then fires an AsyncCall by using a Runner thread pool.
+* the request is handled by yb_op.cc, which made RPC calls to tserver and got response back.
+* the RPC data formats are defined in [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/common/pgsql_protocol.proto).
+
 # Resources 
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
 * Distributed PostgreSQL on a Google Spanner Architecture – Query Layer: https://blog.yugabyte.com/distributed-postgresql-on-a-google-spanner-architecture-query-layer/
