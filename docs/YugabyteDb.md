@@ -536,7 +536,7 @@ YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
 ```
 ## Colocated Tables
 YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
-Colocating tables puts all of their data into a single tablet, called the colocation tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
+Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
 
 ## Transactions 
 
@@ -548,7 +548,7 @@ The commit history for this file is available [here](https://github.com/yugabyte
 The parser and lexer are implemented using the well-known Unix tools [bison](https://www.gnu.org/software/bison/) and [flex](http://dinosaur.compilertools.net/).
 The lexer is defined in the file scan.l and the parser grammar is defined in [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 
-The main changes to SQL grammar are the Introduction of 'colocated' key word for colocated tables, for exampmle,
+The main changes to SQL grammar are the Introduction of 'colocated' key word for colocated tables, for example,
 
 ``` SQL
 CREATE DATABASE colocation_demo WITH colocated = true;
