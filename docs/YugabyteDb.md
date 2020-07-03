@@ -548,6 +548,109 @@ The commit history for this file is available [here](https://github.com/yugabyte
 The parser and lexer are implemented using the well-known Unix tools [bison](https://www.gnu.org/software/bison/) and [flex](http://dinosaur.compilertools.net/).
 The lexer is defined in the file scan.l and the parser grammar is defined in [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 
+The main changes to SQL grammar are the Introduction of 'colocated' key word for colocated tables, for exampmle,
+
+``` SQL
+CREATE DATABASE colocation_demo WITH colocated = true;
+CREATE TABLE opt_out_1(a int, b int, PRIMARY KEY(a)) WITH (colocated = false);
+```
+
+YugaByteDB also added 'SPLIT INTO' clause to specify the number of tablets to be created for the table and 'SPLIT AT VALUES' 
+clause to set split points to pre-split range-sharded tables.
+
+``` SQL
+CREATE TABLE tracking (id int PRIMARY KEY) SPLIT INTO 10 TABLETS;
+
+CREATE TABLE tbl(
+  a int,
+  b int,
+  primary key(a asc, b desc)
+) SPLIT AT VALUES((100), (200), (200, 5));
+```
+
+YugaByteDB supports the following statements
+
+```
+stmt :
+			| AlterDatabaseSetStmt
+			| AlterDatabaseStmt
+			| AlterDomainStmt
+			| AlterObjectSchemaStmt
+			| AlterOperatorStmt
+			| AlterOpFamilyStmt
+			| AlterSeqStmt
+			| AlterTableStmt
+			| CallStmt
+			| CommentStmt
+			| ConstraintsSetStmt
+			| CopyStmt
+			| CreateCastStmt
+			| CreateDomainStmt
+			| CreateOpFamilyStmt
+			| CreateSchemaStmt
+			| CreateUserStmt
+			| CreatedbStmt
+			| DeallocateStmt
+			| DefineStmt
+			| DeleteStmt
+			| DiscardStmt
+			| DropCastStmt
+			| DropOpFamilyStmt
+			| DropStmt
+			| DropdbStmt
+			| ExecuteStmt
+			| ExplainStmt
+			| GrantStmt
+			| IndexStmt
+			| InsertStmt
+			| LockStmt
+			| PrepareStmt
+			| RemoveAggrStmt
+			| RemoveOperStmt
+			| RenameStmt
+			| RevokeStmt
+			| RuleStmt
+			| SelectStmt
+			| TransactionStmt
+			| TruncateStmt
+			| UpdateStmt
+			| VariableResetStmt
+			| VariableSetStmt
+			| VariableShowStmt
+			| ViewStmt
+```
+The following are Beta features
+
+```
+			| AlterExtensionContentsStmt { parser_ybc_beta_feature(@1, "extension"); }
+			| AlterExtensionStmt { parser_ybc_beta_feature(@1, "extension"); }
+			| AnalyzeStmt { parser_ybc_beta_feature(@1, "analyze"); }
+			| CreateFunctionStmt { parser_ybc_beta_feature(@1, "function"); }
+			| CreateOpClassStmt { parser_ybc_beta_feature(@1, "opclass"); }
+			| CreatePolicyStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| DoStmt { parser_ybc_beta_feature(@1, "function"); }
+			| DropOpClassStmt { parser_ybc_beta_feature(@1, "opclass"); }
+			| RemoveFuncStmt { parser_ybc_beta_feature(@1, "function"); }
+			| CreateTrigStmt { parser_ybc_beta_feature(@1, "trigger"); }
+			| CreateExtensionStmt { parser_ybc_beta_feature(@1, "extension"); }
+			| AlterDefaultPrivilegesStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| AlterGroupStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| AlterOwnerStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| AlterPolicyStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| AlterRoleSetStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| AlterRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| CreateGroupStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| CreateRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| DropOwnedStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| DropRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| GrantRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| ReassignOwnedStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| RevokeRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
+			| VacuumStmt { parser_ybc_beta_feature(@1, "vacuum"); }
+```
+There are quite some SQL grammar that are not supported. Please check the file [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
+You could also view its commit history [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/parser/gram.y). 
+
 ## JIT 
 
 JIT is provided by Postgres natively and YugabyteDB didn't change it in anyway. Here is a [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/jit/README) for it. PostgreSQL, by default, uses LLVM to perform JIT because it has a license compatible with
