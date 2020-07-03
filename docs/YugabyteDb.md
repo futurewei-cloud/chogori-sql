@@ -212,7 +212,7 @@ YBCStatus YBCPgAbortTransaction();
 YBCStatus YBCPgSetTransactionIsolationLevel(int isolation);
 
 ```
-## Type conversion
+## Type Conversion
 
 When acess data to and from DocDB, data types need to be converted between Postgres and DocDB. The type conversion is defined in 
 [src/include/catalog/ybctype.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/catalog/ybctype.h).
@@ -566,17 +566,17 @@ to fetch data from tserver.
 * the RPC data formats are defined in [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/common/pgsql_protocol.proto).
 
 The DDLs are executed a bit differently since they are running directly against the catalog manager, i.e., the yb-master in YugabyteDB. Be aware that some DDLs
-requires communicating with the yb-tserver as well to get idea of how many tablets so as to set up the table splits.
-Here we could use the CreateTable DDL command to show how it works as shown in the following diagram.
+require communicating with the yb-tserver as well to get an idea of how many tablets so as to set up the table splits.
+Here we could use the CreateTable DDL command to show how it works by the following diagram.
 
 ![Create Table Sequence Diagram](./images/CreateTableSeqDiagram.png)
 
-* when a "create table" command is received, tablecmds.c was modified to forward the command to ybcmds.c to run the method YBCCreateTable().
-* ybccmds.c calls YBCPgNewCreateTable(), to create schema, CreateTableAddColumns() to add table columns, and YBCPgExecCreateTable() to actually create table on ybc_pggate.cc.
+* when a "create table" command is received, tablecmds.c was modified to forward the command to ybccmds.c to run the method YBCCreateTable().
+* ybccmds.c calls YBCPgNewCreateTable() to create schema, CreateTableAddColumns() to add table columns, and YBCPgExecCreateTable() to actually create table on ybc_pggate.cc.
 * ybc_pggate.cc calls NewCreateTable(), CreateTableAddColumn(), and ExecCreateTable() on the PG APIs on pggate.cc
-* pggate.cc first creates a DDL statment and add it to memory context, then cache it. 
+* pggate.cc first creates a DDL statment, adds it to memory context, and caches it. 
 * pggate.cc calls pg_ddl.cc to add columns in pg_ddl.cc to update the table schema.
-* finally pggate.cc calls a table creator to actually the table, which use YBClient in client-internal.cc to send the request to yb-master via protobuf RPC.
+* finally pggate.cc calls table_creator.cc to actually the table, which uses YBClient in client-internal.cc to send the request to yb-master via protobuf RPC.
 
 # Resources 
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
