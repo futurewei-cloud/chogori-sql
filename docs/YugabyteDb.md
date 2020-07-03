@@ -27,11 +27,15 @@ That is to say, postgres was customized to communicate with YugaByteDB's DocDB v
 
 ## Postgres Process
 
-First of all, a postgres process runs together with a [yb-tserver](https://docs.yugabyte.com/latest/architecture/concepts/yb-tserver/) (tablet server) on the storage node in YugabyteDb. More specifically, 
+First of all, a Postgres process runs together with a [yb-tserver](https://docs.yugabyte.com/latest/architecture/concepts/yb-tserver/) (tablet server) on the storage node in YugabyteDb. More specifically, 
 postgres was started as a child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc). 
 
-The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize postgres installation. 
-YugaByteDB is more complicated for postgres initialization since its catalog manager is on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/) nodes and it needs to setup system tables on catalog manager.  
+The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize Postgres installation. 
+YugaByteDB is more complicated for Postgres initialization since its catalog manager is on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/) nodes and it needs to setup system tables on catalog manager.  The reasons are as follows as implemented by this [commit](https://github.com/yugabyte/yugabyte-db/commit/ca30a3ab5252858103cf6f3f92697821e9b718df)
+* Create Postgres catalog tables on yb-master during initdb, and use them for all Postgres catalog read and writes.
+* the Postgres instances running on each node are now virtually stateless and no local files are created/used for either system or user tables
+* This ensures metadata consistency and high-availability in case of master/node failures
+* However, this has an effect on performance of DDL statements as metadata lookups can be non-local but this is mitigated by more aggressive caching -- and should not affect steady-state DML statements.
 
 The processes on a yb-server is shown as follows.
 
@@ -546,20 +550,33 @@ The lexer is defined in the file scan.l and the parser grammar is defined in [sr
 
 # Control Flow
 
-To better understand how PG integration works in ybd, we like to use the following sequence diagram to illustrate one example operation, i.e., the FetchNext operation in the dta scan operation.
+To better understand how PG integration works in ybd, we like to use the following sequence diagram to illustrate one example operation, i.e., the FetchNext operation in the data scan operation.
 
 ![Fetch Next Sequence Diagram](./images/ScanFetchNextSeqDiagram.png)
 
 The process is as follows, some details are ommitted for brevity
-* ExecForeignScan(PlanState *pstate) is called once during query execution in nodeForeignscan.c, which calls the generic ExecScan() flow in execScan.c.
+* ExecForeignScan(PlanState *pstate) is called during query execution in nodeForeignscan.c, which calls the generic ExecScan() flow in execScan.c.
 * execScan.c calls ExecScanFetch() under the hood, which calls the ExecForeignScan() in nodeForeignscan.c
 * nodeForeignscan.c calls the DFW ybc_fdw.cc using the method ybcIterateForeignScan(), which calls YBCPgDmlFetch() in ybc_pggate.cc
 * the Fetch() in pg_dml.cc is called, which tried to fetch the row from in-memory by calling getNextRow(). If not available, it calls FetchDataFromServer()
 to fetch data from tserver.
 * the corresponding Fetch() details are defined in pg_doc_op.cc for DocDB access, which associates the Execute() call to a pg_session
-* the pg_session in pg_session.cc first checks the tserver count and then fires an AsyncCall by using a Runner thread pool.
+* the pg_session in pg_session.cc first checks the tserver count and then fires an AsyncCall by using a RunHelper thread pool.
 * the request is handled by yb_op.cc, which made RPC calls to tserver and got response back.
 * the RPC data formats are defined in [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/common/pgsql_protocol.proto).
+
+The DDLs are executed a bit differently since they are running directly against the catalog manager, i.e., the yb-master in YugabyteDB. Be aware that some DDLs
+requires communicating with the yb-tserver as well to get idea of how many tablets so as to set up the table splits.
+Here we could use the CreateTable DDL command to show how it works as shown in the following diagram.
+
+![Create Table Sequence Diagram](./images/CreateTableSeqDiagram.png)
+
+* when a "create table" command is received, tablecmds.c was modified to forward the command to ybcmds.c to run the method YBCCreateTable().
+* ybccmds.c calls YBCPgNewCreateTable(), to create schema, CreateTableAddColumns() to add table columns, and YBCPgExecCreateTable() to actually create table on ybc_pggate.cc.
+* ybc_pggate.cc calls NewCreateTable(), CreateTableAddColumn(), and ExecCreateTable() on the PG APIs on pggate.cc
+* pggate.cc first creates a DDL statment and add it to memory context, then cache it. 
+* pggate.cc calls pg_ddl.cc to add columns in pg_ddl.cc to update the table schema.
+* finally pggate.cc calls a table creator to actually the table, which use YBClient in client-internal.cc to send the request to yb-master via protobuf RPC.
 
 # Resources 
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
