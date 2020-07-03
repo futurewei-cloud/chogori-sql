@@ -548,14 +548,14 @@ The commit history for this file is available [here](https://github.com/yugabyte
 The parser and lexer are implemented using the well-known Unix tools [bison](https://www.gnu.org/software/bison/) and [flex](http://dinosaur.compilertools.net/).
 The lexer is defined in the file scan.l and the parser grammar is defined in [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 
-The main changes to SQL grammar are the Introduction of 'colocated' key word for colocated tables, for example,
+YugaByteDB YSQL statements can be found [here](https://docs.yugabyte.com/latest/api/ysql/). The main changes to SQL grammar are the Introduction of *colocated* key word for colocated tables, for example,
 
 ``` SQL
 CREATE DATABASE colocation_demo WITH colocated = true;
 CREATE TABLE opt_out_1(a int, b int, PRIMARY KEY(a)) WITH (colocated = false);
 ```
 
-YugaByteDB also added 'SPLIT INTO' clause to specify the number of tablets to be created for the table and 'SPLIT AT VALUES' 
+YugaByteDB also added *SPLIT INTO* clause to specify the number of tablets to be created for the table and *SPLIT AT VALUES*
 clause to set split points to pre-split range-sharded tables.
 
 ``` SQL
