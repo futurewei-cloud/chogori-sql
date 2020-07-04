@@ -653,10 +653,23 @@ You could also view its commit history [here](https://github.com/yugabyte/yugaby
 
 ## JIT 
 
-JIT is provided by Postgres natively and YugabyteDB didn't change it in anyway. Here is a [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/jit/README) for it. PostgreSQL, by default, uses LLVM to perform JIT because it has a license compatible with
+JIT is provided by [Postgres](https://www.postgresql.org/docs/11/jit.html) natively and YugabyteDB didn't change it in anyway. Here is a [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/jit/README) for it. PostgreSQL, by default, uses LLVM to perform JIT because it has a license compatible with
 PostgreSQL, and because its IR can be generated from C using the Clang compiler. Currently expression evaluation and tuple deforming are JITed. To avoid the main PostgreSQL binary directly depending on LLVM, the LLVM dependent code is located in a shared library that is loaded on-demand. To achieve this, code intending to perform JIT (e.g. expression evaluation) calls an LLVM independent wrapper located in jit.c to do so. Lifetimes of JITed functions are managed via JITContext. To be able to generate code that can perform tasks done by "interpreted" PostgreSQL, one small file (llvmjit_types.c) references each of the types required for JITing. When to JIT is affected by cost estimation.
 
 To better understand how the expression is handled at runtime, please see this [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/README). In summary, there are four classes of nodes used in query execution trees: Plan nodes,their corresponding PlanState nodes, Expr nodes, and ExprState nodes. Expression trees, in contrast to Plan trees, are not mirrored into acorresponding tree of state nodes.  Instead each separately executable expression tree. Such a flat representation is usable both for fast interpreted execution and for compiling into native code.
+
+There are both cons and pros for JIT in postgres based on Query types. It might be helpful to check out this youtube presentation 
+["Just in time compilation in PostgreSQL 11 and onwards"](https://www.youtube.com/watch?v=k5PQq9a4YqA).
+
+## Other Postgres Features
+
+Postgres 11 provides additional features, for example, the [extension mechamism](https://www.postgresql.org/docs/11/extend.html), which provides extension
+for data types, UDFs, SQL functions, and even operators. 
+
+Additional interesting feature is [parallelism](https://www.postgresql.org/docs/11/parallel-query.html) introduced to Postgre recently. This is achieved by 
+adding Gather and Gather Merge nodes for other workers. The [execParallel.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/execParallel.c) 
+might be a good starting point. There is a good [blog](https://www.percona.com/blog/2019/07/30/parallelism-in-postgresql/) to explain it. The youtube presentation
+["Parallelism in PostgreSQL 11"](https://www.youtube.com/watch?v=jWIOZzezbb8) might be worthy watching. However, this is new feature and it might not be mature enough to use.
 
 # Control Flow
 
