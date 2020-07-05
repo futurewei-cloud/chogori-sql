@@ -543,6 +543,11 @@ Colocating tables puts all of their data into a single tablet, called the coloca
 YugaByteDB changed quite a lot of logic in postgres transaction. The primary file is: [src/backend/access/transam/xact.c](https://github.com/yugabyte/yugabyte-db/blob/master/src/postgres/src/backend/access/transam/xact.c).
 The commit history for this file is available [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/access/transam/xact.c)
 
+Postgres supports [Explicit Locking](https://www.postgresql.org/docs/11/explicit-locking.html) on table level, row level, and page level. As a result,
+it introduced a deadlock detection mechanism and a concept of *advisory locks*. The system does not enforce their use — it is up to the application to use them correctly.
+YugaByteDB supports [row-level explict locking](https://docs.yugabyte.com/latest/architecture/transactions/explicit-locking/#types-of-row-level-locks), 
+for example, *FOR UPDATE* and *FOR SHARE*.
+
 ## Parser
 
 The parser and lexer are implemented using the well-known Unix tools [bison](https://www.gnu.org/software/bison/) and [flex](http://dinosaur.compilertools.net/).
