@@ -880,6 +880,8 @@ class PrimitiveValue {
   };
 }
 ```
+The keys are seralized to and from bytes when in use by using [DocKeyEncoder and DocKeyDecoder](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/docdb/doc_key.cc).
+
 ## Colocated Tables
 YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
 Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
