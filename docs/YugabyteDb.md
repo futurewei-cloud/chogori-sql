@@ -751,7 +751,7 @@ class IndexInfo {
 ## DocDB to KV Store Mapping.
 For YSQL tables, every row is a document in DocDB. DocDB stores the data in a document format and eventually, it needs to store the data in KV pairs in the underhood RocksDB. 
 The storage models are described [here](https://docs.yugabyte.com/latest/architecture/docdb/persistence/). We copied the following diagram from the above document to 
-better shown the mapping between DocDB and RocksDB.
+better show the mapping between DocDB and RocksDB.
 
 ![KV store key encoding](./images/cql_row_encoding.png)
 
@@ -791,6 +791,8 @@ The above DocDB key is defined in [doc_key.h](https://github.com/yugabyte/yugaby
 //     1. Each range component consists of a type byte (ValueType) followed by the encoded
 //        representation of the respective type (see PrimitiveValue's key encoding).
 //     2. ValueType::kGroupEnd terminates the sequence.
+using DocKeyHash = uint16_t;
+
 class DocKey {
  // Uuid of the non-primary table this DocKey belongs to co-located in a tablet. Nil for the
   // primary or single-tenant table.
