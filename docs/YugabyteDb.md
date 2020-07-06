@@ -1385,7 +1385,51 @@ message PgsqlReadRequestPB {
   optional bytes max_partition_key = 25;
 }
 ```
-Paging state for select
+where PgsqlExpressionPB is used for expressions, i.e., predicate pushdowns 
+``` 
+// An expression in a WHERE condition.
+// - Bind values would be given by client and grouped into a repeated field that can be accessed
+//   by their indexes.
+// - Alias values would be computed by server and grouped into repeated field that can be accessed
+//   by their indexes.
+// - Code generator write indexes as ref. Executor deref indexes to get actual values.
+message PgsqlExpressionPB {
+  oneof expr {
+    QLValuePB value = 1;
+    int32 column_id = 2;
+    int32 bind_id = 3;                         // Bind variable index.
+    int32 alias_id = 4;                        // Alias index.
+    PgsqlBCallPB bfcall = 5;                   // Regular builtin calls.
+    PgsqlBCallPB tscall = 6;                   // Tablet server builtin calls.
+    PgsqlBCallPB bocall = 7;                   // Builtin operator calls.
+    PgsqlConditionPB condition = 8;            // Logical condition that evaluates to true/false.
+  }
+}
+
+// Builtin call expression. There are 3 different calls.
+// - Builtin operators such as '>', '<', '=', ...
+//   These operators can be executed anywhere.
+// - Builtin functions such as Now().
+//   These functions can be executed anywhere.
+// - Server builtin functions.
+//   Only tablet servers can execute these functions.
+//
+// TODO(neil) Regular builtin operators. This message can be executed anywhere.
+// - This is more efficient than builtin call as it avoids most overheads of calling builtin lib.
+// - Merge the current condition operator execution with this.
+// - To optimize certain operation (such as +), replace it builtin function with builtin op.
+message PgsqlBCallPB {
+  optional int32 opcode = 1;
+  repeated PgsqlExpressionPB operands = 2;
+}
+
+// A logical condition that evaluates to true/false. Used in the WHERE clause.
+message PgsqlConditionPB {
+  optional QLOperator op = 1;
+  repeated PgsqlExpressionPB operands = 2;
+}
+```
+and Paging state for paginations.
 ```
 // Paging state for continuing a read request.
 //
