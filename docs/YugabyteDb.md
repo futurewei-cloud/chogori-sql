@@ -582,9 +582,8 @@ struct TableInfo {
 
   // We use the retention time from the primary table.
   uint32_t wal_retention_secs = 0;
-}  
+};
 ```
-
 where the Schema is defined as follows.
 
 ``` c++
@@ -713,7 +712,42 @@ class PartitionSchema {
   boost::optional<YBHashSchema> hash_schema_; // Defined only for table that is hash-partitioned.
 };
 ```
+and IndexMap is an unordered_map and IndexInfo is as follows.
 
+``` c++
+/ A class to maintain the information of an index.
+class IndexInfo {
+ public:
+  // Index column mapping.
+  struct IndexColumn {
+    ColumnId column_id;         // Column id in the index table.
+    std::string column_name;    // Column name in the index table - colexpr.MangledName().
+    ColumnId indexed_column_id; // Corresponding column id in indexed table.
+    QLExpressionPB colexpr;     // Index expression.
+
+    explicit IndexColumn(const IndexInfoPB::IndexColumnPB& pb);
+    IndexColumn() {}
+    void ToPB(IndexInfoPB::IndexColumnPB* pb) const;
+  };
+  const TableId table_id_;            // Index table id.
+  const TableId indexed_table_id_;    // Indexed table id.
+  const uint32_t schema_version_ = 0; // Index table's schema version.
+  const bool is_local_ = false;       // Whether this is a local index.
+  const bool is_unique_ = false;      // Whether this is a unique index.
+  const std::vector<IndexColumn> columns_; // Index columns.
+  const size_t hash_column_count_ = 0;     // Number of hash columns in the index.
+  const size_t range_column_count_ = 0;    // Number of range columns in the index.
+  const std::vector<ColumnId> indexed_hash_column_ids_;  // Hash column ids in the indexed table.
+  const std::vector<ColumnId> indexed_range_column_ids_; // Range column ids in the indexed table.
+  const IndexPermissions index_permissions_ = INDEX_PERM_READ_WRITE_AND_DELETE;
+
+  // Column ids covered by the index (include indexed columns).
+  std::unordered_set<ColumnId> covered_column_ids_;
+
+  // Newer INDEX use mangled column name instead of ID.
+  bool use_mangled_column_name_ = false;
+};  
+```
 ## Colocated Tables
 YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
 Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
