@@ -715,7 +715,7 @@ class PartitionSchema {
 and IndexMap is an unordered_map and IndexInfo is as follows.
 
 ``` c++
-/ A class to maintain the information of an index.
+// A class to maintain the information of an index.
 class IndexInfo {
  public:
   // Index column mapping.
@@ -929,7 +929,9 @@ Here we could use the CreateTable DDL command to show how it works by the follow
 
 The data models are primarily defined in the following two protobuf specs.
 * [common.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/common.proto)
+* [ql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/ql_protocol.proto)
 * [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/pgsql_protocol.proto)
+* [master.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/master/master.proto)
 
 The data models are important for the system and we like to look into them in more details.
 
@@ -978,7 +980,647 @@ enum DataType {
   UINT64 = 103;
 }
 ```
+## Schema
 
+A schema consists of a list of column schemas and optional table properties.
+
+```
+message SchemaPB {
+  repeated ColumnSchemaPB columns = 1;
+  optional TablePropertiesPB table_properties = 2;
+}
+```
+where column schema is as follows,
+
+```
+message ColumnSchemaPB {
+  optional uint32 id = 1;
+  required string name = 2;
+  required QLTypePB type = 3;
+  optional bool is_key = 4 [default = false];
+  optional bool is_hash_key = 5 [default = false];
+  optional bool is_nullable = 6 [default = false];
+  optional bool is_static = 7 [default = false];
+  optional bool is_counter = 8 [default = false];
+  optional int32 order = 12 [default = 0];
+  optional uint32 sorting_type = 9 [default = 0];
+  // Reserved for deprecated read_default_value and write_default_value fields.
+  reserved 10, 11;
+  // The JSON attribute was mistakenly placed here, but it is not used.
+  // To be safe, it's left here for now.
+  // JSON attribute (for c->'a'->>'b' case).
+  repeated QLJsonOperationPB OBSOLETE_json_operations = 13;
+}
+```
+and TableProperties
+
+```
+message TablePropertiesPB {
+  optional uint64 default_time_to_live = 1;
+  optional bool contain_counters = 2;
+  optional bool is_transactional = 3 [default = false];
+
+  // The table id of the table that this table is co-partitioned with.
+  optional bytes copartition_table_id = 4;
+
+  // For index table only: consistency with respect to the indexed table.
+  optional YBConsistencyLevel consistency_level = 5 [ default = STRONG ];
+
+  // For CREATE INDEX, we use mangled name for its column, but it hasn't been that way.
+  // Due to coding history for INDEX support, we'll have the following scenarios.
+  // - UserTable: User-defined names are used for its columns.
+  // - IndexTable: Mangled names are used. We treat all INDEX column definition as expression of
+  //   column. For example INDEX on TAB(a) would be defined as IndexTable( ref_of(a) ).
+  // - Older IndexTable: User-defined name is used, and their definition in existing database
+  //   remains the same during upgrade.
+  //
+  // The field "use_mangled_column_name" helps indicating whether a table is using mangled_name.
+  optional bool use_mangled_column_name =  6 [ default = false ];
+  optional int32 num_tablets = 7 [ default = 0 ];
+  optional bool is_ysql_catalog_table = 8 [ default = false ];
+  optional bool is_backfilling = 9 [ default = false ];
+  optional uint64 backfilling_timestamp = 10;
+}
+```
+## Index
+
+``` c++
+// This message contains the metadata of a secondary index of a table.
+// It maps the index::columns to the expressions of table::columns.
+//
+// Notes on where to find metadata of an INDEX.
+// - Each INDEX is represented by IndexInfo and IndexTable.
+//     IndexInfoPB contains the definitions of the INDEX.
+//     IndexTable contains duplicate user-data for quick access.
+// - The IndexInfoPB is stored in the Catalog::Table being indexed.
+// - The TablePropertiesPB is kept in Catalog::IndexTable.
+//   Internally, Catalog::IndexTable is just the same as any Catalog::Table.
+message IndexInfoPB {
+  optional bytes table_id = 1; // Index table id.
+  optional bytes indexed_table_id = 8; // Indexed table id.
+  optional uint32 version = 2 [ default = 0]; // Index table's schema version.
+  optional bool is_local = 3 [ default = false ];  // Whether the index is a local index
+  optional bool is_unique = 7 [ default = false ]; // Whether the index is a unique index
+  // We should only have this in the elements of "repeated IndexInfoPB indexes" of the
+  // SysTablesEntryPB of the main table.
+  optional IndexPermissions index_permissions = 12 [ default = INDEX_PERM_READ_WRITE_AND_DELETE ];
+
+  // Index column mapping.
+  // "colexpr" is used to compute the value of this column in an INDEX.
+  // - When a table is indexed by expressions, we create internal/hidden columns to store the index
+  //   value, and "value_expr" specifies the indexing expression.
+  // - As of 07/2019, only QLJsonColumnOperationsPB is allowed for "colexpr".
+  // - In the current index design & implementation, expression can only reference ONE column.
+  //
+  // Example:
+  //   Example for scalar index
+  //     TABLE (a, b, c)
+  //     INDEX (c) -> INDEX is a table whose column 'c' is referencing TABLE(c)
+  //     colexpr = ref to "c" column_id.
+  //   Example for JSON index
+  //     TABLE (a, b, j)
+  //     INDEX (j->>'b') -> INDEX is a table whose column 'j->>b' is referencing to TABLE(j)
+  //     colexpr = j->'b'
+  message IndexColumnPB {
+    optional uint32 column_id = 1;         // Column id in the index table.
+    optional string column_name = 3;       // Generated column name in the index table.
+    optional uint32 indexed_column_id = 2; // Corresponding column id in indexed table.
+    optional QLExpressionPB colexpr = 4;   // Column value in INDEX.
+  }
+  repeated IndexColumnPB columns = 4;      // Indexed and covering columns.
+  optional uint32 hash_column_count = 5;   // Number of hash columns in the index.
+  optional uint32 range_column_count = 6;  // Number of range columns in the index.
+
+  repeated uint32 indexed_hash_column_ids = 9;   // Hash column ids in the indexed table.
+  repeated uint32 indexed_range_column_ids = 10; // Range column ids in the indexed table.
+
+  // The mangled-name flag is kept on both IndexInfo and IndexTable as the same mangled-name is
+  // used in both IndexInfo and IndexTable columns.
+  optional bool use_mangled_column_name = 11 [ default = false ];  // Newer index has mangled name.
+}
+```
+## Partition
+
+```
+message PartitionSchemaPB {
+  // A column identifier for partition schemas. In general, the name will be
+  // used when a client creates the table since column IDs are assigned by the
+  // master. All other uses of partition schemas will use the numeric column ID.
+  message ColumnIdentifierPB {
+    oneof identifier {
+      int32 id = 1;
+      string name = 2;
+    }
+  }
+
+  message RangeSchemaPB {
+    // Column identifiers of columns included in the range. All columns must be
+    // a component of the primary key.
+    repeated ColumnIdentifierPB columns = 1;
+    // Split points for range tables.
+    repeated string split_rows = 2;
+  }
+
+  message HashBucketSchemaPB {
+    // Column identifiers of columns included in the hash. Every column must be
+    // a component of the primary key.
+    repeated ColumnIdentifierPB columns = 1;
+
+    // Number of buckets into which columns will be hashed. Must be at least 2.
+    required int32 num_buckets = 2;
+
+    // Seed value for hash calculation. Administrators may set a seed value
+    // on a per-table basis in order to randomize the mapping of rows to
+    // buckets. Setting a seed provides some amount of protection against denial
+    // of service attacks when the hash bucket columns contain user provided
+    // input.
+    optional uint32 seed = 3;
+
+    enum HashAlgorithm {
+      UNKNOWN = 0;
+      MURMUR_HASH_2 = 1;
+    }
+
+    // The hash algorithm to use for calculating the hash bucket.
+    optional HashAlgorithm hash_algorithm = 4;
+  }
+
+  repeated HashBucketSchemaPB hash_bucket_schemas = 1;
+  optional RangeSchemaPB range_schema = 2;
+
+  enum HashSchema {
+    MULTI_COLUMN_HASH_SCHEMA = 1;
+    REDIS_HASH_SCHEMA = 2;
+    PGSQL_HASH_SCHEMA = 3;
+  }
+
+  optional HashSchema hash_schema = 3;
+}
+```
+## statements
+### Select 
+```
+message PgsqlReadRequestPB {
+  // Client info
+  optional QLClient client = 1; // required
+
+  // Statement info. There's only SELECT, so we don't need different request type.
+  optional uint64 stmt_id = 2; // required
+
+  // Table id.
+  optional bytes table_id = 19; // required
+
+  // Table schema version
+  optional uint32 schema_version = 3; // required
+
+  //------------------------------------------------------------------------------------------------
+  // Execution Input Arguments - To be bound with constant values.
+
+  // Hash Code: A hash code is used to locate efficiently a group of data of the same hash code.
+  // - First, it is used to find tablet server.
+  // - Then, it is used again by DocDB to narrow the search within a tablet.
+  // - In general, hash_code should be set by PgGate, but for some reasons, when the field
+  // "ybctid_column_value" is used, hash_code is set by "common" lib.
+  optional uint32 hash_code = 4;
+  optional PgsqlExpressionPB ybctid_column_value = 20;
+
+  // Primary key.
+  // - Partition columns are used to compute the hash code,
+  //   e.g. for h1 = 1 AND h2 = 2 partition_column_values would be [1, 2].
+  // - Range columns combining with partition columns are used for indexing.
+  repeated PgsqlExpressionPB partition_column_values = 5;
+  repeated PgsqlExpressionPB range_column_values = 18;
+
+  // For select using local secondary index: this request selects the ybbasectids to fetch the rows
+  // in place of the primary key above.
+  optional PgsqlReadRequestPB index_request = 21;
+
+  // Where clause condition
+  optional PgsqlExpressionPB where_expr = 8;
+
+  // Conditions for range columns.
+  optional PgsqlExpressionPB condition_expr = 22;
+
+  // If this attribute is present, this request is a batch request.
+  repeated PgsqlBatchArgumentPB batch_arguments = 24;
+
+  //------------------------------------------------------------------------------------------------
+  // Output Argument Specification (Tuple descriptor).
+  //
+  // For now, we sent rsrow descriptor from proxy to tablet server for every request. RSRow is just
+  // a selected row. We call it rsrow to distinguish a selected row from a row of a table in the
+  // database in our coding.
+  optional PgsqlRSRowDescPB rsrow_desc = 6;
+  repeated PgsqlExpressionPB targets = 7; // required.
+
+  //------------------------------------------------------------------------------------------------
+  // Database Arguments - To be read from the DataBase.
+  // Listing of all columns that this operation is referencing. TServers will need to read these
+  // columns when processing this read request.
+  optional PgsqlColumnRefsPB column_refs = 9;
+
+  //------------------------------------------------------------------------------------------------
+  // Query options.
+  optional bool is_forward_scan = 10 [default = true];
+
+  // Reading distinct columns?
+  optional bool distinct = 11 [default = false];
+
+  // Flag for reading aggregate values.
+  optional bool is_aggregate = 12 [default = false];
+
+  // Limit number of rows to return. For SELECT, this limit is the smaller of the page size (max
+  // (max number of rows to return per fetch) & the LIMIT clause if present in the SELECT statement.
+  optional uint64 limit = 13;
+
+  //------------------------------------------------------------------------------------------------
+  // Paging state retrieved from the last response.
+  optional PgsqlPagingStatePB paging_state = 14;
+
+  // Return paging state when "limit" number of rows are returned? In case when "limit" is the
+  // page size, this is set for PgsqlResponsePB to return the paging state for the next fetch.
+  optional bool return_paging_state = 15 [default = false];
+
+  // the upper limit for partition (hash) key when paging.
+  optional uint32 max_hash_code = 17;
+
+  // The version of the ysql system catalog this query was prepared against.
+  optional uint64 ysql_catalog_version = 16;
+
+  // Row mark as used by postgres for row locking.
+  optional RowMarkType row_mark_type = 23;
+
+  // Upper limit for partition key for range tables when paging.
+  optional bytes max_partition_key = 25;
+}
+```
+Paging state for select
+```
+// Paging state for continuing a read request.
+//
+// For a SELECT statement that returns many rows, the client may specify how many rows to return at
+// most in each fetch. This paging state maintains the state for returning the next set of rows of
+// the statement. This paging state is opaque to the client.
+//
+// When there should be more rows to return from the same tablet in the next fetch, "next_row_key"
+// is populated in DocDB (PgsqlReadOperation) with the DocKey of the next row to read. We also
+// embed a hybrid-time which is the clean snapshot time for read consistency. We also populate the
+// "next_partition_key" for the next row, which is the hash code of the hash portion of the DocKey.
+// This next partition key is needed by YBClient (Batcher) to locate the tablet to send the request
+// to and it doesn't have access to the DocDB function to decode and extract from the DocKey.
+//
+// When we are done returning rows from the current tablet and the next fetch should continue in
+// the next tablet (possible only for full-table query across tablets), "next_partition_key" is
+// populated by the current tablet with its exclusive partition-end key, which is the start key of
+// next tablet's partition. "next_row_key" is empty in this case which means we will start from the
+// very beginning of the next tablet. (TODO: we need to return the clean snapshot time in this case
+// also).
+//
+message PgsqlPagingStatePB {
+  // Table UUID to verify the same table still exists when continuing in the next fetch.
+  optional bytes table_id = 1;
+
+  // Partition key to find the tablet server of the next row to read.
+  optional bytes next_partition_key = 2;
+
+  // The row key (SubDocKey = [DocKey + HybridTimestamp]) of the next row to read.
+  optional bytes next_row_key = 3;
+
+  // Running total number of rows read across fetches so far. Needed to ensure we read up to the
+  // number of rows in the SELECT's LIMIT clause across fetches.
+  optional uint64 total_num_rows_read = 4;
+
+  // For selects with IN condition on the hash columns there are multiple partitions that need to be
+  // queried, one for each combination of allowed values for the hash columns.
+  // This holds the index of the next partition and is used to resume the read from the right place.
+  optional uint64 next_partition_index = 5;
+}
+```
+### INSERT, UPDATE, DELETE, and TRUNCATE
+```
+message PgsqlWriteRequestPB {
+  // Statement types
+  enum PgsqlStmtType {
+    PGSQL_INSERT = 1;
+    PGSQL_UPDATE = 2;
+    PGSQL_DELETE = 3;
+    PGSQL_UPSERT = 4;
+    PGSQL_TRUNCATE_COLOCATED = 5;
+  }
+
+  // Client info
+  optional QLClient client = 1;       // required
+
+  // Statement info
+  optional uint64 stmt_id = 2;     // client request id.
+  optional PgsqlStmtType stmt_type = 3;    // required
+
+  // Table id.
+  optional bytes table_id = 4; // required
+
+  // Table schema version.
+  optional uint32 schema_version = 5; // required
+
+  //------------------------------------------------------------------------------------------------
+  // Row Identifiers provides information for the row that the server INSERTs, DELETEs, or UPDATEs.
+  // - hash_code, if provided, helps locating the row. It is used by the proxy to find tablet server
+  //   and by DocDB to find a set of matching rows.
+  // - partition_column_values are for partition columns,
+  //   e.g. for h1 = 1 AND h2 = 2 partition_column_values would be [1, 2].
+  // - range_column_values are for range columns.
+  // - column_values are for non-primary columns. They are used to further identify the row to be
+  //   inserted, deleted, or updated.
+  //
+  // NOTE: Primary columns are defined when creating tables. These columns are different from
+  //       those columns that are used as part of an INDEX.
+  optional uint32 hash_code = 6;
+  repeated PgsqlExpressionPB partition_column_values = 7;
+  repeated PgsqlExpressionPB range_column_values = 8;
+  optional PgsqlExpressionPB ybctid_column_value = 9;
+
+  // Not used with UPDATEs. Use column_new_values to UPDATE a value.
+  repeated PgsqlColumnValuePB column_values = 10;
+
+  //------------------------------------------------------------------------------------------------
+  // Column New Values.
+  // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
+  repeated PgsqlColumnValuePB column_new_values = 11;
+
+  //------------------------------------------------------------------------------------------------
+  // Tuple descriptor for RETURNING clause.
+  //
+  // For now, we sent rsrow descriptor from proxy to tablet server for every request. RSRow is just
+  // a selected row. We call it rsrow to distinguish a selected row from a row of a table in the
+  // database in our coding.
+  optional PgsqlRSRowDescPB rsrow_desc = 12;
+  repeated PgsqlExpressionPB targets = 13; // required for a RETURNING clause.
+
+  //------------------------------------------------------------------------------------------------
+  // Where clause condition
+  optional PgsqlExpressionPB where_expr = 14;
+
+  // Listing of all columns that this write operation is referencing.
+  // TServers will need to read these columns when processing the write request.
+  optional PgsqlColumnRefsPB column_refs = 15;
+
+  // The version of the ysql system catalog this query was prepared against.
+  optional uint64 ysql_catalog_version = 16;
+
+  // True only if this changes a system catalog table (or index).
+  optional bool is_ysql_catalog_change = 17 [default = false];
+}
+```
+### Statement Response 
+Response 
+```
+// Response from tablet server for both read and write.
+message PgsqlResponsePB {
+  // Response status
+  enum RequestStatus {
+    PGSQL_STATUS_OK = 0;
+    PGSQL_STATUS_SCHEMA_VERSION_MISMATCH = 1;
+    PGSQL_STATUS_RUNTIME_ERROR = 2;
+    PGSQL_STATUS_USAGE_ERROR = 3;
+    PGSQL_STATUS_RESTART_REQUIRED_ERROR = 4;
+    PGSQL_STATUS_DUPLICATE_KEY_ERROR = 5;
+  }
+
+  // TODO: AppStatusPB can consolidate status + error_message + pg_error_code
+  // Internal Status information
+  optional RequestStatus status = 1 [ default = PGSQL_STATUS_OK ]; // required
+
+  // True if this operation was not actually applied, for instance update to the same value.
+  optional bool skipped = 6;
+
+  // User readable error message associated with Internal & External Status
+  optional string error_message = 2;
+
+  // Sidecar of rows data returned
+  optional int32 rows_data_sidecar = 4;
+
+  // Paging state for continuing the read in the next QLReadRequestPB fetch.
+  optional PgsqlPagingStatePB paging_state = 5;
+
+  // When client sends a request that has a batch of many arguments, server might process only a
+  // subset of the arguments. Attribute "batch_arg_count" is to indicate how many arguments have
+  // been processed by server.
+  //
+  // NOTE: This variable could have been inside "paging state", but due to rolling upgrade I have
+  // to place it here, separated from paging status for singular request.
+  optional int64 batch_arg_count = 10 [ default = 1 ];
+
+  // Number of rows affected by the operation. Currently only used for update and delete.
+  optional int32 rows_affected_count = 7;
+
+  //
+  // External statuses.
+  //
+  // If you add more of those, make sure they are correctly picked up, e.g.
+  // by PgDocReadOp::ReceiveResponse and PgDocOp::HandleResponseStatus
+  //
+
+  // PostgreSQL error code encoded as in errcodes.h or yb_pg_errcodes.h.
+  // See https://www.postgresql.org/docs/11/errcodes-appendix.html
+  optional uint64 pg_error_code = 8;
+
+  // Transaction error code, obtained by static_cast of TransactionErrorTag::Decode
+  // of Status::ErrorData(TransactionErrorTag::kCategory)
+  optional uint32 txn_error_code = 9;
+}
+```
+## Catalog APIs
+Catalogs are managed by catalog manager in yb-master. The main APIs are listed as follows.
+### Create Namespace 
+```
+// Database type is added to metadata entries such that PGSQL clients cannot delete or connect to
+// CQL database_type and vice versa.
+message CreateNamespaceRequestPB {
+  // Namespace name.
+  optional string name = 1;
+
+  // Database type.
+  optional YQLDatabase database_type = 2 [ default = YQL_DATABASE_CQL ];
+
+  // For RBAC.
+  optional string creator_role_name = 3;
+
+  // For Postgres:
+  optional bytes namespace_id = 4; // id to assign to this namespace.
+  optional bytes source_namespace_id = 5; // namespace id of the source database to copy from.
+  optional uint32 next_pg_oid = 6; // Next oid to assign. Ignored when source_namespace_id is given
+                                   // and the next_pg_oid from source namespace will be used.
+
+  // True if the namespace is colocated.
+  optional bool colocated = 7 [ default = false ];
+}
+
+message CreateNamespaceResponsePB {
+  // The error, if an error occurred with this request.
+  optional MasterErrorPB error = 1;
+
+  optional bytes id = 2;
+}
+```
+### Create Table
+```
+message CreateTableRequestPB {
+  required string name = 1;
+  optional SchemaPB schema = 2;
+  optional int32 num_tablets = 3;  // deprecated
+  optional PartitionSchemaPB partition_schema = 5;
+  optional ReplicationInfoPB replication_info = 6;
+  optional TableType table_type = 7 [ default = DEFAULT_TABLE_TYPE ];
+  optional NamespaceIdentifierPB namespace = 8;
+
+  // For index table.
+  optional IndexInfoPB index_info = 16;
+  optional bytes indexed_table_id = 9; // Indexed table id of this index.
+  optional bool is_local_index = 10 [ default = false ];  // Is a local index?
+  optional bool is_unique_index = 11 [ default = false ]; // Is a unique index?
+
+  // For RBAC.
+  optional string creator_role_name = 12;
+
+  // For Postgres:
+  optional bytes table_id = 13; // id to assign to this table.
+  optional bool is_pg_catalog_table = 14 [ default = false ]; // Is this a sys catalog table?
+  optional bool is_pg_shared_table = 15 [ default = false ];  // Is this a shared table?
+
+  // Is this a colocated table? This field is only applicable for a colocated database.
+  optional bool colocated = 17 [ default = true ];
+}
+
+message CreateTableResponsePB {
+  // The error, if an error occurred with this request.
+  optional MasterErrorPB error = 1;
+
+  optional bytes table_id = 2;
+}
+
+```
+### Alter Table
+```
+message AlterTableRequestPB {
+  enum StepType {
+    UNKNOWN = 0;
+    ADD_COLUMN = 1;
+    DROP_COLUMN = 2;
+    RENAME_COLUMN = 3;
+
+    // TODO(KUDU-861): this will subsume RENAME_COLUMN, but not yet implemented
+    // on the master side.
+    ALTER_COLUMN = 4;
+  }
+  message AddColumn {
+    // The schema to add.
+    // NOTE: the 'id' field of the schema should not be provided here --
+    // the server will assign an ID.
+    required ColumnSchemaPB schema = 1;
+  }
+  message DropColumn {
+    // Name of the column to drop.
+    required string name = 1;
+  }
+  message RenameColumn {
+    // Name of the column to rename;
+    required string old_name = 1;
+    required string new_name = 2;
+  }
+
+  message Step {
+    optional StepType type = 1 [ default = UNKNOWN ];
+
+    // Exactly one of the following must be set, based on 'type'
+    optional AddColumn add_column = 2;
+    optional DropColumn drop_column = 3;
+    optional RenameColumn rename_column = 4;
+  }
+
+  required TableIdentifierPB table = 1;
+  repeated Step alter_schema_steps = 2;
+  optional string new_table_name = 3;
+  optional NamespaceIdentifierPB new_namespace = 4;
+  optional TablePropertiesPB alter_properties = 5;
+  optional uint32 wal_retention_secs = 6;
+}
+
+message AlterTableResponsePB {
+  // The error, if an error occurred with this request.
+  optional MasterErrorPB error = 1;
+
+  optional uint32 schema_version = 2;
+}
+```
+### Get Table Schema
+```
+message GetTableSchemaRequestPB {
+  required TableIdentifierPB table = 1;
+}
+
+message GetTableSchemaResponsePB {
+  // The error, if an error occurred with this request.
+  optional MasterErrorPB error = 1;
+
+  // This is the schema that every TS should be able to understand
+  // if your alter is keeping the schema compatible.
+  // In case of an alter table in progress, this is the previous schema;
+  // otherwise it is the latest schema.
+  optional SchemaPB schema = 2;
+
+  // Table schema version
+  optional uint32 version = 9;
+
+  // The table's partition schema.
+  optional PartitionSchemaPB partition_schema = 5;
+
+  optional ReplicationInfoPB replication_info = 3;
+
+  // True if the create operation is completed, false otherwise.
+  optional bool create_table_done = 6;
+
+  // The table type.
+  optional TableType table_type = 7;
+
+  // Table identifier
+  optional TableIdentifierPB identifier = 8;
+
+  // Secondary indexes of the table.
+  repeated IndexInfoPB indexes = 10;
+
+  // For index table: [to be deprecated and replaced by "index_info"]
+  optional bytes OBSOLETE_indexed_table_id = 11; // Indexed table id of this index.
+
+  // For index table: information about this index.
+  optional IndexInfoPB index_info = 12;
+
+  // True if table is colocated.
+  optional bool colocated = 13;
+}
+```
+where NamespaceIdentifier and TableIdentifier are as follows.
+```
+message NamespaceIdentifierPB {
+  // The namespace ID to fetch info.
+  optional bytes id = 1;
+
+  // The namespace name to fetch info.
+  optional string name = 2;
+
+  // Database type.
+  optional YQLDatabase database_type = 3 [ default = YQL_DATABASE_CQL ];
+}
+
+message TableIdentifierPB {
+  // The table ID to fetch info.
+  optional bytes table_id = 1;
+
+  // The table name to fetch info.
+  optional string table_name = 2;
+
+  // The table namespace (if empty - using default namespace).
+  optional NamespaceIdentifierPB namespace = 3;
+}
+```
 # Resources 
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
 * Distributed PostgreSQL on a Google Spanner Architecture – Query Layer: https://blog.yugabyte.com/distributed-postgresql-on-a-google-spanner-architecture-query-layer/
