@@ -534,6 +534,186 @@ YBCStatus YBCReadSequenceTuple(int64_t db_oid,
 YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
 
 ```
+## Catalog Manager
+
+The catalog manager in YugaByteDB is running on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/), which stores system metadata such as the information about all the namespaces, tables, roles, permissions, and assignment of tablets to 
+yb-tservers. These system records are replicated across the yb-masters for redundancy using Raft as well. The system metadata is also stored 
+as a DocDB table by the yb-masters.
+
+As explained by this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/master/README), The Catalog Manager keeps track of the tables and tablets defined by the
+user in the cluster. All the table and tablet information is stored in-memory in copy-on-write TableInfo / TabletInfo objects, as well as on-disk, in the "sys.catalog"
+system table hosted only on the Masters.  This system table is loaded into memory on Master startup.  At the time of this writing, the "sys.catalog"
+table consists of only a single tablet in order to provide strong consistency for the metadata under RAFT replication (as currently, each tablet has its own
+log).
+
+To add or modify a table or tablet, the Master writes, but does not yet commit the changes to memory, then writes and flushes the system table to disk, and
+then makes the changes visible in-memory (commits them) if the disk write (and, in a distributed master setup, config-based replication) is successful. This
+allows readers to access the in-memory state in a consistent way, even while a write is in-progress.
+
+The catalog manager maintains 3 hash-maps for looking up info in the sys table:
+- [Table Id] -> TableInfo
+- [Table Name] -> TableInfo
+- [Tablet Id] -> TabletInfo
+
+The TableInfo has a map [tablet-start-key] -> TabletInfo used to provide the tablets locations to the user based on a key-range request. 
+The [TableInfo](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/tablet/tablet_metadata.h) is defined as follows.
+
+``` c++
+struct TableInfo {
+  // Table id, name and type.
+  std::string table_id;
+  std::string table_name;
+  TableType table_type;
+
+  // The table schema, secondary index map, index info (for index table only) and schema version.
+  Schema schema;
+  IndexMap index_map;
+  std::unique_ptr<IndexInfo> index_info;
+  uint32_t schema_version = 0;
+
+  // Partition schema of the table.
+  PartitionSchema partition_schema;
+
+  // A vector of column IDs that have been deleted, so that the compaction filter can free the
+  // associated memory. As of 01/2019, deleted column IDs are persisted forever, even if all the
+  // associated data has been discarded. In the future, we can garbage collect such column IDs to
+  // make sure this vector doesn't grow too large.
+  std::vector<DeletedColumn> deleted_cols;
+
+  // We use the retention time from the primary table.
+  uint32_t wal_retention_secs = 0;
+}  
+```
+
+where the Schema is defined as follows.
+
+``` c++
+// The schema for a set of rows.
+//
+// A Schema is simply a set of columns, along with information about
+// which prefix of columns makes up the primary key.
+//
+// Note that, while Schema is copyable and assignable, it is a complex
+// object that is not inexpensive to copy. You should generally prefer
+// passing by pointer or reference, and functions that create new
+// Schemas should generally prefer taking a Schema pointer and using
+// Schema::swap() or Schema::Reset() rather than returning by value.
+class Schema {
+  vector<ColumnSchema> cols_;
+  size_t num_key_columns_;
+  size_t num_hash_key_columns_;
+  ColumnId max_col_id_;
+  vector<ColumnId> col_ids_;
+  vector<size_t> col_offsets_;
+
+  // The keys of this map are GStringPiece references to the actual name members of the
+  // ColumnSchema objects inside cols_. This avoids an extra copy of those strings,
+  // and also allows us to do lookups on the map using GStringPiece keys, sometimes
+  // avoiding copies.
+  //
+  // The map is instrumented with a counting allocator so that we can accurately
+  // measure its memory footprint.
+  int64_t name_to_index_bytes_;
+  typedef STLCountingAllocator<std::pair<const GStringPiece, size_t> > NameToIndexMapAllocator;
+  typedef unordered_map<
+      GStringPiece,
+      size_t,
+      std::hash<GStringPiece>,
+      std::equal_to<GStringPiece>,
+      NameToIndexMapAllocator> NameToIndexMap;
+  NameToIndexMap name_to_index_;
+
+  IdMapping id_to_index_;
+
+  // Cached indicator whether any columns are nullable.
+  bool has_nullables_;
+
+  // Cached indicator whether any columns are static.
+  bool has_statics_ = false;
+
+  TableProperties table_properties_;
+
+  // Uuid of the non-primary table this schema belongs to co-located in a tablet. Nil for the
+  // primary or single-tenant table.
+  Uuid cotable_id_;
+
+  // PG table OID of the non-primary table this schema belongs to in a tablet with colocated
+  // tables. Nil for the primary or single-tenant table.
+  PgTableOid pgtable_id_;
+
+  // NOTE: if you add more members, make sure to add the appropriate
+  // code to swap() and CopyFrom() as well to prevent subtle bugs.
+};
+```
+The ColumnSchema is as follows.
+
+``` c++
+// The schema for a given column.
+//
+// Holds the data type as well as information about nullability & column name.
+// In the future, it may hold information about annotations, etc.
+class ColumnSchema {
+ public:
+  enum SortingType : uint8_t {
+    kNotSpecified = 0,
+    kAscending,          // ASC, NULLS FIRST
+    kDescending,         // DESC, NULLS FIRST
+    kAscendingNullsLast, // ASC, NULLS LAST
+    kDescendingNullsLast // DESC, NULLS LAST
+  };
+
+  // name: column name
+  // type: column type (e.g. UINT8, INT32, STRING, MAP<INT32, STRING> ...)
+  // is_nullable: true if a row value can be null
+  // is_hash_key: true if a column's hash value can be used for partitioning.
+  std::string name_;
+  std::shared_ptr<QLType> type_;
+  bool is_nullable_;
+  bool is_hash_key_;
+  bool is_static_;
+  bool is_counter_;
+  int32_t order_;
+  SortingType sorting_type_;
+};
+```
+
+and TableProperties
+
+``` c++
+class TableProperties {
+  static const int kNoDefaultTtl = -1;
+  int64_t default_time_to_live_ = kNoDefaultTtl;
+  bool contain_counters_ = false;
+  bool is_transactional_ = false;
+  bool is_backfilling_ = false;
+  YBConsistencyLevel consistency_level_ = YBConsistencyLevel::STRONG;
+  TableId copartition_table_id_ = kNoCopartitionTableId;
+  boost::optional<uint32_t> wal_retention_secs_;
+  bool use_mangled_column_name_ = false;
+  int num_tablets_ = 0;
+  bool is_ysql_catalog_table_ = false;
+};
+```
+and PartitionSchema
+
+``` c++
+class PartitionSchema {
+  struct RangeSchema {
+    std::vector<ColumnId> column_ids;
+  };
+
+  struct HashBucketSchema {
+    std::vector<ColumnId> column_ids;
+    int32_t num_buckets;
+    uint32_t seed;
+  };
+
+  std::vector<HashBucketSchema> hash_bucket_schemas_;
+  RangeSchema range_schema_;
+  boost::optional<YBHashSchema> hash_schema_; // Defined only for table that is hash-partitioned.
+};
+```
+
 ## Colocated Tables
 YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
 Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
@@ -655,6 +835,11 @@ The following are Beta features
 ```
 There are quite some SQL grammar that are not supported. Please check the file [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 You could also view its commit history [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/parser/gram.y). 
+## RPC
+
+YugaByteDB uses rpc to communicate among Postgres, yb-master (catalog manager), and yb-tserver (storage layer). 
+It uses protocol buffers for serialization, and [libev](https://github.com/enki/libev) for non-blocking I/O. The detailed introduction 
+could be found at this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/rpc/README).
 
 ## JIT 
 
@@ -705,6 +890,60 @@ Here we could use the CreateTable DDL command to show how it works by the follow
 * pggate.cc first creates a DDL statment, adds it to memory context, and caches it. 
 * pggate.cc calls pg_ddl.cc to add columns in pg_ddl.cc to update the table schema.
 * finally pggate.cc calls table_creator.cc to actually the table, which uses YBClient in client-internal.cc to send the request to yb-master via protobuf RPC.
+
+# Data Models
+
+The data models are primarily defined in the following two protobuf specs.
+* [common.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/common.proto)
+* [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/pgsql_protocol.proto)
+
+The data models are important for the system and we like to look into them in more details.
+
+## Data Types
+
+The following data types are supported.
+
+```
+// To ensure compatibility between release versions, the numeric values of these datatypes cannot
+// be changed once the types are implemented and released.
+//
+// Make sure this is in sync with YBCPgDataType in ybc_pg_typedefs.h.
+enum DataType {
+  UNKNOWN_DATA = 999;
+  NULL_VALUE_TYPE = 0;
+  INT8 = 1;
+  INT16 = 2;
+  INT32 = 3;
+  INT64 = 4;
+  STRING = 5;
+  BOOL = 6;
+  FLOAT = 7;
+  DOUBLE = 8;
+  BINARY = 9;
+  TIMESTAMP = 10;
+  DECIMAL = 11;
+  VARINT = 12;
+  INET = 13;
+  LIST = 14;
+  MAP = 15;
+  SET = 16;
+  UUID = 17;
+  TIMEUUID = 18;
+  TUPLE = 19;  // TUPLE is not yet fully implemented, but it is a CQL type.
+  TYPEARGS = 20;
+  USER_DEFINED_TYPE = 21;
+  FROZEN = 22;
+  DATE = 23;
+  TIME = 24;
+  JSONB = 25;
+
+  // All unsigned datatypes will be removed from QL because databases do not have these types.
+  UINT8 = 100;
+  UINT16 = 101;
+  UINT32 = 102;
+  UINT64 = 103;
+}
+```
 
 # Resources 
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
