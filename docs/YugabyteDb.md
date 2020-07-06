@@ -748,6 +748,136 @@ class IndexInfo {
   bool use_mangled_column_name_ = false;
 };  
 ```
+## DocDB to KV Store Mapping.
+For YSQL tables, every row is a document in DocDB. DocDB stores the data in a document format and eventually, it needs to store the data in KV pairs in the underhood RocksDB. 
+The storage models are described [here](https://docs.yugabyte.com/latest/architecture/docdb/persistence/). We copied the following diagram from the above document to 
+better shown the mapping between DocDB and RocksDB.
+
+![KV store key encoding](./images/cql_row_encoding.png)
+
+The keys in DocDB document model are compound keys consisting of one or more hash organized components, followed by zero or more ordered (range) 
+components. These components are stored in their data type specific sort order; both ascending and descending sort order is supported for each 
+ordered component of the key.
+
+The values in DocDB document data model can be:
+* primitive types: such as int32, int64, double, text, timestamp, etc.
+* non-primitive types (sorted maps): These objects map scalar keys to values, which could be either scalar or sorted maps as well.
+This model allows multiple levels of nesting, and corresponds to a JSON-like format. Other data structures like lists, sorted sets etc. are 
+implemented using DocDB’s object type with special key encodings. In DocDB, hybrid timestamps of each update are recorded carefully, so that it is 
+possible to recover the state of any document at some point in the past. Overwritten or deleted versions of data are garbage-collected as soon as 
+there are no transactions reading at a snapshot at which the old value would be visible.
+
+The above DocDB key is defined in [doc_key.h](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/docdb/doc_key.h) as follows.
+``` c++
+// A key that allows us to locate a document. This is the prefix of all RocksDB keys of records
+// inside this document. A document key contains:
+//   - An optional ID (cotable id or pgtable id).
+//   - An optional fixed-width hash prefix.
+//   - A group of primitive values representing "hashed" components (this is what the hash is
+//     computed based on, so this group is present/absent together with the hash).
+//   - A group of "range" components suitable for doing ordered scans.
+//
+// The encoded representation of the key is as follows:
+//   - Optional ID:
+//     * For cotable id, the byte ValueType::kTableId followed by a sixteen byte UUID.
+//     * For pgtable id, the byte ValueType::kPgTableOid followed by a four byte PgTableId.
+//   - Optional fixed-width hash prefix, followed by hashed components:
+//     * The byte ValueType::kUInt16Hash, followed by two bytes of the hash prefix.
+//     * Hashed components:
+//       1. Each hash component consists of a type byte (ValueType) followed by the encoded
+//          representation of the respective type (see PrimitiveValue's key encoding).
+//       2. ValueType::kGroupEnd terminates the sequence.
+//   - Range components are stored similarly to the hashed components:
+//     1. Each range component consists of a type byte (ValueType) followed by the encoded
+//        representation of the respective type (see PrimitiveValue's key encoding).
+//     2. ValueType::kGroupEnd terminates the sequence.
+class DocKey {
+ // Uuid of the non-primary table this DocKey belongs to co-located in a tablet. Nil for the
+  // primary or single-tenant table.
+  Uuid cotable_id_;
+
+  // Postgres table OID of the non-primary table this DocKey belongs to in colocated tables.
+  // 0 for primary or single tenant table.
+  PgTableOid pgtable_id_;
+
+  // TODO: can we get rid of this field and just use !hashed_group_.empty() instead?
+  bool hash_present_;
+
+  DocKeyHash hash_;
+  std::vector<PrimitiveValue> hashed_group_;
+  std::vector<PrimitiveValue> range_group_;
+};
+```
+and 
+``` c++ 
+// ------------------------------------------------------------------------------------------------
+// SubDocKey
+// ------------------------------------------------------------------------------------------------
+
+// A key pointing to a subdocument. Consists of a DocKey identifying the document, a list of
+// primitive values leading to the subdocument in question, from the outermost to innermost order,
+// and an optional hybrid_time of when the subdocument (which may itself be a primitive value) was
+// last fully overwritten or deleted.
+//
+// Keys stored in RocksDB should always have the hybrid_time field set. However, it is useful to
+// make the hybrid_time field optional while a SubDocKey is being constructed. If the hybrid_time
+// is not set, it is omitted from the encoded representation of a SubDocKey.
+//
+// Implementation note: we use HybridTime::kInvalid to represent an omitted hybrid_time.
+// We rely on that being the default-constructed value of a HybridTime.
+//
+// TODO: this should be renamed to something more generic, e.g. Key or LogicalKey, to reflect that
+// this is actually the logical representation of keys that we store in the RocksDB key-value store.
+class SubDocKey {
+  DocKey doc_key_;
+  DocHybridTime doc_ht_;
+  std::vector<PrimitiveValue> subkeys_;
+};
+```
+
+The value SubDocument is defined as follows.
+``` c++ 
+class SubDocument : public PrimitiveValue {
+}
+
+class PrimitiveValue {
+	static constexpr int64_t kUninitializedWriteTime = std::numeric_limits<int64_t>::min();
+
+  // Column attributes.
+  int64_t ttl_seconds_ = -1;
+  int64_t write_time_ = kUninitializedWriteTime;
+
+  // TODO: make PrimitiveValue extend SubDocument and put this field
+  // in SubDocument.
+  // This field gives the extension order of elements of a list and
+  // is applicable only to SubDocuments of type kArray.
+  mutable ListExtendOrder extend_order_ = ListExtendOrder::APPEND;
+
+  ValueType type_;
+
+  union {
+    int32_t int32_val_;
+    uint32_t uint32_val_;
+    int64_t int64_val_;
+    uint64_t uint64_val_;
+    uint16_t uint16_val_;
+    DocHybridTime hybrid_time_val_;
+    std::string str_val_;
+    float float_val_;
+    double double_val_;
+    Timestamp timestamp_val_;
+    InetAddress* inetaddress_val_;
+    Uuid uuid_val_;
+    FrozenContainer* frozen_val_;
+    // This is used in SubDocument to hold a pointer to a map or a vector.
+    void* complex_data_structure_;
+    ColumnId column_id_val_;
+    std::string decimal_val_;
+    std::string varint_val_;
+    std::string json_val_;
+  };
+}
+```
 ## Colocated Tables
 YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
 Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
@@ -869,6 +999,7 @@ The following are Beta features
 ```
 There are quite some SQL grammar that are not supported. Please check the file [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
 You could also view its commit history [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/parser/gram.y). 
+
 ## RPC
 
 YugaByteDB uses rpc to communicate among Postgres, yb-master (catalog manager), and yb-tserver (storage layer). 
@@ -1157,7 +1288,7 @@ message PartitionSchemaPB {
   optional HashSchema hash_schema = 3;
 }
 ```
-## statements
+## Statements
 ### Select 
 ```
 message PgsqlReadRequestPB {
@@ -1371,7 +1502,6 @@ message PgsqlWriteRequestPB {
 }
 ```
 ### Statement Response 
-Response 
 ```
 // Response from tablet server for both read and write.
 message PgsqlResponsePB {
