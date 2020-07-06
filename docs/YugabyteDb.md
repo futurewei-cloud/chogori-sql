@@ -540,7 +540,7 @@ The catalog manager in YugaByteDB is running on [yb-master](https://docs.yugabyt
 yb-tservers. These system records are replicated across the yb-masters for redundancy using Raft as well. The system metadata is also stored 
 as a DocDB table by the yb-masters.
 
-As explained by this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/master/README), The Catalog Manager keeps track of the tables and tablets defined by the
+As explained by this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/master/README), the Catalog Manager keeps track of the tables and tablets defined by the
 user in the cluster. All the table and tablet information is stored in-memory in copy-on-write TableInfo / TabletInfo objects, as well as on-disk, in the "sys.catalog"
 system table hosted only on the Masters.  This system table is loaded into memory on Master startup.  At the time of this writing, the "sys.catalog"
 table consists of only a single tablet in order to provide strong consistency for the metadata under RAFT replication (as currently, each tablet has its own
@@ -1429,7 +1429,7 @@ message PgsqlConditionPB {
   repeated PgsqlExpressionPB operands = 2;
 }
 ```
-and Paging state for paginations.
+and paging state for paginations.
 ```
 // Paging state for continuing a read request.
 //
