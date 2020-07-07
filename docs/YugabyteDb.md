@@ -1062,7 +1062,7 @@ Here we could use the CreateTable DDL command to show how it works by the follow
 
 # Data Models
 
-The data models are primarily defined in the following two protobuf specs.
+The data models are primarily defined in the following protobuf specs.
 * [common.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/common.proto)
 * [ql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/ql_protocol.proto)
 * [pgsql_protocol.proto](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/common/pgsql_protocol.proto)
