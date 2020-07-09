@@ -18,7 +18,7 @@
 #include <stdint.h>
 
 #include "yb/common/ybc_util.h"
-#include "yb/yql/pggate/ybc_pg_typedefs.h"
+#include "ybc_pg_typedefs.h"
 
 #ifdef __cplusplus
 extern "C" {

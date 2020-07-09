@@ -1,11 +1,5 @@
 set(CMAKE_CXX_STANDARD 17)
+add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wall -Wextra -march=skylake -mtune=skylake-avx512 -mavx -mavx2 -mxsave -mbmi -mbmi2 -mlzcnt -maes -mpopcnt)
 
-set(K2_CONNECTOR_SRCS
-  src/yb/common/ybc_util.h
-  src/yb/yql/pggate/ybc_pg_typedefs.h
-  src/yb/yql/pggate/ybc_pggate.h
-  src/ybgate/ybgate_api.h
-)
-
-add_library(k2_connector SHARED ${K2_CONNECTOR_SRCS})
-set_target_properties(k2_connector PROPERTIES LINKER_LANGUAGE C)
+add_subdirectory(src/yb/common)
+add_subdirectory(src/yb/yql/pggate)

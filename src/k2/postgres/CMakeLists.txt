@@ -2,7 +2,7 @@ set(POSTGRES_EXTRA_C_CXX_FLAGS "")
 
 include(ExternalProject)
 ExternalProject_Add(postgres
-    DEPENDS k2_connector
+    DEPENDS ybcommon ybpggate
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}
     CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure --prefix=<INSTALL_DIR>
     BUILD_COMMAND ${MAKE}
