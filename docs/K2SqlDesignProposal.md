@@ -436,11 +436,34 @@ Its the SQL coordinator's responsiblities to decide which K2 storage node that t
 manager generates a database oid (object id) and the tables in a database are assigned with table oids, which coud be used to map a collection in K2 storage layer. 
 The table primary key(s) should be used to map the record partition in a K2 collection. 
 
-#### K2 Storage APIs 
+### SQL Coordinator 
+
+SQL Coordinator consists of the following components.
+* (Optional) Web service to show query statuses, metrics, database states, and K2 collection information.
+* RPC server for SQL executors to heartbeat and call APIs for database/table/index updates
+* Catalog Manager
+  * initialize, create, and save PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html)
+  for template1, template0, and postgres
+  * manage user databases and tables such as create, insert, update, delete, and truncate.
+  * provide catalog APIs to external clients such as SQL executors 
+* Index Manager is logical part of the Catalog manager. We separate it out only to emphysize its functionality.
+  * create, save, update, and delete secondary indexes to K2 storage layer. 
+  * Provide APIs for the Catalog RPC service to manage indexes 
+* Collection manager to maintain the information of table partition to K2 storage node mapping. For example, if a SQL executor updates a table 
+schema, it needs to get all the collection/partition information from the SQL coordinator so as to push schema updates to all collection/partitions 
+on K2 storage nodes.
+* K2 storage APIs to get active K2 nodes, store/update/delete documents on K2 storage layers for system/user databases, tables, and indexes. 
+
+![SQL Coordinator](./images/K2SqlCoordinatorDiagram01.png)
+
+#### Catalog APIs 
+
+Catalog APIs are exposes as RPC service to manage databases, tables, and indexes.
+
+
+### K2 Storage
 
 Here we focus on how to map a record to K2 storage layer. 
-
-### SQL Coordinator 
 
 # Open Questions
 
