@@ -446,6 +446,7 @@ SQL Coordinator consists of the following components.
   for template1, template0, and postgres
   * manage user databases and tables such as create, insert, update, delete, and truncate.
   * provide catalog APIs to external clients such as SQL executors 
+  * cache schemas locally to avoid fetching them from remote
 * Index Manager is logical part of the Catalog manager. We separate it out only to emphysize its functionality.
   * create, save, update, and delete secondary indexes to K2 storage layer. 
   * Provide APIs for the Catalog RPC service to manage indexes 
@@ -464,6 +465,49 @@ Catalog APIs are exposes as RPC service to manage databases, tables, and indexes
 ### K2 Storage
 
 Here we focus on how to map a record to K2 storage layer. 
+
+### How Does It Work?
+
+Let use show how the system works by using the following scenarios.
+
+#### Create Database and Tables
+
+The user first creates a database and then create a table in this database as follows.
+* user sends "create database" to postgres via libpq
+* postgres calls the connector, which call the coordinator under the hood to create database for this user
+* the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information
+* user sends "create table" to postgres
+* postgres calls the connector, which calls the coordinator again to create a table for this user
+* the coordinator saves the table metadata to its catalog node 
+* the coordinator uses the database oid and table oid to assign collection/partitions and k2 node(s)
+* the coordinator returns the collection/partition information back to the connector in SQL executor
+* the connector then saves the record schema to the collection/partitions
+* the above create table operations should be protected by transaction so that we could rollback if anything goes wrong
+
+![Create Database and Table Sequence Diagram](./images/K2SqlCreateDBTableSequenceDiagram01.png)
+
+#### Select
+
+The user runs a select query as follows
+* user sends the select statement to postgres via libpq
+* postgres parses the SQL and it needs to get the table schema during the parsing.
+* postgres calls the connector to fetch the table schema from the coordinator
+* coordinator returns the schema from its memory or gets it from its catalog storage node if not available
+* postgre plans and optimize the select query
+* postgre execute the query to call connector via the foreign data wrapper
+* the select could also be an index scan instead of data scan depends on the query planning and optimization
+* the connector calls either the data node(s) to scan data with column projection and predicate pushdown if available
+* or scans the index on the index storage node
+* the result set is streaming back to customer
+* the data/index scan could use stream APIs or data pagination depends on the implementation
+
+![Select Statement Sequence Diagram](./images/K2SqlSelectSequenceDiagram01.png)
+
+#### Insert 
+
+#### Update
+
+#### Schema Update
 
 # Open Questions
 
