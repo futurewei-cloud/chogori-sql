@@ -19,7 +19,7 @@ We like to achieve the following goals for the first version of prototype.
 * Support Catalog management by DDLs, i.e., create, update, and delete databasse and tables
 * Support secondary indexes 
 * Support select with column projection and predication pushdown. Aggregation pushdown could be implemented in later versions.
-* Support insert, update, delete, and simple joins
+* Support insert, update, delete, truncate, and simple joins
 * Allow users to submit queries using PG libpq interface. JDBC and ODBC drivers could be provided in later versions. 
 
 # System Design Proposal 
@@ -35,7 +35,7 @@ The system architecture is as follows and it consists of the following component
 
 ![Architecture](./images/K2SqlSystemArchitecture01.png)
 
-## SQL Coordinator 
+### SQL Coordinator 
 
 The SQL coordinator has the following responsiblities
 * Manage database and table schemas while user submits DDLs such as create, update, and delete tables.
@@ -54,7 +54,7 @@ to gain data locality
 to submit to different SQL executors to do parallel executions and keep track of the Query life cycle.
 * For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol. 
 
-## SQL Executor 
+### SQL Executor 
 The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with postgres, i.e., it is a single instance
 query executor. 
 * It is stateless, i.e., it won't create any local system databases and tables.
@@ -75,7 +75,7 @@ with expressions for column projection and predicate pushdown.
     * It scans table indexes for Index based scan or join.
     * It could call multiple K2 storate nodes if the SQL involves multiple tables on different K2 collections/partions
 
-## K2 Storage Layer 
+### K2 Storage Layer 
 K2 storage layer functions consist of 
 * Table data are stored in K2 storage layer. The collection holds schema information.
 * PG system tables, user tables, and table secondary indexes are stored as regular data in k2 storage layer.
@@ -83,8 +83,368 @@ K2 storage layer functions consist of
 * SQL executor might call the transaction protocol in K2 storage layer for a SQL transaction with multiple collection/partition updates
 * The collection schemas for a partition need to be updated by SQL coordinator with a different schema version id.
 
+## SQL Layer 
+
+The SQL layer consists of the SQL executors and the SQL coordinator(s). Let us cover them in more details.
+
+### SQL Executor 
+
+A more detailed view of SQL executor is shown by the following diagram.
+
+![SQL Executor](./images/K2SqlExecutorDiagram01.png)
+
+First of all, the SQL executor uses a bootstrap module to initialize the process Environment, for example, waiting for the coordinator 
+to create system databases and tables. Then it starts a PG instance either as a child process or embedding inside. At the same time, it
+starts a RPC server for coordinator to heartbeat or get its status. In the future, the RPC server could accept Query execution commands
+from coordinator if we starts to support distributed query executions. The Libpq interface is provided by the PG process.
+
+#### Postgres 
+
+We could adopt the modified version of PG from [YugaByteDB](https://github.com/futurewei-cloud/chogori-sql/blob/master/docs/YugabyteDb.md), which has the following customization
+* Modified the initdb.c to not create system databases and tables locally and relies on remote catalog manager instead.
+* Wired in a Foreign Data Wrapper (DFW) to scan data from external data source instead of local memory and disk.
+* Changed PG commands to call external catalog manager 
+* Changed Index Scan from external data source.
+* Updated caching logic for external data sources 
+* Implemented sequence support 
+* Implemented column projection and predicate pushdown to external data sources
+* Implemented aggression pushdown for min, max, sum, and count
+* Used the [PG Gate APIs](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/yb/yql/pggate/ybc_pggate.h) to interact
+with external catalog manager and data sources.
+However, we need to change PG for our own use, which means we might need to change the PG Gate APIs as well.
+* Update the SQL grammar [gram.y](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/parser/gram.y) to only enable
+the SQL syntax that we support
+* Remove/disable the colocated table logic
+* Changed the tablet logic, which was part of YugaByteDB's storage component
+* Disable aggression push down for now until we support them in K2 storage layer
+* Update the transaction logic to integrate with K2S3 transaction protocol
+* Need to check if we could support sequence  
+
+#### PG Gate APIs 
+
+The PG Gate APIs include the following parts. 
+
+##### Enviornment and Session
+The PG needs to call the K2 connector to setup runtime environment and SQL sessions.
+
+``` c
+void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, YBCPgCallbacks pg_callbacks);
+void YBCDestroyPgGate();
+
+// Initialize ENV within which PGSQL calls will be executed.
+YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env);
+YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env);
+
+// Initialize a session to process statements that come from the same client connection.
+YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name);
+
+// Initialize memory context to hold all of its allocated space. Once all associated operations
+//   are done, the context is destroyed.
+YBCPgMemctx YBCPgCreateMemctx();
+YBCStatus YBCPgDestroyMemctx(YBCPgMemctx memctx);
+YBCStatus YBCPgResetMemctx(YBCPgMemctx memctx);
+
+// Invalidate the sessions table cache.
+YBCStatus YBCPgInvalidateCache();
+
+// Clear all values and expressions that were bound to the given statement.
+YBCStatus YBCPgClearBinds(YBCPgStatement handle);
+
+// Check if initdb has been already run.
+YBCStatus YBCPgIsInitDbDone(bool* initdb_done);
+```
+##### DDLs 
+
+Database operations
+
+``` c
+// Connect database. Switch the connected database to the given "database_name".
+YBCStatus YBCPgConnectDatabase(const char *database_name);
+// Create database.
+YBCStatus YBCPgNewCreateDatabase(const char *database_name,
+                                 YBCPgOid database_oid,
+                                 YBCPgOid source_database_oid,
+                                 YBCPgOid next_oid,
+                                 const bool colocated,
+                                 YBCPgStatement *handle);
+YBCStatus YBCPgExecCreateDatabase(YBCPgStatement handle);
+
+// Drop database.
+YBCStatus YBCPgNewDropDatabase(const char *database_name,
+                               YBCPgOid database_oid,
+                               YBCPgStatement *handle);
+YBCStatus YBCPgExecDropDatabase(YBCPgStatement handle);
+
+// Alter database.
+YBCStatus YBCPgNewAlterDatabase(const char *database_name,
+                               YBCPgOid database_oid,
+                               YBCPgStatement *handle);
+YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *newname);
+YBCStatus YBCPgExecAlterDatabase(YBCPgStatement handle);
+
+// Reserve oids.
+YBCStatus YBCPgReserveOids(YBCPgOid database_oid,
+                           YBCPgOid next_oid,
+                           uint32_t count,
+                           YBCPgOid *begin_oid,
+                           YBCPgOid *end_oid);
+```
+
+Table Operations 
+``` c
+BCStatus YBCPgNewCreateTable(const char *database_name,
+                              const char *schema_name,
+                              const char *table_name,
+                              YBCPgOid database_oid,
+                              YBCPgOid table_oid,
+                              bool is_shared_table,
+                              bool if_not_exist,
+                              bool add_primary_key,
+                              const bool colocated,
+                              YBCPgStatement *handle);
+
+YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
+                                    const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
+                                    bool is_desc, bool is_nulls_first);
+YBCStatus YBCPgExecCreateTable(YBCPgStatement handle);
+
+YBCStatus YBCPgNewAlterTable(YBCPgOid database_oid,
+                             YBCPgOid table_oid,
+                             YBCPgStatement *handle);
+
+YBCStatus YBCPgAlterTableAddColumn(YBCPgStatement handle, const char *name, int order,
+                                   const YBCPgTypeEntity *attr_type, bool is_not_null);
+
+YBCStatus YBCPgAlterTableRenameColumn(YBCPgStatement handle, const char *oldname,
+                                      const char *newname);
+
+YBCStatus YBCPgAlterTableDropColumn(YBCPgStatement handle, const char *name);
+
+YBCStatus YBCPgAlterTableRenameTable(YBCPgStatement handle, const char *db_name,
+                                     const char *newname);
+
+YBCStatus YBCPgExecAlterTable(YBCPgStatement handle);
+
+YBCStatus YBCPgNewDropTable(YBCPgOid database_oid,
+                            YBCPgOid table_oid,
+                            bool if_exist,
+                            YBCPgStatement *handle);
+
+YBCStatus YBCPgExecDropTable(YBCPgStatement handle);
+
+YBCStatus YBCPgNewTruncateTable(YBCPgOid database_oid,
+                                YBCPgOid table_oid,
+                                YBCPgStatement *handle);
+
+YBCStatus YBCPgExecTruncateTable(YBCPgStatement handle);
+
+YBCStatus YBCPgGetTableDesc(YBCPgOid database_oid,
+                            YBCPgOid table_oid,
+                            YBCPgTableDesc *handle);
+
+YBCStatus YBCPgGetColumnInfo(YBCPgTableDesc table_desc,
+                             int16_t attr_number,
+                             bool *is_primary,
+                             bool *is_hash);
+
+YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
+                                  YBCPgTableProperties *properties);                                    
+```
+
+Index operations 
+``` c
+YBCStatus YBCPgNewCreateIndex(const char *database_name,
+                              const char *schema_name,
+                              const char *index_name,
+                              YBCPgOid database_oid,
+                              YBCPgOid index_oid,
+                              YBCPgOid table_oid,
+                              bool is_shared_index,
+                              bool is_unique_index,
+                              const bool skip_index_backfill,
+                              bool if_not_exist,
+                              YBCPgStatement *handle);
+
+YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
+                                    const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
+                                    bool is_desc, bool is_nulls_first);
+BCStatus YBCPgExecCreateIndex(YBCPgStatement handle);
+
+YBCStatus YBCPgNewDropIndex(YBCPgOid database_oid,
+                            YBCPgOid index_oid,
+                            bool if_exist,
+                            YBCPgStatement *handle);
+
+YBCStatus YBCPgExecDropIndex(YBCPgStatement handle);
+
+YBCStatus YBCPgWaitUntilIndexPermissionsAtLeast(
+    const YBCPgOid database_oid,
+    const YBCPgOid table_oid,
+    const YBCPgOid index_oid,
+    const uint32_t target_index_permissions,
+    uint32_t *actual_index_permissions);
+
+YBCStatus YBCPgAsyncUpdateIndexPermissions(
+    const YBCPgOid database_oid,
+    const YBCPgOid indexed_table_oid);
+```
+
+The above DDLs are passed to the K2 connector, which calls the catalog manager in SQL coordinator under the hood.
+
+##### DMLs 
+
+DML statements consist of select, insert, update, delete, and truncate.
+
+First, we need to bind a SQL statement to columns and tables.
+
+``` c
+ // This function is for specifying the selected or returned expressions.
+// - SELECT target_expr1, target_expr2, ...
+// - INSERT / UPDATE / DELETE ... RETURNING target_expr1, target_expr2, ...
+YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target);
+YBCStatus YBCPgDmlBindColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
+YBCStatus YBCPgDmlBindColumnCondEq(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
+YBCStatus YBCPgDmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value,
+    YBCPgExpr attr_value_end);
+YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
+    YBCPgExpr *attr_values);
+
+// Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
+YBCStatus YBCPgDmlBindTable(YBCPgStatement handle);
+
+// API for SET clause.
+YBCStatus YBCPgDmlAssignColumn(YBCPgStatement handle,
+                               int attr_num,
+                               YBCPgExpr attr_value);
+
+// This function is to fetch the targets in YBCPgDmlAppendTarget() from the rows that were defined
+// by YBCPgDmlBindColumn().
+YBCStatus YBCPgDmlFetch(YBCPgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
+                        YBCPgSysColumns *syscols, bool *has_data);
+
+// Utility method that checks stmt type and calls either exec insert, update, or delete internally.
+YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_count);
+
+// This function returns the tuple id (ybctid) of a Postgres tuple.
+YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
+                                 int32_t nattrs, uint64_t *ybctid);
+```
+
+Insert operations 
+``` c
+BCStatus YBCPgNewInsert(YBCPgOid database_oid,
+                         YBCPgOid table_oid,
+                         bool is_single_row_txn,
+                         YBCPgStatement *handle);
+
+YBCStatus YBCPgExecInsert(YBCPgStatement handle);
+
+YBCStatus YBCPgInsertStmtSetUpsertMode(YBCPgStatement handle);
+
+YBCStatus YBCPgInsertStmtSetWriteTime(YBCPgStatement handle, const uint64_t write_time);
+```
+
+Update operations
+``` c
+YBCStatus YBCPgNewUpdate(YBCPgOid database_oid,
+                         YBCPgOid table_oid,
+                         bool is_single_row_txn,
+                         YBCPgStatement *handle);
+
+YBCStatus YBCPgExecUpdate(YBCPgStatement handle);
+```
+
+Delete operations 
+``` c
+YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
+                         YBCPgOid table_oid,
+                         bool is_single_row_txn,
+                         YBCPgStatement *handle);
+
+YBCStatus YBCPgExecDelete(YBCPgStatement handle);
+```
+
+Select operations 
+``` c
+YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
+                         YBCPgOid table_oid,
+                         const YBCPgPrepareParameters *prepare_params,
+                         YBCPgStatement *handle);
+
+// Set forward/backward scan direction.
+YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan);
+
+YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params);
+```
+
+Expression operations 
+``` c
+ / Column references.
+YBCStatus YBCPgNewColumnRef(YBCPgStatement stmt, int attr_num, const YBCPgTypeEntity *type_entity,
+                            const YBCPgTypeAttrs *type_attrs, YBCPgExpr *expr_handle);
+
+// Constant expressions.
+YBCStatus YBCPgNewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
+                           uint64_t datum, bool is_null, YBCPgExpr *expr_handle);
+YBCStatus YBCPgNewConstantOp(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
+                           uint64_t datum, bool is_null, YBCPgExpr *expr_handle, bool is_gt);
+
+// The following update functions only work for constants.
+// Overwriting the constant expression with new value.
+YBCStatus YBCPgUpdateConstInt2(YBCPgExpr expr, int16_t value, bool is_null);
+YBCStatus YBCPgUpdateConstInt4(YBCPgExpr expr, int32_t value, bool is_null);
+YBCStatus YBCPgUpdateConstInt8(YBCPgExpr expr, int64_t value, bool is_null);
+YBCStatus YBCPgUpdateConstFloat4(YBCPgExpr expr, float value, bool is_null);
+YBCStatus YBCPgUpdateConstFloat8(YBCPgExpr expr, double value, bool is_null);
+YBCStatus YBCPgUpdateConstText(YBCPgExpr expr, const char *value, bool is_null);
+YBCStatus YBCPgUpdateConstChar(YBCPgExpr expr, const char *value, int64_t bytes, bool is_null);
+
+// Expressions with operators "=", "+", "between", "in", ...
+YBCStatus YBCPgNewOperator(YBCPgStatement stmt, const char *opname,
+                           const YBCPgTypeEntity *type_entity,
+                           YBCPgExpr *op_handle);
+YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg);
+```
+
+Transaction operations 
+``` c
+YBCStatus YBCPgBeginTransaction();
+YBCStatus YBCPgRestartTransaction();
+YBCStatus YBCPgCommitTransaction();
+YBCStatus YBCPgAbortTransaction();
+YBCStatus YBCPgSetTransactionIsolationLevel(int isolation);
+YBCStatus YBCPgSetTransactionReadOnly(bool read_only);
+YBCStatus YBCPgSetTransactionDeferrable(bool deferrable);
+YBCStatus YBCPgEnterSeparateDdlTxnMode();
+YBCStatus YBCPgExitSeparateDdlTxnMode(bool success);
+```
+The DMLs usually involve both the Catalog manager in SQL coordinator and direct access to K2 storage nodes. 
+
+#### K2 Connector 
+
+The K2 connector behaves similar to the PG Gate in YugaByteDB and it is a glue layer among catalog services and storage layer. However, we need 
+rewrite our own connector logic since YugaByteDB's PG Gate is heavily coupled with its catalog system, tablet service, and its own transaction control 
+logic. We need to implement the PG Gate APIs using our own logic.
+
+Whenever, the K2 connector receives API calls from PG, it dispatches the calls to DDL process or DML process depending on the call type. The 
+DDL and DML process creates a session for a SQL statement to allocate memory to cache schema and other data, set up client connection to the SQL 
+coordinator or the K2 storage layer or both. They also have logic to bind columns and expressions to table and then make calls to SQL coordinator 
+or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session will be closed and cache is validated
+once a SQL statement finishes.
+
+Its the SQL coordinator's responsiblities to decide which K2 storage node that table records are stored. When user creates a database, the catalog 
+manager generates a database oid (object id) and the tables in a database are assigned with table oids, which coud be used to map a collection in K2 storage layer. 
+The table primary key(s) should be used to map the record partition in a K2 collection. 
+
+#### K2 Storage APIs 
+
+Here we focus on how to map a record to K2 storage layer. 
+
+### SQL Coordinator 
+
 # Open Questions
 
 * Do we support composite primary keys?
 * Should we colocate SQL executor with K2 storage node?
 * How to integrate PG transactions with K2S3 transaction protocol?
+* How to partition tables in a database to different K2 collection/partitions?
