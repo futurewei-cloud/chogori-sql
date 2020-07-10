@@ -60,20 +60,20 @@ query executor.
 * It is stateless, i.e., it won't create any local system databases and tables.
 * It provide libpq APIs for users to submit queries and get back query results.
 * It consists of an embedded PG with the following modifications
-** Foreign Data Wrapper is used to access table data on K2 storage layer instead of from local memory and disk, this is mainly for table scan
+  * Foreign Data Wrapper is used to access table data on K2 storage layer instead of from local memory and disk, this is mainly for table scan
 with expressions for column projection and predicate pushdown.
-** SQL grammar is updated to only support a subset of Queries. Will add more query types incrementally.
-** PG command APIs are updated to call catalog manager instead of updating local catalogs 
-** Index update and scan are rerouted to K2 storage layer 
-** The above functions are implemented by calling a connector as a glue layer between PG and K2 storage layer 
-** The executor in PG manages the life cycle of a query, i.e., from parsing, planning, optimizing, and execution. 
+  * SQL grammar is updated to only support a subset of Queries. Will add more query types incrementally.
+  * PG command APIs are updated to call catalog manager instead of updating local catalogs 
+  * Index update and scan are rerouted to K2 storage layer 
+  * The above functions are implemented by calling a connector as a glue layer between PG and K2 storage layer 
+  * The executor in PG manages the life cycle of a query, i.e., from parsing, planning, optimizing, and execution. 
 *  The connector layer is used by PG to interact with SQL coordinator and K2 storage layer
-** PG calls its PG gate APIs for DDLs and DMLs
-** It calls catalog manager in SQL coordinator for user databases and tables
-** It calls Index manager in SQL coordinator for secondary indexes 
-** It scans table data from K2 storage layer with column projection and predication pushdown. Paginationg might be used to fetch result data. 
-** It scans table indexes for Index based scan or join.
-** It could call multiple K2 storate nodes if the SQL involves multiple tables on different K2 collections/partions
+    * PG calls its PG gate APIs for DDLs and DMLs
+    * It calls catalog manager in SQL coordinator for user databases and tables
+    * It calls Index manager in SQL coordinator for secondary indexes 
+    * It scans table data from K2 storage layer with column projection and predication pushdown. Paginationg might be used to fetch result data. 
+    * It scans table indexes for Index based scan or join.
+    * It could call multiple K2 storate nodes if the SQL involves multiple tables on different K2 collections/partions
 
 ## K2 Storage Layer 
 K2 storage layer functions consist of 
