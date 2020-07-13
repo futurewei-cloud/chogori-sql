@@ -522,7 +522,7 @@ The user runs a select query as follows
 * postgre execute the query to call connector via the foreign data wrapper
 * the select could also be an index scan instead of data scan depends on the query planning and optimization
 * the connector calls either the data node(s) to scan data with column projection and predicate pushdown if available
-* or scans the index on the index storage node
+* or get the index information from the catalog storage node and then do the index scan on the data storage node
 * the result set is streaming back to customer
 * the data/index scan could use stream APIs or data pagination depends on the implementation
 
