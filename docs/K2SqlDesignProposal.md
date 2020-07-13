@@ -526,7 +526,7 @@ The user runs a select query as follows
 * the result set is streaming back to customer
 * the data/index scan could use stream APIs or data pagination depends on the implementation
 
-![Select Statement Sequence Diagram](./images/K2SqlSelectSequenceDiagram01.png)
+![Select Statement Sequence Diagram](./images/K2SqlSelectSequenceDiagram02.png)
 
 #### Insert 
 
