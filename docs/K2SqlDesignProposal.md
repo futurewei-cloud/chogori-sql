@@ -8,15 +8,15 @@ The design is based on the following Assumptions:
 * K2 Platform provides document APIs so that the SQL layers could access the table rows and columns with column projections and predicate pushdown
 * For the first version of prototype, we will integrate postgres (PG) database engine for query parsing, planning, and execution. That is to say, the query
 execution is on a single PG instance, which might not be ideal for complex queries, but should work for most OLTP queries. 
-* However, we should make our design to be extensible to be able to run queries in a distributed fasion, i.e., a physical query plan could be split
-into multiple segements to run on different nodes, which is useful for HTAP (Hybrid transaction/analytical processing) and OLAP in the future.
+* However, we should make our design to be extensible to be able to run queries in a distributed fashion, i.e., a physical query plan could be split
+into multiple segments to run on different nodes, which is useful for HTAP (Hybrid transaction/analytical processing) and OLAP in the future.
 * Data persistency and consistency is guaranteed by the K2 storage layer
 * Each table has a primary key and we need to specify one if it is not provided in schema definition. 
 * Primary keys that are used to partition tables cannot be changed once they are defined. 
 
 ## Design Goals
 We like to achieve the following goals for the first version of prototype.
-* Support Catalog management by DDLs, i.e., create, update, and delete databasse and tables
+* Support Catalog management by DDLs, i.e., create, update, and delete database and tables
 * Support secondary indexes 
 * Support select with column projection and predication pushdown. Aggregation pushdown could be implemented in later versions.
 * Support insert, update, delete, truncate, and simple joins
@@ -29,7 +29,7 @@ This is a high level design. Details will be provided in separate sections.
 ## Architecture 
 
 The system architecture is as follows and it consists of the following components.
-* The storage layer provides document APIs so that we could storage data with data type information into it.
+* The storage layer provides document APIs so that we could storage data with data type information, table schemas, and secondary indexes into it.
 * On the top of the storage layer, we have SQL executor, which could run separately on different hosts or the same host of the storage layer.
 * There is a SQL coordinator so that it could manage catalog, index, and data type updates on k2 storage nodes. 
 
@@ -37,7 +37,7 @@ The system architecture is as follows and it consists of the following component
 
 ### SQL Coordinator 
 
-The SQL coordinator has the following responsiblities
+The SQL coordinator has the following responsibilities
 * Manage database and table schemas while user submits DDLs such as create, update, and delete tables.
 * Manage secondary indexes for tables.
 * Both table schema and indexes are stored as document in storage layer by calling K2 storage APIs.
@@ -50,12 +50,12 @@ on K2 storage nodes when a user alters tables.
 * Could provides the initial connection for user to get the SQL executor to submit a query so that we can load balance the query load on 
 SQL executors. If we colocate the SQL executor with a K2 storage node, the coordinator could assign the query to the proper SQL executor 
 to gain data locality
-*  In the future, we could add SQL parsing, planning, and optimization logic to the coordinator so that it could generate SQL plan segements 
+*  In the future, we could add SQL parsing, planning, and optimization logic to the coordinator so that it could generate SQL plan segments 
 to submit to different SQL executors to do parallel executions and keep track of the Query life cycle.
 * For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol. 
 
 ### SQL Executor 
-The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with postgres, i.e., it is a single instance
+The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with Postgres, i.e., it is a single instance
 query executor. 
 * It is stateless, i.e., it won't create any local system databases and tables.
 * It provide libpq APIs for users to submit queries and get back query results.
@@ -71,9 +71,9 @@ with expressions for column projection and predicate pushdown.
     * PG calls its PG gate APIs for DDLs and DMLs
     * It calls catalog manager in SQL coordinator for user databases and tables
     * It calls Index manager in SQL coordinator for secondary indexes 
-    * It scans table data from K2 storage layer with column projection and predication pushdown. Paginationg might be used to fetch result data. 
+    * It scans table data from K2 storage layer with column projection and predication pushdown. Paginating might be used to fetch result data. 
     * It scans table indexes for Index based scan or join.
-    * It could call multiple K2 storate nodes if the SQL involves multiple tables on different K2 collections/partions
+    * It could call multiple K2 storage nodes if the SQL involves multiple tables on different K2 collections/partitions
 
 ### K2 Storage Layer 
 K2 storage layer functions consist of 
@@ -122,9 +122,9 @@ the SQL syntax that we support
 
 #### PG Gate APIs 
 
-The PG Gate APIs include the following parts. 
+The PG Gate APIs include the following parts. We would customize them to our need.
 
-##### Enviornment and Session
+##### Environment and Session
 The PG needs to call the K2 connector to setup runtime environment and SQL sessions.
 
 ``` c
@@ -432,8 +432,9 @@ coordinator or the K2 storage layer or both. They also have logic to bind column
 or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session will be closed and cache is validated
 once a SQL statement finishes.
 
-Its the SQL coordinator's responsiblities to decide which K2 storage node that table records are stored. When user creates a database, the catalog 
-manager generates a database oid (object id) and the tables in a database are assigned with table oids, which coud be used to map a collection in K2 storage layer. 
+Its the SQL coordinator's responsibilities to decide which K2 storage node that table records are stored. When user creates a database, the catalog 
+manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. 
+
 The table primary key(s) should be used to map the record partition in a K2 collection. 
 
 ### SQL Coordinator 
@@ -447,7 +448,7 @@ SQL Coordinator consists of the following components.
   * manage user databases and tables such as create, insert, update, delete, and truncate.
   * provide catalog APIs to external clients such as SQL executors 
   * cache schemas locally to avoid fetching them from remote
-* Index Manager is logical part of the Catalog manager. We separate it out only to emphysize its functionality.
+* Index Manager is logical part of the Catalog manager. We separate it out only to emphasize its functionality.
   * create, save, update, and delete secondary indexes to K2 storage layer. 
   * Provide APIs for the Catalog RPC service to manage indexes 
 * Collection manager to maintain the information of table partition to K2 storage node mapping. For example, if a SQL executor updates a table 
@@ -457,14 +458,36 @@ on K2 storage nodes.
 
 ![SQL Coordinator](./images/K2SqlCoordinatorDiagram01.png)
 
+#### Schema Entities
+
+The entities for SQL schemas are shown in the following class diagram.
+* DataType: data types that support [PG SQL data types](https://www.postgresql.org/docs/11/datatype.html)
+* TypeInfo: used internally to resolve a SQL type to a physical type, i.e., c/c++ data type
+* ColumnId: consists of column name and column id, which is generated by the system
+* SortingOrder: the column sorting order, which could be used during index build
+* ColumnSchema: the [column definition](https://www.postgresql.org/docs/11/infoschema-columns.html), where isKey indicates if this column is part of the primary key
+* PartitionType: PG supports [Hash, Range, and List partitions](https://www.postgresql.org/docs/11/ddl-partitioning.html). We need to decide how do we 
+support table partitions since storage layer might partition the table with split and join automatically
+* PartitionSchema: partition schema for a table
+* TableProperties: we need to decide what properties that we need to introduce
+* Schema: the schema for a table row with table properties. Schema is versioned.
+* ExprOperator: all expression types in SQL where clauses and index definitions
+* Condition: a typical conditional expression
+* Expression: it consists of different types of expression, for example, Condition, or a build-in function such as lower() or floor(). We need to decide whether we support them in K2 storage layer
+* IndexColumn: the column involved in an index
+* IndexTable: PG stores the [secondary indexes](https://www.postgresql.org/docs/11/indexes.html) as separate IndexTables. An index has its own system generated id, name, version, the table id that the index is built on, and whether it is unique. An index could include one or more columns
+* Table: the table information that is maintained by the catalog manger and it consists of table name, system generated table id, table schema, partition schema, and an index map for secondary indexes
+
+![SQL Schema](./images/K2SqlSchemaEntity01.png)
+
 #### Catalog APIs 
 
-Catalog APIs are exposes as RPC service to manage databases, tables, and indexes.
+Catalog APIs are exposed as RPC service to manage databases, tables, and indexes.
 
 
 ### K2 Storage
 
-Here we focus on how to map a record to K2 storage layer. 
+Here we focus on how to map a record to K2 storage layer and expressions for predicate pushdown. 
 
 ### How Does It Work?
 
@@ -475,7 +498,8 @@ Let use show how the system works by using the following scenarios.
 The user first creates a database and then create a table in this database as follows.
 * user sends "create database" to postgres via libpq
 * postgres calls the connector, which call the coordinator under the hood to create database for this user
-* the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information
+* the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information. 
+The database is a namespace to hold a set of tables, it does not need to be stored on the K2 data node.
 * user sends "create table" to postgres
 * postgres calls the connector, which calls the coordinator again to create a table for this user
 * the coordinator saves the table metadata to its catalog node 
@@ -483,6 +507,7 @@ The user first creates a database and then create a table in this database as fo
 * the coordinator returns the collection/partition information back to the connector in SQL executor
 * the connector then saves the record schema to the collection/partitions
 * the above create table operations should be protected by transaction so that we could rollback if anything goes wrong
+* the coordinator might need to update system tables as well to reflect user table changes
 
 ![Create Database and Table Sequence Diagram](./images/K2SqlCreateDBTableSequenceDiagram01.png)
 
@@ -515,3 +540,7 @@ The user runs a select query as follows
 * Should we colocate SQL executor with K2 storage node?
 * How to integrate PG transactions with K2S3 transaction protocol?
 * How to partition tables in a database to different K2 collection/partitions?
+* Should we partition index storage into multiple collections/partitions to scale index scans? Should we place the indexes on the same storage partition for
+the same table?
+* Should the SQL executor starts one PG child process or multiple ones so that one PG instance associates with one core?
+* Who is responsible for collection/partitions assignment if we use range hash, i.e., the storage layer or the coordinator?
