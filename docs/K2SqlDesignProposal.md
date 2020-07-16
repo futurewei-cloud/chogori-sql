@@ -562,30 +562,33 @@ Apart from the catalog APIs described in above section, coordinator provides add
 
 ### K2 Storage
 
-The SQL layer stores table schema, indexes, and data on K2 storage layer and it needs to scan the data or index on data nodes.
-
-#### Conversion
-
-We need to convert data to document records for the following use cases. 
-* Save or update namespaces to the sys_namespace table on K2 catalog node
-* Save or update system and user schemas to the sys_catalog table on K2 catalog node
-* Save or update system table data on K2 catalog node
-* Save or update user table data on K2 storage node(s)
-* Save or update user index data on K2 storage node(s)
-Please be aware that K2 catalog node is a regular K2 data node that is assigned to store table schemas and system tables.
+The SQL layer stores table schema, indexes, and data on K2 storage layer and it needs to scan the data or index on data nodes. Both SQL executors and SQL coordinator need to call K2 storage layer.
 
 #### SQL Document APIs
 
-The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we need to 
-pass table schemas, indexes, and table data to the following document APIs. The document APIs could be used to update schema or get/update/delete records.
-Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
+The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The document APIs could be used to update schema or get/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
 
 ![SQL Document APIs](./images/K2SqlDocumentAPIs01.png)
 
-#### Storage APIs
+#### K2 Storage APIs
 
 We need to convert the SQL document APIs to native K2 storage APIs to access data on K2 storage layer. Apart from that, we also need to encode the record
 properly so that the storage layer could decode the data.
+
+#### Use Cases
+
+We need to convert data to document records for the following use cases. 
+* Save or update namespaces to the sys_namespace table on K2 catalog node. The record consists of the id and name columns plus a nextOid column.
+* Save or update system and user schemas to the sys_catalog table on K2 catalog node. For a table, we encode the table object into a blob and set isIndex 
+to false. For an index table, we encode it into a blob as well, but set isIndex to true. The id and name are in the sys_catalog table for record search. In
+addition, a nextOid column is used to generate unique table ids.
+* Save or update system table data on K2 catalog node. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table. 
+* Save or update user table data on K2 storage node(s). We only need to pass column schema and data to K2 storage layer.
+* Save or update user index data on K2 storage node(s). Similarly, we only need to pass column schema and data to k2 storage layer.
+* The batchGetRecords() could be used scan data and index data. The filters on the API could be used by the K2 storage node to filter out data.
+* The deleteAllRecordsAndSchema() could be used to drop a table or index on K2 data nodes.
+
+Please be aware that K2 catalog node is a regular K2 data node that is assigned to store table schemas and system tables.
 
 ### How Does It Work?
 
