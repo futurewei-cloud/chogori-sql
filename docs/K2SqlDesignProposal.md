@@ -607,9 +607,44 @@ The user runs a select query as follows
 
 #### Insert 
 
-#### Update
+The User runs an insert statement as follows
+* user sends the insert statement to Postgres via libpq
+* Postgres parses the SQL and it needs to get the table schema from coordinator via the connector
+* The coordinator returns the table schema and the k2 collection information to the connector
+* Postgres plans and executes the query
+* The connector inserts the data to the corresponding collection/partitions
+* Optionally, the connector needs to call the SQL coordinator to get index and update the index data on the data node if any secondary index is involved
 
-#### Schema Update
+![Insert Statement Sequence Diagram](./images/K2SqlInsertSequenceDiagram01.png)
+
+#### Drop Table
+
+The following diagram shows the sequence diagram of dropping a table without "cascade".
+* user sends the drop table statement to Postgres via libpq
+* Postgres parses the SQL and it needs to get the table schema from coordinator via the connector
+* The coordinator returns the table schema from its cache or from K2 catalog node and k2 collection information to the connector
+* Postgres plans and executes the query
+* The connector calls k2 storage node(s) to delete the table data
+* The connector calls the coordinator to delete the table metadata from K2 catalog node and invalidate its cache
+* The drop table with "cascade' is more complex if we support it
+* The operations should be protected by transactions to keep database in a consistent state.
+
+![Drop Table Sequence Diagram](./images/K2SqlDropTableSequenceDiagram01.png)
+
+#### Alter Table
+
+The following sequence diagram illustrates the use case to rename a table column
+* user sends the rename column statement to Postgres via libpq
+* Postgres parses the SQL and fetches the table schema similar to above use cases.
+* The connector calls AlterTable to coordinator 
+* Coordinator updates the schema and increases the schema version
+* The new version of schema is saved to K2 catalog node
+* The connector sends the new schema to data node(s)
+* Both the K2 catalog node and K2 data node may have multiple versions for schema in memory to support schema migration, we need a garbage collection process to remove the unused schema after some period of time or by other criteria
+
+![Rename Column Sequence Diagram](./images/K2SqlRenameColumnSequenceDiagram01.png)
+
+If a drop column statement is called, we need to decide how do we handle the column removal on the K2 storage node(s) since our data are stored in row, i.e., should we rewrite the whole rows or simply mark the dropped column as deleted and then have a background compact process to remove the column.
 
 # Open Questions
 
@@ -622,4 +657,5 @@ the same table?
 * Should we support backfill indexes?
 * Should the SQL executor starts one PG child process or multiple ones so that one PG instance associates with one core?
 * Who is responsible for collection/partitions assignment if we use range hash, i.e., the storage layer or the coordinator?
+* How to handle dropping columns on the K2 storage node(s)?
 * How to handle users/roles?
