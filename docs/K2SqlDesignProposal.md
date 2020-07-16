@@ -549,15 +549,15 @@ coordinator needs to track where the data are stored, for example, the endpoints
 The collection information could be managed either by the SQL coordinator communicating with K2 storage layer directly or the SQL coordinator could obtain such
 information from the heartbeat between SQL executor if the SQL executor is colocated with a K2 storage node. 
 
-#### Coordinator APIs
+#### Additional Coordinator APIs
 
-Apart from the catalog APIs described in above section, coordinator provides additional APIs as follows.
-* Heartbeat between SQL executor
-* isInitDBDone() for SQL executor to check if the SQL coordinator has finished InitDB so that it could go to the ready state
-* get K2 collections
-* (optional) metrics
+Apart from the catalog APIs described in above section, coordinator provides additional APIs.
+* Heartbeat between SQL executor so that SQL executor gets schema version updates
+* isInitDBDone() for SQL executor to check if the SQL coordinator has finished InitDB so that it could go to the ready state, this could be implemented by http status code as well.
 
-![SQL Schema and data persistence](./images/K2SqlCoordinatorAdditionalAPIs01.png)
+#### Metrics
+
+Similar to chogori-platform, we could use prometheus for metrics.
 
 ### K2 Storage
 
@@ -577,17 +577,17 @@ properly so that the storage layer could decode the data.
 #### Use Cases
 
 We need to convert data to document records for the following use cases. 
-* Save or update namespaces to the sys_namespace table on K2 catalog node. The record consists of the id and name columns plus a nextOid column.
-* Save or update system and user schemas to the sys_catalog table on K2 catalog node. For a table, we encode the table object into a blob and set isIndex 
+* Save or update namespaces to the sys_namespace table on K2 catalog collection. The record consists of the id and name columns plus a nextOid column.
+* Save or update system and user schemas to the sys_catalog table on K2 catalog collection. For a table, we encode the table object into a blob and set isIndex 
 to false. For an index table, we encode it into a blob as well, but set isIndex to true. The id and name are in the sys_catalog table for record search. In
 addition, a nextOid column is used to generate unique table ids.
-* Save or update system table data on K2 catalog node. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table. 
+* Save or update system table data on K2 catalog collection. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table. 
 * Save or update user table data on K2 storage node(s). We only need to pass column schema and data to K2 storage layer.
 * Save or update user index data on K2 storage node(s). Similarly, we only need to pass column schema and data to k2 storage layer.
 * The batchGetRecords() could be used scan data and index data. The filters on the API could be used by the K2 storage node to filter out data.
 * The deleteAllRecordsAndSchema() could be used to drop a table or index on K2 data nodes.
 
-Please be aware that K2 catalog node is a regular K2 data node that is assigned to store table schemas and system tables.
+Please be aware that K2 catalog collection is a regular K2 data node that is assigned to store table schemas and system tables.
 
 ### How Does It Work?
 
@@ -647,10 +647,10 @@ The User runs an insert statement as follows
 The following diagram shows the sequence diagram of dropping a table without "cascade".
 * user sends the drop table statement to Postgres via libpq
 * Postgres parses the SQL and it needs to get the table schema from coordinator via the connector
-* The coordinator returns the table schema from its cache or from K2 catalog node and k2 collection information to the connector
+* The coordinator returns the table schema from its cache or from K2 catalog collection and k2 collection information to the connector
 * Postgres plans and executes the query
 * The connector calls k2 storage node(s) to delete the table data
-* The connector calls the coordinator to delete the table metadata from K2 catalog node and invalidate its cache
+* The connector calls the coordinator to delete the table metadata from K2 catalog collection and invalidate its cache
 * The drop table with "cascade' is more complex if we support it
 * The operations should be protected by transactions to keep database in a consistent state.
 
@@ -663,9 +663,9 @@ The following sequence diagram illustrates the use case to rename a table column
 * Postgres parses the SQL and fetches the table schema similar to above use cases.
 * The connector calls AlterTable to coordinator 
 * Coordinator updates the schema and increases the schema version
-* The new version of schema is saved to K2 catalog node
+* The new version of schema is saved to K2 catalog collection
 * The connector sends the new schema to data node(s)
-* Both the K2 catalog node and K2 data node may have multiple versions for schema in memory to support schema migration, we need a garbage collection process to remove the unused schema after some period of time or by other criteria
+* Both the K2 catalog collection and K2 data node may have multiple versions for schema in memory to support schema migration, we need a garbage collection process to remove the unused schema after some period of time or by other criteria
 
 ![Rename Column Sequence Diagram](./images/K2SqlRenameColumnSequenceDiagram01.png)
 
