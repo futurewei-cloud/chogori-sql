@@ -47,32 +47,32 @@ which are difficult to be consistent.
 * Manage the table to collection/partition mapping in storage layer so that we could update the the document schema version and types 
 on K2 storage nodes when a user alters tables.
 * Provide service APIs for the SQL executor to get table schema and index information
-* Could provides the initial connection for user to get the SQL executor to submit a query so that we can load balance the query load on 
-SQL executors. If we colocate the SQL executor with a K2 storage node, the coordinator could assign the query to the proper SQL executor 
-to gain data locality
-*  In the future, we could add SQL parsing, planning, and optimization logic to the coordinator so that it could generate SQL plan segments 
-to submit to different SQL executors to do parallel executions and keep track of the Query life cycle.
-* For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol. 
+* Could provides the initial connection for user to get an endpoint of a SQL executor to submit a query so that we can load balance the query load on 
+SQL executors. If we colocate a SQL executor with a K2 storage node, the coordinator could assign the query to the SQL executor where the data are stored 
+to achieve data locality
+*  In the future, we could move SQL parsing, planning, and optimization logic to the coordinator so that it could generate SQL plan segments 
+to dispatch to different SQL executors for parallel executions and keep track of the Query life cycle.
+* For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol later. 
 
 ### SQL Executor 
 The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with Postgres, i.e., it is a single instance
 query executor. 
-* It is stateless, i.e., it won't create any local system databases and tables.
+* It is stateless, i.e., it won't create any local system databases or tables.
 * It provide libpq APIs for users to submit queries and get back query results.
 * It consists of an embedded PG with the following modifications
   * Foreign Data Wrapper is used to access table data on K2 storage layer instead of from local memory and disk, this is mainly for table scan
 with expressions for column projection and predicate pushdown.
   * SQL grammar is updated to only support a subset of Queries. Will add more query types incrementally.
-  * PG command APIs are updated to call catalog manager instead of updating local catalogs 
+  * PG command APIs are updated to call catalog manager instead of local catalogs 
   * Index update and scan are rerouted to K2 storage layer 
   * The above functions are implemented by calling a connector as a glue layer between PG and K2 storage layer 
-  * The executor in PG manages the life cycle of a query, i.e., from parsing, planning, optimizing, and execution. 
+  * The executor in PG manages the life cycle of a query, i.e., parsing, planning, optimizing, and executing. 
 *  The connector layer is used by PG to interact with SQL coordinator and K2 storage layer
     * PG calls its PG gate APIs for DDLs and DMLs
     * It calls catalog manager in SQL coordinator for user databases and tables
     * It calls Index manager in SQL coordinator for secondary indexes 
-    * It scans table data from K2 storage layer with column projection and predication pushdown. Paginating might be used to fetch result data. 
-    * It scans table indexes for Index based scan or join.
+    * It scans table data from K2 storage layer with column projection and predication pushdown. Streaming or pagination is used to fetch result data. 
+    * It scans table indexes for an index scan.
     * It could call multiple K2 storage nodes if the SQL involves multiple tables on different K2 collections/partitions
 
 ### K2 Storage Layer 
@@ -94,17 +94,16 @@ A more detailed view of SQL executor is shown by the following diagram.
 ![SQL Executor](./images/K2SqlExecutorDiagram01.png)
 
 First of all, the SQL executor uses a bootstrap module to initialize the process Environment, for example, waiting for the coordinator 
-to create system databases and tables. Then it starts a PG instance either as a child process or embedding inside. At the same time, it
-starts a RPC server for coordinator to heartbeat or get its status. In the future, the RPC server could accept Query execution commands
-from coordinator if we starts to support distributed query executions. The Libpq interface is provided by the PG process.
+to create system databases and tables. Then it starts a PG instance either as a child process or embedded inside. Optionally it
+starts a RPC server to accept Query execution commands from coordinator if we starts to support distributed query executions. The Libpq interface is provided by the PG process.
 
 #### Postgres 
 
 We could adopt the modified version of PG from [YugaByteDB](https://github.com/futurewei-cloud/chogori-sql/blob/master/docs/YugabyteDb.md), which has the following customization
 * Modified the initdb.c to not create system databases and tables locally and relies on remote catalog manager instead.
-* Wired in a Foreign Data Wrapper (DFW) to scan data from external data source instead of local memory and disk.
+* Wired in a Foreign Data Wrapper (DFW) to scan data from an external data source instead of local memory and disk.
 * Changed PG commands to call external catalog manager 
-* Changed Index Scan from external data source.
+* Changed Index Scan to read from external data source.
 * Updated caching logic for external data sources 
 * Implemented sequence support 
 * Implemented column projection and predicate pushdown to external data sources
@@ -418,18 +417,19 @@ YBCStatus YBCPgSetTransactionDeferrable(bool deferrable);
 YBCStatus YBCPgEnterSeparateDdlTxnMode();
 YBCStatus YBCPgExitSeparateDdlTxnMode(bool success);
 ```
+
 The DMLs usually involve both the Catalog manager in SQL coordinator and direct access to K2 storage nodes. 
 
 #### K2 Connector 
 
-The K2 connector behaves similar to the PG Gate in YugaByteDB and it is a glue layer among catalog services and storage layer. However, we need 
+The K2 connector behaves similar to the PG Gate in YugaByteDB and it is a glue layer among catalog service and storage layer. However, we need 
 rewrite our own connector logic since YugaByteDB's PG Gate is heavily coupled with its catalog system, tablet service, and its own transaction control 
 logic. We need to implement the PG Gate APIs using our own logic.
 
-Whenever, the K2 connector receives API calls from PG, it dispatches the calls to DDL process or DML process depending on the call type. The 
-DDL and DML process creates a session for a SQL statement to allocate memory to cache schema and other data, set up client connection to the SQL 
+Whenever the K2 connector receives API calls from PG, it dispatches the calls to DDL process or DML process depending on the call type. The 
+DDL or DML process creates a session for a SQL statement to allocate memory to cache schema and other data, set up client connection to the SQL 
 coordinator or the K2 storage layer or both. They also have logic to bind columns and expressions to table and then make calls to SQL coordinator 
-or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session will be closed and cache is validated
+or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session is closed and cache is validated
 once a SQL statement finishes.
 
 Its the SQL coordinator's responsibilities to decide which K2 storage node that table records are stored. When user creates a database, the catalog 
@@ -443,14 +443,13 @@ SQL Coordinator consists of the following components.
 * (Optional) Web service to show query statuses, metrics, database states, and K2 collection information.
 * RPC server for SQL executors to heartbeat and call APIs for database/table/index updates
 * Catalog Manager
-  * initialize, create, and save PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html)
-  for template1, template0, and Postgres
+  * initialize, create, and save PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and Postgres
   * manage user databases and tables such as create, insert, update, delete, and truncate.
   * provide catalog APIs to external clients such as SQL executors 
   * cache schemas locally to avoid fetching them from remote
-* Index Manager is logical part of the Catalog manager. We separate it out only to emphasize its functionality.
+* Index Manager is a logical part of the Catalog manager. We separate it out only to emphasize its functionality.
   * create, save, update, and delete secondary indexes to K2 storage layer. 
-  * Provide APIs for the Catalog RPC service to manage indexes 
+  * Provide APIs as part of the Catalog RPC service to manage indexes 
 * Collection manager to maintain the information of table partition to K2 storage node mapping. For example, if a SQL executor updates a table 
 schema, it needs to get all the collection/partition information from the SQL coordinator so as to push schema updates to all collection/partitions 
 on K2 storage nodes.
@@ -684,4 +683,5 @@ the same table?
 * Should the SQL executor starts one PG child process or multiple ones so that one PG instance associates with one core?
 * Who is responsible for collection/partitions assignment if we use range hash, i.e., the storage layer or the coordinator?
 * How to handle dropping columns on the K2 storage node(s)?
+* Do we read records in batch by pagination or in a streaming fashion during a data/index scan?
 * How to handle users/roles?
