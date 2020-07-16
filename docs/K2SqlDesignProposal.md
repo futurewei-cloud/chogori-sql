@@ -562,11 +562,34 @@ Apart from the catalog APIs described in above section, coordinator provides add
 
 ### K2 Storage
 
-Here we focus on how to map a record to K2 storage layer and expressions for predicate pushdown. 
+The SQL layer stores table schema, indexes, and data on K2 storage layer and it needs to scan the data or index on data nodes.
+
+#### Conversion
+
+We need to convert data to document records for the following use cases. 
+* Save or update namespaces to the sys_namespace table on K2 catalog node
+* Save or update system and user schemas to the sys_catalog table on K2 catalog node
+* Save or update system table data on K2 catalog node
+* Save or update user table data on K2 storage node(s)
+* Save or update user index data on K2 storage node(s)
+Please be aware that K2 catalog node is a regular K2 data node that is assigned to store table schemas and system tables.
+
+#### SQL Document APIs
+
+The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we need to 
+pass table schemas, indexes, and table data to the following document APIs. The document APIs could be used to update schema or get/update/delete records.
+Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
+
+![SQL Document APIs](./images/K2SqlDocumentAPIs01.png)
+
+#### Storage APIs
+
+We need to convert the SQL document APIs to native K2 storage APIs to access data on K2 storage layer. Apart from that, we also need to encode the record
+properly so that the storage layer could decode the data.
 
 ### How Does It Work?
 
-Let use show how the system works by using the following scenarios.
+Let us show how the system works by using the following scenarios.
 
 #### Create Database, Tables, and Indexes
 
