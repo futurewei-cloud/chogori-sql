@@ -244,7 +244,8 @@ CPPFLAGS = @CPPFLAGS@
 PG_SYSROOT = @PG_SYSROOT@
 
 ifndef YB_SRC_ROOT
-$(error YB_SRC_ROOT is not set)
+#$(error YB_SRC_ROOT is not set)
+YB_SRC_ROOT := $(top_builddir)
 endif
 
 override CPPFLAGS := $(ICU_CFLAGS) $(CPPFLAGS) -I$(YB_SRC_ROOT)/src

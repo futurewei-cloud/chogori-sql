@@ -107,7 +107,7 @@ spec:
                   fieldPath: metadata.namespace
           command:
             - "/home/yugabyte/bin/yb-master"
-            - "--fs_data_dirs=/mnt/data0"
+            - "--fs_data_dirs=/mnt/disk0"
             - "--rpc_bind_addresses=$(POD_NAME).yb-masters.$(NAMESPACE).svc.cluster.local:7100"
             - "--server_broadcast_addresses=$(POD_NAME).yb-masters.$(NAMESPACE).svc.cluster.local:7100"
             - "--use_private_ip=never"
@@ -140,7 +140,7 @@ spec:
           # the stateful pod volumes.
           volumeMounts:
             - name: datadir
-              mountPath: /mnt/data0
+              mountPath: /mnt/disk0
   updateStrategy:
     type: RollingUpdate
   # These are converted to volume claims by the controller
@@ -256,7 +256,7 @@ spec:
                   fieldPath: metadata.namespace
           command:
             - "/home/yugabyte/bin/yb-tserver"
-            - "--fs_data_dirs=/mnt/data0"
+            - "--fs_data_dirs=/mnt/disk0"
             - "--rpc_bind_addresses=$(POD_NAME).yb-tservers.$(NAMESPACE).svc.cluster.local:9100"
             - "--server_broadcast_addresses=$(POD_NAME).yb-tservers.$(NAMESPACE).svc.cluster.local:9100"
             # To disable YugaByte SQL API functionality, set the enable_ysql flag to false
@@ -284,7 +284,7 @@ spec:
           # the stateful pod volumes.
           volumeMounts:
             - name: datadir
-              mountPath: /mnt/data0
+              mountPath: /mnt/disk0
   updateStrategy:
     type: RollingUpdate
   # These are converted to volume claims by the controller
