@@ -571,6 +571,8 @@ We need to convert data to document records for the following use cases.
 
 Please be aware that K2 catalog collection is a regular K2 data node that is assigned to store table schemas and system tables.
 
+![SQL Storage Use Cases](./images/K2SqlDocumentUserCase01.png)
+
 ### How Does It Work?
 
 Let us show how the system works by using the following scenarios.
