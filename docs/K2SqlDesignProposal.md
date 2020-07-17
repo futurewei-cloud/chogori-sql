@@ -31,7 +31,7 @@ This is a high level design. Details will be provided in separate sections.
 The system architecture is as follows and it consists of the following components.
 * The storage layer provides document APIs so that we could storage data with data type information, table schemas, and secondary indexes into it.
 * On the top of the storage layer, we have SQL executor, which could run separately on different hosts or the same host of the storage layer.
-* There is a SQL coordinator so that it could manage catalog, index, and data type updates on k2 storage nodes. 
+* There is a SQL coordinator so that it could manage catalog, index, and schema updates on k2 storage nodes. 
 
 ![Architecture](./images/K2SqlSystemArchitecture01.png)
 
@@ -47,18 +47,17 @@ which are difficult to be consistent.
 * Manage the table to collection/partition mapping in storage layer so that we could update the the document schema version and types 
 on K2 storage nodes when a user alters tables.
 * Provide service APIs for the SQL executor to get table schema and index information
-* Could provides the initial connection for user to get an endpoint of a SQL executor to submit a query so that we can load balance the query load on 
+* Could provides a discovery service for a user to get an endpoint of a SQL executor to submit a query so that we can load balance the query load on 
 SQL executors. If we colocate a SQL executor with a K2 storage node, the coordinator could assign the query to the SQL executor where the data are stored 
 to achieve data locality
-*  In the future, we could move SQL parsing, planning, and optimization logic to the coordinator so that it could generate SQL plan segments 
-to dispatch to different SQL executors for parallel executions and keep track of the Query life cycle.
+*  In the future, we could extend the coordinator, for example, it could generate SQL plan segments to dispatch to different SQL executors for parallel executions.
 * For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol later. 
 
 ### SQL Executor 
 The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with Postgres, i.e., it is a single instance
 query executor. 
 * It is stateless, i.e., it won't create any local system databases or tables.
-* It provide libpq APIs for users to submit queries and get back query results.
+* User submits queries to it via the libpq client library and get back query results.
 * It consists of an embedded PG with the following modifications
   * Foreign Data Wrapper is used to access table data on K2 storage layer instead of from local memory and disk, this is mainly for table scan
 with expressions for column projection and predicate pushdown.
@@ -432,28 +431,23 @@ coordinator or the K2 storage layer or both. They also have logic to bind column
 or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session is closed and cache is validated
 once a SQL statement finishes.
 
-Its the SQL coordinator's responsibilities to decide which K2 storage node that table records are stored. When user creates a database, the catalog 
-manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. 
-
-The table primary key(s) should be used to map the record partition in a K2 collection. 
+When user creates a database, the catalog manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. The table primary key(s) should be used to locate the record in a K2 collection. 
 
 ### SQL Coordinator 
 
 SQL Coordinator consists of the following components.
-* (Optional) Web service to show query statuses, metrics, database states, and K2 collection information.
+* (Optional) Web service to show query statuses, metrics, database states, and SQL executor information such as endpoints.
 * RPC server for SQL executors to heartbeat and call APIs for database/table/index updates
 * Catalog Manager
-  * initialize, create, and save PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and Postgres
-  * manage user databases and tables such as create, insert, update, delete, and truncate.
-  * provide catalog APIs to external clients such as SQL executors 
-  * cache schemas locally to avoid fetching them from remote
-* Index Manager is a logical part of the Catalog manager. We separate it out only to emphasize its functionality.
-  * create, save, update, and delete secondary indexes to K2 storage layer. 
-  * Provide APIs as part of the Catalog RPC service to manage indexes 
-* Collection manager to maintain the information of table partition to K2 storage node mapping. For example, if a SQL executor updates a table 
-schema, it needs to get all the collection/partition information from the SQL coordinator so as to push schema updates to all collection/partitions 
-on K2 storage nodes.
-* K2 storage APIs to get active K2 nodes, store/update/delete documents on K2 storage layers for system/user databases, tables, and indexes. 
+  * initializes, creates, and saves PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and Postgres
+  * manages user databases and tables such as create, insert, update, delete, and truncate.
+  * provides catalog APIs to external clients such as SQL executors 
+  * caches schemas locally to avoid fetching them from remote
+  * provides schema update information to SQL executors via heartbeats or other mechanisms.
+  * creates, saves, updates, and deletes secondary indexes to K2 storage layer. 
+  * Provides APIs as part of the Catalog RPC service to manage indexes 
+* Discovery service to maintain the information of SQL Executors
+* Call K2 document APIs to store/update/delete documents on K2 storage layers for system/user databases, tables, and indexes. 
 
 ![SQL Coordinator](./images/K2SqlCoordinatorDiagram01.png)
 
@@ -503,6 +497,7 @@ When the coordinator first starts up, it needs to initialize the catalog system 
 * System catalogs
 * Existing user database tables
 * Internal states such as whether initDB is finished or not
+* load existing tables into cache
 
 ##### System catalogs
 
@@ -526,7 +521,7 @@ Apart from that, we need a table to store the namespaces (databases). The data f
 ##### User catalogs
 
 When user creates a database (namespace), a subset of system catalogs are copied into the new database. When a new table is created, the metadata is saved into
-the sys_catalog table inside the namespace. However, user table data nad indexes are partitioned and saved into different K2 data nodes based on database (namespace) hash/range partitions.
+the *sys_catalog* table inside the namespace. However, user table data nad indexes are partitioned and saved into different K2 data nodes based on database (namespace) hash/range partitions.
 
 ##### Persistence
 
@@ -541,18 +536,11 @@ sure that the table oid is generated incrementally without duplicate. Since ther
 
 ![SQL Schema and data persistence](./images/K2SqlSchemaDataPersistence01.png)
 
-#### Collection Management
-
-When we store system or user catalog data to K2 schema, whether K2 storage layer manages the collection partitioning or the SQL coordinator does that, the SQL
-coordinator needs to track where the data are stored, for example, the endpoints for a K2 node such that SQL executor knows where to fetch the data. 
-
-The collection information could be managed either by the SQL coordinator communicating with K2 storage layer directly or the SQL coordinator could obtain such
-information from the heartbeat between SQL executor if the SQL executor is colocated with a K2 storage node. 
-
 #### Additional Coordinator APIs
 
 Apart from the catalog APIs described in above section, coordinator provides additional APIs.
-* Heartbeat between SQL executor so that SQL executor gets schema version updates
+* Heartbeat between SQL executor so that SQL executor gets schema version updates. One use of heartbeat could be for the SQL executor to preload all existing
+tables to avoid cold start and receive the schema update via the heartbeats.
 * isInitDBDone() for SQL executor to check if the SQL coordinator has finished InitDB so that it could go to the ready state, this could be implemented by http status code as well.
 
 #### Metrics
@@ -565,7 +553,7 @@ The SQL layer stores table schema, indexes, and data on K2 storage layer and it 
 
 #### SQL Document APIs
 
-The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The document APIs could be used to update schema or get/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
+The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer for the SQL layer to call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The SQL document APIs could be used to update schema or get/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
 
 ![SQL Document APIs](./images/K2SqlDocumentAPIs01.png)
 
