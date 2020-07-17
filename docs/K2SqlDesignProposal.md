@@ -491,28 +491,33 @@ Catalog APIs are exposed as RPC service to manage databases, tables, and indexes
 
 ![Catalog Service](./images/K2SqlCatalogService01.png)
 
+#### Additional Coordinator APIs
+
+Apart from the catalog APIs described in above section, coordinator provides additional APIs.
+* Heartbeat: between a SQL executor and a SQL coordinator. For example, the SQL executor could preload all existing tables to avoid cold start and receive the schema update via heartbeats.
+* isInitDBDone() for SQL executor to check if the SQL coordinator has finished InitDB or not so that it could go to the ready state, this could be implemented by http status code as well.
+
 #### Initialization
 
 When the coordinator first starts up, it needs to initialize the catalog system and internal data.
 * System catalogs
 * Existing user database tables
 * Internal states such as whether initDB is finished or not
-* load existing tables into cache
 
 ##### System catalogs
 
 Postgres consists of a set of system catalogs as described in [PG doc](https://www.postgresql.org/docs/current/catalogs.html). All the catalogs start with the 
 "pg_" prefix. Meanwhile, The [information schema](https://www.postgresql.org/docs/11/information-schema.html) consists of a set of views that contain information about the objects defined in the current database. The information schema is defined in the SQL standard and can therefore be expected to be portable and remain stable — unlike the system catalogs, which are specific to PostgreSQL and are modeled after implementation concerns. The information schema views do not, however, contain information about PostgreSQL-specific features. The views are defined in this [sql](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/catalog/information_schema.sql).
 
-For Postgres, it always creates a new database from templates. The two templates are [template0 and template1](https://www.postgresql.org/docs/11/manage-ag-templatedbs.html), where template0 is never changed after the PG cluster starts and template1 includes other changes. By default, PG copies the standard system database named template1. As a result, when a cluster starts up, the SQL coordinator needs to create template0, template1, and Postgres (and other default databases) databases. Each database consists a subset of system catalogs (might not all system catalogs).
+For Postgres, it always creates a new database from templates. The two templates are [template0 and template1](https://www.postgresql.org/docs/11/manage-ag-templatedbs.html), where template0 is never changed after the PG cluster starts and template1 includes other changes. By default, PG copies the standard system database named template1. As a result, when a cluster starts up, the SQL coordinator needs to create template0, template1, and Postgres (and other default databases) databases. Each database consists a subset of system catalogs.
 
-Since we have multiple SQL executors with a PG process inside, we need to initialize the default databases inside SQL coordinator instead of the PG instance inside the SQL executor to make each SQL executor stateless and keep schema data consistency. The SQL coordinator stores the schema data on K2 storage layer to keep the data consistent and durable, it also cache the database (namespace), table, and index data locally. 
+Since we have multiple SQL executors with a PG process inside each one, we need to initialize the default databases inside SQL coordinator instead of the PG instance inside the SQL executor to make each SQL executor stateless and keep schema data consistency. The SQL coordinator stores the schema data on K2 storage layer to keep the data consistent and durable, it also cache the database (namespace), table, and index data locally. 
 
-For the cache, we would keep a map of namespace to a collection that include id-table, name-table, id-indexTable maps.
+For the cache, we would keep a map of namespace to a collection that includes id-table, name-table, id-indexTable maps.
 
 ![Coordinator Cache](./images/K2SqlCoordinatorCache01.png)
 
-The default databases(namespaces) could be generated directly when SQL coordinator starts for the first time. They could also be created by loading from a snapshot of some storage format. After that, an internal isInitDBDone flag is set to true so that SQL executors could check this flag and become ready only
+The default databases could be generated directly when SQL coordinator starts for the first time. They could also be created by loading from a snapshot in some storage format. After that, an internal isInitDBDone flag is set to true so that SQL executors could check this flag and become ready only
 after this flag is true.
 
 When we store system catalogs, we store the schema of the tables into a table, for example, a "sys_catalog" table with each row represents a table schema. 
@@ -521,59 +526,48 @@ Apart from that, we need a table to store the namespaces (databases). The data f
 ##### User catalogs
 
 When user creates a database (namespace), a subset of system catalogs are copied into the new database. When a new table is created, the metadata is saved into
-the *sys_catalog* table inside the namespace. However, user table data nad indexes are partitioned and saved into different K2 data nodes based on database (namespace) hash/range partitions.
+the *sys_catalog* table inside the namespace. However, user table data and indexes are partitioned and saved into different K2 data nodes based on database id/name and partition/range keys.
 
 ##### Persistence
 
 The following diagram illustrates the persistence of SQL schema and data in system.
-* We have a global sys_namespace table to track all databases(namespaces). Another option is to use the pg_database table in the template1 database. The table 
-consists of an oid (object identifier) and name. We might like to have a column nextOid to track the namespace id generation. 
-* We have a sys_catalog table in a database (namespace), which consists of an oid, name, Table, IndexTable and a boolean flag isIndex to indicate whether if
-this record is an index so that we could save the regular table and index table on the same table. Similarly a nextOid to track the table id generation to make
-sure that the table oid is generated incrementally without duplicate. Since there is a sys_catalog table for each database, we could use the "database_name.sys_catalog" name pattern to reference this table when we save it to K2 storage layer. 
-* The system table data are stored on the same K2 node
-* The user indexes and user tables data are stored on other K2 nodes based on the database (namespace) partition.  A database could map to a collection on K2 storage layer.
+* We have a global *sys_namespace* table to track all databases. The table consists of an oid (object identifier) and name. We might like to have a column nextOid to track the namespace id generation. Another option is to use the pg_database table in the template1 database. 
+* We have a *sys_catalog* table in a database, which consists of an oid, name, Table, IndexTable and a boolean flag isIndex to indicate whether if
+this record is an index or not so that we could save the regular table and index table on the same table. Similarly, a nextOid is used to track the table id generation to make sure that the table oid is generated incrementally without duplicate. Since there is a sys_catalog table for each database, we could use the "database_id.sys_catalog" name pattern to reference this table in K2 storage layer. 
+* The system table data are stored on the same K2 node as the table schema
+* The user indexes and user tables data are stored on other K2 nodes based on the database id and table id.  A database maps to a collection on K2 storage layer.
 
 ![SQL Schema and data persistence](./images/K2SqlSchemaDataPersistence01.png)
 
-#### Additional Coordinator APIs
-
-Apart from the catalog APIs described in above section, coordinator provides additional APIs.
-* Heartbeat between SQL executor so that SQL executor gets schema version updates. One use of heartbeat could be for the SQL executor to preload all existing
-tables to avoid cold start and receive the schema update via the heartbeats.
-* isInitDBDone() for SQL executor to check if the SQL coordinator has finished InitDB so that it could go to the ready state, this could be implemented by http status code as well.
-
 #### Metrics
 
-Similar to chogori-platform, we could use prometheus for metrics.
+Similar to [chogori-platform](https://github.com/futurewei-cloud/chogori-platform), we could use [prometheus](https://prometheus.io/) for metrics.
 
 ### K2 Storage
 
-The SQL layer stores table schema, indexes, and data on K2 storage layer and it needs to scan the data or index on data nodes. Both SQL executors and SQL coordinator need to call K2 storage layer.
+The SQL layer stores table schema, indexes, and data on K2 storage layer and it needs to scan the data or index on data nodes. Both SQL executors and SQL coordinator need to call K2 storage layer APIs.
 
 #### SQL Document APIs
 
-The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer for the SQL layer to call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The SQL document APIs could be used to update schema or get/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
+The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer in the SQL layer to call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The SQL document APIs could be used to update schema or fetch/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
 
 ![SQL Document APIs](./images/K2SqlDocumentAPIs01.png)
 
 #### K2 Storage APIs
 
 We need to convert the SQL document APIs to native K2 storage APIs to access data on K2 storage layer. Apart from that, we also need to encode the record
-properly so that the storage layer could decode the data.
+properly so that the storage layer could decode the data. We like to adopt the [encoding schema](https://github.com/cockroachdb/cockroach/blob/master/docs/tech-notes/encoding.md) in cockroachDB.
 
 #### Use Cases
 
 We need to convert data to document records for the following use cases. 
 * Save or update namespaces to the sys_namespace table on K2 catalog collection. The record consists of the id and name columns plus a nextOid column.
-* Save or update system and user schemas to the sys_catalog table on K2 catalog collection. For a table, we encode the table object into a blob and set isIndex 
-to false. For an index table, we encode it into a blob as well, but set isIndex to true. The id and name are in the sys_catalog table for record search. In
-addition, a nextOid column is used to generate unique table ids.
+* Save or update system and user schemas to the sys_catalog table on K2 catalog collection. For a table, we encode the table object into a blob and set isIndex to false. For an index table, we encode it into a blob as well, but set isIndex to true. The id and name are in the sys_catalog table for record search. In addition, a nextOid column is used to generate unique table ids.
 * Save or update system table data on K2 catalog collection. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table. 
 * Save or update user table data on K2 storage node(s). We only need to pass column schema and data to K2 storage layer.
 * Save or update user index data on K2 storage node(s). Similarly, we only need to pass column schema and data to k2 storage layer.
-* The batchGetRecords() could be used scan data and index data. The filters on the API could be used by the K2 storage node to filter out data.
-* The deleteAllRecordsAndSchema() could be used to drop a table or index on K2 data nodes.
+* The batchGetRecords() api could be used scan data and index data. The filters on the API could be used by the K2 storage node to filter out data.
+* The deleteAllRecordsAndSchema() api could be used to drop a table or an index on K2 data nodes.
 
 Please be aware that K2 catalog collection is a regular K2 data node that is assigned to store table schemas and system tables.
 
@@ -587,7 +581,6 @@ The user first creates a database and then create a table in this database as fo
 * user sends "create database" to Postgres via libpq
 * Postgres calls the connector, which call the coordinator under the hood to create database for this user
 * the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information. 
-The database is a namespace to hold a set of tables, it does not need to be stored on the K2 data node.
 * user sends "create table" to Postgres
 * Postgres calls the connector, which calls the coordinator again to create a table for this user
 * the coordinator saves the table metadata to its catalog node 
@@ -653,7 +646,7 @@ The following sequence diagram illustrates the use case to rename a table column
 * Coordinator updates the schema and increases the schema version
 * The new version of schema is saved to K2 catalog collection
 * The connector sends the new schema to data node(s)
-* Both the K2 catalog collection and K2 data node may have multiple versions for schema in memory to support schema migration, we need a garbage collection process to remove the unused schema after some period of time or by other criteria
+* Both the K2 catalog collection and K2 data node may have multiple versions for schema in memory to support schema migration, we need a garbage collector to remove the unused schema after some period of time or by other criteria
 
 ![Rename Column Sequence Diagram](./images/K2SqlRenameColumnSequenceDiagram01.png)
 
@@ -662,14 +655,12 @@ If a drop column statement is called, we need to decide how do we handle the col
 # Open Questions
 
 * Do we support composite primary keys?
-* Should we colocate SQL executor with K2 storage node?
+* How to choose primary keys if they are not defined by user explicitly?
+* Should we colocate a SQL executor with a K2 storage node?
 * How to integrate PG transactions with K2S3 transaction protocol?
 * How to partition tables in a database to different K2 collection/partitions?
-* Should we partition index storage into multiple collections/partitions to scale index scans? Should we place the indexes on the same storage partition for
-the same table?
 * Should we support backfill indexes?
-* Should the SQL executor starts one PG child process or multiple ones so that one PG instance associates with one core?
-* Who is responsible for collection/partitions assignment if we use range hash, i.e., the storage layer or the coordinator?
-* How to handle dropping columns on the K2 storage node(s)?
-* Do we read records in batch by pagination or in a streaming fashion during a data/index scan?
+* Should the SQL executor start one PG child process or multiple ones so that one PG instance associates with one core?
+* How to handle dropping columns and dropping tables on the K2 storage node(s)?
+* Do we read records in batch by pagination or in a streaming fashion during a data scan or an index scan?
 * How to handle users/roles?
