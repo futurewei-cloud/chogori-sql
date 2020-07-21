@@ -30,5 +30,5 @@ ExternalProject_Add(
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure --prefix=<INSTALL_DIR>
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
-    BUILD_COMMAND ${MAKE})
+    BUILD_COMMAND make -f Makefile)
 
