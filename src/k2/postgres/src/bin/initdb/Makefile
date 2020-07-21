@@ -27,7 +27,7 @@ override CPPFLAGS += '-DSYSTEMTZDIR="$(with_system_tzdata)"'
 endif
 
 ifndef YB_BUILD_ROOT
-$(error YB_BUILD_ROOT is not set)
+YB_BUILD_ROOT := $(top_builddir)
 endif
 
 LIBS += -L$(YB_BUILD_ROOT)/lib

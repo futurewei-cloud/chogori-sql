@@ -24,7 +24,7 @@ OBJS=	pg_backup_archiver.o pg_backup_db.o pg_backup_custom.o \
 	pg_backup_utils.o parallel.o compress_io.o dumputils.o $(WIN32RES)
 
 ifndef YB_BUILD_ROOT
-$(error YB_BUILD_ROOT is not set)
+YB_BUILD_ROOT := $(top_builddir)
 endif
 
 LIBS += -L$(YB_BUILD_ROOT)/lib -lyb_util

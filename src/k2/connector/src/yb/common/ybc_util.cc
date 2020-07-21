@@ -14,6 +14,7 @@
 
 #include <stdarg.h>
 #include <fstream>
+#include <gflags/gflags.h>
 #include "status.h"
 #include "stringprintf.h"
 #include "pgsql_error.h"

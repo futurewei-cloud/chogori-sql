@@ -30,6 +30,7 @@
 // under the License.
 //
 
+#include <gflags/gflags.h>
 #include "slice.h"
 
 #include "stringprintf.h"

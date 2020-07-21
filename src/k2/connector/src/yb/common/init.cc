@@ -33,6 +33,7 @@
 #include "init.h"
 
 #include <string>
+#include <gflags/gflags.h>
 
 #include "cpu.h"
 //#include "yb/gutil/strings/split.h"
@@ -51,11 +52,11 @@
 
 using std::string;
 
-DEFINE_string(fs_data_dirs, "",
+DEFINE_string(fs_data_dirs, "", \
               "Comma-separated list of data directories. This argument must be specified.");
 //TAG_FLAG(fs_data_dirs, stable);
-DEFINE_bool(stop_on_parent_termination, false,
-            "When specified, this process will terminate when parent process terminates."
+DEFINE_bool(stop_on_parent_termination, false, \
+            "When specified, this process will terminate when parent process terminates." \
             "Linux-only.");
 
 namespace yb {

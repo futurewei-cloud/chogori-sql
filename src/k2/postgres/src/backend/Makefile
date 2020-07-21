@@ -52,7 +52,7 @@ LIBS += -lsystemd
 endif
 
 ifndef YB_BUILD_ROOT
-$(error YB_BUILD_ROOT is not set)
+YB_BUILD_ROOT := $(top_builddir)
 endif
 ifneq ($(YB_BUILD_TYPE),compilecmds)
 LIBS += -L$(YB_BUILD_ROOT)/lib -lyb_util -lyb_pggate -lyb_common
