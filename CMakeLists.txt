@@ -28,7 +28,10 @@ ExternalProject_Add(
     postgres
     DEPENDS ybcommon ybpggate
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure --prefix=<INSTALL_DIR>
+    STAMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/stamp
+    TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
+    LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/log
+    BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/build
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure --prefix=${INSTALL_DIR}
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
-    BUILD_COMMAND make -f Makefile)
-
+    BUILD_COMMAND make -j -f Makefile)
