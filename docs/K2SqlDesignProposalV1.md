@@ -36,7 +36,7 @@ The system architecture is as follows and it consists of the following component
 
 ![Architecture](./images/K2SqlSystemDiagram021.png)
 
-When the SQL system first starts, one of the SQL executors creates the template0 and the template1 template databases for Postgres, it also creates a default database called postgres. A user could create a new database, for example, demo, by copying it from the template1 database.  
+When the SQL system first starts, one of the SQL executors creates the template0 and the template1 template databases for Postgres, it also creates a default database called postgres. A user could create a new database, for example, demo, by bootstraping.  
 
 ## SQL Executor 
 
@@ -97,7 +97,9 @@ When the SQL Executor first starts up, it needs to initialize the catalog system
 Postgres consists of a set of system catalogs as described in [PG doc](https://www.postgresql.org/docs/current/catalogs.html). All the catalogs start with the 
 "pg_" prefix. Meanwhile, The [information schema](https://www.postgresql.org/docs/11/information-schema.html) consists of a set of views that contain information about the objects defined in the current database. The information schema is defined in the SQL standard and can therefore be expected to be portable and remain stable — unlike the system catalogs, which are specific to PostgreSQL and are modeled after implementation concerns. The information schema views do not, however, contain information about PostgreSQL-specific features. The views are defined in this [sql](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/catalog/information_schema.sql).
 
-For Postgres, it always creates a new database from templates. The two templates are [template0 and template1](https://www.postgresql.org/docs/11/manage-ag-templatedbs.html), where template0 is never changed after the PG cluster starts and template1 includes other changes. By default, PG copies the standard system database named template1. As a result, when a cluster starts up, template0, template1, and the default database postgres need to be created first. Each database consists a set of system catalogs, where both system table schemas and user table schemas are stored. For example, all relations are stored in pg_class table and the columns are stored in pg_attribute. The pg_tables is an view of the tables and pg_database holds all databases.
+For Postgres, it always creates a new database from templates. The two templates are [template0 and template1](https://www.postgresql.org/docs/11/manage-ag-templatedbs.html), where template0 is never changed after the PG cluster starts and template1 includes other changes. By default, PG copies the standard system database named template1. As a result, when a cluster starts up, template0, template1, and the default database postgres need to be created first. However, we don't support copying a database in our system and create the database using bootstrap scripts instead. That means, all the updates on template1 are not inherited by the new created databases. 
+
+Each database consists a set of system catalogs, where both system table schemas and user table schemas are stored. For example, all relations are stored in pg_class table and the columns are stored in pg_attribute. The pg_tables is an view of the tables and pg_database holds all databases.
 
 ##### Caching
 
@@ -140,7 +142,6 @@ Catalog APIs are used to manage databases, tables, and indexes. In the response 
 * createNamespace(): create a database
 * createTable(): create a table
 * createIndex(): create an index
-* *cloneTable(): clone a table from an existing table*
 * alterTable(): change a table schema by adding columns, renaming columns, or dropping columns. The schema version is increased for each update
 * getTableSchema(): get table schema including the index ids if they are available
 * getIndex(): get index information
@@ -160,11 +161,6 @@ The SQL layer stores table schema, indexes, and data on K2 storage layer and it 
 
 The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer in the SQL layer to call the native K2 storage APIs. The SQL document APIs could be used to update schema or fetch/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in batches. 
 
-Multiple SQL Executor might try to initialize the system in parallel, to avoid that, we introduce a conditionalUpdateRecord() API so that only one SQL executor could start the initialization, for example, by setting a flag. 
-
-Whenever Postgres creates a database, it first copies all the system catalogs from the template1 template database. To make this database copy more efficient,
-we could introduce a clonePartition() API to clone the partition inside K2 storage to avoid reading/writing data in/out of the K2 storage layer.
-
 ![SQL Document APIs](./images/K2SqlDocumentAPIs021.png)
 
 #### K2 Storage APIs
@@ -179,7 +175,7 @@ The following diagram illustrates the persistence of SQL schema and data in our 
 * The SQL executor initializes the system by first creating two template databases, i.e., template0 and template1. We also persist configuration such as system catalog version and a flag to indicate if the system has been initialized or not
 * The SQL executor then creates a default database postgres such that all users use this database by default
 * User table schemas are stored in system catalog in the database. User table data and index data are stored in the same collection
-* If a user creates a new database, a new collection is created and system catalog in database template1 is copied into the new collection. New table schemas, data, and indexes are stored into the same collection.
+* If a user creates a new database, a new collection is created and system catalog is initialized by SQL executor. New table schemas, data, and indexes are stored into the same collection.
 * However, some of the system catalogs such as pg_database are shared, i.e., its content is for all databases. In our storage model, it would make the update very inefficient if each collection holds its own pg_database. As a result, we might only put shared system catalog tables such as pg_database in template1. To prevent the shared system catalogs becoming a hot spot for the storage layer, the catalog manager in SQL executor should cache them.
 
 ![SQL Schema and data persistence](./images/K2SqlSchemaDataPersistence021.png)
