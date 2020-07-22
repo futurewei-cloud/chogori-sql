@@ -1,6 +1,7 @@
 This document is a design proposal for the K2 SQL layer. It is a working in progress. 
 
 # Introduction
+
 ## Assumptions 
 K2 platform is an in-memory document storage system. We introduce a SQL layer on top of so that users could interactive with our system using SQLs.
 
@@ -77,7 +78,7 @@ DDL or DML handle creates a session for a SQL statement to allocate memory to ca
 #### Catalog Manager
 
 The catalog manager runs on each SQL executor and it is responsible for 
-* initializes, creates, and saves PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and Postgres
+* initializes, creates, and saves PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and postgres
 * manages user databases and tables such as create, insert, update, delete, and truncate.
 * provides catalog APIs for DML handler and DDL handler 
 * caches schemas locally to avoid fetching them from remote
@@ -85,7 +86,7 @@ The catalog manager runs on each SQL executor and it is responsible for
 
 When user creates a database, the catalog manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. The table primary key(s) should be used to locate the record in a K2 collection. 
 
-##### Initialization
+##### Bootstrap
 
 When the SQL Executor first starts up, it needs to initialize the catalog system and internal data.
 * System catalogs
@@ -99,7 +100,15 @@ For Postgres, it always creates a new database from templates. The two templates
 
 Since we have multiple SQL executors with a PG process inside each one, we need to initialize the default databases inside SQL coordinator instead of the PG instance inside the SQL executor to make each SQL executor stateless and keep schema data consistency. The SQL coordinator stores the schema data on K2 storage layer to keep the data consistent and durable, it also cache the database (namespace), table, and index data locally. 
 
-For the cache, we would keep a map of namespace to a collection that includes id-table, name-table, id-indexTable maps.
+##### Caching
+
+Postgres supports the following caches and it has been updated to [refresh caches](https://github.com/yugabyte/yugabyte-db/commit/6fec2ecda4240c633d0a3820495cd2f803a3033b) whenever the system catalog version increase.
+* System catalog cache for tuples matching a key: src/backend/utils/cache/catcache.c
+* Relation descriptor cache: src/backend/utils/cache/relcache.c
+* System cache: src/backend/utils/cache/syscache.c
+* Query plan cache: src/backend/utils/cache/plancache.c
+
+For catalog manager side caching, we would keep a map of namespace to a collection that includes id-table, name-table, id-indexTable maps.
 
 ![Coordinator Cache](./images/K2SqlCoordinatorCache01.png)
 
