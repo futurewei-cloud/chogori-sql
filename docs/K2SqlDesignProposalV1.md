@@ -42,7 +42,7 @@ When the SQL system first starts, one of the SQL executors creates the template0
 
 A more detailed view of SQL executor is shown by the following diagram.
 
-![SQL Executor](./images/K2SqlExecutorDiagram021.png)
+<img src="./images/K2SqlExecutorDiagram021.png" width="500">
 
 ### Postgres 
 
@@ -109,7 +109,7 @@ Postgres supports the following caches and it has been updated to [refresh cache
 
 Catalog manager holds id-table, name-table, id-indexTable maps for the default database when it first starts. Once the user changes to use a different database, catalog manager refreshes its cache to store the id-table, name-table, id-indexTable maps for the new databases. In additional, all database names and ids are cached to avoid access the shared system catalog aggressively. All caches are refreshed after the TTL expires or catalog manager detects a mismatch of the system catalog version.
 
-![Catalog Manager Cache](./images/K2SqlCatalogManagerCache021.png)
+<img src="./images/K2SqlCatalogManagerCache021.png" width="500">
 
 ##### Schema Entities
 
