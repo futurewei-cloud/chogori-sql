@@ -17,7 +17,7 @@
 #define YB_YQL_PGGATE_YBC_PG_TYPEDEFS_H
 
 #include <stddef.h>
-#include "ybc_util.h"
+#include "yb/common/ybc_util.h"
 
 #ifdef __cplusplus
 

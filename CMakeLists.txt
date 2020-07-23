@@ -21,12 +21,8 @@ find_package(Boost REQUIRED)
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
 
+include_directories(src/k2/connector)
 add_subdirectory(src/k2/connector)
-
-get_target_property(ybcommon_includes ybcommon INCLUDE_DIRECTORIES)
-get_target_property(ybcommon_libs ybcommon LIBRARY_OUTPUT_DIRECTORY)
-get_target_property(ybpggate_includes ybcommon INCLUDE_DIRECTORIES)
-get_target_property(ybpggate_libs ybcommon LIBRARY_OUTPUT_DIRECTORY)
 
 include(ExternalProject)
 ExternalProject_Add(
@@ -37,6 +33,6 @@ ExternalProject_Add(
     TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
     LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/log
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/build
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres "-lybcommon -lybpggate"  "-L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate" -I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector <INSTALL_DIR>
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres "-lybcommon -lybpggate -std=c++17"  "-L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate" -I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector <INSTALL_DIR>
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     BUILD_COMMAND make -j -f Makefile)
