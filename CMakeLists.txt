@@ -4,7 +4,7 @@ project (k2_sql VERSION 0.0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wall -Wextra -march=skylake -mtune=skylake-avx512 -mavx -mavx2 -mxsave -mbmi -mbmi2 -mlzcnt -maes -mpopcnt)
+add_compile_options(-O3 -g -fPIC -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wall -Wextra -march=skylake -mtune=skylake-avx512 -mavx -mavx2 -mxsave -mbmi -mbmi2 -mlzcnt -maes -mpopcnt)
 
 # K2_DEBUG_LOGGING enables some verbose logging for debug purposes.
 if(DEFINED ENV{K2_DEBUG_LOGGING})
@@ -23,6 +23,11 @@ find_package(gflags REQUIRED)
 
 add_subdirectory(src/k2/connector)
 
+get_target_property(ybcommon_includes ybcommon INCLUDE_DIRECTORIES)
+get_target_property(ybcommon_libs ybcommon LIBRARY_OUTPUT_DIRECTORY)
+get_target_property(ybpggate_includes ybcommon INCLUDE_DIRECTORIES)
+get_target_property(ybpggate_libs ybcommon LIBRARY_OUTPUT_DIRECTORY)
+
 include(ExternalProject)
 ExternalProject_Add(
     postgres
@@ -32,6 +37,6 @@ ExternalProject_Add(
     TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
     LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/log
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/build
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure --prefix=${INSTALL_DIR}
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure --prefix=${INSTALL_DIR} --with-includes=${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector --with-libs=${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common:${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     BUILD_COMMAND make -j -f Makefile)

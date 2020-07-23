@@ -31,9 +31,6 @@ YB_BUILD_ROOT := $(top_builddir)
 endif
 
 LIBS += -L$(YB_BUILD_ROOT)/lib
-ifneq ($(YB_BUILD_TYPE), compilecmds)
-LIBS += -lyb_util -lyb_pggate
-endif
 
 OBJS=	initdb.o findtimezone.o localtime.o encnames.o $(WIN32RES)
 

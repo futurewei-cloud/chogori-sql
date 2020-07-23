@@ -1,2 +1,2 @@
-add_subdirectory(src/yb/common)
-add_subdirectory(src/yb/yql/pggate)
+add_subdirectory(yb/common)
+add_subdirectory(yb/pggate)

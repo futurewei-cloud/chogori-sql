@@ -55,7 +55,7 @@ ifndef YB_BUILD_ROOT
 YB_BUILD_ROOT := $(top_builddir)
 endif
 ifneq ($(YB_BUILD_TYPE),compilecmds)
-LIBS += -L$(YB_BUILD_ROOT)/lib -lyb_util -lyb_pggate -lyb_common
+LIBS += -L$(YB_BUILD_ROOT)/lib
 endif
 
 CCLD = $(CXX)

@@ -78,7 +78,7 @@
 #include "utils/timestamp.h"
 #include "utils/uuid.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 
 #include "pg_yb_utils.h"
 

@@ -1,113 +1,113 @@
-This document is a design proposal for the K2 SQL layer. It is a working in progress. 
+This document is a design proposal for the K2 SQL layer. It is a working in progress.
 
 # Introduction
-## Assumptions 
+## Assumptions
 K2 platform is an in-memory document storage system. We introduce a SQL layer on top of so that users could interactive with our system using SQLs.
 
 The design is based on the following Assumptions:
 * K2 Platform provides document APIs so that the SQL layers could access the table rows and columns with column projections and predicate pushdown
 * For the first version of prototype, we will integrate Postgres (PG) database engine for query parsing, planning, and execution. That is to say, the query
-execution is on a single PG instance, which might not be ideal for complex queries, but should work for most OLTP queries. 
+execution is on a single PG instance, which might not be ideal for complex queries, but should work for most OLTP queries.
 * However, we should make our design to be extensible to be able to run queries in a distributed fashion, i.e., a physical query plan could be split
 into multiple segments to run on different nodes, which is useful for HTAP (Hybrid transaction/analytical processing) and OLAP in the future.
 * Data persistency and consistency is guaranteed by the K2 storage layer
-* Each table has a primary key and we need to specify one if it is not provided in schema definition. 
-* Primary keys that are used to partition tables cannot be changed once they are defined. 
+* Each table has a primary key and we need to specify one if it is not provided in schema definition.
+* Primary keys that are used to partition tables cannot be changed once they are defined.
 
 ## Design Goals
 We like to achieve the following goals for the first version of prototype.
 * Support Catalog management by DDLs, i.e., create, update, and delete database and tables
-* Support secondary indexes 
+* Support secondary indexes
 * Support select with column projection and predication pushdown. Aggregation pushdown could be implemented in later versions.
 * Support insert, update, delete, truncate, and simple joins
-* Allow users to submit queries using PG libpq interface. JDBC and ODBC drivers could be provided in later versions. 
+* Allow users to submit queries using PG libpq interface. JDBC and ODBC drivers could be provided in later versions.
 
-# System Design Proposal 
+# System Design Proposal
 
 This is a high level design. Details will be provided in separate sections.
 
-## Architecture 
+## Architecture
 
 The system architecture is as follows and it consists of the following components.
 * The storage layer provides document APIs so that we could storage data with data type information, table schemas, and secondary indexes into it.
 * On the top of the storage layer, we have SQL executor, which could run separately on different hosts or the same host of the storage layer.
-* There is a SQL coordinator so that it could manage catalog, index, and schema updates on k2 storage nodes. 
+* There is a SQL coordinator so that it could manage catalog, index, and schema updates on k2 storage nodes.
 
 ![Architecture](./images/K2SqlSystemArchitecture01.png)
 
-### SQL Coordinator 
+### SQL Coordinator
 
 The SQL coordinator has the following responsibilities
 * Manage database and table schemas while user submits DDLs such as create, update, and delete tables.
 * Manage secondary indexes for tables.
 * Both table schema and indexes are stored as document in storage layer by calling K2 storage APIs.
-* The catalog manager needs to handle schema update on the storage layer. 
+* The catalog manager needs to handle schema update on the storage layer.
 * Initialize PG system databases and system tables globally so that SQL executor could be stateless without creating its own local system databases/tables,
-which are difficult to be consistent. 
-* Manage the table to collection/partition mapping in storage layer so that we could update the the document schema version and types 
+which are difficult to be consistent.
+* Manage the table to collection/partition mapping in storage layer so that we could update the the document schema version and types
 on K2 storage nodes when a user alters tables.
 * Provide service APIs for the SQL executor to get table schema and index information
-* Could provides a discovery service for a user to get an endpoint of a SQL executor to submit a query so that we can load balance the query load on 
-SQL executors. If we colocate a SQL executor with a K2 storage node, the coordinator could assign the query to the SQL executor where the data are stored 
+* Could provides a discovery service for a user to get an endpoint of a SQL executor to submit a query so that we can load balance the query load on
+SQL executors. If we colocate a SQL executor with a K2 storage node, the coordinator could assign the query to the SQL executor where the data are stored
 to achieve data locality
 *  In the future, we could extend the coordinator, for example, it could generate SQL plan segments to dispatch to different SQL executors for parallel executions.
-* For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol later. 
+* For prototype, we could use a single instance coordinator. We could add a distributed coordinators by using raft consensus protocol later.
 
-### SQL Executor 
+### SQL Executor
 The SQL executor run SQL queries locally. For the first version, it is implemented by integrating with Postgres, i.e., it is a single instance
-query executor. 
+query executor.
 * It is stateless, i.e., it won't create any local system databases or tables.
 * User submits queries to it via the libpq client library and get back query results.
 * It consists of an embedded PG with the following modifications
   * Foreign Data Wrapper is used to access table data on K2 storage layer instead of from local memory and disk, this is mainly for table scan
 with expressions for column projection and predicate pushdown.
   * SQL grammar is updated to only support a subset of Queries. Will add more query types incrementally.
-  * PG command APIs are updated to call catalog manager instead of local catalogs 
-  * Index update and scan are rerouted to K2 storage layer 
-  * The above functions are implemented by calling a connector as a glue layer between PG and K2 storage layer 
-  * The executor in PG manages the life cycle of a query, i.e., parsing, planning, optimizing, and executing. 
+  * PG command APIs are updated to call catalog manager instead of local catalogs
+  * Index update and scan are rerouted to K2 storage layer
+  * The above functions are implemented by calling a connector as a glue layer between PG and K2 storage layer
+  * The executor in PG manages the life cycle of a query, i.e., parsing, planning, optimizing, and executing.
 *  The connector layer is used by PG to interact with SQL coordinator and K2 storage layer
     * PG calls its PG gate APIs for DDLs and DMLs
     * It calls catalog manager in SQL coordinator for user databases and tables
-    * It calls Index manager in SQL coordinator for secondary indexes 
-    * It scans table data from K2 storage layer with column projection and predication pushdown. Streaming or pagination is used to fetch result data. 
+    * It calls Index manager in SQL coordinator for secondary indexes
+    * It scans table data from K2 storage layer with column projection and predication pushdown. Streaming or pagination is used to fetch result data.
     * It scans table indexes for an index scan.
     * It could call multiple K2 storage nodes if the SQL involves multiple tables on different K2 collections/partitions
 
-### K2 Storage Layer 
-K2 storage layer functions consist of 
+### K2 Storage Layer
+K2 storage layer functions consist of
 * Table data are stored in K2 storage layer. The collection holds schema information.
 * PG system tables, user tables, and table secondary indexes are stored as regular data in k2 storage layer.
 * It provides document style APIs for the connector in SQL executor to access table data or secondary index
 * SQL executor might call the transaction protocol in K2 storage layer for a SQL transaction with multiple collection/partition updates
 * The collection schemas for a partition need to be updated by SQL coordinator with a different schema version id.
 
-## SQL Layer 
+## SQL Layer
 
 The SQL layer consists of the SQL executors and the SQL coordinator(s). Let us cover them in more details.
 
-### SQL Executor 
+### SQL Executor
 
 A more detailed view of SQL executor is shown by the following diagram.
 
 ![SQL Executor](./images/K2SqlExecutorDiagram01.png)
 
-First of all, the SQL executor uses a bootstrap module to initialize the process Environment, for example, waiting for the coordinator 
+First of all, the SQL executor uses a bootstrap module to initialize the process Environment, for example, waiting for the coordinator
 to create system databases and tables. Then it starts a PG instance either as a child process or embedded inside. Optionally it
 starts a RPC server to accept Query execution commands from coordinator if we starts to support distributed query executions. The Libpq interface is provided by the PG process.
 
-#### Postgres 
+#### Postgres
 
 We could adopt the modified version of PG from [YugaByteDB](https://github.com/futurewei-cloud/chogori-sql/blob/master/docs/YugabyteDb.md), which has the following customization
 * Modified the initdb.c to not create system databases and tables locally and relies on remote catalog manager instead.
 * Wired in a Foreign Data Wrapper (DFW) to scan data from an external data source instead of local memory and disk.
-* Changed PG commands to call external catalog manager 
+* Changed PG commands to call external catalog manager
 * Changed Index Scan to read from external data source.
-* Updated caching logic for external data sources 
-* Implemented sequence support 
+* Updated caching logic for external data sources
+* Implemented sequence support
 * Implemented column projection and predicate pushdown to external data sources
 * Implemented aggression pushdown for min, max, sum, and count
-* Used the [PG Gate APIs](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/yb/yql/pggate/ybc_pggate.h) to interact
+* Used the [PG Gate APIs](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/yb/pggate/ybc_pggate.h) to interact
 with external catalog manager and data sources.
 However, we need to change PG for our own use, which means we might need to change the PG Gate APIs as well.
 * Update the SQL grammar [gram.y](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/parser/gram.y) to only enable
@@ -116,9 +116,9 @@ the SQL syntax that we support
 * Changed the tablet logic, which was part of YugaByteDB's storage component
 * Disable aggression push down for now until we support them in K2 storage layer
 * Update the transaction logic to integrate with K2S3 transaction protocol
-* Need to check if we could support sequence  
+* Need to check if we could support sequence
 
-#### PG Gate APIs 
+#### PG Gate APIs
 
 The PG Gate APIs include the following parts. We would customize them to our need.
 
@@ -151,7 +151,7 @@ YBCStatus YBCPgClearBinds(YBCPgStatement handle);
 // Check if initdb has been already run.
 YBCStatus YBCPgIsInitDbDone(bool* initdb_done);
 ```
-##### DDLs 
+##### DDLs
 
 Database operations
 
@@ -188,7 +188,7 @@ YBCStatus YBCPgReserveOids(YBCPgOid database_oid,
                            YBCPgOid *end_oid);
 ```
 
-Table Operations 
+Table Operations
 ``` c
 BCStatus YBCPgNewCreateTable(const char *database_name,
                               const char *schema_name,
@@ -246,10 +246,10 @@ YBCStatus YBCPgGetColumnInfo(YBCPgTableDesc table_desc,
                              bool *is_hash);
 
 YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
-                                  YBCPgTableProperties *properties);                                    
+                                  YBCPgTableProperties *properties);
 ```
 
-Index operations 
+Index operations
 ``` c
 YBCStatus YBCPgNewCreateIndex(const char *database_name,
                               const char *schema_name,
@@ -289,7 +289,7 @@ YBCStatus YBCPgAsyncUpdateIndexPermissions(
 
 The above DDLs are passed to the K2 connector, which calls the catalog manager in SQL coordinator under the hood.
 
-##### DMLs 
+##### DMLs
 
 DML statements consist of select, insert, update, delete, and truncate.
 
@@ -328,7 +328,7 @@ YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDesc
                                  int32_t nattrs, uint64_t *ybctid);
 ```
 
-Insert operations 
+Insert operations
 ``` c
 BCStatus YBCPgNewInsert(YBCPgOid database_oid,
                          YBCPgOid table_oid,
@@ -352,7 +352,7 @@ YBCStatus YBCPgNewUpdate(YBCPgOid database_oid,
 YBCStatus YBCPgExecUpdate(YBCPgStatement handle);
 ```
 
-Delete operations 
+Delete operations
 ``` c
 YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
                          YBCPgOid table_oid,
@@ -362,7 +362,7 @@ YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
 YBCStatus YBCPgExecDelete(YBCPgStatement handle);
 ```
 
-Select operations 
+Select operations
 ``` c
 YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
                          YBCPgOid table_oid,
@@ -375,7 +375,7 @@ YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan);
 YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params);
 ```
 
-Expression operations 
+Expression operations
 ``` c
  / Column references.
 YBCStatus YBCPgNewColumnRef(YBCPgStatement stmt, int attr_num, const YBCPgTypeEntity *type_entity,
@@ -404,7 +404,7 @@ YBCStatus YBCPgNewOperator(YBCPgStatement stmt, const char *opname,
 YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg);
 ```
 
-Transaction operations 
+Transaction operations
 ``` c
 YBCStatus YBCPgBeginTransaction();
 YBCStatus YBCPgRestartTransaction();
@@ -417,23 +417,23 @@ YBCStatus YBCPgEnterSeparateDdlTxnMode();
 YBCStatus YBCPgExitSeparateDdlTxnMode(bool success);
 ```
 
-The DMLs usually involve both the Catalog manager in SQL coordinator and direct access to K2 storage nodes. 
+The DMLs usually involve both the Catalog manager in SQL coordinator and direct access to K2 storage nodes.
 
-#### K2 Connector 
+#### K2 Connector
 
-The K2 connector behaves similar to the PG Gate in YugaByteDB and it is a glue layer among catalog service and storage layer. However, we need 
-rewrite our own connector logic since YugaByteDB's PG Gate is heavily coupled with its catalog system, tablet service, and its own transaction control 
+The K2 connector behaves similar to the PG Gate in YugaByteDB and it is a glue layer among catalog service and storage layer. However, we need
+rewrite our own connector logic since YugaByteDB's PG Gate is heavily coupled with its catalog system, tablet service, and its own transaction control
 logic. We need to implement the PG Gate APIs using our own logic.
 
-Whenever the K2 connector receives API calls from PG, it dispatches the calls to DDL process or DML process depending on the call type. The 
-DDL or DML process creates a session for a SQL statement to allocate memory to cache schema and other data, set up client connection to the SQL 
-coordinator or the K2 storage layer or both. They also have logic to bind columns and expressions to table and then make calls to SQL coordinator 
+Whenever the K2 connector receives API calls from PG, it dispatches the calls to DDL process or DML process depending on the call type. The
+DDL or DML process creates a session for a SQL statement to allocate memory to cache schema and other data, set up client connection to the SQL
+coordinator or the K2 storage layer or both. They also have logic to bind columns and expressions to table and then make calls to SQL coordinator
 or K2 storage layer if necessary. Some operations are done in-memory, for example, column bindings. The session is closed and cache is validated
 once a SQL statement finishes.
 
-When user creates a database, the catalog manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. The table primary key(s) should be used to locate the record in a K2 collection. 
+When user creates a database, the catalog manager generates a database oid (object id) and the tables in a database are assigned with table oids, which could be used to map a collection in K2 storage layer. The table primary key(s) should be used to locate the record in a K2 collection.
 
-### SQL Coordinator 
+### SQL Coordinator
 
 SQL Coordinator consists of the following components.
 * (Optional) Web service to show query statuses, metrics, database states, and SQL executor information such as endpoints.
@@ -441,13 +441,13 @@ SQL Coordinator consists of the following components.
 * Catalog Manager
   * initializes, creates, and saves PG system databases and tables to K2 storage layer, for example, all the [system catalog](https://www.postgresql.org/docs/11/catalogs.html) for template1, template0, and Postgres
   * manages user databases and tables such as create, insert, update, delete, and truncate.
-  * provides catalog APIs to external clients such as SQL executors 
+  * provides catalog APIs to external clients such as SQL executors
   * caches schemas locally to avoid fetching them from remote
   * provides schema update information to SQL executors via heartbeats or other mechanisms.
-  * creates, saves, updates, and deletes secondary indexes to K2 storage layer. 
-  * Provides APIs as part of the Catalog RPC service to manage indexes 
+  * creates, saves, updates, and deletes secondary indexes to K2 storage layer.
+  * Provides APIs as part of the Catalog RPC service to manage indexes
 * Discovery service to maintain the information of SQL Executors
-* Call K2 document APIs to store/update/delete documents on K2 storage layers for system/user databases, tables, and indexes. 
+* Call K2 document APIs to store/update/delete documents on K2 storage layers for system/user databases, tables, and indexes.
 
 ![SQL Coordinator](./images/K2SqlCoordinatorDiagram01.png)
 
@@ -460,7 +460,7 @@ The entities for SQL schemas are shown in the following class diagram.
 * ColumnId: consists of column name and column id, which is generated by the system
 * SortingOrder: the column sorting order, which could be used during index build
 * ColumnSchema: the [column definition](https://www.postgresql.org/docs/11/infoschema-columns.html), where isKey indicates if this column is part of the primary key
-* PartitionType: PG supports [Hash, Range, and List partitions](https://www.postgresql.org/docs/11/ddl-partitioning.html). We need to decide how do we 
+* PartitionType: PG supports [Hash, Range, and List partitions](https://www.postgresql.org/docs/11/ddl-partitioning.html). We need to decide how do we
 support table partitions since storage layer might partition the table with split and join automatically
 * PartitionSchema: partition schema for a table
 * TableProperties: we need to decide what properties that we need to introduce
@@ -474,7 +474,7 @@ support table partitions since storage layer might partition the table with spli
 
 ![SQL Schema](./images/K2SqlSchemaEntity02.png)
 
-#### Catalog APIs 
+#### Catalog APIs
 
 Catalog APIs are exposed as RPC service to manage databases, tables, and indexes. In the response object, an error code is returned if the API call fails.
 * createNamespace(): create a database
@@ -506,12 +506,12 @@ When the coordinator first starts up, it needs to initialize the catalog system 
 
 ##### System catalogs
 
-Postgres consists of a set of system catalogs as described in [PG doc](https://www.postgresql.org/docs/current/catalogs.html). All the catalogs start with the 
+Postgres consists of a set of system catalogs as described in [PG doc](https://www.postgresql.org/docs/current/catalogs.html). All the catalogs start with the
 "pg_" prefix. Meanwhile, The [information schema](https://www.postgresql.org/docs/11/information-schema.html) consists of a set of views that contain information about the objects defined in the current database. The information schema is defined in the SQL standard and can therefore be expected to be portable and remain stable — unlike the system catalogs, which are specific to PostgreSQL and are modeled after implementation concerns. The information schema views do not, however, contain information about PostgreSQL-specific features. The views are defined in this [sql](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/catalog/information_schema.sql).
 
 For Postgres, it always creates a new database from templates. The two templates are [template0 and template1](https://www.postgresql.org/docs/11/manage-ag-templatedbs.html), where template0 is never changed after the PG cluster starts and template1 includes other changes. By default, PG copies the standard system database named template1. As a result, when a cluster starts up, the SQL coordinator needs to create template0, template1, and Postgres (and other default databases) databases. Each database consists a subset of system catalogs.
 
-Since we have multiple SQL executors with a PG process inside each one, we need to initialize the default databases inside SQL coordinator instead of the PG instance inside the SQL executor to make each SQL executor stateless and keep schema data consistency. The SQL coordinator stores the schema data on K2 storage layer to keep the data consistent and durable, it also cache the database (namespace), table, and index data locally. 
+Since we have multiple SQL executors with a PG process inside each one, we need to initialize the default databases inside SQL coordinator instead of the PG instance inside the SQL executor to make each SQL executor stateless and keep schema data consistency. The SQL coordinator stores the schema data on K2 storage layer to keep the data consistent and durable, it also cache the database (namespace), table, and index data locally.
 
 For the cache, we would keep a map of namespace to a collection that includes id-table, name-table, id-indexTable maps.
 
@@ -520,8 +520,8 @@ For the cache, we would keep a map of namespace to a collection that includes id
 The default databases could be generated directly when SQL coordinator starts for the first time. They could also be created by loading from a snapshot in some storage format. After that, an internal isInitDBDone flag is set to true so that SQL executors could check this flag and become ready only
 after this flag is true.
 
-When we store system catalogs, we store the schema of the tables into a table, for example, a "sys_catalog" table with each row represents a table schema. 
-Apart from that, we need a table to store the namespaces (databases). The data for system catalogs are stored on the same collection/partitions of the system table schema and we don't partition them since normally the table size is small. 
+When we store system catalogs, we store the schema of the tables into a table, for example, a "sys_catalog" table with each row represents a table schema.
+Apart from that, we need a table to store the namespaces (databases). The data for system catalogs are stored on the same collection/partitions of the system table schema and we don't partition them since normally the table size is small.
 
 ##### User catalogs
 
@@ -531,9 +531,9 @@ the *sys_catalog* table inside the namespace. However, user table data and index
 ##### Persistence
 
 The following diagram illustrates the persistence of SQL schema and data in system.
-* We have a global *sys_namespace* table to track all databases. The table consists of an oid (object identifier) and name. We might like to have a column nextOid to track the namespace id generation. Another option is to use the pg_database table in the template1 database. 
+* We have a global *sys_namespace* table to track all databases. The table consists of an oid (object identifier) and name. We might like to have a column nextOid to track the namespace id generation. Another option is to use the pg_database table in the template1 database.
 * We have a *sys_catalog* table in a database, which consists of an oid, name, Table, IndexTable and a boolean flag isIndex to indicate whether if
-this record is an index or not so that we could save the regular table and index table on the same table. Similarly, a nextOid is used to track the table id generation to make sure that the table oid is generated incrementally without duplicate. Since there is a sys_catalog table for each database, we could use the "database_id.sys_catalog" name pattern to reference this table in K2 storage layer. 
+this record is an index or not so that we could save the regular table and index table on the same table. Similarly, a nextOid is used to track the table id generation to make sure that the table oid is generated incrementally without duplicate. Since there is a sys_catalog table for each database, we could use the "database_id.sys_catalog" name pattern to reference this table in K2 storage layer.
 * The system table data are stored on the same K2 node as the table schema
 * The user indexes and user tables data are stored on other K2 nodes based on the database id and table id.  A database maps to a collection on K2 storage layer.
 
@@ -549,7 +549,7 @@ The SQL layer stores table schema, indexes, and data on K2 storage layer and it 
 
 #### SQL Document APIs
 
-The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer in the SQL layer to call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The SQL document APIs could be used to update schema or fetch/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages. 
+The K2 storage layer provides document APIs so that we could the K2 storage layer knows the data schema. As a result, we propose the following SQL document APIs, which is a wrapper layer in the SQL layer to call the native K2 storage APIs and are used by both the SQL coordinator and the connector in SQL executors. The SQL document APIs could be used to update schema or fetch/update/delete records. Filters are used to filter out data during Index or data scan. A pagination token could be used to fetch records in pages.
 
 ![SQL Document APIs](./images/K2SqlDocumentAPIs01.png)
 
@@ -560,10 +560,10 @@ properly so that the storage layer could decode the data. We like to adopt the [
 
 #### Use Cases
 
-We need to convert data to document records for the following use cases. 
+We need to convert data to document records for the following use cases.
 * Save or update namespaces to the sys_namespace table on K2 catalog collection. The record consists of the id and name columns plus a nextOid column.
 * Save or update system and user schemas to the sys_catalog table on K2 catalog collection. For a table, we encode the table object into a blob and set isIndex to false. For an index table, we encode it into a blob as well, but set isIndex to true. The id and name are in the sys_catalog table for record search. In addition, a nextOid column is used to generate unique table ids.
-* Save or update system table data on K2 catalog collection. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table. 
+* Save or update system table data on K2 catalog collection. A system table such as [pg_database](https://www.postgresql.org/docs/current/catalog-pg-database.html) has its own schema and data. The record schema and data are saved in rows like a regular table.
 * Save or update user table data on K2 storage node(s). We only need to pass column schema and data to K2 storage layer.
 * Save or update user index data on K2 storage node(s). Similarly, we only need to pass column schema and data to k2 storage layer.
 * The batchGetRecords() api could be used scan data and index data. The filters on the API could be used by the K2 storage node to filter out data.
@@ -582,17 +582,17 @@ Let us show how the system works by using the following scenarios.
 The user first creates a database and then create a table in this database as follows.
 * user sends "create database" to Postgres via libpq
 * Postgres calls the connector, which call the coordinator under the hood to create database for this user
-* the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information. 
+* the catalog manager in SQL coordinator saves the database metadata to a specific catalog node on K2 storage and cache the information.
 * user sends "create table" to Postgres
 * Postgres calls the connector, which calls the coordinator again to create a table for this user
-* the coordinator saves the table metadata to its catalog node 
+* the coordinator saves the table metadata to its catalog node
 * the coordinator uses the database oid and table oid to assign collection/partitions and k2 node(s)
 * the coordinator returns the collection/partition information back to the connector in SQL executor
 * the connector then saves the record schema to the collection/partitions
 * the above create table operations should be protected by transaction so that we could rollback if anything goes wrong
 * the coordinator might need to update system tables as well to reflect user table changes
 * Similarly, the secondary indexes are created in a similar way if the secondary indexes are created before data are inserted. Backfill indexes are
-more complex. We need to decide whether we should support them or not. 
+more complex. We need to decide whether we should support them or not.
 
 ![Create Database, Tables, and Indexes](./images/K2SqlCreateDBTableIndexSequenceDiagram01.png)
 
@@ -613,7 +613,7 @@ The user runs a select query as follows
 
 ![Select Statement Sequence Diagram](./images/K2SqlSelectSequenceDiagram02.png)
 
-#### Insert 
+#### Insert
 
 The User runs an insert statement as follows
 * user sends the insert statement to Postgres via libpq
@@ -644,7 +644,7 @@ The following diagram shows the sequence diagram of dropping a table without "ca
 The following sequence diagram illustrates the use case to rename a table column
 * user sends the rename column statement to Postgres via libpq
 * Postgres parses the SQL and fetches the table schema similar to above use cases.
-* The connector calls AlterTable to coordinator 
+* The connector calls AlterTable to coordinator
 * Coordinator updates the schema and increases the schema version
 * The new version of schema is saved to K2 catalog collection
 * The connector sends the new schema to data node(s)

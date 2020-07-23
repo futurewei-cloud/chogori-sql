@@ -50,7 +50,7 @@
 #include "optimizer/ybcplan.h"
 
 #include "utils/syscache.h"
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 
 /*

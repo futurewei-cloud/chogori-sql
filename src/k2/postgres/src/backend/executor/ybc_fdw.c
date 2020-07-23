@@ -60,7 +60,7 @@
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 #include "access/ybcam.h"
 #include "executor/ybcExpr.h"

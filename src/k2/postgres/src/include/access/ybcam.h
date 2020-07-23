@@ -33,7 +33,7 @@
 #include "utils/resowner.h"
 #include "utils/snapshot.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 #include "executor/ybcExpr.h"
 
