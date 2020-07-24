@@ -14,7 +14,8 @@ into multiple segments to run on different nodes, which is useful for HTAP (Hybr
 * Data persistency and consistency is guaranteed by the K2 storage layer
 * Each table has a primary key and we need to specify one if it is not provided in schema definition. 
 * Primary keys that are used to partition tables cannot be changed once they are defined. 
-* *DDL schema updates are transactional, but schema migrations are not transactional*.
+* *DDL schema updates are transactional, but schema migrations are not*.
+* We don't support [creating a database from a template database](https://www.postgresql.org/docs/11/sql-createdatabase.html)
 
 ## Design Goals
 We like to achieve the following goals for the first version of prototype.
