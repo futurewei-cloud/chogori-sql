@@ -85,7 +85,7 @@ To create the *template1* database, one of the SQL executors needs to use some l
 
 After the *template1* database is created, we could copy the *template1* to the default postgres database by scanning the records from *template1* database and writing into the default *postgres* database. Or we could figure out a mechanism to create the new database from the postgres.bki file again. However, the latter is less efficient and requires us to change postgres behavior since postgres always creates a new database by copying, i.e., scanning the tables in the template1 database and inserting them into the new database. Also, Postgres is no longer in a bootstrapping mode once it is in a running state.  
 
-<img src="./images/K2SqlClusterBootstrap021.png" width="500">
+<img src="./images/K2SqlClusterBootstrap021.png" width="600">
 
 After the bootstrap step is done on the cluster, the bootstrap process exits. Each SQL executor starts to set up local file structure for Postgres and starts up the Postgres process. Each database consists a set of system catalogs, where both system table schemas and user table schemas are stored. For example, all relations are stored in pg_class table and the columns are stored in pg_attribute. The pg_tables is an view of the tables and pg_database holds all databases.
 
@@ -99,7 +99,7 @@ The following diagram illustrates the persistence of SQL schema and data in our 
 * If a user creates a new database, a new collection is created and system catalog is initialized by a SQL executor. New table schemas, data, and indexes are stored into the same collection.
 * However, some of the system catalogs such as pg_database are shared, i.e., its content is for all databases. In our storage model, it would make the update very inefficient if each collection holds its own pg_database. As a result, we might only put shared system catalog tables such as pg_database in *template1*, i.e., our *Home* collection. To prevent the shared system catalogs becoming a hot spot for the storage layer, the catalog manager in SQL executor should cache them.
 
-![SQL Schema and data persistence](./images/K2SqlSchemaDataPersistence021.png)
+<img src="./images/K2SqlSchemaDataPersistence021.png" width="600">
 
 ### K2 Connector 
 
