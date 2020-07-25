@@ -27,7 +27,7 @@ ifndef YB_BUILD_ROOT
 YB_BUILD_ROOT := $(top_builddir)
 endif
 
-LIBS += -L$(YB_BUILD_ROOT)/lib -lyb_util
+LIBS += -L$(YB_BUILD_ROOT)/lib
 
 all: ysql_dump pg_restore ysql_dumpall
 

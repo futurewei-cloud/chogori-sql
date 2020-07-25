@@ -28,17 +28,21 @@
 /*
 #include "yb/common/pgsql_protocol.pb.h"
 
-#include "yb/util/debug-util.h"
-#include "yb/util/flag_tags.h"
-#include "yb/util/logging.h"
-#include "yb/util/version_info.h"
+#include "yb/common/debug-util.h"
+#include "yb/common/flag_tags.h"
+#include "yb/common/logging.h"
+#include "yb/common/version_info.h"
 
-#include "yb/util/net/net_util.h"
+#include "yb/common/net/net_util.h"
 
 */
 using std::string;
 //DEFINE_test_flag(string, process_info_dir, string(),
 //                 "Directory where all postgres process will writes their PIDs and executable name");
+
+YBCStatus YBCStatusOK() {
+  return nullptr;
+}
 
 namespace yb {
 

@@ -27,8 +27,7 @@ struct varlena;
 #endif
 
 typedef struct YBCStatusStruct* YBCStatus;
-
-extern YBCStatus YBCStatusOK;
+extern YBCStatus YBCStatusOK();
 bool YBCStatusIsOK(YBCStatus s);
 bool YBCStatusIsNotFound(YBCStatus s);
 bool YBCStatusIsDuplicateKey(YBCStatus s);

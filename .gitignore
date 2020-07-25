@@ -8,3 +8,7 @@ src/k2/postgres/src/backend/exports.list
 src/k2/postgres/tmp/postgres-cfgcmd.txt
 src/k2/postgres/tmp/postgres-cfgcmd.txt.in
 src/k2/postgres/cmakedir
+src/k2/postgres/bin
+src/k2/postgres/share
+src/k2/postgres/lib
+src/k2/postgres/include

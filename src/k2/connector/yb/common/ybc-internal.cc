@@ -12,7 +12,7 @@
 
 #include "ybc-internal.h"
 
-//#include "yb/util/logging.h"
+//#include "yb/common/logging.h"
 
 namespace yb {
 
@@ -53,10 +53,6 @@ void FreeYBCStatus(YBCStatus status) {
   // Create Status object that receives control over provided status, so it will be destoyed with
   // yb_status.
   Status yb_status(status, AddRef::kFalse);
-}
-
-YBCStatus YBCStatusOK() {
-  return nullptr;
 }
 
 YBCStatus YBCStatusNotSupport(const string& feature_name) {

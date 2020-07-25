@@ -40,7 +40,7 @@ void YBCSetCStringToTextWithLenFn(YBCCStringToTextWithLenFn fn);
 void* YBCCStringToTextWithLen(const char* c, int size);
 
 // YBCStatus definition for Some common Status.
-YBCStatus YBCStatusOK();
+
 YBCStatus YBCStatusNotSupport(const string& feature_name);
 
 // Duplicate the given string in memory allocated using PostgreSQL's palloc.

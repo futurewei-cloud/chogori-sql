@@ -65,7 +65,6 @@
 #include "fe_utils/string_utils.h"
 
 #include "yb/pggate/ybc_pggate.h"
-#include "yb/pggate/ybc_pggate_tool.h"
 
 /* Temporary disable YB calls in ASAN build due to linking issues. */
 #ifdef ADDRESS_SANITIZER
