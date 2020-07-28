@@ -36,12 +36,12 @@
 #include <gflags/gflags.h>
 
 #include "cpu.h"
-//#include "yb/gutil/strings/split.h"
+#include "split.h"
 #include "substitute.h"
 #include "env.h"
 #include "env_util.h"
-//#include "yb/util/flag_tags.h"
-//#include "yb/util/logging.h"
+#include "flag_tags.h"
+#include "logging.h"
 #include "path_util.h"
 #include "status.h"
 //#include "yb/util/version_info.h"

@@ -37,6 +37,7 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
+
 #include "strongly_typed_bool.h"
 #include "endian.h"
 #include "slice.h"
@@ -49,9 +50,9 @@
 #else
 #include "yb/client/stubs.h"
 #endif
-
-#include "yb/gutil/strings/substitute.h"
 */
+
+#include "substitute.h"
 
 // Return the given status if it is not OK.
 #define YB_RETURN_NOT_OK(s) do { \
