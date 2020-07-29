@@ -40,9 +40,9 @@ using std::string;
 #include <glog/logging.h>
 #include "logging-inl.h"
 #include "gscoped_ptr.h"
-#include "stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "strtoint.h"
-#include "ascii_ctype.h"
+#include "yb/common/strings/ascii_ctype.h"
 
 // Reads a <double> in *text, which may not be whitespace-initiated.
 // *len is the length, or -1 if text is '\0'-terminated, which is more

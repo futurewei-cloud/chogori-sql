@@ -36,8 +36,8 @@
 #include <gflags/gflags.h>
 
 #include "cpu.h"
-#include "split.h"
-#include "substitute.h"
+#include "yb/common/strings/split.h"
+#include "yb/common/strings/substitute.h"
 #include "env.h"
 #include "env_util.h"
 #include "flag_tags.h"

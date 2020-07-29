@@ -29,7 +29,7 @@
 #include <string>
 
 #include "slice.h"
-#include "faststring.h"
+#include "yb/common/strings/faststring.h"
 
 namespace yb {
 

@@ -36,7 +36,7 @@
 #include <glog/logging.h>
 
 #include "yb/common/mathlimits.h"
-#include "yb/common/stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "yb/common/sysinfo.h"
 #include "yb/common/walltime.h"
 #include "yb/common/concurrent/thread_restrictions.h"

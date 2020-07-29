@@ -44,8 +44,8 @@
 #include <string>
 
 #include "fastmem.h"
-#include "stringpiece.h"
-#include "faststring.h"
+#include "yb/common/strings/stringpiece.h"
+#include "yb/common/strings/faststring.h"
 #include "cast.h"
 
 

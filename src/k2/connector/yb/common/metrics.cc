@@ -43,7 +43,7 @@
 #include "map-util.h"
 #include "singleton.h"
 #include "stl_util.h"
-#include "substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "flag_tags.h"
 #include "hdr_histogram.h"
 //#include "yb/util/histogram.pb.h"

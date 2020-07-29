@@ -53,7 +53,7 @@
 #include "yb/common/dynamic_annotations.h"
 #include "yb/common/mathlimits.h"
 #include "yb/common/once.h"
-#include "yb/common/substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "yb/common/debug-util.h"
 #include "yb/common/errno.h"
 #include "yb/common/logging.h"

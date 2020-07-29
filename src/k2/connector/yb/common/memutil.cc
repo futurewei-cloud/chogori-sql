@@ -20,7 +20,7 @@
 
 #include <stdlib.h>        // for malloc, NULL
 
-#include "ascii_ctype.h"  // for ascii_tolower
+#include "yb/common/strings/ascii_ctype.h"  // for ascii_tolower
 
 int memcasecmp(const char *s1, const char *s2, size_t len) {
   const unsigned char *us1 = reinterpret_cast<const unsigned char *>(s1);

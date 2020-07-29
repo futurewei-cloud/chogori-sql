@@ -61,7 +61,7 @@
 #include "gscoped_ptr.h"
 #include "logging-inl.h"
 #include "macros.h"
-#include "stringpiece.h"
+#include "yb/common/strings/stringpiece.h"
 #include "singleton.h"
 
 #include "yb/common/concurrent/boost_mutex_utils.h"

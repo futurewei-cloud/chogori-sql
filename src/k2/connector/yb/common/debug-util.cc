@@ -62,7 +62,7 @@
 #include "yb/common/macros.h"
 #include "yb/common/singleton.h"
 #include "yb/common/concurrent/spinlock.h"
-#include "yb/common/stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "yb/common/numbers.h"
 #include "yb/common/strtoint.h"
 
@@ -73,7 +73,7 @@
 #include "yb/common/memory.h"
 #include "yb/common/monotime.h"
 #include "yb/common/concurrent/thread.h"
-#include "yb/common/string_trim.h"
+#include "yb/common/strings/string_trim.h"
 
 using namespace std::literals;
 

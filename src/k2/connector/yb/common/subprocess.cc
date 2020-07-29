@@ -52,10 +52,10 @@
 
 #include "once.h"
 #include "port.h"
-#include "join.h"
+#include "strings/join.h"
 #include "numbers.h"
-#include "split.h"
-#include "substitute.h"
+#include "yb/common/strings/split.h"
+#include "yb/common/strings/substitute.h"
 //#include "yb/util/debug-util.h"
 #include "errno.h"
 #include "status.h"

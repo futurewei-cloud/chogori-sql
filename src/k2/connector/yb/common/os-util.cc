@@ -45,8 +45,8 @@
 #include <unistd.h>
 
 #include "numbers.h"
-#include "split.h"
-#include "substitute.h"
+#include "yb/common/strings/split.h"
+#include "yb/common/strings/substitute.h"
 #include "errno.h"
 
 using std::ifstream;

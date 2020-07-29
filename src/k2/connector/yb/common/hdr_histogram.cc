@@ -37,7 +37,7 @@
 
 #include "yb/common/concurrent/atomicops.h"
 #include "bits.h"
-#include "substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "status.h"
 
 using base::subtle::Atomic64;

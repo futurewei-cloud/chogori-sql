@@ -47,9 +47,9 @@
 
 #include "map-util.h"
 #include "once.h"
-#include "join.h"
-#include "human_readable.h"
-#include "substitute.h"
+#include "yb/common/strings/join.h"
+#include "yb/common/strings/human_readable.h"
+#include "yb/common/strings/substitute.h"
 #include "debug-util.h"
 //#include "yb/util/debug/trace_event.h"
 #include "env.h"

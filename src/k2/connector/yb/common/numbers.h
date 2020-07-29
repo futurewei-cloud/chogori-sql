@@ -38,7 +38,7 @@ using std::vector;
 #include "integral_types.h"
 #include "macros.h"
 #include "port.h"
-#include "stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 
 
 // START DOXYGEN NumbersFunctions grouping

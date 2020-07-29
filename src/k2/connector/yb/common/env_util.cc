@@ -38,12 +38,12 @@
 
 #include <boost/container/small_vector.hpp>
 
-#include "substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "env.h"
 #include "env_util.h"
 #include "path_util.h"
 #include "status.h"
-#include "util.h"
+#include "yb/common/strings/util.h"
 
 using strings::Substitute;
 using std::shared_ptr;

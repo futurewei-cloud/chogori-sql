@@ -33,7 +33,7 @@
 #include <gflags/gflags.h>
 #include "slice.h"
 
-#include "stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "status.h"
 
 DEFINE_int32(non_graph_characters_percentage_to_use_hexadecimal_rendering, 10,

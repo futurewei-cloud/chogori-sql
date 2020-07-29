@@ -33,7 +33,7 @@
 #include <algorithm>
 #include <string>
 
-#include "yb/common/stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "yb/common/hexdump.h"
 #include "yb/common/slice.h"
 

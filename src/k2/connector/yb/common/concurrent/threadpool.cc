@@ -43,7 +43,7 @@
 #include "yb/common/macros.h"
 #include "yb/common/map-util.h"
 #include "yb/common/stl_util.h"
-#include "yb/common/substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "yb/common/sysinfo.h"
 #include "yb/common/errno.h"
 #include "yb/common/metrics.h"

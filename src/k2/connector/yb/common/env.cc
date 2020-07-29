@@ -18,7 +18,7 @@
 //
 
 #include "env.h"
-#include "faststring.h"
+#include "yb/common/strings/faststring.h"
 #include "path_util.h"
 
 namespace yb {

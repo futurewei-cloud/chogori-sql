@@ -52,7 +52,7 @@
 #endif
 */
 
-#include "substitute.h"
+#include "yb/common/strings/substitute.h"
 
 // Return the given status if it is not OK.
 #define YB_RETURN_NOT_OK(s) do { \

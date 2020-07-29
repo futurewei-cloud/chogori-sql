@@ -16,14 +16,14 @@
 #include <fstream>
 #include <gflags/gflags.h>
 #include "status.h"
-#include "stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "pgsql_error.h"
 #include "transaction_error.h"
 #include "ybc-internal.h"
 #include "env.h"
 #include "scope_exit.h"
 #include "init.h"
-#include "bytes_formatter.h"
+#include "strings/bytes_formatter.h"
 
 /*
 #include "yb/common/pgsql_protocol.pb.h"

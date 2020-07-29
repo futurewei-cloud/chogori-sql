@@ -43,7 +43,7 @@
 #endif  // defined(__APPLE__)
 
 #include "macros.h"
-#include "stringprintf.h"
+#include "yb/common/strings/stringprintf.h"
 #include "walltime.h"
 
 namespace yb {

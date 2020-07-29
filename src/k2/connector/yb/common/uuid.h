@@ -20,7 +20,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/system/error_code.hpp>
 
-#include "yb/common/substitute.h"
+#include "yb/common/strings/substitute.h"
 #include "yb/common/status.h"
 #include "yb/common/hexdump.h"
 #include "yb/common/slice.h"

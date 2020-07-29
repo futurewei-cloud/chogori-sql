@@ -263,7 +263,7 @@
 #include "yb/common/concurrent/locks.h"
 #include "monotime.h"
 #include "status.h"
-#include "striped64.h"
+#include "yb/common/strings/striped64.h"
 #include "strongly_typed_bool.h"
 #include "yb/common/concurrent/shared_lock.h"
 

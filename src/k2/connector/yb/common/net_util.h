@@ -37,7 +37,7 @@
 #include <memory>
 
 #include "result.h"
-#include "strip.h"
+#include "yb/common/strings/strip.h"
 #include "status.h"
 
 namespace yb {
