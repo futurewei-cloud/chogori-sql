@@ -22,7 +22,7 @@
 #include "yb/common/status.h"
 #include "yb/common/enums.h"
 #include "yb/common/result.h"
-#include "yb/common/threading/thread.h"
+#include "yb/common/concurrent/thread.h"
 
 namespace yb {
 namespace pgwrapper {

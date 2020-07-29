@@ -19,7 +19,7 @@
 #include "logging-inl.h"
 #include "once.h"
 #include "dynamic_annotations.h"
-#include "spinlock_internal.h"
+#include "yb/common/concurrent/spinlock_internal.h"
 
 // All modifications to a GoogleOnceType occur inside GoogleOnceInternalInit.
 // The fast path reads the variable with an acquire-load..

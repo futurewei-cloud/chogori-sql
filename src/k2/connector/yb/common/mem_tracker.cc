@@ -56,7 +56,7 @@
 #include "flag_tags.h"
 #include "memory.h"
 #include "metrics.h"
-#include "mutex.h"
+#include "yb/common/concurrent/mutex.h"
 #include "random_util.h"
 #include "status.h"
 #include "logging.h"

@@ -161,7 +161,7 @@
 #include <assert.h>
 
 #include "basictypes.h"
-#include "callback.h"
+#include "yb/common/concurrent/callback.h"
 #include "template_util.h"
 
 // Unneeded define from Chromium

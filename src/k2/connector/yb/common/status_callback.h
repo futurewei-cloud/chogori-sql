@@ -32,7 +32,7 @@
 #ifndef YB_UTIL_STATUS_CALLBACK_H
 #define YB_UTIL_STATUS_CALLBACK_H
 
-#include "callback_forward.h"
+#include "yb/common/concurrent/callback_forward.h"
 
 namespace yb {
 

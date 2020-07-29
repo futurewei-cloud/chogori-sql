@@ -20,7 +20,7 @@
 #ifndef YB_GUTIL_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_
 #define YB_GUTIL_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_
 
-#include "yb/common/threading/ref_counted.h"
+#include "yb/common/concurrent/ref_counted.h"
 #include "template_util.h"
 #include "tuple.h"
 

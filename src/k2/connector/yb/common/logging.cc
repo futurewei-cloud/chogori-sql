@@ -58,9 +58,9 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
-#include "callback.h"
-#include "spinlock.h"
-#include "yb/common/threading/ref_counted.h"
+#include "yb/common/concurrent/callback.h"
+#include "yb/common/concurrent/spinlock.h"
+#include "yb/common/concurrent/ref_counted.h"
 
 #include "debug-util.h"
 #include "flag_tags.h"

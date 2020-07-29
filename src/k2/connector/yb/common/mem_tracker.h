@@ -46,10 +46,10 @@
 
 #include <boost/optional.hpp>
 
-#include "yb/common/threading/ref_counted.h"
+#include "yb/common/concurrent/ref_counted.h"
 #include "high_water_mark.h"
-#include "locks.h"
-#include "mutex.h"
+#include "yb/common/concurrent/locks.h"
+#include "yb/common/concurrent/mutex.h"
 #include "random.h"
 #include "strongly_typed_bool.h"
 

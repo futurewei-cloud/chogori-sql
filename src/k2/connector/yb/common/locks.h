@@ -36,16 +36,16 @@
 #include <mutex>
 
 #include <glog/logging.h>
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "dynamic_annotations.h"
-#include "yb/common/threading/thread_annotations.h"
+#include "yb/common/concurrent/thread_annotations.h"
 #include "macros.h"
 #include "port.h"
-#include "spinlock.h"
+#include "yb/common/concurrent/spinlock.h"
 #include "sysinfo.h"
 #include "errno.h"
-#include "rw_semaphore.h"
-#include "shared_lock.h"
+#include "yb/common/concurrent/rw_semaphore.h"
+#include "yb/common/concurrent/shared_lock.h"
 
 namespace yb {
 

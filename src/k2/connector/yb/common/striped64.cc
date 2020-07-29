@@ -33,7 +33,7 @@
 #include "monotime.h"
 #include "random.h"
 #include "striped64.h"
-#include "yb/common/threading/threadlocal.h"
+#include "yb/common/concurrent/threadlocal.h"
 
 using yb::striped64::internal::HashCode;
 using yb::striped64::internal::Cell;

@@ -26,7 +26,7 @@
 #define YB_GUTIL_BIND_INTERNAL_H_
 
 #include "bind_helpers.h"
-#include "callback_internal.h"
+#include "yb/common/concurrent/callback_internal.h"
 #include "raw_scoped_refptr_mismatch_checker.h"
 #include "template_util.h"
 

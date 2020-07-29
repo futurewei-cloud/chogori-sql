@@ -53,7 +53,7 @@
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
 
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "dynamic_annotations.h"
 #include "walltime.h"
 #include "fault_injection.h"

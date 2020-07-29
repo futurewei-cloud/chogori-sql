@@ -64,8 +64,8 @@
 #include "stringpiece.h"
 #include "singleton.h"
 
-#include "boost_mutex_utils.h"
-#include "mutex.h"
+#include "yb/common/concurrent/boost_mutex_utils.h"
+#include "yb/common/concurrent/mutex.h"
 #include "size_literals.h"
 
 using std::copy;

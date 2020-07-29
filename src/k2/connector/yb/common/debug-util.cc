@@ -61,7 +61,7 @@
 #include "yb/common/linux_syscall_support.h"
 #include "yb/common/macros.h"
 #include "yb/common/singleton.h"
-#include "yb/common/spinlock.h"
+#include "yb/common/concurrent/spinlock.h"
 #include "yb/common/stringprintf.h"
 #include "yb/common/numbers.h"
 #include "yb/common/strtoint.h"
@@ -69,10 +69,10 @@
 #include "yb/common/enums.h"
 #include "yb/common/env.h"
 #include "yb/common/errno.h"
-#include "yb/common/lockfree.h"
+#include "yb/common/concurrent/lockfree.h"
 #include "yb/common/memory.h"
 #include "yb/common/monotime.h"
-#include "yb/common/threading/thread.h"
+#include "yb/common/concurrent/thread.h"
 #include "yb/common/string_trim.h"
 
 using namespace std::literals;

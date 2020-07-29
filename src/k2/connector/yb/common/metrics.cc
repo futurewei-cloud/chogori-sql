@@ -38,7 +38,7 @@
 
 #include <gflags/gflags.h>
 
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "casts.h"
 #include "map-util.h"
 #include "singleton.h"
@@ -48,7 +48,7 @@
 #include "hdr_histogram.h"
 //#include "yb/util/histogram.pb.h"
 //#include "yb/util/jsonwriter.h"
-#include "locks.h"
+#include "yb/common/concurrent/locks.h"
 #include "status.h"
 #include "logging.h"
 

@@ -32,7 +32,7 @@
 #include <string>
 #include <vector>
 
-#include "callback_forward.h"
+#include "yb/common/concurrent/callback_forward.h"
 #include "file_system.h"
 #include "result.h"
 #include "status.h"

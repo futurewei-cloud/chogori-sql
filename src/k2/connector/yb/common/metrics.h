@@ -252,20 +252,20 @@
 #include <boost/thread/shared_mutex.hpp>
 
 #include "bind.h"
-#include "callback.h"
+#include "yb/common/concurrent/callback.h"
 #include "casts.h"
 #include "map-util.h"
-#include "yb/common/threading/ref_counted.h"
+#include "yb/common/concurrent/ref_counted.h"
 #include "singleton.h"
 
-#include "atomic.h"
+#include "yb/common/concurrent/atomic.h"
 //#include "yb/util/jsonwriter.h"
-#include "locks.h"
+#include "yb/common/concurrent/locks.h"
 #include "monotime.h"
 #include "status.h"
 #include "striped64.h"
 #include "strongly_typed_bool.h"
-#include "shared_lock.h"
+#include "yb/common/concurrent/shared_lock.h"
 
 // Define a new entity type.
 //

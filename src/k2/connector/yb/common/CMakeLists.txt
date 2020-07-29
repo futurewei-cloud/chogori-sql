@@ -1,5 +1,7 @@
-file(GLOB HEADERS "*.h")
-file(GLOB SOURCES "*.cc")
+file(GLOB HEADERS "*.h" "concurrent/*.h")
+file(GLOB SOURCES "*.cc" "concurrent/*.cc")
+
+add_compile_options(-O3 -g -fPIC -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wno-char-subscripts -Wno-ignored-qualifiers -Wno-redundant-move -Wall -Wextra -march=skylake -mtune=skylake-avx512 -mavx -mavx2 -mxsave -mbmi -mbmi2 -mlzcnt -maes -mpopcnt)
 
 add_library(ybcommon SHARED ${HEADERS} ${SOURCES})
 

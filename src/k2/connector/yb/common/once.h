@@ -38,7 +38,7 @@
 #ifndef BASE_ONCE_H_
 #define BASE_ONCE_H_
 
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "integral_types.h"
 #include "dynamic_annotations.h"
 #include "macros.h"

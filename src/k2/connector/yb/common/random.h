@@ -27,7 +27,7 @@
 #include <vector>
 
 #include "map-util.h"
-#include "locks.h"
+#include "yb/common/concurrent/locks.h"
 
 namespace yb {
 

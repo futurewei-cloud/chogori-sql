@@ -26,7 +26,7 @@
 #define YB_GUTIL_BIND_H_
 
 #include "bind_internal.h"
-#include "callback_internal.h"
+#include "yb/common/concurrent/callback_internal.h"
 
 // -----------------------------------------------------------------------------
 // Usage documentation

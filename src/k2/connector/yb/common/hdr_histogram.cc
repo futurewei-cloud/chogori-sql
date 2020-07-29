@@ -35,7 +35,7 @@
 #include <cmath>
 #include <limits>
 
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "bits.h"
 #include "substitute.h"
 #include "status.h"

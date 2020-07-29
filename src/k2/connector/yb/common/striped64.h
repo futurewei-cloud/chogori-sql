@@ -34,8 +34,8 @@
 #define YB_UTIL_STRIPED64_H_
 
 #include "port.h"
-#include "atomic.h"
-#include "yb/common/threading/threadlocal.h"
+#include "yb/common/concurrent/atomic.h"
+#include "yb/common/concurrent/threadlocal.h"
 
 namespace yb {
 

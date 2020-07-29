@@ -59,7 +59,7 @@
 #include <cstdint>
 #include <iosfwd>
 
-#include "atomicops.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "gscoped_ptr.h"
 #include "status.h"
 

@@ -39,7 +39,7 @@
 #include "yb/common/stringprintf.h"
 #include "yb/common/sysinfo.h"
 #include "yb/common/walltime.h"
-#include "yb/common/threading/thread_restrictions.h"
+#include "yb/common/concurrent/thread_restrictions.h"
 
 using namespace std::literals;
 
