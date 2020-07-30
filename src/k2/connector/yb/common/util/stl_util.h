@@ -66,7 +66,7 @@ using std::string;
 #include <vector>
 using std::vector;
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
 #include "yb/common/algorithm.h"

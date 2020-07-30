@@ -35,10 +35,10 @@
 #include <limits>
 #include <glog/logging.h>
 
-#include "yb/common/mathlimits.h"
+#include "yb/common/type/mathlimits.h"
 #include "yb/common/strings/stringprintf.h"
-#include "yb/common/sysinfo.h"
-#include "yb/common/walltime.h"
+#include "yb/common/sys/sysinfo.h"
+#include "yb/common/sys/walltime.h"
 #include "yb/common/concurrent/thread_restrictions.h"
 
 using namespace std::literals;

@@ -43,8 +43,8 @@ using std::swap;
 using std::make_pair;
 using std::pair;
 
-#include "yb/common/int128.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/int128.h"
+#include "yb/common/type/integral_types.h"
 #include <glog/logging.h>
 #include "yb/common/log/logging-inl.h"
 #include "hash128to64.h"

@@ -32,7 +32,7 @@
 
 #include "yb/common/concurrent/locks.h"
 
-#include "yb/common/malloc.h"
+#include "yb/common/sys/malloc.h"
 
 namespace yb {
 

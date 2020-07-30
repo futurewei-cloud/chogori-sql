@@ -19,8 +19,8 @@
 #include <string>
 using std::string;
 
-#include "yb/common/basictypes.h"
-#include "yb/common/numbers.h"
+#include "yb/common/type/basictypes.h"
+#include "yb/common/type/numbers.h"
 #include "stringpiece.h"
 
 

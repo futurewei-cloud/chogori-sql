@@ -41,7 +41,7 @@ using std::vector;
 #include <glog/logging.h>
 #include "yb/common/log/logging-inl.h"
 #include "ascii_ctype.h"
-#include "yb/common/numbers.h"
+#include "yb/common/type/numbers.h"
 #include "stringpiece.h"
 #include "yb/common/util/stl_util.h"  // for string_as_array, STLAppendToString
 #include "yb/common/utf.h"

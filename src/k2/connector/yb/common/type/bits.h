@@ -21,7 +21,7 @@
 #include "basictypes.h"
 #include "integral_types.h"
 #include "yb/common/log/logging-inl.h"
-#include "macros.h"
+#include "yb/common/macros.h"
 
 #ifndef _BITS_H_
 #define _BITS_H_

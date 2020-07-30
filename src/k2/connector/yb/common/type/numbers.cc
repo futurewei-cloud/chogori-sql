@@ -22,7 +22,7 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
+#include "yb/common/errno.h"
 #include <float.h>          // for DBL_DIG and FLT_DIG
 #include <math.h>           // for HUGE_VAL
 #include <stdio.h>
@@ -39,7 +39,7 @@ using std::string;
 #include "integral_types.h"
 #include <glog/logging.h>
 #include "yb/common/log/logging-inl.h"
-#include "gscoped_ptr.h"
+#include "yb/common/gscoped_ptr.h"
 #include "yb/common/strings/stringprintf.h"
 #include "yb/common/strings/strtoint.h"
 #include "yb/common/strings/ascii_ctype.h"

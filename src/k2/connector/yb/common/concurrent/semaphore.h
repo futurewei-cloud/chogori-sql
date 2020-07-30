@@ -40,7 +40,7 @@
 
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 
 namespace yb {
 

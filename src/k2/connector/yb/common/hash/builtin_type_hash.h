@@ -25,7 +25,7 @@
 #include <stdint.h>
 
 #include "yb/common/casts.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 #include "jenkins_lookup2.h"
 

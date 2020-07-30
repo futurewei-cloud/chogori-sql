@@ -47,7 +47,7 @@
 #include <stdlib.h> // For strtol* functions.
 #include <string>
 using std::string;
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
 

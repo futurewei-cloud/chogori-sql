@@ -135,9 +135,9 @@
 #include <string.h>
 #include <string>
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/port.h"
-#include "yb/common/type_traits.h"
+#include "yb/common/type/type_traits.h"
 #include "yb/common/strings/fastmem.h"
 #include "yb/common/hash/hash.h"
 

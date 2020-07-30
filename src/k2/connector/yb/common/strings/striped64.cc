@@ -30,7 +30,7 @@
 // under the License.
 //
 
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/random.h"
 #include "striped64.h"
 #include "yb/common/concurrent/threadlocal.h"

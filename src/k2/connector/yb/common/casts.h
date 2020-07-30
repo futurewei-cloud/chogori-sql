@@ -32,7 +32,7 @@
 
 #include "macros.h"
 #include "yb/common/util/template_util.h"
-#include "type_traits.h"
+#include "yb/common/type/type_traits.h"
 
 namespace yb {
 

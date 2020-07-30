@@ -46,10 +46,10 @@ using std::pair;
 #include <vector>
 using std::vector;
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 #include "yb/common/util/template_util.h"
-#include "yb/common/numbers.h"
+#include "yb/common/type/numbers.h"
 #include "strcat.h"    // For backward compatibility.
 #include "stringpiece.h"
 #include "yb/common/hash/hash.h"

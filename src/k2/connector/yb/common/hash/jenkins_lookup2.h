@@ -29,7 +29,7 @@
 #ifndef UTIL_HASH_JENKINS_LOOKUP2_H_
 #define UTIL_HASH_JENKINS_LOOKUP2_H_
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/port.h"
 
 // ----------------------------------------------------------------------

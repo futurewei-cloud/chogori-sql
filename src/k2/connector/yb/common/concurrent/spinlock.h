@@ -54,7 +54,7 @@
 #define YB_GUTIL_SPINLOCK_H
 
 #include "yb/common/concurrent/atomicops.h"
-#include "yb/common/basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/dynamic_annotations.h"
 #include "yb/common/concurrent/thread_annotations.h"
 

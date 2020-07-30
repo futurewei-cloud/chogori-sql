@@ -46,8 +46,8 @@
 
 #include <assert.h>
 
-#include "int128.h"
-#include "integral_types.h"
+#include "yb/common/type/int128.h"
+#include "yb/common/type/integral_types.h"
 #include "port.h"
 
 inline uint64 gbswap_64(uint64 host_int) {

@@ -35,7 +35,7 @@
 #include <atomic>
 
 #include "yb/common/concurrent/condition_variable.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/concurrent/mutex.h"
 
 namespace yb {

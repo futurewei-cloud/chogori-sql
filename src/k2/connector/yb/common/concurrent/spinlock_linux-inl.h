@@ -51,7 +51,7 @@
 #include <sched.h>
 #include <time.h>
 #include <limits.h>
-#include "yb/common/linux_syscall_support.h"
+#include "yb/common/sys/linux_syscall_support.h"
 
 #define FUTEX_WAIT 0
 #define FUTEX_WAKE 1

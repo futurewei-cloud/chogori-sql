@@ -20,7 +20,7 @@
 #define BASE_BASICTYPES_H_
 
 #include "integral_types.h"
-#include "macros.h"
+#include "yb/common/macros.h"
 
 // Argument type used in interfaces that can optionally take ownership
 // of a passed in argument.  If TAKE_OWNERSHIP is passed, the called

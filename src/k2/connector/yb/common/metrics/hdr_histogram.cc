@@ -36,7 +36,7 @@
 #include <limits>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "yb/common/bits.h"
+#include "yb/common/type/bits.h"
 #include "yb/common/strings/substitute.h"
 #include "yb/common/status.h"
 

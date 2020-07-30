@@ -39,7 +39,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "yb/common/basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/gscoped_ptr.h"
 #include "yb/common/concurrent/condition_variable.h"
 #include "yb/common/concurrent/mutex.h"

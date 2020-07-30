@@ -38,8 +38,8 @@
 
 #include <stddef.h>  // for size_t.
 
-#include "yb/common/int128.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/int128.h"
+#include "yb/common/type/integral_types.h"
 
 namespace util_hash {
 

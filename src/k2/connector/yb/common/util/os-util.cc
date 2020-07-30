@@ -44,7 +44,7 @@
 #include <vector>
 #include <unistd.h>
 
-#include "yb/common/numbers.h"
+#include "yb/common/type/numbers.h"
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
 #include "yb/common/errno.h"

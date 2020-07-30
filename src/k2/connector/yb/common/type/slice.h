@@ -46,7 +46,7 @@
 #include "yb/common/strings/fastmem.h"
 #include "yb/common/strings/stringpiece.h"
 #include "yb/common/strings/faststring.h"
-#include "cast.h"
+#include "yb/common/cast.h"
 
 
 namespace yb {

@@ -29,7 +29,7 @@
 
 #include <boost/optional.hpp>
 #include "yb/common/strings/fastmem.h"
-#include "malloc.h"
+#include "yb/common/sys/malloc.h"
 
 #include "yb/common/concurrent/locks.h"
 #include "yb/common/util/debug-util.h"

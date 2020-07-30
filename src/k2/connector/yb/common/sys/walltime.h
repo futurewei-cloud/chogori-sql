@@ -48,7 +48,7 @@
 #include "once.h"
 #endif  // defined(__APPLE__)
 
-#include "integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 using std::string;
 

@@ -48,7 +48,7 @@
 #include "yb/common/concurrent/condition_variable.h"
 #include "yb/common/enums.h"
 #include "yb/common/metrics/metrics.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/concurrent/mutex.h"
 #include "yb/common/status.h"
 

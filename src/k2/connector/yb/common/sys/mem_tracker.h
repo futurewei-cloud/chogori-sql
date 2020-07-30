@@ -50,8 +50,8 @@
 #include "yb/common/concurrent/high_water_mark.h"
 #include "yb/common/concurrent/locks.h"
 #include "yb/common/concurrent/mutex.h"
-#include "random.h"
-#include "strongly_typed_bool.h"
+#include "yb/common/random.h"
+#include "yb/common/type/strongly_typed_bool.h"
 
 namespace yb {
 

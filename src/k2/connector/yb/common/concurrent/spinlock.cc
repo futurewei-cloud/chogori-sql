@@ -50,8 +50,8 @@
 #include "yb/common/concurrent/spinlock.h"
 #include "yb/common/concurrent/synchronization_profiling.h"
 #include "yb/common/concurrent/spinlock_internal.h"
-#include "yb/common/walltime.h"
-#include "yb/common/sysinfo.h"
+#include "yb/common/sys/walltime.h"
+#include "yb/common/sys/sysinfo.h"
 
 namespace base {
 

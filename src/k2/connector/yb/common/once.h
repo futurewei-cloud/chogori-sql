@@ -39,11 +39,11 @@
 #define BASE_ONCE_H_
 
 #include "yb/common/concurrent/atomicops.h"
-#include "integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "dynamic_annotations.h"
 #include "macros.h"
 #include "port.h"
-#include "type_traits.h"
+#include "yb/common/type/type_traits.h"
 
 // The following enum values are not for use by clients
 enum {

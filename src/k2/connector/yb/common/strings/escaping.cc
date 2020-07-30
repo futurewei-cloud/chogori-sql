@@ -27,7 +27,7 @@ using std::numeric_limits;
 #include <vector>
 using std::vector;
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/port.h"
 #include "yb/common/gscoped_ptr.h"
 #include "join.h"

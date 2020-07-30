@@ -23,7 +23,7 @@
 #include "yb/common/strings/substitute.h"
 #include "yb/common/status.h"
 #include "yb/common/hexdump.h"
-#include "yb/common/slice.h"
+#include "yb/common/type/slice.h"
 
 namespace yb {
 

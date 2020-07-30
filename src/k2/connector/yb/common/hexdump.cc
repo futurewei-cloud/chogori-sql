@@ -35,7 +35,7 @@
 
 #include "yb/common/strings/stringprintf.h"
 #include "yb/common/hexdump.h"
-#include "yb/common/slice.h"
+#include "yb/common/type/slice.h"
 
 namespace yb {
 

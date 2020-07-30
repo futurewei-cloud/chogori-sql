@@ -27,7 +27,7 @@ using std::iterator_traits;
 #include <limits>
 using std::numeric_limits;
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include <glog/logging.h>
 #include "yb/common/log/logging-inl.h"
 #include "yb/common/macros.h"

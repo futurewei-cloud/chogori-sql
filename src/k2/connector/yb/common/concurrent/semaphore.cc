@@ -34,7 +34,7 @@
 
 #include <semaphore.h>
 #include <glog/logging.h>
-#include "yb/common/walltime.h"
+#include "yb/common/sys/walltime.h"
 namespace yb {
 
 Semaphore::Semaphore(int capacity) {

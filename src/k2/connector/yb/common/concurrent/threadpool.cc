@@ -44,7 +44,7 @@
 #include "yb/common/util/map-util.h"
 #include "yb/common/util/stl_util.h"
 #include "yb/common/strings/substitute.h"
-#include "yb/common/sysinfo.h"
+#include "yb/common/sys/sysinfo.h"
 #include "yb/common/errno.h"
 #include "yb/common/metrics/metrics.h"
 #include "yb/common/stopwatch.h"

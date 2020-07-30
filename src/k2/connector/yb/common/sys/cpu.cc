@@ -24,7 +24,7 @@
 
 #include <algorithm>
 
-#include "basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/strings/stringpiece.h"
 
 #if defined(__x86_64__)

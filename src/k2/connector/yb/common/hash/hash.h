@@ -101,8 +101,8 @@ using __gnu_cxx::hash_set;
 #include <utility>
 
 #include "yb/common/casts.h"
-#include "yb/common/int128.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/int128.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
 #include "city.h"

@@ -51,7 +51,7 @@
 #include <stdio.h>    // for snprintf(), sscanf()
 #include <string.h>   // for memmove(), memchr(), etc.
 #include <fcntl.h>    // for open()
-#include <errno.h>    // for errno
+#include "yb/common/errno.h"    // for errno
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>   // for read()
 #endif
@@ -74,8 +74,8 @@
 
 #include <glog/logging.h>
 
-#include "dynamic_annotations.h"   // for RunningOnValgrind
-#include "macros.h"
+#include "yb/common/dynamic_annotations.h"   // for RunningOnValgrind
+#include "yb/common/macros.h"
 #include "sysinfo.h"
 #include "walltime.h"
 #include "yb/common/log/logging.h"

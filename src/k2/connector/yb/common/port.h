@@ -45,7 +45,7 @@
 #include <malloc.h>         // for memalign()
 #endif
 
-#include "integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 // Must happens before inttypes.h inclusion */
 #if defined(__APPLE__)

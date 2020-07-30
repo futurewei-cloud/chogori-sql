@@ -53,7 +53,7 @@
 #include <glog/logging.h>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/log/logging-inl.h"
 #include "yb/common/dynamic_annotations.h"
 

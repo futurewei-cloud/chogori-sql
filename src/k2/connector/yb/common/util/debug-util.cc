@@ -58,20 +58,20 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 
-#include "yb/common/linux_syscall_support.h"
+#include "yb/common/sys/linux_syscall_support.h"
 #include "yb/common/macros.h"
 #include "yb/common/singleton.h"
 #include "yb/common/concurrent/spinlock.h"
 #include "yb/common/strings/stringprintf.h"
-#include "yb/common/numbers.h"
+#include "yb/common/type/numbers.h"
 #include "yb/common/strings/strtoint.h"
 
 #include "yb/common/enums.h"
 #include "yb/common/env.h"
 #include "yb/common/errno.h"
 #include "yb/common/concurrent/lockfree.h"
-#include "yb/common/memory.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/memory.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/concurrent/thread.h"
 #include "yb/common/strings/string_trim.h"
 

@@ -52,8 +52,8 @@
 
 #include "once.h"
 #include "port.h"
-#include "strings/join.h"
-#include "numbers.h"
+#include "yb/common/strings/join.h"
+#include "yb/common/type/numbers.h"
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
 #include "yb/common/util/debug-util.h"

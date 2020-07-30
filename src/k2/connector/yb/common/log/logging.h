@@ -55,10 +55,10 @@
 
 #include "yb/common/concurrent/atomicops.h"
 #include "yb/common/dynamic_annotations.h"
-#include "yb/common/walltime.h"
+#include "yb/common/sys/walltime.h"
 #include "yb/common/fault_injection.h"
 #include "logging_callback.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Throttled logging support

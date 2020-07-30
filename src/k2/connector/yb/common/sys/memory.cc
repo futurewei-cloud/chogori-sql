@@ -39,8 +39,8 @@
 
 #include <gflags/gflags.h>
 
-#include "alignment.h"
-#include "flag_tags.h"
+#include "yb/common/alignment.h"
+#include "yb/common/flag_tags.h"
 #include "memory.h"
 #include "mem_tracker.h"
 

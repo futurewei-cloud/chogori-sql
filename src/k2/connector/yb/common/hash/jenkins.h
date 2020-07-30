@@ -24,7 +24,7 @@
 #ifndef UTIL_HASH_JENKINS_H_
 #define UTIL_HASH_JENKINS_H_
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 // ----------------------------------------------------------------------
 // Hash32StringWithSeed()

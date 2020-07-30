@@ -119,9 +119,9 @@
 
 #include <algorithm>  // For std::swap().
 
-#include "basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/util/template_util.h"
-#include "type_traits.h"
+#include "yb/common/type/type_traits.h"
 #include "move.h"
 
 namespace yb {

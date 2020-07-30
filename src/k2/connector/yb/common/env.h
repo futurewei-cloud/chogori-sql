@@ -36,7 +36,7 @@
 #include "file_system.h"
 #include "result.h"
 #include "status.h"
-#include "strongly_typed_bool.h"
+#include "yb/common/type/strongly_typed_bool.h"
 
 namespace yb {
 

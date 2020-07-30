@@ -28,7 +28,7 @@
 #include <stddef.h>
 
 #include "yb/common/port.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "city.h"
 #include "jenkins.h"
 #include "jenkins_lookup2.h"

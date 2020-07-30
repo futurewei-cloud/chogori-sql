@@ -19,8 +19,8 @@
 #ifndef UTIL_HASH_HASH128TO64_H_
 #define UTIL_HASH_HASH128TO64_H_
 
-#include "yb/common/int128.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/int128.h"
+#include "yb/common/type/integral_types.h"
 
 // Hash 128 input bits down to 64 bits of output.
 // This is intended to be a reasonably good hash function.

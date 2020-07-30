@@ -51,7 +51,7 @@
 
 #include "yb/common/concurrent/atomicops.h"
 #include "yb/common/dynamic_annotations.h"
-#include "yb/common/mathlimits.h"
+#include "yb/common/type/mathlimits.h"
 #include "yb/common/once.h"
 #include "yb/common/strings/substitute.h"
 #include "yb/common/util/debug-util.h"

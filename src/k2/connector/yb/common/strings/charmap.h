@@ -33,9 +33,9 @@
 
 #include <string.h>
 
-#include "yb/common/basictypes.h"
-#include "yb/common/integral_types.h"
-#include "yb/common/type_traits.h"
+#include "yb/common/type/basictypes.h"
+#include "yb/common/type/integral_types.h"
+#include "yb/common/type/type_traits.h"
 
 class Charmap {
  public:

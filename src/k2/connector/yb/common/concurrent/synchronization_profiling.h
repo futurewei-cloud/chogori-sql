@@ -50,7 +50,7 @@
 #ifndef BASE_AUXILIARY_SYNCHRONIZATION_PROFILING_H_
 #define BASE_AUXILIARY_SYNCHRONIZATION_PROFILING_H_
 
-#include "yb/common/basictypes.h"
+#include "yb/common/type/basictypes.h"
 
 namespace gutil {
 

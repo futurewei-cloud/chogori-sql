@@ -44,7 +44,7 @@
 
 #include "macros.h"
 #include "yb/common/strings/stringprintf.h"
-#include "walltime.h"
+#include "yb/common/sys/walltime.h"
 
 namespace yb {
 

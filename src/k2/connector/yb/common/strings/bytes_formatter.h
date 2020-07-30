@@ -17,7 +17,7 @@
 #include <limits>
 #include <string>
 
-#include "yb/common/slice.h"
+#include "yb/common/type/slice.h"
 #include "yb/common/enums.h"
 
 namespace yb {

@@ -35,7 +35,7 @@
 #include <string>
 #include <gflags/gflags.h>
 
-#include "cpu.h"
+#include "yb/common/sys/cpu.h"
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
 #include "env.h"

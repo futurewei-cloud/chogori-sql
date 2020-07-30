@@ -50,8 +50,8 @@
 
 #include <sys/time.h>
 
-#include "port.h"
-#include "arm_instruction_set_select.h"
+#include "yb/common/port.h"
+#include "yb/common/arm_instruction_set_select.h"
 
 // Please do not nest #if directives.  Keep one section, and one #if per
 // platform.

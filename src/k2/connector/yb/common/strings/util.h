@@ -57,7 +57,7 @@ using std::string;
 #include <vector>
 using std::vector;
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/port.h"
 #include "stringpiece.h"
 

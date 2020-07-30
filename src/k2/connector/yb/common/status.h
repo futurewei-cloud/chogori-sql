@@ -38,9 +38,9 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
-#include "strongly_typed_bool.h"
+#include "yb/common/type/strongly_typed_bool.h"
 #include "endian.h"
-#include "slice.h"
+#include "yb/common/type/slice.h"
 #include "format.h"
 
 /*

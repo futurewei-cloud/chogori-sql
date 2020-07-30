@@ -51,7 +51,7 @@
 #ifndef BASE_SPINLOCK_INTERNAL_H_
 #define BASE_SPINLOCK_INTERNAL_H_
 
-#include "yb/common/basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/concurrent/atomicops.h"
 
 namespace base {

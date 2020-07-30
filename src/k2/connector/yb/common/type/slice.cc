@@ -34,7 +34,7 @@
 #include "slice.h"
 
 #include "yb/common/strings/stringprintf.h"
-#include "status.h"
+#include "yb/common/status.h"
 
 DEFINE_int32(non_graph_characters_percentage_to_use_hexadecimal_rendering, 10,
              "Non graph charaters percentage to use hexadecimal rendering");

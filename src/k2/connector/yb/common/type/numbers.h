@@ -36,8 +36,8 @@ using std::vector;
 
 #include "int128.h"
 #include "integral_types.h"
-#include "macros.h"
-#include "port.h"
+#include "yb/common/macros.h"
+#include "yb/common/port.h"
 #include "yb/common/strings/stringprintf.h"
 
 

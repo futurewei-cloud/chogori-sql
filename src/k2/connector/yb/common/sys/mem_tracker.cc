@@ -46,19 +46,19 @@
 #include <gflags/gflags.h>
 
 #include "yb/common/util/map-util.h"
-#include "once.h"
+#include "yb/common/once.h"
 #include "yb/common/strings/join.h"
 #include "yb/common/strings/human_readable.h"
 #include "yb/common/strings/substitute.h"
 #include "yb/common/util/debug-util.h"
 //#include "yb/util/debug/trace_event.h"
-#include "env.h"
-#include "flag_tags.h"
+#include "yb/common/env.h"
+#include "yb/common/flag_tags.h"
 #include "memory.h"
 #include "yb/common/metrics/metrics.h"
 #include "yb/common/concurrent/mutex.h"
 #include "yb/common/util/random_util.h"
-#include "status.h"
+#include "yb/common/status.h"
 #include "yb/common/log/logging.h"
 
 using namespace std::literals;

@@ -18,8 +18,8 @@
 
 #include <boost/function.hpp>
 
-#include "coding_consts.h"
-#include "slice.h"
+#include "yb/common/type/coding_consts.h"
+#include "yb/common/type/slice.h"
 #include "result.h"
 #include "status.h"
 

@@ -18,7 +18,7 @@
 #ifndef STRINGS_CHARSET_H_
 #define STRINGS_CHARSET_H_
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 namespace strings {
 

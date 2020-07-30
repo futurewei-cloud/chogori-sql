@@ -25,7 +25,7 @@
 #include <glog/logging.h>
 
 #include "yb/common/errno.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/concurrent/thread_restrictions.h"
 
 using std::string;

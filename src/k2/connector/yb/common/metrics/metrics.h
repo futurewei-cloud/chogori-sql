@@ -261,10 +261,10 @@
 #include "yb/common/concurrent/atomic.h"
 //#include "yb/util/jsonwriter.h"
 #include "yb/common/concurrent/locks.h"
-#include "yb/common/monotime.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/common/status.h"
 #include "yb/common/strings/striped64.h"
-#include "yb/common/strongly_typed_bool.h"
+#include "yb/common/type/strongly_typed_bool.h"
 #include "yb/common/concurrent/shared_lock.h"
 
 // Define a new entity type.

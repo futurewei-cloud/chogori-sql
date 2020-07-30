@@ -36,7 +36,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/port.h"
 
 namespace strings {

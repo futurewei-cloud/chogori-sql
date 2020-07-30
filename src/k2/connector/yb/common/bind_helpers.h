@@ -160,7 +160,7 @@
 
 #include <assert.h>
 
-#include "basictypes.h"
+#include "yb/common/type/basictypes.h"
 #include "yb/common/concurrent/callback.h"
 #include "yb/common/util/template_util.h"
 

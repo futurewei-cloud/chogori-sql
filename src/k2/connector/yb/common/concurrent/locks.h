@@ -42,7 +42,7 @@
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
 #include "yb/common/concurrent/spinlock.h"
-#include "yb/common/sysinfo.h"
+#include "yb/common/sys/sysinfo.h"
 #include "yb/common/errno.h"
 #include "yb/common/concurrent/rw_semaphore.h"
 #include "yb/common/concurrent/shared_lock.h"

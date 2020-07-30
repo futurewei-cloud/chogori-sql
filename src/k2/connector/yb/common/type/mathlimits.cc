@@ -37,7 +37,7 @@
 
 #include "mathlimits.h"
 
-#include "integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 // MSVC++ 2005 thinks the header declaration was a definition, and
 // erroneously flags these as a duplicate definition.

@@ -21,7 +21,7 @@
 
 #include <glog/logging.h>
 
-#include "yb/common/linux_syscall_support.h"
+#include "yb/common/sys/linux_syscall_support.h"
 
 namespace base {
 

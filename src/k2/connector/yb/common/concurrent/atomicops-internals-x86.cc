@@ -43,7 +43,7 @@
 
 #include <glog/logging.h>
 #include "yb/common/log/logging-inl.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 
 // This file only makes sense with atomicops-internals-x86.h -- it
 // depends on structs that are defined in that file.  If atomicops.h

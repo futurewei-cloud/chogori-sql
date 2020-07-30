@@ -58,15 +58,15 @@
 
 #include <glog/logging.h>
 
-#include "gscoped_ptr.h"
+#include "yb/common/gscoped_ptr.h"
 #include "yb/common/log/logging-inl.h"
-#include "macros.h"
+#include "yb/common/macros.h"
 #include "yb/common/strings/stringpiece.h"
-#include "singleton.h"
+#include "yb/common/singleton.h"
 
 #include "yb/common/concurrent/boost_mutex_utils.h"
 #include "yb/common/concurrent/mutex.h"
-#include "size_literals.h"
+#include "yb/common/size_literals.h"
 
 using std::copy;
 using std::max;

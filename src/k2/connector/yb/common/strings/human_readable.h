@@ -26,8 +26,8 @@ using std::less;
 #include <string>
 using std::string;
 
-#include "yb/common/basictypes.h"
-#include "yb/common/integral_types.h"
+#include "yb/common/type/basictypes.h"
+#include "yb/common/type/integral_types.h"
 #include "yb/common/macros.h"
 
 //                                 WARNING

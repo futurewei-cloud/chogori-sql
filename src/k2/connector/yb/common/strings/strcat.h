@@ -24,8 +24,8 @@
 #include <string>
 using std::string;
 
-#include "yb/common/integral_types.h"
-#include "yb/common/numbers.h"
+#include "yb/common/type/integral_types.h"
+#include "yb/common/type/numbers.h"
 #include "stringpiece.h"
 
 // The AlphaNum type was designed to be used as the parameter type for StrCat().

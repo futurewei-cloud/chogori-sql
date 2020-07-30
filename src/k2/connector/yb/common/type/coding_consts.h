@@ -28,7 +28,7 @@
 #include <string.h>
 #include <string>
 
-#include "slice.h"
+#include "yb/common/type/slice.h"
 #include "yb/common/strings/faststring.h"
 
 namespace yb {

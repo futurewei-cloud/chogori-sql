@@ -24,7 +24,7 @@
 #ifndef UTIL_HASH_LEGACY_HASH_H_
 #define UTIL_HASH_LEGACY_HASH_H_
 
-#include "yb/common/integral_types.h"
+#include "yb/common/type/integral_types.h"
 #include "builtin_type_hash.h"
 #include "string_hash.h"
 

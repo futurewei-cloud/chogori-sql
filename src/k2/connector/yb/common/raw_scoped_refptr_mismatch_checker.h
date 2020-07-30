@@ -22,7 +22,7 @@
 
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/util/template_util.h"
-#include "tuple.h"
+#include "yb/common/type/tuple.h"
 
 // It is dangerous to post a task with a T* argument where T is a subtype of
 // RefCounted(Base|ThreadSafeBase), since by the time the parameter is used, the
