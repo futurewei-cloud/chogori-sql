@@ -28,16 +28,10 @@
 #include "yb/common/flag_tags.h"
 #include "yb/common/log/logging.h"
 
-/*
-#include "yb/common/pgsql_protocol.pb.h"
-
-#include "yb/common/version_info.h"
-#include "yb/common/net/net_util.h"
-
-*/
 using std::string;
-//DEFINE_test_flag(string, process_info_dir, string(),
-//                 "Directory where all postgres process will writes their PIDs and executable name");
+DEFINE_string(process_info_dir, "", \
+                 "Directory where all postgres process will writes their PIDs and executable name");
+
 
 YBCStatus YBCStatusOK() {
   return nullptr;
@@ -249,7 +243,6 @@ YBCStatus YBCInitGFlags(const char* argv0) {
   return ToYBCStatus(yb::InitGFlags(argv0));
 }
 
-/*
  YBCStatus YBCInit(const char* argv0,
                   YBCPAllocFn palloc_fn,
                   YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
@@ -258,12 +251,12 @@ YBCStatus YBCInitGFlags(const char* argv0) {
     YBCSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
   }
   auto status = yb::InitGFlags(argv0);
-  if (status.ok() && !FLAGS_TEST_process_info_dir.empty()) {
-    WriteCurrentProcessInfo(FLAGS_TEST_process_info_dir);
+  if (status.ok() && !FLAGS_process_info_dir.empty()) {
+    WriteCurrentProcessInfo(FLAGS_process_info_dir);
   }
   return ToYBCStatus(status);
 }
-*/
+
 void YBCLogImpl(
     google::LogSeverity severity,
     const char* file,
@@ -292,17 +285,6 @@ const char* YBCGetStackTrace() {
 // TODO: add the logic
     return YBCPAllocStdString("Not Implemented");
 }
-
-/*
-void YBCResolveHostname() {
-  string fqdn;
-  auto status = GetFQDN(&fqdn);
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to get fully qualified domain name of the local hostname: "
-                 << status;
-  }
-}
-*/
 
 } // extern "C"
 

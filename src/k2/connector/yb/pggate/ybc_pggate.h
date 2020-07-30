@@ -28,13 +28,6 @@ extern "C" {
 void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, YBCPgCallbacks pg_callbacks);
 void YBCDestroyPgGate();
 
-//--------------------------------------------------------------------------------------------------
-// Environment and Session.
-
-// Initialize ENV within which PGSQL calls will be executed.
-YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env);
-YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env);
-
 // Initialize a session to process statements that come from the same client connection.
 YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name);
 

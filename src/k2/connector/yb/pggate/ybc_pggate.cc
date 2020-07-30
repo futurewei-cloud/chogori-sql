@@ -2,15 +2,29 @@
 
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
-//--------------------------------------------------------------------------------------------------
-// Environment and Session.
+#include "k23si.h"
 
-// Initialize ENV within which PGSQL calls will be executed.
-YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env){
-    return YBCStatusOK();
+k2gate::K23SIGate* k23si;
+std::atomic<bool> k23si_shutdown_done;
+
+void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
+    CHECK(k23si == nullptr) << ": " << __PRETTY_FUNCTION__ << " can only be called once";
+
+    k23si_shutdown_done.exchange(false);
+    k23si = new k2gate::K23SIGate();
+
+    VLOG(1) << "K23SI gate open";
 }
-YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env){
-    return YBCStatusOK();
+
+void YBCDestroyPgGate() {
+    if (k23si_shutdown_done.exchange(true)) {
+        LOG(DFATAL) << __PRETTY_FUNCTION__ << " should only be called once";
+    } else {
+        k2gate::K23SIGate *local_k23si = k23si;
+        k23si = nullptr;  // YBCPgIsYugaByteEnabled() must return false from now on.
+        delete local_k23si;
+        VLOG(1) << __PRETTY_FUNCTION__ << "K23SI gate closed";
+    }
 }
 
 // Initialize a session to process statements that come from the same client connection.
@@ -648,7 +662,7 @@ bool YBCGetDisableIndexBackfill() {
 }
 
 bool YBCPgIsYugaByteEnabled() {
-    return false;
+    return k23si != nullptr;
 }
 
 // Sets the specified timeout in the rpc service.
@@ -707,12 +721,6 @@ YBCStatus YBCInit(const char* argv0,
                   YBCPAllocFn palloc_fn,
                   YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
     return YBCStatusOK();
-}
-
-void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
-}
-
-void YBCDestroyPgGate() {
 }
 
 YBCPgMemctx YBCPgCreateMemctx() {
