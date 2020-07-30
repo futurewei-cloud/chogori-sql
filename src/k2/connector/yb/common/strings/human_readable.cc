@@ -22,7 +22,7 @@
 #include <string.h>
 
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "stringprintf.h"
 #include "strip.h"
 

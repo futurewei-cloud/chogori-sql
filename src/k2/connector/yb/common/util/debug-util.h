@@ -37,7 +37,7 @@
 #include <string>
 #include <vector>
 
-#include "yb/common/fastmem.h"
+#include "yb/common/strings/fastmem.h"
 #include "yb/common/enums.h"
 #include "yb/common/result.h"
 #include "yb/common/concurrent/thread.h"

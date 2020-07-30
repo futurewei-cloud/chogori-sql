@@ -35,8 +35,8 @@
 
 #include <string>
 
-#include "status.h"
-#include "env.h"
+#include "yb/common/status.h"
+#include "yb/common/env.h"
 
 namespace yb {
 

@@ -16,7 +16,7 @@
 #ifndef YB_UTIL_FORMAT_H
 #define YB_UTIL_FORMAT_H
 
-#include "tostring.h"
+#include "yb/common/strings/tostring.h"
 
 namespace yb {
 

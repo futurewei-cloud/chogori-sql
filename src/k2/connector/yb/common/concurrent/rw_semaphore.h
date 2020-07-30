@@ -38,7 +38,7 @@
 #include "yb/common/concurrent/atomicops.h"
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
-#include "yb/common/debug-util.h"
+#include "yb/common/util/debug-util.h"
 
 #include "yb/common/concurrent/thread.h"
 

@@ -42,7 +42,7 @@
 #include <string.h>
 
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "yb/common/integral_types.h"
 
 // This file only makes sense with atomicops-internals-x86.h -- it

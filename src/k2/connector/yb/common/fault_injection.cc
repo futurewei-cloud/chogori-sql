@@ -38,10 +38,10 @@
 
 #include "once.h"
 //#include "yb/util/debug/leakcheck_disabler.h"
-#include "logging.h"
+#include "yb/common/log/logging.h"
 #include "monotime.h"
 #include "random.h"
-#include "random_util.h"
+#include "yb/common/util/random_util.h"
 
 namespace yb {
 namespace fault_injection {

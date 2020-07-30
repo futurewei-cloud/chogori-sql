@@ -39,10 +39,10 @@
 #include <boost/container/small_vector.hpp>
 
 #include "yb/common/strings/substitute.h"
-#include "env.h"
-#include "env_util.h"
-#include "path_util.h"
-#include "status.h"
+#include "yb/common/env.h"
+#include "yb/common/util/env_util.h"
+#include "yb/common/util/path_util.h"
+#include "yb/common/status.h"
 #include "yb/common/strings/util.h"
 
 using strings::Substitute;

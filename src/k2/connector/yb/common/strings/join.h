@@ -48,7 +48,7 @@ using std::vector;
 
 #include "yb/common/integral_types.h"
 #include "yb/common/macros.h"
-#include "yb/common/template_util.h"
+#include "yb/common/util/template_util.h"
 #include "yb/common/numbers.h"
 #include "strcat.h"    // For backward compatibility.
 #include "stringpiece.h"

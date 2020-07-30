@@ -28,7 +28,7 @@
 #include "bind_helpers.h"
 #include "yb/common/concurrent/callback_internal.h"
 #include "raw_scoped_refptr_mismatch_checker.h"
-#include "template_util.h"
+#include "yb/common/util/template_util.h"
 
 /* 
 #if defined(OS_WIN)

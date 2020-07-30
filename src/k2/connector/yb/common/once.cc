@@ -16,7 +16,7 @@
 //
 
 #include <glog/logging.h>
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "once.h"
 #include "dynamic_annotations.h"
 #include "yb/common/concurrent/spinlock_internal.h"

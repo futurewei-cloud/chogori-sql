@@ -66,10 +66,10 @@ using std::string;
 #include <vector>
 using std::vector;
 
-#include "integral_types.h"
-#include "macros.h"
-#include "port.h"
-#include "algorithm.h"
+#include "yb/common/integral_types.h"
+#include "yb/common/macros.h"
+#include "yb/common/port.h"
+#include "yb/common/algorithm.h"
 
 // Sort and remove duplicates of an STL vector or deque.
 template<class T>

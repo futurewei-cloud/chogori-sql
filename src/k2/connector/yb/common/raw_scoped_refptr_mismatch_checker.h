@@ -21,7 +21,7 @@
 #define YB_GUTIL_RAW_SCOPED_REFPTR_MISMATCH_CHECKER_H_
 
 #include "yb/common/concurrent/ref_counted.h"
-#include "template_util.h"
+#include "yb/common/util/template_util.h"
 #include "tuple.h"
 
 // It is dangerous to post a task with a T* argument where T is a subtype of

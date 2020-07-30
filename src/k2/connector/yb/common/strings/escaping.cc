@@ -33,7 +33,7 @@ using std::vector;
 #include "join.h"
 #include "yb/utf/utf.h"  // for runetochar
 #include "charmap.h"
-#include "yb/common/stl_util.h"
+#include "yb/common/util/stl_util.h"
 
 namespace strings {
 

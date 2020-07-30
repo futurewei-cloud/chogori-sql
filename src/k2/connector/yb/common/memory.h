@@ -59,7 +59,7 @@
 #include <glog/logging.h>
 
 #include "gscoped_ptr.h"
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "macros.h"
 #include "yb/common/strings/stringpiece.h"
 #include "singleton.h"

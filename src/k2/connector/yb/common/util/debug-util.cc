@@ -64,7 +64,7 @@
 #include "yb/common/concurrent/spinlock.h"
 #include "yb/common/strings/stringprintf.h"
 #include "yb/common/numbers.h"
-#include "yb/common/strtoint.h"
+#include "yb/common/strings/strtoint.h"
 
 #include "yb/common/enums.h"
 #include "yb/common/env.h"

@@ -15,7 +15,7 @@
 #include <boost/uuid/detail/sha1.hpp>
 
 #include "yb/common/uuid.h"
-#include "yb/common/random_util.h"
+#include "yb/common/util/random_util.h"
 #include "yb/common/endian.h"
 
 namespace yb {

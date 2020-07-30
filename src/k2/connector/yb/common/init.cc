@@ -39,10 +39,10 @@
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
 #include "env.h"
-#include "env_util.h"
+#include "yb/common/util/env_util.h"
 #include "flag_tags.h"
-#include "logging.h"
-#include "path_util.h"
+#include "yb/common/log/logging.h"
+#include "yb/common/util/path_util.h"
 #include "status.h"
 //#include "yb/util/version_info.h"
 

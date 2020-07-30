@@ -76,7 +76,7 @@
 
 #include <glog/logging.h>
 
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "once.h"
 
 namespace util {

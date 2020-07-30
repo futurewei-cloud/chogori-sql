@@ -35,7 +35,7 @@
 #include <errno.h>
 #include <string.h>
 
-//#include "yb/util/logging.h"
+#include "yb/common/log/logging.h"
 #include "status.h"
 
 namespace yb {

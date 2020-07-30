@@ -25,9 +25,9 @@
 #include <string>
 
 #include "yb/common/hash/hash.h"
-#include "yb/common/logging-inl.h"
-#include "yb/common/stl_util.h"
-#include "yb/common/memutil.h"
+#include "yb/common/log/logging-inl.h"
+#include "yb/common/util/stl_util.h"
+#include "yb/common/util/memutil.h"
 
 using std::copy;
 using std::max;

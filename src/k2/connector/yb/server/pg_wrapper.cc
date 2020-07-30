@@ -24,11 +24,11 @@
 
 #include "yb/common/errno.h"
 #include "yb/common/flag_tags.h"
-#include "yb/common/logging.h"
+#include "yb/common/log/logging.h"
 #include "yb/common/subprocess.h"
-#include "yb/common/env_util.h"
-#include "yb/common/net_util.h"
-#include "yb/common/path_util.h"
+#include "yb/common/util/env_util.h"
+#include "yb/common/util/net_util.h"
+#include "yb/common/util/path_util.h"
 #include "yb/common/scope_exit.h"
 
 DEFINE_string(pg_proxy_bind_address, "", "Address for the PostgreSQL proxy to bind to");

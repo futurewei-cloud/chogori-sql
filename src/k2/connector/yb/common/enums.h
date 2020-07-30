@@ -30,7 +30,7 @@
 
 #include <glog/logging.h>
 
-#include "math_util.h"
+#include "yb/common/util/math_util.h"
 
 namespace yb {
 

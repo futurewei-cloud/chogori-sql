@@ -35,7 +35,7 @@
 
 #include <glog/logging.h>
 
-#include "yb/common/debug-util.h"
+#include "yb/common/util/debug-util.h"
 #include "yb/common/env.h"
 
 namespace yb {

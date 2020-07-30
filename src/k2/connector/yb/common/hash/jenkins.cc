@@ -34,7 +34,7 @@
 
 #include "yb/common/integral_types.h"
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "jenkins_lookup2.h"
 #include "yb/common/macros.h"
 

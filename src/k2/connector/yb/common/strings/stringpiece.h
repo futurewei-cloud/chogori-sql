@@ -138,7 +138,7 @@
 #include "yb/common/integral_types.h"
 #include "yb/common/port.h"
 #include "yb/common/type_traits.h"
-#include "yb/common/fastmem.h"
+#include "yb/common/strings/fastmem.h"
 #include "yb/common/hash/hash.h"
 
 class GStringPiece {

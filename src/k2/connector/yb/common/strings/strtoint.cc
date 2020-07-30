@@ -19,7 +19,7 @@
 //
 
 #include <errno.h>
-#include "port.h"
+#include "yb/common/port.h"
 #include "strtoint.h"
 
 // Replacement strto[u]l functions that have identical overflow and underflow

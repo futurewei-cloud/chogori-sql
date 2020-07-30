@@ -120,7 +120,7 @@
 #include <algorithm>  // For std::swap().
 
 #include "basictypes.h"
-#include "template_util.h"
+#include "yb/common/util/template_util.h"
 #include "type_traits.h"
 #include "move.h"
 

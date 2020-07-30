@@ -54,11 +54,11 @@
 #include <boost/preprocessor/stringize.hpp>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "dynamic_annotations.h"
-#include "walltime.h"
-#include "fault_injection.h"
+#include "yb/common/dynamic_annotations.h"
+#include "yb/common/walltime.h"
+#include "yb/common/fault_injection.h"
 #include "logging_callback.h"
-#include "monotime.h"
+#include "yb/common/monotime.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Throttled logging support

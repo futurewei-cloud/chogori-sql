@@ -46,7 +46,7 @@ using std::pair;
 #include "yb/common/int128.h"
 #include "yb/common/integral_types.h"
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "hash128to64.h"
 #include "yb/common/endian.h"
 

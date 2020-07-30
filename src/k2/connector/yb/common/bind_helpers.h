@@ -162,7 +162,7 @@
 
 #include "basictypes.h"
 #include "yb/common/concurrent/callback.h"
-#include "template_util.h"
+#include "yb/common/util/template_util.h"
 
 // Unneeded define from Chromium
 #define BASE_EXPORT

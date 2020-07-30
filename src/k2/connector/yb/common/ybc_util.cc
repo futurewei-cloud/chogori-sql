@@ -23,16 +23,15 @@
 #include "env.h"
 #include "scope_exit.h"
 #include "init.h"
-#include "strings/bytes_formatter.h"
+#include "yb/common/strings/bytes_formatter.h"
+#include "yb/common/util/debug-util.h"
+#include "yb/common/flag_tags.h"
+#include "yb/common/log/logging.h"
 
 /*
 #include "yb/common/pgsql_protocol.pb.h"
 
-#include "yb/common/debug-util.h"
-#include "yb/common/flag_tags.h"
-#include "yb/common/logging.h"
 #include "yb/common/version_info.h"
-
 #include "yb/common/net/net_util.h"
 
 */

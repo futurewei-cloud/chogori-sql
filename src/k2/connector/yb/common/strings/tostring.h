@@ -27,9 +27,9 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/variadic/to_seq.hpp>
 
-#include "numbers.h"
+#include "yb/common/numbers.h"
 
-#include "func_traits.h"
+#include "yb/common/func_traits.h"
 
 // We should use separate namespace for some checkers.
 // Because there could be cases when operator<< is available in yb namespace, but

@@ -20,7 +20,7 @@
 
 #include "basictypes.h"
 #include "integral_types.h"
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "macros.h"
 
 #ifndef _BITS_H_

@@ -26,7 +26,7 @@
 #include <stddef.h>
 
 #include "yb/common/concurrent/ref_counted.h"
-#include "yb/common/template_util.h"
+#include "yb/common/util/template_util.h"
 #include "yb/common/type_traits.h"
 
 template <typename T>

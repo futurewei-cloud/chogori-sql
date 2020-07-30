@@ -39,18 +39,18 @@
 #include <gflags/gflags.h>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "casts.h"
-#include "map-util.h"
-#include "singleton.h"
-#include "stl_util.h"
+#include "yb/common/casts.h"
+#include "yb/common/util/map-util.h"
+#include "yb/common/singleton.h"
+#include "yb/common/util/stl_util.h"
 #include "yb/common/strings/substitute.h"
-#include "flag_tags.h"
+#include "yb/common/flag_tags.h"
 #include "hdr_histogram.h"
 //#include "yb/util/histogram.pb.h"
 //#include "yb/util/jsonwriter.h"
 #include "yb/common/concurrent/locks.h"
-#include "status.h"
-#include "logging.h"
+#include "yb/common/status.h"
+#include "yb/common/log/logging.h"
 
 DEFINE_int32(metrics_retirement_age_ms, 120 * 1000,
              "The minimum number of milliseconds a metric will be kept for after it is "

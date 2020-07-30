@@ -44,10 +44,10 @@
 #include <vector>
 #include <unistd.h>
 
-#include "numbers.h"
+#include "yb/common/numbers.h"
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
-#include "errno.h"
+#include "yb/common/errno.h"
 
 using std::ifstream;
 using std::istreambuf_iterator;

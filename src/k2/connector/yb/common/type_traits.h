@@ -78,7 +78,7 @@
 using std::make_pair;
 using std::pair;                  // For pair
 
-#include "template_util.h"     // For true_type and false_type
+#include "yb/common/util/template_util.h"     // For true_type and false_type
 
 namespace base {
 

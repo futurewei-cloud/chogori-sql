@@ -68,7 +68,7 @@ using std::vector;
 #include <glog/logging.h>
 
 #include "yb/common/integral_types.h"
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "charset.h"
 #include "split_internal.h"
 #include "stringpiece.h"

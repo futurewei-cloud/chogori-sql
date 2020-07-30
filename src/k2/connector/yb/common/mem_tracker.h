@@ -47,7 +47,7 @@
 #include <boost/optional.hpp>
 
 #include "yb/common/concurrent/ref_counted.h"
-#include "high_water_mark.h"
+#include "yb/common/concurrent/high_water_mark.h"
 #include "yb/common/concurrent/locks.h"
 #include "yb/common/concurrent/mutex.h"
 #include "random.h"

@@ -35,8 +35,8 @@
 #include <memory>
 #include <string>
 
-#include "macros.h"
-#include "env.h"
+#include "../macros.h"
+#include "../env.h"
 
 namespace yb {
 namespace env_util {

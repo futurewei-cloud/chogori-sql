@@ -24,7 +24,7 @@
 
 #include <glog/logging.h>
 
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "yb/common/macros.h"
 
 using std::vector;

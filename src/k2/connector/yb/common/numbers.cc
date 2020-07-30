@@ -38,10 +38,10 @@ using std::string;
 #include "int128.h"
 #include "integral_types.h"
 #include <glog/logging.h>
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "gscoped_ptr.h"
 #include "yb/common/strings/stringprintf.h"
-#include "strtoint.h"
+#include "yb/common/strings/strtoint.h"
 #include "yb/common/strings/ascii_ctype.h"
 
 // Reads a <double> in *text, which may not be whitespace-initiated.

@@ -18,11 +18,11 @@
 #include "substitute.h"
 
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "yb/common/macros.h"
 #include "ascii_ctype.h"
 #include "yb/common/gscoped_ptr.h"
-#include "yb/common/stl_util.h"
+#include "yb/common/util/stl_util.h"
 
 namespace strings {
 

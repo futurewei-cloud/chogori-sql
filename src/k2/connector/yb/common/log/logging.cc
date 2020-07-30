@@ -62,8 +62,8 @@
 #include "yb/common/concurrent/spinlock.h"
 #include "yb/common/concurrent/ref_counted.h"
 
-#include "debug-util.h"
-#include "flag_tags.h"
+#include "yb/common/util/debug-util.h"
+#include "yb/common/flag_tags.h"
 
 DEFINE_string(log_filename, "",
     "Prefix of log filename - "

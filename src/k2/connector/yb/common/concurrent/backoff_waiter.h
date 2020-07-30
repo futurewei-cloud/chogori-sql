@@ -17,7 +17,7 @@
 #include <chrono>
 
 #include "yb/common/monotime.h"
-#include "yb/common/random_util.h"
+#include "yb/common/util/random_util.h"
 
 namespace yb {
 

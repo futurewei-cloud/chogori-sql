@@ -56,7 +56,7 @@
 #include "numbers.h"
 #include "yb/common/strings/split.h"
 #include "yb/common/strings/substitute.h"
-//#include "yb/util/debug-util.h"
+#include "yb/common/util/debug-util.h"
 #include "errno.h"
 #include "status.h"
 

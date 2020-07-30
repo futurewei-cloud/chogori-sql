@@ -26,7 +26,7 @@
 #include <mutex>
 #include <vector>
 
-#include "map-util.h"
+#include "yb/common/util/map-util.h"
 #include "yb/common/concurrent/locks.h"
 
 namespace yb {

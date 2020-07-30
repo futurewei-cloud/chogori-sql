@@ -32,7 +32,7 @@
 #ifndef YB_UTIL_HIGH_WATER_MARK_H
 #define YB_UTIL_HIGH_WATER_MARK_H
 
-#include "macros.h"
+#include "yb/common/macros.h"
 #include "yb/common/concurrent/atomic.h"
 
 namespace yb {

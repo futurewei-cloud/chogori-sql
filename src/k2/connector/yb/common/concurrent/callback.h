@@ -27,7 +27,7 @@
 
 #include "yb/common/concurrent/callback_forward.h"
 #include "yb/common/concurrent/callback_internal.h"
-#include "yb/common/template_util.h"
+#include "yb/common/util/template_util.h"
 
 // NOTE: Header files that do not require the full definition of Callback or
 // Closure should #include "yb/gutil/callback_forward.h" instead of this file.

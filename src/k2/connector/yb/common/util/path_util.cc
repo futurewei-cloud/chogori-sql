@@ -47,10 +47,10 @@
 #endif
 
 #include "env_util.h"
-#include "errno.h"
+#include "yb/common/errno.h"
 //#include "yb/util/debug/trace_event.h"
-//#include "yb/util/thread_restrictions.h"
-#include "gscoped_ptr.h"
+#include "yb/common/concurrent/thread_restrictions.h"
+#include "yb/common/gscoped_ptr.h"
 
 using std::string;
 

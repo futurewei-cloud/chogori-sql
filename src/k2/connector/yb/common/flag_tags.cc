@@ -38,7 +38,7 @@
 #include <utility>
 #include <vector>
 
-#include "map-util.h"
+#include "yb/common/util/map-util.h"
 #include "singleton.h"
 
 using std::multimap;

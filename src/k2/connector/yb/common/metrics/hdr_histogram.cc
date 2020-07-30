@@ -36,9 +36,9 @@
 #include <limits>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "bits.h"
+#include "yb/common/bits.h"
 #include "yb/common/strings/substitute.h"
-#include "status.h"
+#include "yb/common/status.h"
 
 using base::subtle::Atomic64;
 using base::subtle::NoBarrier_AtomicIncrement;

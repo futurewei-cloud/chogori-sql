@@ -18,7 +18,7 @@
 #include "join.h"
 
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "yb/common/gscoped_ptr.h"
 #include "ascii_ctype.h"
 #include "escaping.h"

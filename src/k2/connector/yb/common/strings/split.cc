@@ -29,9 +29,9 @@ using std::numeric_limits;
 
 #include "yb/common/integral_types.h"
 #include <glog/logging.h>
-#include "yb/common/logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 #include "yb/common/macros.h"
-#include "yb/common/strtoint.h"
+#include "yb/common/strings/strtoint.h"
 #include "ascii_ctype.h"
 #include "util.h"
 #include "yb/common/hash/hash.h"

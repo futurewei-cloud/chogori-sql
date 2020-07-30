@@ -39,7 +39,7 @@
 
 #include <string>
 
-#include "status.h"
+#include "yb/common/status.h"
 
 namespace yb {
 

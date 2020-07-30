@@ -36,7 +36,7 @@
 
 #include "yb/common/dynamic_annotations.h"
 #include "yb/common/macros.h"
-#include "yb/common/fastmem.h"
+#include "yb/common/strings/fastmem.h"
 
 namespace yb {
 

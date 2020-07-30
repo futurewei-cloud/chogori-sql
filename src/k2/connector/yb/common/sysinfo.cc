@@ -78,7 +78,7 @@
 #include "macros.h"
 #include "sysinfo.h"
 #include "walltime.h"
-//#include "yb/util/logging.h"
+#include "yb/common/log/logging.h"
 
 DEFINE_int32(num_cpus, 0, "Number of CPU cores used in calculations");
 

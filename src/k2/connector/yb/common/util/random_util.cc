@@ -37,8 +37,8 @@
 #include <cstring>
 #include <random>
 
-#include "env.h"
-#include "random.h"
+#include "yb/common/env.h"
+#include "yb/common/random.h"
 #include <boost/thread/tss.hpp>
 
 namespace yb {

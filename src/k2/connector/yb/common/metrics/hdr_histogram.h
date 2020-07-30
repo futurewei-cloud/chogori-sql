@@ -60,8 +60,8 @@
 #include <iosfwd>
 
 #include "yb/common/concurrent/atomicops.h"
-#include "gscoped_ptr.h"
-#include "status.h"
+#include "yb/common/gscoped_ptr.h"
+#include "yb/common/status.h"
 
 namespace yb {
 

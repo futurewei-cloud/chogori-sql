@@ -90,7 +90,7 @@ using std::vector;
 
 #include <glog/logging.h>
 
-#include "logging-inl.h"
+#include "yb/common/log/logging-inl.h"
 
 //
 // Find*()

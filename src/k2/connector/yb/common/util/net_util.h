@@ -36,9 +36,9 @@
 #include <vector>
 #include <memory>
 
-#include "result.h"
+#include "yb/common/result.h"
 #include "yb/common/strings/strip.h"
-#include "status.h"
+#include "yb/common/status.h"
 
 namespace yb {
 

@@ -43,7 +43,7 @@
 #include <map>
 #include <string>
 
-#include "fastmem.h"
+#include "yb/common/strings/fastmem.h"
 #include "yb/common/strings/stringpiece.h"
 #include "yb/common/strings/faststring.h"
 #include "cast.h"

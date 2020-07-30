@@ -19,7 +19,7 @@
 
 #include "env.h"
 #include "yb/common/strings/faststring.h"
-#include "path_util.h"
+#include "yb/common/util/path_util.h"
 
 namespace yb {
 
