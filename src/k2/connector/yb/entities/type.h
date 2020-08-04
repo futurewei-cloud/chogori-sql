@@ -1,25 +1,50 @@
-/*
-MIT License
-
-Copyright(c) 2020 Futurewei Cloud
-
-    Permission is hereby granted,
-    free of charge, to any person obtaining a copy of this software and associated documentation files(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
-
-    The above copyright notice and this permission notice shall be included in all copies
-    or
-    substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS",
-    WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-    DAMAGES OR OTHER
-    LIABILITY,
-    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-    SOFTWARE.
-*/
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+//
+// The following only applies to changes made to this file as part of YugaByte development.
+//
+// Portions Copyright (c) YugaByte, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+// in compliance with the License.  You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software distributed under the License
+// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+// or implied.  See the License for the specific language governing permissions and limitations
+// under the License.
+//
+// Copyright(c) 2020 Futurewei Cloud
+//
+// Permission is hereby granted,
+//        free of charge, to any person obtaining a copy of this software and associated documentation files(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+//
+// The above copyright notice and this permission notice shall be included in all copies
+// or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS",
+// WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+//        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+//        DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
 
 #ifndef CHOGORI_SQL_TYPE_H
 #define CHOGORI_SQL_TYPE_H
@@ -29,41 +54,11 @@ Copyright(c) 2020 Futurewei Cloud
 #include <vector>
 
 #include <glog/logging.h>
+#include "yb/entities/data_type.h"
+#include "yb/entities/types.h"
 
 namespace k2 {
 namespace sql {
-    // this type definition is synced with the PgDataType in ybc_pg_typedefs.h. We might not support all of them
-    typedef enum PgSqlDataType {
-        NOT_SUPPORTED = -1,
-        UNKNOWN_DATA = 999,
-        NULL_VALUE_TYPE = 0,
-        INT8 = 1,
-        INT16 = 2,
-        INT32 = 3,
-        INT64 = 4,
-        STRING = 5,
-        BOOL = 6,
-        FLOAT = 7,
-        DOUBLE = 8,
-        BINARY = 9,
-        TIMESTAMP = 10,
-        DECIMAL = 11,
-        VARINT = 12,
-        INET = 13,
-        LIST = 14,
-        MAP = 15,
-        SET = 16,
-        UUID = 17,
-        TIMEUUID = 18,
-        TUPLE = 19,
-        TYPEARGS = 20,
-        USER_DEFINED_TYPE = 21,
-        FROZEN = 22,
-        DATE = 23,
-        TIME = 24,
-        JSONB = 25,
-    } DataType;
-
     class SQLType {
         public:
         typedef std::shared_ptr<SQLType> SharedPtr;
@@ -88,6 +83,10 @@ namespace sql {
 
         // Check type methods.
         static bool IsValidPrimaryType(DataType type);
+
+        const TypeInfo* type_info() const {
+            return GetTypeInfo(id_);
+        }
 
         // Create map datatype.
         static std::shared_ptr<SQLType> CreateTypeMap(std::shared_ptr<SQLType> key_type,
