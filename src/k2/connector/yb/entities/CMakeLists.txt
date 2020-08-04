@@ -8,6 +8,6 @@ set_target_properties(k2entities PROPERTIES
         SOVERSION 1
         )
 
-target_link_libraries (k2entities PRIVATE ybcommon)
+target_link_libraries (k2entities PRIVATE glog ybcommon)
 
 set_target_properties(k2entities PROPERTIES LINKER_LANGUAGE CXX)

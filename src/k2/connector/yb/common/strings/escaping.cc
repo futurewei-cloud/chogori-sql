@@ -31,7 +31,7 @@ using std::vector;
 #include "yb/common/port.h"
 #include "yb/common/gscoped_ptr.h"
 #include "join.h"
-#include "yb/common/utf/utf.h"  // for runetochar
+#include "yb/utf/utf.h"  // for runetochar
 #include "charmap.h"
 #include "yb/common/util/stl_util.h"
 

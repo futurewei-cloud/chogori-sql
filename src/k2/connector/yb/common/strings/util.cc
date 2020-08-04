@@ -44,7 +44,7 @@ using std::vector;
 #include "yb/common/type/numbers.h"
 #include "stringpiece.h"
 #include "yb/common/util/stl_util.h"  // for string_as_array, STLAppendToString
-#include "yb/common/utf/utf.h"
+#include "yb/utf/utf.h"
 
 #ifdef OS_WINDOWS
 #ifdef min  // windows.h defines this to something silly

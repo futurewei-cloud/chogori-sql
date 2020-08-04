@@ -33,7 +33,6 @@ ExternalProject_Add(
     TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
     LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/log
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/build
-#    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres "-lybcommon -lybpggate -lgflags -lybutf -std=c++17"  "-L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/utf" -I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector <INSTALL_DIR>
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres "-lybcommon -lybpggate -lgflags -std=c++17"  "-L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate" -I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector <INSTALL_DIR>
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres "-lybcommon -lybpggate -lgflags -lybutf -std=c++17"  "-L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/utf" -I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector <INSTALL_DIR>
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     BUILD_COMMAND make -j -f Makefile)
