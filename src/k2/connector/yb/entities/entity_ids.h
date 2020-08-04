@@ -28,6 +28,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <set>
 
 namespace k2 {
+namespace sql {
 
     using NamespaceName = std::string;
     using TableName = std::string;
@@ -47,6 +48,7 @@ namespace k2 {
 
     extern const TableId kPgProcTableId;
 
+}  // namespace sql
 }  // namespace k2
 
 #endif //CHOGORI_SQL_ENTITY_IDS_H
