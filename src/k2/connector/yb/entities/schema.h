@@ -95,6 +95,17 @@ namespace sql {
     typedef int32_t ColumnId;
     constexpr ColumnId kFirstColumnId = 0;
 
+    enum PermissionType {
+        ALTER = 0,
+        CREATE = 1,
+        DROP = 2,
+        SELECT = 3,
+        MODIFY = 4,
+        AUTHORIZE = 5,
+        DESCRIBE = 6,
+        ALL = 999999999
+    };
+
     class ColumnSchema {
         public:
         enum SortingType : uint8_t {

@@ -24,7 +24,9 @@ Copyright(c) 2020 Futurewei Cloud
 #ifndef CHOGORI_SQL_SQL_EXECUTOR_H
 #define CHOGORI_SQL_SQL_EXECUTOR_H
 
+#include "yb/common/env.h"
 #include "yb/common/status.h"
+#include "yb/common/concurrent/locks.h"
 
 using namespace yb;
 
@@ -54,6 +56,8 @@ namespace sql {
         void set_cluster_uuid(const std::string& cluster_uuid);
 
         std::string cluster_uuid() const;
+
+        void SetCatalogVersion(uint64_t new_version) ;
 
     protected:
         virtual CHECKED_STATUS RegisterServices();

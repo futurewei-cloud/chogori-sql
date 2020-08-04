@@ -28,6 +28,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <vector>
 
 #include <glog/logging.h>
+#include <gflags/gflags.h>
 
 #include "yb/common/status.h"
 #include "yb/common/flag_tags.h"
@@ -122,25 +123,16 @@ namespace sql {
         return default_env;
     }
 
-    void TabletServer::SetYSQLCatalogVersion(uint64_t new_version) {
+    void SqlExecutor::SetCatalogVersion(uint64_t new_version) {
         std::lock_guard<simple_spinlock> l(lock_);
-        uint64_t ysql_catalog_version_ = ysql_catalog_version();
+        uint64_t ysql_catalog_version_ = catalog_version_.load(std::memory_order_acquire);
         if (new_version > ysql_catalog_version_) {
-            SetYSQLCatalogVersion(new_version);
+            catalog_version_.store(new_version, std::memory_order_release);
         } else if (new_version < ysql_catalog_version_) {
             LOG(DFATAL) << "Ignoring ysql catalog version update: new version too old. "
                         << "New: " << new_version << ", Old: " << ysql_catalog_version_;
         }
     }
-
-    void SetYSQLCatalogVersion(uint64_t version) {
-        catalog_version_.store(version, std::memory_order_release);
-    }
-
-    uint64_t ysql_catalog_version() const {
-        return catalog_version_.load(std::memory_order_acquire);
-    }
-
 }
 }
 
