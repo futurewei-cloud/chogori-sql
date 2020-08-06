@@ -20,6 +20,7 @@ set(LINK_TYPE "a")
 find_package(Boost REQUIRED)
 find_package(glog REQUIRED)
 find_package(gflags REQUIRED)
+find_package(Backtrace REQUIRED)
 
 include_directories(src/k2/connector)
 add_subdirectory(src/k2/connector)
