@@ -27,7 +27,7 @@
 #include "catalog/dependency.h"
 #include "nodes/parsenodes.h"
 
-#include "yb/yql/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/ybc_pg_typedefs.h"
 
 /*
  * Constants for OIDs of supported Postgres native types (that do not have an

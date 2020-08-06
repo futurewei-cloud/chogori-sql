@@ -1,19 +1,19 @@
 This document describes how YugbytesDb integrates with Postgres
 
 # Introduction
-Chorgori platform is built for low-latency in-memory distributed persistent OLTP databases. With the K2 storage layer in place, we need to add a 
+Chorgori platform is built for low-latency in-memory distributed persistent OLTP databases. With the K2 storage layer in place, we need to add a
 SQL layer on top of it so that people could run SQL to interact with it. This type of SQL is fundamentally different from the traditional SQL databases
 in that
-* The database is distributed, not a simple sharding system of a single instance traditional database, which is hard and painful to manage. 
-Instead, the system is automatically partitioned without manual efforts. 
-* It supports strong consistency with distributed transactions 
+* The database is distributed, not a simple sharding system of a single instance traditional database, which is hard and painful to manage.
+Instead, the system is automatically partitioned without manual efforts.
+* It supports strong consistency with distributed transactions
 * It supports GEO distributed transactions
 * It scales with big data in mind
 
-There are many of this types of so-called NewSQL projects that are inspired by the Google [Spinner paper](https://static.googleusercontent.com/media/research.google.com/en//archive/spanner-osdi2012.pdf) and 
-the subsequent [F1 paper](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41344.pdf). YugabyteDb is one of them and it was built as 
-a DocDB at first with the support of Cassandra CQL language and Redis APIs from 2016. Postgres 10 was integrated in 2018 and then was upgraded to 11.2. 
-The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support [GraphQL](https://docs.yugabyte.com/latest/develop/graphql/) as well. 
+There are many of this types of so-called NewSQL projects that are inspired by the Google [Spinner paper](https://static.googleusercontent.com/media/research.google.com/en//archive/spanner-osdi2012.pdf) and
+the subsequent [F1 paper](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/41344.pdf). YugabyteDb is one of them and it was built as
+a DocDB at first with the support of Cassandra CQL language and Redis APIs from 2016. Postgres 10 was integrated in 2018 and then was upgraded to 11.2.
+The supported features can be found at https://docs.yugabyte.com/latest/api/ysql/. It could support [GraphQL](https://docs.yugabyte.com/latest/develop/graphql/) as well.
 Even our system is fundamentally different, YugaByteDB is a good reference implementation to help us for initial investigations.
 
 # Integration
@@ -23,14 +23,14 @@ The integration is illustrated from high level by the following diagram.
 
 ![Architecture](./images/YugabytedbPGIntegration.png)
 
-That is to say, postgres was customized to communicate with YugaByteDB's DocDB via a layer called PG Gate. 
+That is to say, postgres was customized to communicate with YugaByteDB's DocDB via a layer called PG Gate.
 
 ## Postgres Process
 
-First of all, a Postgres process runs together with a [yb-tserver](https://docs.yugabyte.com/latest/architecture/concepts/yb-tserver/) (tablet server) on the storage node in YugabyteDb. More specifically, 
-postgres was started as a child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc). 
+First of all, a Postgres process runs together with a [yb-tserver](https://docs.yugabyte.com/latest/architecture/concepts/yb-tserver/) (tablet server) on the storage node in YugabyteDb. More specifically,
+postgres was started as a child process of yb-tserver. Please check the commit history of [pg_wrapper.cc](https://github.com/yugabyte/yugabyte-db/commits/master/src/yb/yql/pgwrapper/pg_wrapper.cc).
 
-The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize Postgres installation. 
+The [initdb.c](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/bin/initdb/initdb.c) is called to initialize Postgres installation.
 YugaByteDB is more complicated for Postgres initialization since its catalog manager is on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/) nodes and it needs to setup system tables on catalog manager.  The reasons are as follows as implemented by this [commit](https://github.com/yugabyte/yugabyte-db/commit/ca30a3ab5252858103cf6f3f92697821e9b718df)
 * Create Postgres catalog tables on yb-master during initdb, and use them for all Postgres catalog read and writes.
 * the Postgres instances running on each node are now virtually stateless and no local files are created/used for either system or user tables
@@ -44,9 +44,9 @@ The processes on a yb-server is shown as follows.
     PID TTY      STAT   TIME  MAJFL   TRS   DRS   RSS %MEMOMMAND
       1 ?        Ssl   42:34     96   127 6395208 2343528  7.1 /home/yugabyte/bin/yb-tserver --fs_data_dirs=/mnt/data0 --rpc_bind_addresses=yb-tserver-0.yb-tservers.test.svc.cluster.local:9100 --server_broadcast_addresses=yb-tserver-0.yb-tservers.test.svc.cluster.local:9100 --enable_ysql=true --pgsql_proxy_bind_address=10.1.41.19:5433 --use_private_ip=never --tserver_master_addrs=yb-master-0.yb-masters.test.svc.cluster.local:7100 --logtostderr
      37 ?        S      0:00      0  8575 422512 45680  0.1 /home/yugabyte/postgres/bin/postgres -D /mnt/data0/pg_data -p 5433 -h 10.1.41.19 -k  -c shared_preload_libraries=pg_stat_statements,yb_pg_metrics -c yb_pg_metrics.node_name=DEFAULT_NODE_NAME -c yb_pg_metrics.port=13000 -c config_file=/mnt/data0/pg_data/ysql_pg.conf -c hba_file=/mnt/data0/pg_data/ysql_hba.conf
-     68 ?        Ssl    0:12      0  8575 496372 13768  0.0 postgres: YSQL webserver   
-     70 ?        Ss     0:00      0  8575 422688 12112  0.0 postgres: checkpointer   
-     71 ?        Ss     0:00      0  8575 266392 9708  0.0 postgres: stats collector   
+     68 ?        Ssl    0:12      0  8575 496372 13768  0.0 postgres: YSQL webserver
+     70 ?        Ss     0:00      0  8575 422688 12112  0.0 postgres: checkpointer
+     71 ?        Ss     0:00      0  8575 266392 9708  0.0 postgres: stats collector
 ```
 
 The above could be viewed on a YugabyteDB cluster. To launch a mini YugaByteDB cluster, please follow the instructiond for [kubernetes](https://docs.yugabyte.com/latest/deploy/kubernetes/). Or you could
@@ -54,16 +54,16 @@ use [MicroK8s](https://ubuntu.com/tutorials/install-a-local-kubernetes-with-micr
 
 ```
 $ kubectl create namespace test
-$ kubectl apply -f yb-test.yaml 
+$ kubectl apply -f yb-test.yaml
 $ kubectl describe pods -n test
 $ kubectl exec -it yb-tserver-0 -n test -- /home/yugabyte/bin/ysqlsh -h yb-tserver-0  --echo-queries
 $ kubectl exec -it yb-master-0 -n test -- /bin/bash
 ```
-After that, you could run [example SQLs](https://docs.yugabyte.com/latest/quick-start/explore-ysql/) or [TPC-C benchmark](https://docs.yugabyte.com/latest/benchmark/tpcc-ysql/). 
+After that, you could run [example SQLs](https://docs.yugabyte.com/latest/quick-start/explore-ysql/) or [TPC-C benchmark](https://docs.yugabyte.com/latest/benchmark/tpcc-ysql/).
 
 ## Foreign Data Wrapper (FDW)
 
-YugabyteDb data are external to Postgres and thus, it takes advantage of the [foreign data wrapper feature](https://wiki.postgresql.org/wiki/Foreign_data_wrappers) 
+YugabyteDb data are external to Postgres and thus, it takes advantage of the [foreign data wrapper feature](https://wiki.postgresql.org/wiki/Foreign_data_wrappers)
 to hook in the data access logic in [src/backend/executor/ybc_fdw.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/ybc_fdw.c).
 
 ``` c
@@ -89,8 +89,8 @@ Datum ybc_fdw_handler()
 }
 
 ```
-However, YugabyteDb did not use the regular FDW access path to define foreign tables since Postgres is customed to solely access its own data. 
-As a result, shortcuts are used to access its catalog and data directly. For example, check the following code snippet in 
+However, YugabyteDb did not use the regular FDW access path to define foreign tables since Postgres is customed to solely access its own data.
+As a result, shortcuts are used to access its catalog and data directly. For example, check the following code snippet in
 src/backend/foreign/foreign.c to access the FDW handler directly instead of reading it from catalogs, which should be the reason that YugabyteDb
 is treated as native Postgres tables without additional foreign tables.
 
@@ -123,14 +123,14 @@ FdwRoutine * GetFdwRoutineForRelation(Relation relation, bool makecopy)
 }
 ```
 
-Take the following YugabyteDb query execution plan as an example. The data sequential scan on the orders table used Foreign Scan wired in 
-by FDW. However, the Index Scan is directly from memory. 
+Take the following YugabyteDb query execution plan as an example. The data sequential scan on the orders table used Foreign Scan wired in
+by FDW. However, the Index Scan is directly from memory.
 
 ``` SQL
 explain analyze SELECT users.id, users.name, users.email, orders.id, orders.total
           FROM orders INNER JOIN users ON orders.user_id=users.id
           LIMIT 10;
-                                                           QUERY PLAN                                                           
+                                                           QUERY PLAN
 --------------------------------------------------------------------------------------------------------------------------------
  Limit  (cost=0.00..2.14 rows=10 width=88) (actual time=1.101..5.222 rows=10 loops=1)
    ->  Nested Loop  (cost=0.00..213.89 rows=1000 width=88) (actual time=1.100..5.216 rows=10 loops=1)
@@ -141,11 +141,11 @@ explain analyze SELECT users.id, users.name, users.email, orders.id, orders.tota
  Execution Time: 5.314 ms
 ```
 
-## PG Gate 
+## PG Gate
 
-YugabyteDB uses DocDB on top of RocksDB to store data in a document format on storage layer. The data consists of Catalog, i.e., system databases/tables and user 
-databases/tables, and table data. To minimize the code change on Postgres, YugabyteDb introduced a PG gate to abstract all the interaction with 
-the DocDB layer. The API from Postgres side is defined in yb/yql/pggate/ybc_pggate.h. For example,
+YugabyteDB uses DocDB on top of RocksDB to store data in a document format on storage layer. The data consists of Catalog, i.e., system databases/tables and user
+databases/tables, and table data. To minimize the code change on Postgres, YugabyteDb introduced a PG gate to abstract all the interaction with
+the DocDB layer. The API from Postgres side is defined in yb/pggate/ybc_pggate.h. For example,
 
 ``` c++
 // This must be called exactly once to initialize the YB/PostgreSQL gateway API before any other
@@ -198,7 +198,7 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
 YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid);
 
-// SELECT 
+// SELECT
 YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
                          YBCPgOid table_oid,
                          const YBCPgPrepareParameters *prepare_params,
@@ -214,7 +214,7 @@ YBCStatus YBCPgSetTransactionIsolationLevel(int isolation);
 ```
 ## Type Conversion
 
-When acess data to and from DocDB, data types need to be converted between Postgres and DocDB. The type conversion is defined in 
+When acess data to and from DocDB, data types need to be converted between Postgres and DocDB. The type conversion is defined in
 [src/include/catalog/ybctype.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/catalog/ybctype.h).
 
 ``` c
@@ -235,9 +235,9 @@ void YBCDatumToBinary(Datum datum, void **data, int64 *bytes) {
 }
 ```
 
-## Catalog Access 
+## Catalog Access
 
-On top of the YugabyteDB defined methods to access system catalogs in [src/backend/access/ybcam.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/access/ybcam.h) so that they can be 
+On top of the YugabyteDB defined methods to access system catalogs in [src/backend/access/ybcam.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/access/ybcam.h) so that they can be
 called by executors,
 
 ``` c
@@ -303,7 +303,7 @@ extern void ybcinendscan(IndexScanDesc scan);
 ```
 
 ## Pushdowns
-YugaByteDB supports multiple [pushdowns](https://blog.yugabyte.com/5-query-pushdowns-for-distributed-sql-and-how-they-differ-from-a-traditional-rdbms/) during scanning phase to improve performance. 
+YugaByteDB supports multiple [pushdowns](https://blog.yugabyte.com/5-query-pushdowns-for-distributed-sql-and-how-they-differ-from-a-traditional-rdbms/) during scanning phase to improve performance.
 For example, Yugabyte support for aggregate pushdowns to DocDB for COUNT/MAX/MIN/SUM in this [commit](https://github.com/yugabyte/yugabyte-db/commit/e554bda510cefbe612a00883c0285fe77447039e).
 
 The pushdown happens only if the following conditions are met:
@@ -316,7 +316,7 @@ The pushdown happens only if the following conditions are met:
 
 The pushdown logic is mainly in [src/backend/executor/nodeAgg.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/nodeAgg.c).
 
-``` c 
+``` c
 /*
  * Evaluates whether plan supports pushdowns of aggregates to DocDB, and sets
  * yb_pushdown_supported accordingly in AggState.
@@ -449,7 +449,7 @@ This [commit](https://github.com/yugabyte/yugabyte-db/commit/05a53869165ac8b9719
 
 YugbytesDb changed Postgres internal logic a lot. To make the code clear, a flag is introduced in [src/include/pg_yb_utils.h](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/pg_yb_utils.h) to indicate the logic path for YugaByteDB.
 
-``` c 
+``` c
 /*
  * Checks whether YugaByte functionality is enabled within PostgreSQL.
  * This relies on pgapi being non-NULL, so probably should not be used
@@ -459,7 +459,7 @@ YugbytesDb changed Postgres internal logic a lot. To make the code clear, a flag
  */
 extern bool IsYugaByteEnabled();
 ```
-The flag is set if pggate::PgApiImpl is initialized in [/yb/pggate/ybc_pggate.cc](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/yql/pggate/ybc_pggate.cc). 
+The flag is set if pggate::PgApiImpl is initialized in [/yb/pggate/ybc_pggate.cc](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/pggate/ybc_pggate.cc).
 
 ## Caching
 
@@ -469,7 +469,7 @@ Postgres supports the following caches:
 * System cache: src/backend/utils/cache/syscache.c
 * Query plan cache: src/backend/utils/cache/plancache.c
 
-The caching logic is updated for YugaByteDB based on the above IsYugaByteEnabled() flag. For example, check the following 
+The caching logic is updated for YugaByteDB based on the above IsYugaByteEnabled() flag. For example, check the following
 code snippet in catcache.c.
 
 ``` c
@@ -496,13 +496,13 @@ code snippet in catcache.c.
 									 true);
 ```
 
-## Sequence 
+## Sequence
 
 YugaByteDB enabled sequence support in this [commit](https://github.com/yugabyte/yugabyte-db/commit/c7310c1f23755552252f7ccf6307c148cc903aa0).
 
-The following APIs are introduced in [yb/yql/pggate/ybc_pggate.h](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/yql/pggate/ybc_pggate.h).
+The following APIs are introduced in [yb/pggate/ybc_pggate.h](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/pggate/ybc_pggate.h).
 
-``` c 
+``` c
 YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
                                  uint64_t ysql_catalog_version,
@@ -536,8 +536,8 @@ YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
 ```
 ## Catalog Manager
 
-The catalog manager in YugaByteDB is running on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/), which stores system metadata such as the information about all the namespaces, tables, roles, permissions, and assignment of tablets to 
-yb-tservers. These system records are replicated across the yb-masters for redundancy using Raft as well. The system metadata is also stored 
+The catalog manager in YugaByteDB is running on [yb-master](https://docs.yugabyte.com/latest/architecture/concepts/yb-master/), which stores system metadata such as the information about all the namespaces, tables, roles, permissions, and assignment of tablets to
+yb-tservers. These system records are replicated across the yb-masters for redundancy using Raft as well. The system metadata is also stored
 as a DocDB table by the yb-masters.
 
 As explained by this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/master/README), the Catalog Manager keeps track of the tables and tablets defined by the
@@ -555,7 +555,7 @@ The catalog manager maintains 3 hash-maps for looking up info in the sys table:
 - [Table Name] -> TableInfo
 - [Tablet Id] -> TabletInfo
 
-The TableInfo has a map [tablet-start-key] -> TabletInfo used to provide the tablets locations to the user based on a key-range request. 
+The TableInfo has a map [tablet-start-key] -> TabletInfo used to provide the tablets locations to the user based on a key-range request.
 The [TableInfo](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/tablet/tablet_metadata.h) is defined as follows.
 
 ``` c++
@@ -746,25 +746,25 @@ class IndexInfo {
 
   // Newer INDEX use mangled column name instead of ID.
   bool use_mangled_column_name_ = false;
-};  
+};
 ```
 ## DocDB to KV Store Mapping.
-For YSQL tables, every row is a document in DocDB. DocDB stores the data in a document format and eventually, it needs to store the data in KV pairs in the underhood RocksDB. 
-The storage models are described [here](https://docs.yugabyte.com/latest/architecture/docdb/persistence/). We copied the following diagram from the above document to 
+For YSQL tables, every row is a document in DocDB. DocDB stores the data in a document format and eventually, it needs to store the data in KV pairs in the underhood RocksDB.
+The storage models are described [here](https://docs.yugabyte.com/latest/architecture/docdb/persistence/). We copied the following diagram from the above document to
 better show the mapping between DocDB and RocksDB.
 
 ![KV store key encoding](./images/cql_row_encoding.png)
 
-The keys in DocDB document model are compound keys consisting of one or more hash organized components, followed by zero or more ordered (range) 
-components. These components are stored in their data type specific sort order; both ascending and descending sort order is supported for each 
+The keys in DocDB document model are compound keys consisting of one or more hash organized components, followed by zero or more ordered (range)
+components. These components are stored in their data type specific sort order; both ascending and descending sort order is supported for each
 ordered component of the key.
 
 The values in DocDB document data model can be:
 * primitive types: such as int32, int64, double, text, timestamp, etc.
 * non-primitive types (sorted maps): These objects map scalar keys to values, which could be either scalar or sorted maps as well.
-This model allows multiple levels of nesting, and corresponds to a JSON-like format. Other data structures like lists, sorted sets etc. are 
-implemented using DocDB’s object type with special key encodings. In DocDB, hybrid timestamps of each update are recorded carefully, so that it is 
-possible to recover the state of any document at some point in the past. Overwritten or deleted versions of data are garbage-collected as soon as 
+This model allows multiple levels of nesting, and corresponds to a JSON-like format. Other data structures like lists, sorted sets etc. are
+implemented using DocDB’s object type with special key encodings. In DocDB, hybrid timestamps of each update are recorded carefully, so that it is
+possible to recover the state of any document at some point in the past. Overwritten or deleted versions of data are garbage-collected as soon as
 there are no transactions reading at a snapshot at which the old value would be visible.
 
 The above DocDB key is defined in [doc_key.h](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/docdb/doc_key.h) as follows.
@@ -810,8 +810,8 @@ class DocKey {
   std::vector<PrimitiveValue> range_group_;
 };
 ```
-and 
-``` c++ 
+and
+``` c++
 // ------------------------------------------------------------------------------------------------
 // SubDocKey
 // ------------------------------------------------------------------------------------------------
@@ -838,7 +838,7 @@ class SubDocKey {
 ```
 
 The value SubDocument is defined as follows.
-``` c++ 
+``` c++
 class SubDocument : public PrimitiveValue {
 }
 
@@ -883,17 +883,17 @@ class PrimitiveValue {
 The keys are seralized to and from bytes when in use by using [DocKeyEncoder and DocKeyDecoder](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/docdb/doc_key.cc).
 
 ## Colocated Tables
-YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets. 
+YugabyteDB supports [colocating SQL tables](https://github.com/yugabyte/yugabyte-db/blob/master/architecture/design/ysql-colocated-tables.md) to avoid creating too many tables with small data sets.
 Colocating tables puts all of their data into a single tablet, called the colocated tablet. Here is the initial [commit](https://github.com/yugabyte/yugabyte-db/commit/6d332c9635edb474b66c5c3de6dba1afb76ef3c8).
 
-## Transactions 
+## Transactions
 
 YugaByteDB changed quite a lot of logic in postgres transaction. The primary file is: [src/backend/access/transam/xact.c](https://github.com/yugabyte/yugabyte-db/blob/master/src/postgres/src/backend/access/transam/xact.c).
 The commit history for this file is available [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/access/transam/xact.c)
 
 Postgres supports [Explicit Locking](https://www.postgresql.org/docs/11/explicit-locking.html) on table level, row level, and page level. As a result,
 it introduced a deadlock detection mechanism and a concept of *advisory locks*. The system does not enforce their use — it is up to the application to use them correctly.
-YugaByteDB supports [row-level explict locking](https://docs.yugabyte.com/latest/architecture/transactions/explicit-locking/#types-of-row-level-locks), 
+YugaByteDB supports [row-level explict locking](https://docs.yugabyte.com/latest/architecture/transactions/explicit-locking/#types-of-row-level-locks),
 for example, *FOR UPDATE* and *FOR SHARE*.
 
 ## Parser
@@ -1002,31 +1002,31 @@ The following are Beta features
 			| VacuumStmt { parser_ybc_beta_feature(@1, "vacuum"); }
 ```
 There are quite some SQL grammar that are not supported. Please check the file [src/backend/parser/gram.y](https://github.com/postgres/postgres/blob/master/src/backend/parser/gram.y).
-You could also view its commit history [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/parser/gram.y). 
+You could also view its commit history [here](https://github.com/yugabyte/yugabyte-db/commits/master/src/postgres/src/backend/parser/gram.y).
 
 ## RPC
 
-YugaByteDB uses rpc to communicate among Postgres, yb-master (catalog manager), and yb-tserver (storage layer). 
-It uses protocol buffers for serialization, and [libev](https://github.com/enki/libev) for non-blocking I/O. The detailed introduction 
+YugaByteDB uses rpc to communicate among Postgres, yb-master (catalog manager), and yb-tserver (storage layer).
+It uses protocol buffers for serialization, and [libev](https://github.com/enki/libev) for non-blocking I/O. The detailed introduction
 could be found at this [readme](https://github.com/yugabyte/yugabyte-db/blob/2.2.0/src/yb/rpc/README).
 
-## JIT 
+## JIT
 
 JIT is provided by [Postgres](https://www.postgresql.org/docs/11/jit.html) natively and YugabyteDB didn't change it in anyway. Here is a [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/jit/README) for it. PostgreSQL, by default, uses LLVM to perform JIT because it has a license compatible with
 PostgreSQL, and because its IR can be generated from C using the Clang compiler. Currently expression evaluation and tuple deforming are JITed. To avoid the main PostgreSQL binary directly depending on LLVM, the LLVM dependent code is located in a shared library that is loaded on-demand. To achieve this, code intending to perform JIT (e.g. expression evaluation) calls an LLVM independent wrapper located in jit.c to do so. Lifetimes of JITed functions are managed via JITContext. To be able to generate code that can perform tasks done by "interpreted" PostgreSQL, one small file (llvmjit_types.c) references each of the types required for JITing. When to JIT is affected by cost estimation.
 
 To better understand how the expression is handled at runtime, please see this [readme](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/README). In summary, there are four classes of nodes used in query execution trees: Plan nodes,their corresponding PlanState nodes, Expr nodes, and ExprState nodes. Expression trees, in contrast to Plan trees, are not mirrored into acorresponding tree of state nodes.  Instead each separately executable expression tree. Such a flat representation is usable both for fast interpreted execution and for compiling into native code.
 
-There are both cons and pros for JIT in postgres based on Query types. It might be helpful to check out this youtube presentation 
+There are both cons and pros for JIT in postgres based on Query types. It might be helpful to check out this youtube presentation
 ["Just in time compilation in PostgreSQL 11 and onwards"](https://www.youtube.com/watch?v=k5PQq9a4YqA).
 
 ## Other Postgres Features
 
 Postgres 11 provides additional features, for example, the [extension mechamism](https://www.postgresql.org/docs/11/extend.html), which provides extension
-for data types, UDFs, SQL functions, and even operators. 
+for data types, UDFs, SQL functions, and even operators.
 
-Additional interesting feature is [parallelism](https://www.postgresql.org/docs/11/parallel-query.html) introduced to Postgre recently. This is achieved by 
-adding Gather and Gather Merge nodes for other workers. The [execParallel.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/execParallel.c) 
+Additional interesting feature is [parallelism](https://www.postgresql.org/docs/11/parallel-query.html) introduced to Postgre recently. This is achieved by
+adding Gather and Gather Merge nodes for other workers. The [execParallel.c](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/executor/execParallel.c)
 might be a good starting point. There is a good [blog](https://www.percona.com/blog/2019/07/30/parallelism-in-postgresql/) to explain it. The youtube presentation
 ["Parallelism in PostgreSQL 11"](https://www.youtube.com/watch?v=jWIOZzezbb8) might be worthy watching. However, this is new feature and it might not be mature enough to use.
 
@@ -1056,7 +1056,7 @@ Here we could use the CreateTable DDL command to show how it works by the follow
 * when a "create table" command is received, tablecmds.c was modified to forward the command to ybccmds.c to run the method YBCCreateTable().
 * ybccmds.c calls YBCPgNewCreateTable() to create schema, CreateTableAddColumns() to add table columns, and YBCPgExecCreateTable() to actually create table on ybc_pggate.cc.
 * ybc_pggate.cc calls NewCreateTable(), CreateTableAddColumn(), and ExecCreateTable() on the PG APIs on pggate.cc
-* pggate.cc first creates a DDL statment, adds it to memory context, and caches it. 
+* pggate.cc first creates a DDL statment, adds it to memory context, and caches it.
 * pggate.cc calls pg_ddl.cc to add columns in pg_ddl.cc to update the table schema.
 * finally pggate.cc calls table_creator.cc to actually the table, which uses YBClient in client-internal.cc to send the request to yb-master via protobuf RPC.
 
@@ -1293,7 +1293,7 @@ message PartitionSchemaPB {
 }
 ```
 ## Statements
-### Select 
+### Select
 ```
 message PgsqlReadRequestPB {
   // Client info
@@ -1389,8 +1389,8 @@ message PgsqlReadRequestPB {
   optional bytes max_partition_key = 25;
 }
 ```
-where PgsqlExpressionPB is used for expressions, i.e., predicate pushdowns 
-``` 
+where PgsqlExpressionPB is used for expressions, i.e., predicate pushdowns
+```
 // An expression in a WHERE condition.
 // - Bind values would be given by client and grouped into a repeated field that can be accessed
 //   by their indexes.
@@ -1549,7 +1549,7 @@ message PgsqlWriteRequestPB {
   optional bool is_ysql_catalog_change = 17 [default = false];
 }
 ```
-### Statement Response 
+### Statement Response
 ```
 // Response from tablet server for both read and write.
 message PgsqlResponsePB {
@@ -1608,7 +1608,7 @@ message PgsqlResponsePB {
 ```
 ## Catalog APIs
 Catalogs are managed by catalog manager in yb-master. The main APIs are listed as follows.
-### Create Namespace 
+### Create Namespace
 ```
 // Database type is added to metadata entries such that PGSQL clients cannot delete or connect to
 // CQL database_type and vice versa.
@@ -1799,7 +1799,7 @@ message TableIdentifierPB {
   optional NamespaceIdentifierPB namespace = 3;
 }
 ```
-# Resources 
+# Resources
 * Chorgori Platform: https://github.com/futurewei-cloud/chogori-platform
 * Distributed PostgreSQL on a Google Spanner Architecture – Query Layer: https://blog.yugabyte.com/distributed-postgresql-on-a-google-spanner-architecture-query-layer/
 * Postgres Internals: https://www.postgresql.org/docs/11/internals.html

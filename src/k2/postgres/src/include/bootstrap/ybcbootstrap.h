@@ -30,7 +30,7 @@
 #include "storage/lock.h"
 #include "utils/relcache.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 
 /*  Database Functions -------------------------------------------------------------------------- */
 

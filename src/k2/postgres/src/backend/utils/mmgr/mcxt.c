@@ -25,7 +25,7 @@
 #include "miscadmin.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 
 /*****************************************************************************

@@ -45,7 +45,7 @@
 #include "executor/tuptable.h"
 #include "executor/ybcExpr.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 #include "pg_yb_utils.h"
 
 #include "access/nbtree.h"

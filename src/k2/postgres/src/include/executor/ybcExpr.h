@@ -28,9 +28,9 @@
 #ifndef YBCEXPR_H
 #define YBCEXPR_H
 
-#include "yb/yql/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/ybc_pg_typedefs.h"
 
-#include "yb/yql/pggate/ybc_pggate.h"
+#include "yb/pggate/ybc_pggate.h"
 
 // Construct column reference expression.
 extern YBCPgExpr YBCNewColumnRef(YBCPgStatement ybc_stmt, int16_t attr_num, int attr_typid,

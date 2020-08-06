@@ -24,15 +24,15 @@ OBJS=	pg_backup_archiver.o pg_backup_db.o pg_backup_custom.o \
 	pg_backup_utils.o parallel.o compress_io.o dumputils.o $(WIN32RES)
 
 ifndef YB_BUILD_ROOT
-$(error YB_BUILD_ROOT is not set)
+YB_BUILD_ROOT := $(top_builddir)
 endif
 
-LIBS += -L$(YB_BUILD_ROOT)/lib -lyb_util
+LIBS += -L$(YB_BUILD_ROOT)/lib
 
 all: ysql_dump pg_restore ysql_dumpall
 
 ysql_dump: pg_dump.o common.o pg_dump_sort.o $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
-	$(CC) $(CFLAGS) pg_dump.o common.o pg_dump_sort.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -lyb_pggate -lyb_common -o $@$(X)
+	$(CC) $(CFLAGS) pg_dump.o common.o pg_dump_sort.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 pg_restore: pg_restore.o $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) pg_restore.o $(OBJS) $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
