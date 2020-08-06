@@ -8,6 +8,6 @@ set_target_properties(ybcommon PROPERTIES
         SOVERSION 1
         )
 
-target_link_libraries (ybcommon PRIVATE glog ybutf backtrace)
+target_link_libraries (ybcommon PRIVATE glog ybutf backtrace boost_thread)
 
 set_target_properties(ybcommon PROPERTIES LINKER_LANGUAGE C)
