@@ -55,9 +55,9 @@ class HostPort {
   static Result<HostPort> FromString(const std::string& str, uint16_t default_port) {
     HostPort result;
     RETURN_NOT_OK(result.ParseString(str, default_port));
-    return std::move(result);
+    return result;
   }
-  
+
   std::string ToString() const;
 
   const std::string& host() const { return host_; }
@@ -81,9 +81,9 @@ class HostPort {
       const char* separator = ",") {
     std::vector<HostPort> result;
     RETURN_NOT_OK(ParseStrings(comma_sep_addrs, default_port, &result, separator));
-    return std::move(result);
+    return result;
   }
-    
+
   bool operator==(const HostPort& other) const {
     return host() == other.host() && port() == other.port();
   }
