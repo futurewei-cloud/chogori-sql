@@ -1,5 +1,5 @@
-file(GLOB HEADERS "*.h" "type/*.h" "strings/*.h" "hash/*.h" "sys/*.h" "util/*.h" "concurrent/*.h" "metrics/*.h" "log/*.h")
-file(GLOB SOURCES "*.cc" "*.c" "type/*.cc" "strings/*.cc" "hash/*.cc" "sys/*.cc" "util/*.cc" "concurrent/*.cc" "metrics/*.cc" "log/*.cc")
+file(GLOB HEADERS "*.h" "*/*.h")
+file(GLOB SOURCES "*.cc" "*.c" "*/*.cc" "*/*.c")
 
 add_library(ybcommon SHARED ${HEADERS} ${SOURCES})
 
