@@ -41,7 +41,7 @@ struct Data {
     Slice slice_val_;
 };  
 
-class SQLValue {
+class SqlValue {
 public:
   enum ValueType {
       BOOL,  
@@ -51,48 +51,48 @@ public:
       SLICE
   };
 
-  SQLValue(ValueType type, Data* data) {
+  SqlValue(ValueType type, Data* data) {
       type_ = type;
       data_ = data;
   }
 
-  SQLValue(bool b) {
+  SqlValue(bool b) {
       type_ = ValueType::BOOL;
       data_ = new Data();
       data_->bool_val_ = b;
   }
 
-  SQLValue(int64_t v) {
+  SqlValue(int64_t v) {
       type_ = ValueType::INT;
       data_ = new Data();
       data_->int_val_ = v;
   }
 
-  SQLValue(float f) {
+  SqlValue(float f) {
       type_ = ValueType::FLOAT;
       data_ = new Data();
       data_->float_val_ = f;
   }
 
-  SQLValue(double d) {
+  SqlValue(double d) {
       type_ = ValueType::DOUBLE;
       data_ = new Data();
       data_->double_val_ = d;
   }
 
-  SQLValue(Slice s) {
+  SqlValue(Slice s) {
       type_ = ValueType::SLICE;
       data_ = new Data();
       data_->slice_val_ = s;
   }
 
   // Return a new identical SQLValue object.
-  SQLValue* Clone() const;
+  SqlValue* Clone() const;
 
   // Construct a SQLValue by copying the value of the given Slice.
-  static SQLValue* CopySlice(Slice s);
+  static SqlValue* CopySlice(Slice s);
 
-  ~SQLValue();
+  ~SqlValue();
 
   private: 
   ValueType type_;

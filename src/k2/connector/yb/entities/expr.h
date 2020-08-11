@@ -78,7 +78,7 @@ namespace sql {
 
     class SqlExpr {
         public:
-        explicit SqlExpr(Opcode op, SQLValue value) : value_(std::move(value)) {
+        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
             op_ = op;
         }
 
@@ -89,7 +89,7 @@ namespace sql {
             return op_;
         }
 
-        SQLValue value() {
+        SqlValue value() {
             return value_;
         }
 
@@ -97,7 +97,7 @@ namespace sql {
 
         private:
         Opcode op_;
-        SQLValue value_;
+        SqlValue value_;
     };
 
 }  // namespace sql

@@ -30,23 +30,23 @@ namespace sql {
 
 using yb::Slice;
 
-SQLValue::~SQLValue() {
+SqlValue::~SqlValue() {
     if (type_ == ValueType::SLICE) {
         delete[] data_->slice_val_.data();
     }
     delete data_;
 }
 
-SQLValue* SQLValue::Clone() const {
+SqlValue* SqlValue::Clone() const {
    switch (type_) {
         case ValueType::BOOL:
-            return new SQLValue(data_->bool_val_);
+            return new SqlValue(data_->bool_val_);
         case ValueType::INT:
-            return new SQLValue(data_->int_val_);
+            return new SqlValue(data_->int_val_);
         case ValueType::DOUBLE:
-            return new SQLValue(data_->double_val_);
+            return new SqlValue(data_->double_val_);
         case ValueType::FLOAT:
-            return new SQLValue(data_->float_val_);
+            return new SqlValue(data_->float_val_);
         case ValueType::SLICE:
             return CopySlice(data_->slice_val_);
         default:
@@ -54,12 +54,12 @@ SQLValue* SQLValue::Clone() const {
   }
 }
 
-SQLValue* SQLValue::CopySlice(Slice s) {
+SqlValue* SqlValue::CopySlice(Slice s) {
   auto copy = new uint8_t[s.size()];
   memcpy(copy, s.data(), s.size());
   auto slice_val = Slice(copy, s.size());
 
-  return new SQLValue(slice_val);
+  return new SqlValue(slice_val);
 }
 
 
