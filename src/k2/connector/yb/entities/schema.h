@@ -271,7 +271,7 @@ namespace sql {
     // passing by pointer or reference, and functions that create new
     // Schemas should generally prefer taking a Schema pointer and using
     // Schema::swap() or Schema::Reset() rather than returning by value.
-    class Schema{
+    class Schema {
         public:
 
         static const int kColumnNotFound = -1;
