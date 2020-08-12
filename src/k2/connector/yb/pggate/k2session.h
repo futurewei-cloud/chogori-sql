@@ -50,6 +50,7 @@
 #define CHOGORI_GATE_SESSION_H
 
 #include "yb/common/concurrent/ref_counted.h"
+#include "yb/pggate/pg_env.h"
 
 namespace k2 {
 namespace gate {

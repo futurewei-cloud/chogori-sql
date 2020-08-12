@@ -52,8 +52,13 @@
 #include <string>
 #include <set>
 
+#include "yb/common/result.h"
+#include "yb/common/type/strongly_typed_string.h"
+
 namespace k2 {
 namespace sql {
+
+    using namespace yb;   
 
     using NamespaceName = std::string;
     using TableName = std::string;
@@ -72,6 +77,20 @@ namespace sql {
     static const uint32_t kPgIndexTableOid = 2610;  // Hardcoded for pg_index. (in pg_index.h)
 
     extern const TableId kPgProcTableId;
+
+    // Get YB namespace id for a Postgres database.
+    NamespaceId GetPgsqlNamespaceId(uint32_t database_oid);
+
+    // Get YB table id for a Postgres table.
+    TableId GetPgsqlTableId(uint32_t database_oid, uint32_t table_oid);
+
+    // Is the namespace/table id a Postgres database or table id?
+    bool IsPgsqlId(const string& id);
+
+    // Get Postgres database and table oids from a YB namespace/table id.
+    Result<uint32_t> GetPgsqlDatabaseOid(const NamespaceId& namespace_id);
+    Result<uint32_t> GetPgsqlTableOid(const TableId& table_id);
+    Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id);
 
 }  // namespace sql
 }  // namespace k2
