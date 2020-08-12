@@ -46,65 +46,26 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_SQL_EXPR_H
-#define CHOGORI_SQL_EXPR_H
+#ifndef CHOGORI_GATE_SESSION_H
+#define CHOGORI_GATE_SESSION_H
 
-#include <memory>
-
-#include "yb/entities/value.h"
+#include "yb/common/concurrent/ref_counted.h"
 
 namespace k2 {
-namespace sql {
+namespace gate {
 
-    enum Opcode {
-        PG_EXPR_CONSTANT,
-        PG_EXPR_COLREF,
-        PG_EXPR_VARIABLE,
+using yb::RefCountedThreadSafe;
 
-        // The logical expression for defining the conditions when we support WHERE clause.
-        PG_EXPR_NOT,
-        PG_EXPR_EQ,
-        PG_EXPR_NE,
-        PG_EXPR_GE,
-        PG_EXPR_GT,
-        PG_EXPR_LE,
-        PG_EXPR_LT,
+// This class is not thread-safe as it is mostly used by a single-threaded PostgreSQL backend
+// process.
+class K2Session : public RefCountedThreadSafe<K2Session> {
+ public:
+  // Public types.
+  typedef scoped_refptr<K2Session> ScopedRefPtr;
 
-        // Aggregate functions.
-        PG_EXPR_AVG,
-        PG_EXPR_SUM,
-        PG_EXPR_COUNT,
-        PG_EXPR_MAX,
-        PG_EXPR_MIN,
-    };
+};
 
-    class SqlExpr {
-        public:
-        typedef std::shared_ptr<SqlExpr> SharedPtr;
-
-        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
-
-        ~SqlExpr() {
-        }
-
-        Opcode op() {
-            return op_;
-        }
-
-        SqlValue value() {
-            return value_;
-        }
-
-        const std::string ToString() const;   
-
-        private:
-        Opcode op_;
-        SqlValue value_;
-    };
-
-}  // namespace sql
+}  // namespace gate
 }  // namespace k2
 
-#endif //CHOGORI_SQL_EXPR_H
+#endif //CHOGORI_GATE_SESSION_H

@@ -46,65 +46,90 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_SQL_EXPR_H
-#define CHOGORI_SQL_EXPR_H
+#ifndef CHOGORI_GATE_STATEMENT_H
+#define CHOGORI_GATE_STATEMENT_H
 
 #include <memory>
+#include <string>
+#include <list>
 
-#include "yb/entities/value.h"
+#include "yb/entities/expr.h"
+#include "yb/common/status.h"
+#include "yb/pggate/k2session.h"
 
 namespace k2 {
-namespace sql {
+namespace gate {
 
-    enum Opcode {
-        PG_EXPR_CONSTANT,
-        PG_EXPR_COLREF,
-        PG_EXPR_VARIABLE,
+using k2::sql::SqlExpr;
+using yb::RefCountedThreadSafe;
+using yb::Status;
 
-        // The logical expression for defining the conditions when we support WHERE clause.
-        PG_EXPR_NOT,
-        PG_EXPR_EQ,
-        PG_EXPR_NE,
-        PG_EXPR_GE,
-        PG_EXPR_GT,
-        PG_EXPR_LE,
-        PG_EXPR_LT,
+// Statement types.
+enum StmtOp {
+  STMT_NOOP = 0,
+  STMT_CREATE_DATABASE,
+  STMT_DROP_DATABASE,
+  STMT_CREATE_SCHEMA,
+  STMT_DROP_SCHEMA,
+  STMT_CREATE_TABLE,
+  STMT_DROP_TABLE,
+  STMT_TRUNCATE_TABLE,
+  STMT_CREATE_INDEX,
+  STMT_DROP_INDEX,
+  STMT_ALTER_TABLE,
+  STMT_INSERT,
+  STMT_UPDATE,
+  STMT_DELETE,
+  STMT_TRUNCATE,
+  STMT_SELECT,
+  STMT_ALTER_DATABASE,
+};
 
-        // Aggregate functions.
-        PG_EXPR_AVG,
-        PG_EXPR_SUM,
-        PG_EXPR_COUNT,
-        PG_EXPR_MAX,
-        PG_EXPR_MIN,
-    };
+class K2Statement : public RefCountedThreadSafe<K2Statement> {
+ public:
+  // Public types.
+  typedef scoped_refptr<K2Statement> ScopedRefPtr;
 
-    class SqlExpr {
-        public:
-        typedef std::shared_ptr<SqlExpr> SharedPtr;
+  //------------------------------------------------------------------------------------------------
+  // Constructors.
+  // k2_session is the session that this statement belongs to. If PostgreSQL cancels the session
+  // while statement is running, k2_session::sharedptr can still be accessed without crashing.
+  explicit K2Statement(K2Session::ScopedRefPtr k2_session);
+  virtual ~K2Statement();
 
-        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
+  const K2Session::ScopedRefPtr& k2_session() {
+    return k2_session_;
+  }
 
-        ~SqlExpr() {
-        }
+  // Statement type.
+  virtual StmtOp stmt_op() const = 0;
 
-        Opcode op() {
-            return op_;
-        }
+  //------------------------------------------------------------------------------------------------
+  static bool IsValidStmt(K2Statement* stmt, StmtOp op) {
+    return (stmt != nullptr && stmt->stmt_op() == op);
+  }
 
-        SqlValue value() {
-            return value_;
-        }
+  //------------------------------------------------------------------------------------------------
+  // Add expressions that are belong to this statement.
+  void AddExpr(SqlExpr::SharedPtr expr);
 
-        const std::string ToString() const;   
+  //------------------------------------------------------------------------------------------------
+  // Clear all values and expressions that were bound to the given statement.
+  virtual CHECKED_STATUS ClearBinds() = 0;
 
-        private:
-        Opcode op_;
-        SqlValue value_;
-    };
+ protected:
+  // YBSession that this statement belongs to.
+  K2Session::ScopedRefPtr k2_session_;
 
-}  // namespace sql
+  // Execution status.
+  Status status_;
+  string errmsg_;
+
+  // Expression list to be destroyed as soon as the statement is removed from the API.
+  std::list<SqlExpr::SharedPtr> exprs_;
+};
+
+}  // namespace gate
 }  // namespace k2
 
-#endif //CHOGORI_SQL_EXPR_H
+#endif //CHOGORI_GATE_STATEMENT_H

@@ -18,16 +18,24 @@
 #ifndef CHOGORI_SQL_TABLE_H
 #define CHOGORI_SQL_TABLE_H
 
+#include <memory>
 #include <string>
 
+#include "yb/common/concurrent/ref_counted.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
 
 namespace k2 {
 namespace sql {
-    class TableInfo {
+    
+    using yb::RefCountedThreadSafe;
+
+    class TableInfo : public RefCountedThreadSafe<TableInfo> {
         public: 
+          
+        typedef scoped_refptr<TableInfo> ScopedRefPtr;
+
         TableInfo(TableId table_id, TableName table_name, Schema schema, IndexMap index_map) : 
             table_id_(table_id), table_name_(table_name), schema_(std::move(schema)), index_map_(std::move(index_map)) {
         }

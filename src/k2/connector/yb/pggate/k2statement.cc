@@ -46,65 +46,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_SQL_EXPR_H
-#define CHOGORI_SQL_EXPR_H
-
-#include <memory>
-
-#include "yb/entities/value.h"
+#include "k2statement.h"
 
 namespace k2 {
-namespace sql {
+namespace gate {
+//--------------------------------------------------------------------------------------------------
+// Class K2Statement
+//--------------------------------------------------------------------------------------------------
 
-    enum Opcode {
-        PG_EXPR_CONSTANT,
-        PG_EXPR_COLREF,
-        PG_EXPR_VARIABLE,
+K2Statement::K2Statement(K2Session::ScopedRefPtr k2_session) : k2_session_(std::move(k2_session)) {
+}
 
-        // The logical expression for defining the conditions when we support WHERE clause.
-        PG_EXPR_NOT,
-        PG_EXPR_EQ,
-        PG_EXPR_NE,
-        PG_EXPR_GE,
-        PG_EXPR_GT,
-        PG_EXPR_LE,
-        PG_EXPR_LT,
+K2Statement::~K2Statement() {
+}
 
-        // Aggregate functions.
-        PG_EXPR_AVG,
-        PG_EXPR_SUM,
-        PG_EXPR_COUNT,
-        PG_EXPR_MAX,
-        PG_EXPR_MIN,
-    };
+void K2Statement::AddExpr(SqlExpr::SharedPtr expr) {
+  exprs_.push_back(expr);
+}
 
-    class SqlExpr {
-        public:
-        typedef std::shared_ptr<SqlExpr> SharedPtr;
-
-        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
-
-        ~SqlExpr() {
-        }
-
-        Opcode op() {
-            return op_;
-        }
-
-        SqlValue value() {
-            return value_;
-        }
-
-        const std::string ToString() const;   
-
-        private:
-        Opcode op_;
-        SqlValue value_;
-    };
-
-}  // namespace sql
+}  // namespace gate
 }  // namespace k2
-
-#endif //CHOGORI_SQL_EXPR_H

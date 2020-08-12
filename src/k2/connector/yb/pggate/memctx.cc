@@ -46,65 +46,84 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_SQL_EXPR_H
-#define CHOGORI_SQL_EXPR_H
-
-#include <memory>
-
-#include "yb/entities/value.h"
+#include "yb/pggate/memctx.h"
 
 namespace k2 {
-namespace sql {
+namespace gate {
 
-    enum Opcode {
-        PG_EXPR_CONSTANT,
-        PG_EXPR_COLREF,
-        PG_EXPR_VARIABLE,
+K2Memctx::K2Memctx() {
+}
 
-        // The logical expression for defining the conditions when we support WHERE clause.
-        PG_EXPR_NOT,
-        PG_EXPR_EQ,
-        PG_EXPR_NE,
-        PG_EXPR_GE,
-        PG_EXPR_GT,
-        PG_EXPR_LE,
-        PG_EXPR_LT,
+K2Memctx::~K2Memctx() {
+}
 
-        // Aggregate functions.
-        PG_EXPR_AVG,
-        PG_EXPR_SUM,
-        PG_EXPR_COUNT,
-        PG_EXPR_MAX,
-        PG_EXPR_MIN,
-    };
+namespace {
+  // Table of memory contexts.
+  // - Although defined in K2Sql, this table is owned and managed by Postgres process.
+  //   Other processes cannot control "K2Memctx" to avoid memory violations.
+  // - Table "postgres_process_memctxs" is to help releasing the references to K2Statement when
+  //   Postgres Process (a C program) is exiting.
+  // - Transaction layer and Postgres BOTH hold references to K2Statement objects, and those
+  //   PgGate objects wouldn't be destroyed unless both layers release their references or both
+  //   layers are terminated.
+  std::unordered_map<K2Memctx *, K2Memctx::SharedPtr> postgres_process_memctxs;
+} // namespace
 
-    class SqlExpr {
-        public:
-        typedef std::shared_ptr<SqlExpr> SharedPtr;
+K2Memctx *K2Memctx::Create() {
+  auto memctx = std::make_shared<K2Memctx>();
+  postgres_process_memctxs[memctx.get()] = memctx;
+  return memctx.get();
+}
 
-        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
+Status K2Memctx::Destroy(K2Memctx *handle) {
+  if (handle) {
+    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
+           InternalError, "Invalid memory context handle");
+    postgres_process_memctxs.erase(handle);
+  }
+  return Status::OK();
+}
 
-        ~SqlExpr() {
-        }
+Status K2Memctx::Reset(K2Memctx *handle) {
+  if (handle) {
+    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
+           InternalError, "Invalid memory context handle");
+    handle->Clear();
+  }
+  return Status::OK();
+}
 
-        Opcode op() {
-            return op_;
-        }
+void K2Memctx::Clear() {
+  // The safest option is to retain all K2SQL statement objects.
+  // - Clear the table descriptors from cache. We can just reload them when requested.
+  // - Clear the "stmts_" for now. However, if this causes issue, keep "stmts_" vector around.
+  //
+  // PgGate and its contexts are between Postgres and K2SQL lower layers, and because these
+  // layers might be still operating on the raw pointer or reference to "stmts_" after Postgres's
+  // cancellation, there's a chance we might have an unexpected issue.
+  tabledesc_map_.clear();
+  stmts_.clear();
+}
 
-        SqlValue value() {
-            return value_;
-        }
+void K2Memctx::Cache(const K2Statement::ScopedRefPtr &stmt) {
+  // Hold the stmt until the context is released.
+  stmts_.push_back(stmt);
+}
 
-        const std::string ToString() const;   
+void K2Memctx::Cache(size_t hash_id, const TableInfo::ScopedRefPtr &table_desc) {
+  // Add table descriptor to table.
+  tabledesc_map_[hash_id] = table_desc;
+}
 
-        private:
-        Opcode op_;
-        SqlValue value_;
-    };
+void K2Memctx::GetCache(size_t hash_id, TableInfo **handle) {
+  // Read table descriptor to table.
+  const auto iter = tabledesc_map_.find(hash_id);
+  if (iter == tabledesc_map_.end()) {
+    *handle = nullptr;
+  } else {
+    *handle = iter->second.get();
+  }
+}
 
-}  // namespace sql
+}  // namespace gate
 }  // namespace k2
-
-#endif //CHOGORI_SQL_EXPR_H

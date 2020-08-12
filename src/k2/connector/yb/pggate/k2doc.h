@@ -15,8 +15,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_K2_GATE_H
-#define CHOGORI_K2_GATE_H
+#ifndef CHOGORI_GATE_DOC_H
+#define CHOGORI_GATE_DOC_H
 
 #include <string>
 #include <vector>
@@ -98,4 +98,4 @@ namespace gate {
 }  // namespace gate
 }  // namespace k2
 
-#endif //CHOGORI_K2_GATE_H
+#endif //CHOGORI_GATE_DOC_H
