@@ -24,6 +24,7 @@
 
 #include "yb/entities/value.h"
 #include "yb/common/type/slice.h"
+#include "yb/common/type/decimal.h"
 
 namespace k2 {
 namespace sql {
@@ -35,6 +36,167 @@ SqlValue::~SqlValue() {
         delete[] data_->slice_val_.data();
     }
     delete data_;
+}
+
+SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null) {
+ switch (type_entity->yb_type) {
+    case YB_YQL_DATA_TYPE_INT8:
+      if (!is_null) {
+        int8_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_INT16:
+      if (!is_null) {
+        int16_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_INT32:
+      if (!is_null) {
+        int32_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_INT64:
+      if (!is_null) {
+        int64_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_UINT32:
+      if (!is_null) {
+        uint32_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_UINT64:
+      if (!is_null) {
+        uint64_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_STRING:
+      if (!is_null) {
+        char *value;
+        int64_t bytes = type_entity->datum_fixed_size;
+        type_entity->datum_to_yb(datum, &value, &bytes);
+        type_ = ValueType::SLICE;
+        data_ = new Data();
+        Slice s(value, bytes);
+        data_->slice_val_ = s;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_BOOL:
+      if (!is_null) {
+        bool value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::BOOL;
+        data_ = new Data();
+        data_->bool_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_FLOAT:
+      if (!is_null) {
+        float value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::FLOAT;
+        data_ = new Data();
+        data_->float_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_DOUBLE:
+      if (!is_null) {
+        double value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::DOUBLE;
+        data_ = new Data();
+        data_->double_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_BINARY:
+      if (!is_null) {
+        uint8_t *value;
+        int64_t bytes = type_entity->datum_fixed_size;
+        type_entity->datum_to_yb(datum, &value, &bytes);
+        type_ = ValueType::SLICE;
+        data_ = new Data();
+        Slice s(value, bytes);
+        data_->slice_val_ = s;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_TIMESTAMP:
+      if (!is_null) {
+        int64_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_DECIMAL:
+      if (!is_null) {
+        char* plaintext;
+        // Calls YBCDatumToDecimalText in ybctype.c
+        type_entity->datum_to_yb(datum, &plaintext, nullptr);
+        yb::util::Decimal yb_decimal(plaintext);
+        GStringPiece s(yb_decimal.EncodeToComparable());
+        type_ = ValueType::SLICE;
+        data_ = new Data();
+        Slice value(s);
+        data_->slice_val_ = value;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_VARINT:
+    case YB_YQL_DATA_TYPE_INET:
+    case YB_YQL_DATA_TYPE_LIST:
+    case YB_YQL_DATA_TYPE_MAP:
+    case YB_YQL_DATA_TYPE_SET:
+    case YB_YQL_DATA_TYPE_UUID:
+    case YB_YQL_DATA_TYPE_TIMEUUID:
+    case YB_YQL_DATA_TYPE_TUPLE:
+    case YB_YQL_DATA_TYPE_TYPEARGS:
+    case YB_YQL_DATA_TYPE_USER_DEFINED_TYPE:
+    case YB_YQL_DATA_TYPE_FROZEN:
+    case YB_YQL_DATA_TYPE_DATE: // Not used for PG storage
+    case YB_YQL_DATA_TYPE_TIME: // Not used for PG storage
+    case YB_YQL_DATA_TYPE_JSONB:
+    case YB_YQL_DATA_TYPE_UINT8:
+    case YB_YQL_DATA_TYPE_UINT16:
+    default:
+      LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+  }
 }
 
 SqlValue* SqlValue::Clone() const {

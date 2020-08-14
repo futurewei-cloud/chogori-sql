@@ -28,7 +28,7 @@
 
 namespace k2 {
 namespace sql {
-    
+
     using yb::RefCountedThreadSafe;
 
     class TableInfo : public RefCountedThreadSafe<TableInfo> {

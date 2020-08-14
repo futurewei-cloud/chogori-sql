@@ -25,6 +25,7 @@
 
 #include "yb/common/macros.h"
 #include "yb/common/type/slice.h"
+#include "yb/pggate/ybc_pg_typedefs.h"
 
 namespace k2 {
 namespace sql {
@@ -85,6 +86,8 @@ public:
       data_ = new Data();
       data_->slice_val_ = s;
   }
+
+  SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
 
   // Return a new identical SQLValue object.
   SqlValue* Clone() const;

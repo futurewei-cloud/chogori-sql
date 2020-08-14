@@ -49,13 +49,30 @@
 #ifndef CHOGORI_GATE_SESSION_H
 #define CHOGORI_GATE_SESSION_H
 
+#include <unordered_set>
+
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/k2client.h"
 
 namespace k2 {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
+
+struct PgForeignKeyReference {
+  const uint32_t table_id;
+  const std::string ybctid;
+
+  PgForeignKeyReference(uint32_t i_table_id, std::string &&i_ybctid)
+      : table_id(i_table_id), ybctid(i_ybctid) {
+  }
+
+  std::string ToString() const {
+    return Format("{ table_id: $0 ybctid: $1 }",
+                  table_id, ybctid);
+  }
+};
 
 // This class is not thread-safe as it is mostly used by a single-threaded PostgreSQL backend
 // process.
@@ -64,6 +81,65 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   // Public types.
   typedef scoped_refptr<K2Session> ScopedRefPtr;
 
+  // Constructors.
+  PgSession(K2Client& k2_client,
+            const string& database_name,
+            const YBCPgCallbacks& pg_callbacks);
+
+  virtual ~PgSession();
+
+  CHECKED_STATUS ConnectDatabase(const std::string& database_name);
+
+  CHECKED_STATUS CreateDatabase(const std::string& database_name,
+                                PgOid database_oid,
+                                PgOid source_database_oid,
+                                PgOid next_oid);
+
+  CHECKED_STATUS DropDatabase(const std::string& database_name, PgOid database_oid);
+  
+  CHECKED_STATUS DropTable(const PgObjectId& table_id);
+
+  // Access functions for connected database.
+  const char* connected_dbname() const {
+    return connected_database_.c_str();
+  }
+
+  const string& connected_database() const {
+    return connected_database_;
+  }
+  void set_connected_database(const std::string& database) {
+    connected_database_ = database;
+  }
+  void reset_connected_database() {
+    connected_database_ = "";
+  }
+
+  void InvalidateCache() {
+    table_cache_.clear();
+  }
+
+  void InvalidateForeignKeyReferenceCache() {
+    fk_reference_cache_.clear();
+  }
+
+  private:
+    // Connected database.
+  std::string connected_database_;
+
+  // Execution status.
+  Status status_;
+  string errmsg_;
+
+    // Rowid generator.
+  ObjectIdGenerator rowid_generator_;
+
+  K2Client k2_client_;
+
+  std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
+  std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
+
+  // Should write operations be buffered?
+  bool buffering_enabled_ = false;
 };
 
 }  // namespace gate

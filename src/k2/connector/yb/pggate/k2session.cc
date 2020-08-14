@@ -51,5 +51,45 @@
 namespace k2 {
 namespace gate {
 
+K2Session::K2Session(
+    K2Client& k2_client,
+    const string& database_name,
+    const YBCPgCallbacks& pg_callbacks)
+    : k2_client_(k2_client),
+      pg_callbacks_(pg_callbacks) {
+    ConnectDatabase(database_name);
+}
+
+K2Session::~K2Session() {
+}
+
+Status K2Session::ConnectDatabase(const string& database_name) {
+  connected_database_ = database_name;
+  return Status::OK();
+}
+
+Status K2Session::CreateDatabase(const string& database_name,
+                                 const PgOid database_oid,
+                                 const PgOid source_database_oid,
+                                 const PgOid next_oid) {
+  return client_->CreateNamespace(database_name,
+                                  "" /* creator_role_name */,
+                                  GetPgsqlNamespaceId(database_oid),
+                                  source_database_oid != kPgInvalidOid
+                                  ? GetPgsqlNamespaceId(source_database_oid) : "",
+                                  next_oid);
+}
+
+Status K2Session::DropDatabase(const string& database_name, PgOid database_oid) {
+  RETURN_NOT_OK(client_->DeleteNamespace(database_name,
+                                         GetPgsqlNamespaceId(database_oid)));
+  RETURN_NOT_OK(DeleteDBSequences(database_oid));
+  return Status::OK();
+}
+
+Status K2Session::DropTable(const PgObjectId& table_id) {
+  return client_->DeleteTable(table_id.GetYBTableId());
+}
+
 }  // namespace gate
 }  // namespace k2
