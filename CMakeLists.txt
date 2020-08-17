@@ -30,7 +30,7 @@ add_subdirectory(src/k2/connector)
 include(ExternalProject)
 ExternalProject_Add(
     postgres
-    DEPENDS ybcommon ybpggate k2::appbase Seastar::seastar
+    DEPENDS ybcommon ybpggate k2::appbase k2::transport Seastar::seastar
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     STAMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/stamp
     TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
