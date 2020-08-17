@@ -2,8 +2,18 @@
 
 namespace k2gate {
 
+class K23SITxnHandle {
+   public:
+    void read();
+    void write();
+    void query();
+    void end();
+};
+
 class K23SIGate {
+   public:
+    void beginTxn();
 
-}; // class K23SIGate
+};  // class K23SIGate
 
-} // ns k2gate
+}  // namespace k2gate
