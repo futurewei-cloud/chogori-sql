@@ -88,7 +88,7 @@ ifneq ($(PORTNAME), win32)
 ifneq ($(PORTNAME), aix)
 
 postgres: $(OBJS)
-	$(CCLD) $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(export_dynamic) $(call expand_subsys,$^) $(LIBS) -o $@
+	g++ $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(export_dynamic) $(call expand_subsys,$^) $(LIBS) -lseastar -lboost_thread -lyaml-cpp -lboost_program_options -lfmt -libverbs -lhwloc -lnuma -lcrypto++ -o $@
 
 endif
 endif
