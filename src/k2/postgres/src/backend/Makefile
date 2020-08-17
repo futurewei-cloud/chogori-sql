@@ -74,13 +74,13 @@ SHLIB_EXPORTS = exports.txt
 
 ##########################################################################
 
-all: submake-libpgport submake-catalog-headers submake-utils-headers postgres $(POSTGRES_IMP) all-lib
+all: submake-libpgport submake-catalog-headers submake-utils-headers postgres $(POSTGRES_IMP)
 
 # Shared-library target all-lib.
 # Depends on postgres build, and Makefile_ybpostgres.shlib will add the other
 # deps (e.g. all-shared-lib and/or all-static-lib).
-all-lib: postgres all-lib
-include $(top_srcdir)/src/Makefile_ybpostgres.shlib
+#all-lib: postgres all-lib
+#include $(top_srcdir)/src/Makefile_ybpostgres.shlib
 
 
 ifneq ($(PORTNAME), cygwin)
@@ -88,7 +88,7 @@ ifneq ($(PORTNAME), win32)
 ifneq ($(PORTNAME), aix)
 
 postgres: $(OBJS)
-	g++ $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(export_dynamic) $(call expand_subsys,$^) $(LIBS) -lseastar -lboost_thread -lyaml-cpp -lboost_program_options -lfmt -libverbs -lhwloc -lnuma -lcrypto++ -o $@
+	g++ $(CFLAGS) $(LDFLAGS) $(LDFLAGS_EX) $(export_dynamic) $(call expand_subsys,$^) $(LIBS) -L/usr/local/lib/k2/ -lappbase -ltransport -lcrc32c -lconfig -lseastar -lcommon -lboost_thread -lyaml-cpp -lboost_program_options -lfmt -libverbs -lhwloc -lnuma -lcrypto++ -o $@
 
 endif
 endif
@@ -220,7 +220,7 @@ distprep:
 
 ##########################################################################
 
-install: all installdirs install-bin install-lib
+install: all installdirs install-bin
 ifeq ($(PORTNAME), cygwin)
 ifeq ($(MAKE_DLL), true)
 	$(INSTALL_DATA) libpostgres.a '$(DESTDIR)$(libdir)/libpostgres.a'
