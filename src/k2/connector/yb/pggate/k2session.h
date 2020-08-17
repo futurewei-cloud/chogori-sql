@@ -52,6 +52,8 @@
 #include <unordered_set>
 
 #include "yb/common/concurrent/ref_counted.h"
+#include "yb/common/oid_generator.h"
+#include "yb/entities/table.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/k2client.h"
 
@@ -59,6 +61,7 @@ namespace k2 {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
+using namespace k2::sql;
 
 struct PgForeignKeyReference {
   const uint32_t table_id;
@@ -82,11 +85,11 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   typedef scoped_refptr<K2Session> ScopedRefPtr;
 
   // Constructors.
-  PgSession(K2Client& k2_client,
+  K2Session(K2Client* k2_client,
             const string& database_name,
             const YBCPgCallbacks& pg_callbacks);
 
-  virtual ~PgSession();
+  virtual ~K2Session();
 
   CHECKED_STATUS ConnectDatabase(const std::string& database_name);
 
@@ -96,7 +99,11 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
                                 PgOid next_oid);
 
   CHECKED_STATUS DropDatabase(const std::string& database_name, PgOid database_oid);
-  
+
+  CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
+
   CHECKED_STATUS DropTable(const PgObjectId& table_id);
 
   // Access functions for connected database.
@@ -122,6 +129,8 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     fk_reference_cache_.clear();
   }
 
+  void InvalidateTableCache(const PgObjectId& table_id);
+
   private:
     // Connected database.
   std::string connected_database_;
@@ -133,13 +142,15 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     // Rowid generator.
   ObjectIdGenerator rowid_generator_;
 
-  K2Client k2_client_;
+  K2Client* const k2_client_;
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
 
   // Should write operations be buffered?
   bool buffering_enabled_ = false;
+
+  const YBCPgCallbacks& pg_callbacks_;
 };
 
 }  // namespace gate

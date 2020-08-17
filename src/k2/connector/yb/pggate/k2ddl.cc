@@ -114,7 +114,6 @@ K2CreateTable::K2CreateTable(K2Session::ScopedRefPtr k2_session,
       namespace_name_(database_name),
       table_name_(table_name),
       table_id_(table_id),
-      num_tablets_(-1),
       is_pg_catalog_table_(strcmp(schema_name, "pg_catalog") == 0 ||
                            strcmp(schema_name, "information_schema") == 0),
       is_shared_table_(is_shared_table),
@@ -172,11 +171,7 @@ Status K2CreateTable::AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_
   row.reserve(key_column_count);
   for (size_t i = 0; i < key_column_count; ++i) {
     SqlValue sql_value(types[i], data[i], false);
-/*     if (i < num_cols) {
-      PgConstant point(types[i], data[i], false);
-      RETURN_NOT_OK(point.Eval(&ql_value));
-    } */
-    row.push_back(std::move(ql_value));
+    row.push_back(std::move(sql_value));
   }
 
   split_rows_.push_back(std::move(row));
@@ -186,100 +181,28 @@ Status K2CreateTable::AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_
 Result<std::vector<std::string>> K2CreateTable::BuildSplitRows(const Schema& schema) {
   std::vector<std::string> rows;
   rows.reserve(split_rows_.size());
-  docdb::DocKey prev_doc_key;
-  for (const auto& row : split_rows_) {
-    SCHECK_EQ(
-        row.size(), PrimaryKeyRangeColumnCount(),
-        IllegalState, "Number of split row values must be equal to number of primary key columns");
-    std::vector<docdb::PrimitiveValue> range_components;
-    range_components.reserve(row.size());
-    bool compare_columns = true;
-    for (const auto& row_value : row) {
-      const auto column_index = range_components.size();
-      range_components.push_back(row_value.value_case() == QLValuePB::VALUE_NOT_SET
-        ? docdb::PrimitiveValue(docdb::ValueType::kLowest)
-        : docdb::PrimitiveValue::FromQLValuePB(
-            row_value,
-            schema.Column(schema.FindColumn(range_columns_[column_index])).sorting_type()));
-
-      // Validate that split rows honor column ordering.
-      if (compare_columns && !prev_doc_key.empty()) {
-        const auto& prev_value = prev_doc_key.range_group()[column_index];
-        const auto compare = prev_value.CompareTo(range_components.back());
-        if (compare > 0) {
-          return STATUS(InvalidArgument, "Split rows ordering does not match column ordering");
-        } else if (compare < 0) {
-          // Don't need to compare further columns
-          compare_columns = false;
-        }
-      }
-    }
-    prev_doc_key = docdb::DocKey(std::move(range_components));
-    const auto keybytes = prev_doc_key.Encode();
-
-    // Validate that there are no duplicate split rows.
-    if (rows.size() > 0 && keybytes.AsSlice() == Slice(rows.back())) {
-      return STATUS(InvalidArgument, "Cannot have duplicate split rows");
-    }
-    rows.push_back(keybytes.ToStringBuffer());
-  }
+  // TODO: add logic to handle split_rows_ and validate them
+  
   return rows;
 }
 
 Status K2CreateTable::Exec() {
-  // Construct schema.
-  client::YBSchema schema;
-
   TableProperties table_properties;
-  const char* pg_txn_enabled_env_var = getenv("YB_PG_TRANSACTIONS_ENABLED");
-  const bool transactional =
-      !pg_txn_enabled_env_var || strcmp(pg_txn_enabled_env_var, "1") == 0;
-  LOG(INFO) << Format(
-      "K2CreateTable: creating a $0 table: $1",
-      transactional ? "transactional" : "non-transactional", table_name_.ToString());
-  if (transactional) {
-    table_properties.SetTransactional(true);
-    schema_builder_.SetTableProperties(table_properties);
-  }
+  // always use transaction for create table
+  table_properties.SetTransactional(true);
+  schema_builder_.SetTableProperties(table_properties);
 
-  RETURN_NOT_OK(schema_builder_.Build(&schema));
+  // Construct schema.
+  Schema schema = schema_builder_.Build();
+
+ // RETURN_NOT_OK(schema_builder_.Build(&schema));
   std::vector<std::string> split_rows = VERIFY_RESULT(BuildSplitRows(schema));
 
+  // TODO: For index, set indexed (base) table id.
+
   // Create table.
-  shared_ptr<client::YBTableCreator> table_creator(pg_session_->NewTableCreator());
-  table_creator->table_name(table_name_).table_type(client::YBTableType::PGSQL_TABLE_TYPE)
-                .table_id(table_id_.GetYBTableId())
-                .num_tablets(num_tablets_)
-                .schema(&schema)
-                .colocated(colocated_);
-  if (is_pg_catalog_table_) {
-    table_creator->is_pg_catalog_table();
-  }
-  if (is_shared_table_) {
-    table_creator->is_pg_shared_table();
-  }
-  if (hash_schema_) {
-    table_creator->hash_schema(*hash_schema_);
-  } else if (!is_pg_catalog_table_) {
-    table_creator->set_range_partition_columns(range_columns_, split_rows);
-  }
-
-  // For index, set indexed (base) table id.
-  if (indexed_table_id()) {
-    table_creator->indexed_table_id(indexed_table_id()->GetYBTableId());
-    if (is_unique_index()) {
-      table_creator->is_unique_index(true);
-    }
-    if (skip_index_backfill()) {
-      table_creator->skip_index_backfill(true);
-    } else if (!FLAGS_ysql_disable_index_backfill) {
-      // For online index backfill, don't wait for backfill to finish because waiting on index
-      // permissions is done anyway.
-      table_creator->wait(false);
-    }
-  }
-
-  const Status s = table_creator->Create();
+  const Status s = k2_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema, range_columns_, split_rows_,
+    is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
       if (if_not_exist_) {
@@ -288,7 +211,7 @@ Status K2CreateTable::Exec() {
       return STATUS(InvalidArgument, "Duplicate table");
     }
     if (s.IsNotFound()) {
-      return STATUS(InvalidArgument, "Database not found", table_name_.namespace_name());
+      return STATUS(InvalidArgument, "Database not found", namespace_name_);
     }
     return STATUS_FORMAT(
         InvalidArgument, "Invalid table definition: $0",

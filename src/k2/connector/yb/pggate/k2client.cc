@@ -28,6 +28,14 @@ Status K2Client::DeleteNamespace(const std::string& namespace_name,
   return Status::OK();
 }
 
+Status K2Client::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
+
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
 Status K2Client::DeleteTable(const string& table_id, bool wait) {
   // TODO: add implementation                                   
   return Status::OK();

@@ -252,12 +252,21 @@ namespace sql {
             return default_time_to_live_;
         }
 
+        bool is_transactional() const {
+            return is_transactional_;
+        }
+
+        void SetTransactional(bool is_transactional) {
+            is_transactional_ = is_transactional;
+        }
+
         void Reset();
 
         std::string ToString() const;
 
         private:
         static const int kNoDefaultTtl = -1;
+        bool is_transactional_ = false;
         int64_t default_time_to_live_ = kNoDefaultTtl;
     };
 
@@ -595,6 +604,10 @@ namespace sql {
             return next_id_;
         }
 
+        void SetTableProperties(TableProperties& table_properties) {
+            table_properties_ = table_properties;
+        }
+        
         Schema Build() const {
             return Schema(cols_, col_ids_, num_key_columns_, table_properties_);
         }

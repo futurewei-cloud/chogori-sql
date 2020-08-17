@@ -19,6 +19,7 @@
 #define CHOGORI_GATE_CLIENT_H
 
 #include "yb/pggate/k2doc.h"
+#include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
 
 namespace k2 {
@@ -43,6 +44,10 @@ class K2Client {
   // Delete namespace with the given name.
   CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id = "");
+
+  CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
   // Delete the specified table.
   // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.

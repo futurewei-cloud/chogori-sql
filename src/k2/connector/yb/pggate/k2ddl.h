@@ -67,7 +67,7 @@ using namespace k2::sql;
 
 class K2Ddl : public K2Statement {
  public:
-  explicit K2Ddl(PgSession::ScopedRefPtr k2_session) : K2Statement(k2_session) {
+  explicit K2Ddl(K2Session::ScopedRefPtr k2_session) : K2Statement(k2_session) {
   }
 
   virtual CHECKED_STATUS ClearBinds() {
@@ -157,7 +157,7 @@ class K2CreateTable : public K2Ddl {
   StmtOp stmt_op() const override { return StmtOp::STMT_CREATE_TABLE; }
 
   // For K2CreateIndex: the indexed (base) table id and if this is a unique index.
-  virtual std::optional<const PgObjectId&> indexed_table_id() const { return std::nullopt; }
+  virtual std::optional<PgObjectId> indexed_table_id() const { return std::nullopt; }
   virtual bool is_unique_index() const { return false; }
   virtual const bool skip_index_backfill() const { return false; }
 
@@ -202,10 +202,8 @@ class K2CreateTable : public K2Ddl {
 
   NamespaceId namespace_id_;
   NamespaceName namespace_name_;
-  TableId table_id_;
   TableName table_name_;
   const PgObjectId table_id_;
-  int32_t num_tablets_;
   bool is_pg_catalog_table_;
   bool is_shared_table_;
   bool if_not_exist_;
