@@ -1,7 +1,7 @@
 file(GLOB HEADERS "*.h")
 file(GLOB SOURCES "*.cc")
 
-add_library(ybpggate SHARED ${HEADERS} ${SOURCES})
+add_library(ybpggate STATIC ${HEADERS} ${SOURCES})
 
 set_target_properties(ybpggate PROPERTIES
         VERSION ${PROJECT_VERSION}
