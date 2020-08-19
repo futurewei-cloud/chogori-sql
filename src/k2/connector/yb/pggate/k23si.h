@@ -12,6 +12,7 @@ class K23SITxnHandle {
 
 class K23SIGate {
    public:
+    K23SIGate();
     void beginTxn();
 
 };  // class K23SIGate

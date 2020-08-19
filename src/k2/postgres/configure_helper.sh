@@ -5,7 +5,8 @@ echo "1=$1"
 echo "2=$2"
 echo "3=$3"
 echo "4=$4"
-echo $PWD
+echo "5=$5"
+echo "pwd=$PWD"
 
 # compile flags
 export CFLAGS=-fPIC
