@@ -29,6 +29,9 @@ using namespace yb;
 
 class K2Client {
  public:
+  K2Client() : doc_api_(DocApi()) {
+  };
+
   K2Client(DocApi doc_api) : doc_api_(doc_api) {
   };
 
@@ -53,6 +56,16 @@ class K2Client {
   // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.
   CHECKED_STATUS DeleteTable(const std::string& table_id, bool wait = true);    
 
+  // For Postgres: reserve oids for a Postgres database.
+  CHECKED_STATUS ReservePgsqlOids(const std::string& namespace_id,
+                                  uint32_t next_oid, uint32_t count,
+                                  uint32_t* begin_oid, uint32_t* end_oid);
+
+  CHECKED_STATUS GetYsqlCatalogMasterVersion(uint64_t *ysql_catalog_version);
+
+  CHECKED_STATUS Init();
+
+  CHECKED_STATUS Shutdown();
 private:
   DocApi doc_api_;
 };

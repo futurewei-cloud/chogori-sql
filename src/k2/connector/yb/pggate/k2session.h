@@ -106,6 +106,14 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
 
   CHECKED_STATUS DropTable(const PgObjectId& table_id);
 
+  CHECKED_STATUS ReserveOids(PgOid database_oid,
+                             PgOid nexte_oid,
+                             uint32_t count,
+                             PgOid *begin_oid,
+                             PgOid *end_oid);
+
+  CHECKED_STATUS GetCatalogMasterVersion(uint64_t *version);
+
   // Access functions for connected database.
   const char* connected_dbname() const {
     return connected_database_.c_str();
@@ -129,7 +137,13 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     fk_reference_cache_.clear();
   }
 
+  Result<TableInfo::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+
   void InvalidateTableCache(const PgObjectId& table_id);
+                             
+  void SetTimeout(const int timeout_ms) {
+      timeout_ = timeout_ms;
+  }
 
   private:
     // Connected database.
@@ -151,6 +165,8 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   bool buffering_enabled_ = false;
 
   const YBCPgCallbacks& pg_callbacks_;
+
+  int timeout_;
 };
 
 }  // namespace gate

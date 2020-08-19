@@ -99,9 +99,27 @@ Status K2Session::DropTable(const PgObjectId& table_id) {
   return k2_client_->DeleteTable(table_id.GetYBTableId());
 }
 
+Status K2Session::ReserveOids(const PgOid database_oid,
+                              const PgOid next_oid,
+                              const uint32_t count,
+                              PgOid *begin_oid,
+                              PgOid *end_oid) {
+  return k2_client_->ReservePgsqlOids(GetPgsqlNamespaceId(database_oid), next_oid, count,
+                                   begin_oid, end_oid);
+}
+
+Status K2Session::GetCatalogMasterVersion(uint64_t *version) {
+  return k2_client_->GetYsqlCatalogMasterVersion(version);
+}
+
 void K2Session::InvalidateTableCache(const PgObjectId& table_id) {
   const TableId yb_table_id = table_id.GetYBTableId();
   table_cache_.erase(yb_table_id);
+}
+
+Result<TableInfo::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id) {
+  // TODO: add implementation                                   
+  return nullptr;
 }
 
 }  // namespace gate

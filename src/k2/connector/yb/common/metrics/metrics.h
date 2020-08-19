@@ -259,7 +259,6 @@
 #include "yb/common/singleton.h"
 
 #include "yb/common/concurrent/atomic.h"
-//#include "yb/util/jsonwriter.h"
 #include "yb/common/concurrent/locks.h"
 #include "yb/common/sys/monotime.h"
 #include "yb/common/status.h"

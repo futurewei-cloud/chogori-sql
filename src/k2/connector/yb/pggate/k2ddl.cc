@@ -182,7 +182,7 @@ Result<std::vector<std::string>> K2CreateTable::BuildSplitRows(const Schema& sch
   std::vector<std::string> rows;
   rows.reserve(split_rows_.size());
   // TODO: add logic to handle split_rows_ and validate them
-  
+
   return rows;
 }
 
@@ -195,7 +195,6 @@ Status K2CreateTable::Exec() {
   // Construct schema.
   Schema schema = schema_builder_.Build();
 
- // RETURN_NOT_OK(schema_builder_.Build(&schema));
   std::vector<std::string> split_rows = VERIFY_RESULT(BuildSplitRows(schema));
 
   // TODO: For index, set indexed (base) table id.

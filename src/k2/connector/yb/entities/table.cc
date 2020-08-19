@@ -22,5 +22,18 @@ namespace sql {
     Result<const IndexInfo*> TableInfo::FindIndex(const TableId& index_id) const {
         return index_map_.FindIndex(index_id);
     }
+
+    Status TableInfo::GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const {
+        const auto itr = attr_num_map_.find(attr_number);
+        if (itr != attr_num_map_.end()) {
+            *is_primary = schema_.is_key_column(itr->second);
+            *is_hash = schema_.is_hash_key_column(itr->second);
+        } else {
+            *is_primary = false;
+            *is_hash = false;
+        }
+        return Status::OK();
+    }
+
 }  // namespace sql
 }  // namespace k2

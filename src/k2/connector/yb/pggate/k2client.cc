@@ -41,5 +41,27 @@ Status K2Client::DeleteTable(const string& table_id, bool wait) {
   return Status::OK();
 }
 
+Status K2Client::ReservePgsqlOids(const std::string& namespace_id,
+                                  const uint32_t next_oid, const uint32_t count,
+                                  uint32_t* begin_oid, uint32_t* end_oid) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
+Status K2Client::GetYsqlCatalogMasterVersion(uint64_t *ysql_catalog_version) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
+Status K2Client::Init() {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
+Status K2Client::Shutdown() {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
 }  // namespace gate
 }  // namespace k2

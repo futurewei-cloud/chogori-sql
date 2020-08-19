@@ -22,6 +22,7 @@
 #include <string>
 
 #include "yb/common/concurrent/ref_counted.h"
+#include "yb/common/status.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
@@ -38,6 +39,12 @@ namespace sql {
 
         TableInfo(TableId table_id, TableName table_name, Schema schema, IndexMap index_map) : 
             table_id_(table_id), table_name_(table_name), schema_(std::move(schema)), index_map_(std::move(index_map)) {
+            const int num_columns = schema.num_columns();
+            for (size_t idx = 0; idx < num_columns; idx++) {
+                // Find the column descriptor.
+                const auto& col = schema.column(idx);
+                attr_num_map_[col.order()] = idx;
+            }
         }
 
         const TableId table_id() const {
@@ -55,6 +62,8 @@ namespace sql {
         const bool has_secondary_indexes() {
             return !index_map_.empty();
         }
+       
+        CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
         Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
 
@@ -64,6 +73,9 @@ namespace sql {
         Schema schema_;
         IndexMap index_map_;
         // TODO: add partition information if necessary for PG
+
+        // Attr number to column index map.
+        std::unordered_map<int, size_t> attr_num_map_; 
     };
 
 }  // namespace sql
