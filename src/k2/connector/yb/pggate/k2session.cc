@@ -122,5 +122,10 @@ Result<TableInfo::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id)
   return nullptr;
 }
 
+Result<bool> K2Session::IsInitDbDone() {
+  // TODO: add implementation                                   
+  return false;
+}
+
 }  // namespace gate
 }  // namespace k2

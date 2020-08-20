@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "ybc_pg_typedefs.h"
+#include "yb/common/ybc-internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,6 +28,10 @@ extern "C" {
 // functions in this API are called.
 void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, YBCPgCallbacks pg_callbacks);
 void YBCDestroyPgGate();
+
+// Initialize ENV within which PGSQL calls will be executed.
+YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env);
+YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env);
 
 // Initialize a session to process statements that come from the same client connection.
 YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name);
@@ -130,6 +135,7 @@ YBCStatus YBCPgGetCatalogMasterVersion(uint64_t *version);
 void YBCPgInvalidateTableCache(
     const YBCPgOid database_oid,
     const YBCPgOid table_oid);
+    
 YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_id);
 
 // TABLE -------------------------------------------------------------------------------------------

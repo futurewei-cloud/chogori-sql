@@ -137,6 +137,10 @@ Status K2GateApiImpl::InvalidateCache() {
   return Status::OK();
 }
 
+Result<bool> K2GateApiImpl::IsInitDbDone() {
+  return k2_session_->IsInitDbDone();
+}
+
 //--------------------------------------------------------------------------------------------------
 
 K2Memctx *K2GateApiImpl::CreateMemctx() {

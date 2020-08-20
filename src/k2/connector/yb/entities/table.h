@@ -62,7 +62,27 @@ namespace sql {
         const bool has_secondary_indexes() {
             return !index_map_.empty();
         }
-       
+
+         // Return the number of columns in this table
+        size_t num_columns() const {
+            return schema_.num_columns();
+        }
+
+        // Return the length of the key prefix in this table.
+        size_t num_key_columns() const {
+            return schema_.num_key_columns();
+        }
+
+        // Number of hash key columns.
+        size_t num_hash_key_columns() const {
+            return schema_.num_hash_key_columns();
+        }
+
+        // Number of range key columns.
+        size_t num_range_key_columns() const {
+            return schema_.num_range_key_columns();
+        }
+
         CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
         Result<const IndexInfo*> FindIndex(const TableId& index_id) const;

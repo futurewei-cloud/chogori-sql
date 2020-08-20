@@ -53,6 +53,7 @@
 
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/oid_generator.h"
+#include "yb/common/sys/monotime.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/k2client.h"
@@ -140,9 +141,12 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   Result<TableInfo::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
 
   void InvalidateTableCache(const PgObjectId& table_id);
-                             
+      
+  // Check if initdb has already been run before. Needed to make initdb idempotent.
+  Result<bool> IsInitDbDone();   
+
   void SetTimeout(const int timeout_ms) {
-      timeout_ = timeout_ms;
+      timeout_ = MonoDelta::FromMilliseconds(timeout_ms);
   }
 
   private:
@@ -166,7 +170,7 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
 
   const YBCPgCallbacks& pg_callbacks_;
 
-  int timeout_;
+  MonoDelta timeout_;
 };
 
 }  // namespace gate
