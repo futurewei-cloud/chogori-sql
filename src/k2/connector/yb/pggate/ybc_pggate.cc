@@ -251,6 +251,8 @@ YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name
 }
 
 YBCStatus YBCPgCreateTableSetNumTablets(YBCPgStatement handle, int32_t num_tablets) {
+    // no-op for setting up num_tablets 
+    // TODO: remove this api from PG 
     return YBCStatusOK();
 }
 
@@ -678,25 +680,39 @@ YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg){
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
 bool YBCForeignKeyReferenceExists(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size) {
-    return false;
+  return k2api->ForeignKeyReferenceExists(table_id, std::string(ybctid, ybctid_size));
 }
 
 // Add an entry to foreign key reference cache.
 YBCStatus YBCCacheForeignKeyReference(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->CacheForeignKeyReference(table_id, std::string(ybctid, ybctid_size)));
 }
 
 // Delete an entry from foreign key reference cache.
 YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_id, uint64_t ybctid){
-    return YBCStatusOK();
+  char *value;
+  int64_t bytes;
+
+  const YBCPgTypeEntity *type_entity = k2api->FindTypeEntity(kPgByteArrayOid);
+  type_entity->datum_to_yb(ybctid, &value, &bytes);
+  return ToYBCStatus(k2api->DeleteForeignKeyReference(table_id, std::string(value, bytes)));
 }
 
 void ClearForeignKeyReferenceCache() {
-
+  k2api->ClearForeignKeyReferenceCache();
 }
 
 bool YBCIsInitDbModeEnvVarSet() {
-    return false;
+  static bool cached_value = false;
+  static bool cached = false;
+
+  if (!cached) {
+    const char* initdb_mode_env_var_value = getenv("YB_PG_INITDB_MODE");
+    cached_value = initdb_mode_env_var_value && strcmp(initdb_mode_env_var_value, "1") == 0;
+    cached = true;
+  }
+
+  return cached_value;
 }
 
 // This is called by initdb. Used to customize some behavior.

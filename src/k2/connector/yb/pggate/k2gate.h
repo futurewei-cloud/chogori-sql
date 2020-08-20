@@ -308,13 +308,17 @@ class K2GateApiImpl {
                              const YBCPgTypeEntity *type_entity,
                              SqlExpr **op_handle);
   CHECKED_STATUS OperatorAppendArg(SqlExpr *op_handle, SqlExpr *arg);
+*/
 
   // Foreign key reference caching.
   bool ForeignKeyReferenceExists(YBCPgOid table_id, std::string&& ybctid);
+
   CHECKED_STATUS CacheForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
+
   CHECKED_STATUS DeleteForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
+  
   void ClearForeignKeyReferenceCache();
-*/
+
   // Sets the specified timeout in the rpc service.
   void SetTimeout(int timeout_ms);
 

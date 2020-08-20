@@ -402,6 +402,22 @@ Status K2GateApiImpl::SetCatalogCacheVersion(K2Statement *handle, uint64_t catal
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 
+bool K2GateApiImpl::ForeignKeyReferenceExists(YBCPgOid table_id, std::string&& ybctid) {
+  return k2_session_->ForeignKeyReferenceExists(table_id, std::move(ybctid));
+}
+
+Status K2GateApiImpl::CacheForeignKeyReference(YBCPgOid table_id, std::string&& ybctid) {
+  return k2_session_->CacheForeignKeyReference(table_id, std::move(ybctid));
+}
+
+Status K2GateApiImpl::DeleteForeignKeyReference(YBCPgOid table_id, std::string&& ybctid) {
+  return k2_session_->DeleteForeignKeyReference(table_id, std::move(ybctid));
+}
+
+void K2GateApiImpl::ClearForeignKeyReferenceCache() {
+  k2_session_->InvalidateForeignKeyReferenceCache();
+}
+
 void K2GateApiImpl::SetTimeout(const int timeout_ms) {
   k2_session_->SetTimeout(timeout_ms);
 }

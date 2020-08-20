@@ -148,6 +148,16 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   void SetTimeout(const int timeout_ms) {
       timeout_ = MonoDelta::FromMilliseconds(timeout_ms);
   }
+  
+  // Returns true if the row referenced by ybctid exists in FK reference cache (Used for caching
+  // foreign key checks).
+  bool ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid);
+
+  // Adds the row referenced by ybctid to FK reference cache.
+  CHECKED_STATUS CacheForeignKeyReference(uint32_t table_id, std::string&& ybctid);
+
+  // Deletes the row referenced by ybctid from FK reference cache.
+  CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid);
 
   private:
     // Connected database.

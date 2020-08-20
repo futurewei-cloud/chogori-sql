@@ -127,5 +127,34 @@ Result<bool> K2Session::IsInitDbDone() {
   return false;
 }
 
+bool operator==(const PgForeignKeyReference& k1, const PgForeignKeyReference& k2) {
+  return k1.table_id == k2.table_id &&
+      k1.ybctid == k2.ybctid;
+}
+
+size_t hash_value(const PgForeignKeyReference& key) {
+  size_t hash = 0;
+  boost::hash_combine(hash, key.table_id);
+  boost::hash_combine(hash, key.ybctid);
+  return hash;
+}
+
+bool K2Session::ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid) {
+  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  return fk_reference_cache_.find(reference) != fk_reference_cache_.end();
+}
+
+Status K2Session::CacheForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
+  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  fk_reference_cache_.emplace(reference);
+  return Status::OK();
+}
+
+Status K2Session::DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
+  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  fk_reference_cache_.erase(reference);
+  return Status::OK();
+}
+
 }  // namespace gate
 }  // namespace k2
