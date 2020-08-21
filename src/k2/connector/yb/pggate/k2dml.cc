@@ -73,10 +73,30 @@ K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session,
   }
 }
 
+K2Dml::~K2Dml() {
+}
+
+Status K2Dml::ClearBinds() {
+  return STATUS(NotSupported, "Clearing binds for prepared statement is not yet implemented");
+}
+
+Status K2Dml::BindColumn(int attr_num, SqlExpr *attr_value) {
+  // TODO: add implementation
+  return Status::OK();
+}
+
 K2DmlWrite::K2DmlWrite(K2Session::ScopedRefPtr k2_session,
                        const PgObjectId& table_id,
                        const bool is_single_row_txn)
     : K2Dml(std::move(k2_session), table_id), is_single_row_txn_(is_single_row_txn) {
+}
+
+K2DmlWrite::~K2DmlWrite() {
+}
+
+Status K2DmlWrite::Prepare() {
+  // TODO: add implementation
+  return Status::OK();
 }
 
 }  // namespace gate

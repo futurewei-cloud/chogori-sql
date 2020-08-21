@@ -145,10 +145,14 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   // Check if initdb has already been run before. Needed to make initdb idempotent.
   Result<bool> IsInitDbDone();   
 
+  // Returns the local catalog version stored in shared memory, or an error if
+  // the shared memory has not been initialized (e.g. in initdb).
+  Result<uint64_t> GetSharedCatalogVersion();
+
   void SetTimeout(const int timeout_ms) {
       timeout_ = MonoDelta::FromMilliseconds(timeout_ms);
   }
-  
+
   // Returns true if the row referenced by ybctid exists in FK reference cache (Used for caching
   // foreign key checks).
   bool ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid);

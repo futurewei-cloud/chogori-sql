@@ -141,6 +141,10 @@ Result<bool> K2GateApiImpl::IsInitDbDone() {
   return k2_session_->IsInitDbDone();
 }
 
+Result<uint64_t> K2GateApiImpl::GetSharedCatalogVersion() {
+  return k2_session_->GetSharedCatalogVersion();
+}
+
 //--------------------------------------------------------------------------------------------------
 
 K2Memctx *K2GateApiImpl::CreateMemctx() {

@@ -127,6 +127,11 @@ Result<bool> K2Session::IsInitDbDone() {
   return false;
 }
 
+Result<uint64_t> K2Session::GetSharedCatalogVersion() {
+  // TODO: add implementation
+  return 0;
+}
+
 bool operator==(const PgForeignKeyReference& k1, const PgForeignKeyReference& k2) {
   return k1.table_id == k2.table_id &&
       k1.ybctid == k2.ybctid;
