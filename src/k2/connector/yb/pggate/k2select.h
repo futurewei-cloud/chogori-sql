@@ -46,6 +46,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef CHOGORI_GATE_DML_SELECT_H
+#define CHOGORI_GATE_DML_SELECT_H
+
 #include "yb/pggate/k2dml.h"
 
 namespace k2 {
@@ -54,86 +57,79 @@ namespace gate {
 using namespace yb;
 using namespace k2::sql;
 
-K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id)
-    : K2Statement(std::move(k2_session)), table_id_(table_id) {
-}
+//--------------------------------------------------------------------------------------------------
+// SELECT
+//--------------------------------------------------------------------------------------------------
 
-K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session,
-             const PgObjectId& table_id,
-             const PgObjectId& index_id,
-             const PgPrepareParameters *prepare_params)
-    : K2Dml(k2_session, table_id) {
+class K2Select : public K2DmlRead {
+ public:
+  // Public types.
+  typedef scoped_refptr<K2Select> ScopedRefPtr;
 
-  if (prepare_params) {
-    prepare_params_ = *prepare_params;
-    // Primary index does not have its own data table.
-    if (prepare_params_.use_secondary_index) {
-      index_id_ = index_id;
-    }
+  // Constructors.
+  K2Select(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id,
+           const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
+
+  virtual ~K2Select();
+
+  // Prepare query before execution.
+  virtual CHECKED_STATUS Prepare();
+
+  // Prepare secondary index if that index is used by this query.
+  CHECKED_STATUS PrepareSecondaryIndex();
+};
+
+//--------------------------------------------------------------------------------------------------
+// SELECT FROM Secondary Index Table
+//--------------------------------------------------------------------------------------------------
+
+class K2SelectIndex : public K2DmlRead {
+ public:
+  // Public types.
+  typedef scoped_refptr<K2SelectIndex> ScopedRefPtr;
+  typedef std::shared_ptr<K2SelectIndex> SharedPtr;
+
+  // Constructors.
+  K2SelectIndex(K2Session::ScopedRefPtr k2_session,
+                const PgObjectId& table_id,
+                const PgObjectId& index_id,
+                const PgPrepareParameters *prepare_params);
+  virtual ~K2SelectIndex();
+
+  // Prepare query for secondary index. This function is called when Postgres layer is accessing
+  // the IndexTable directy (IndexOnlyScan).
+  CHECKED_STATUS Prepare();
+
+  // Prepare NESTED query for secondary index. This function is called when Postgres layer is
+  // accessing the IndexTable via an outer select (Sequential or primary scans)
+ // CHECKED_STATUS PrepareSubquery(PgsqlReadRequestPB *read_req);
+
+ // CHECKED_STATUS PrepareQuery(PgsqlReadRequestPB *read_req);
+
+  // The output parameter "ybctids" are pointer to the data buffer in "ybctid_batch_".
+  Result<bool> FetchYbctidBatch(const vector<Slice> **ybctids);
+
+  // Get next batch of ybctids from either PgGate::cache or server.
+  Result<bool> GetNextYbctidBatch();
+
+  void set_is_executed(bool value) {
+    is_executed_ = value;
   }
-}
 
-K2Dml::~K2Dml() {
-}
-
-Status K2Dml::ClearBinds() {
-  return STATUS(NotSupported, "Clearing binds for prepared statement is not yet implemented");
-}
-
-Status K2Dml::BindColumn(int attr_num, SqlExpr *attr_value) {
-  // TODO: add implementation
-  return Status::OK();
-}
-
-K2DmlRead::K2DmlRead(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id,
-                     const PgObjectId& index_id, const PgPrepareParameters *prepare_params)
-    : K2Dml(std::move(k2_session), table_id, index_id, prepare_params) {
-}
-
-K2DmlRead::~K2DmlRead() {
-}
-
-void K2DmlRead::PrepareBinds() {
-  if (!bind_desc_) {
-    // This statement doesn't have bindings.
-    return;
+  bool is_executed() {
+    return is_executed_;
   }
 
-  // TODO: add column processing
-}
+ private:
+  // Collect ybctids from IndexTable.
+  CHECKED_STATUS FetchYbctids();
 
-void K2DmlRead::SetForwardScan(const bool is_forward_scan) {
-  // TODO:: add logic for secondary index scan
-  is_forward_scan_ = is_forward_scan;
-}
-
-void K2DmlRead::SetColumnRefs() {
-  // TODO: add implementation 
-}
-
-Status K2DmlRead::DeleteEmptyPrimaryBinds() {
-  // TODO: add implementation 
-  return Status::OK();
-}
-
-Status K2DmlRead::Exec(const PgExecParameters *exec_params) {
-  // TODO: add implementation 
-  return Status::OK();
-}
-
-K2DmlWrite::K2DmlWrite(K2Session::ScopedRefPtr k2_session,
-                       const PgObjectId& table_id,
-                       const bool is_single_row_txn)
-    : K2Dml(std::move(k2_session), table_id), is_single_row_txn_(is_single_row_txn) {
-}
-
-K2DmlWrite::~K2DmlWrite() {
-}
-
-Status K2DmlWrite::Prepare() {
-  // TODO: add implementation
-  return Status::OK();
-}
+  // This secondary query should be executed just one time.
+  bool is_executed_ = false;
+};
 
 }  // namespace gate
 }  // namespace k2
+
+#endif //CHOGORI_GATE_DML_SELECT_H
+

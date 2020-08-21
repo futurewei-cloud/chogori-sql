@@ -46,94 +46,41 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef CHOGORI_GATE_DML_INSERT_H
+#define CHOGORI_GATE_DML_INSERT_H
+
 #include "yb/pggate/k2dml.h"
 
 namespace k2 {
 namespace gate {
 
-using namespace yb;
-using namespace k2::sql;
+class K2Insert : public K2DmlWrite {
+ public:
+  // Public types.
+  typedef scoped_refptr<K2Insert> ScopedRefPtr;
+  typedef scoped_refptr<const K2Insert> ScopedRefPtrConst;
 
-K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id)
-    : K2Statement(std::move(k2_session)), table_id_(table_id) {
-}
+  typedef std::unique_ptr<K2Insert> UniPtr;
+  typedef std::unique_ptr<const K2Insert> UniPtrConst;
 
-K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session,
-             const PgObjectId& table_id,
-             const PgObjectId& index_id,
-             const PgPrepareParameters *prepare_params)
-    : K2Dml(k2_session, table_id) {
+  // Constructors.
+  K2Insert(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id, bool is_single_row_txn)
+      : K2DmlWrite(std::move(k2_session), table_id, is_single_row_txn) {}
 
-  if (prepare_params) {
-    prepare_params_ = *prepare_params;
-    // Primary index does not have its own data table.
-    if (prepare_params_.use_secondary_index) {
-      index_id_ = index_id;
-    }
-  }
-}
+  StmtOp stmt_op() const override { return StmtOp::STMT_INSERT; }
 
-K2Dml::~K2Dml() {
-}
-
-Status K2Dml::ClearBinds() {
-  return STATUS(NotSupported, "Clearing binds for prepared statement is not yet implemented");
-}
-
-Status K2Dml::BindColumn(int attr_num, SqlExpr *attr_value) {
-  // TODO: add implementation
-  return Status::OK();
-}
-
-K2DmlRead::K2DmlRead(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id,
-                     const PgObjectId& index_id, const PgPrepareParameters *prepare_params)
-    : K2Dml(std::move(k2_session), table_id, index_id, prepare_params) {
-}
-
-K2DmlRead::~K2DmlRead() {
-}
-
-void K2DmlRead::PrepareBinds() {
-  if (!bind_desc_) {
-    // This statement doesn't have bindings.
-    return;
+  void SetUpsertMode() {
+  //  write_req_->set_stmt_type(PgsqlWriteRequestPB::PGSQL_UPSERT);
   }
 
-  // TODO: add column processing
-}
-
-void K2DmlRead::SetForwardScan(const bool is_forward_scan) {
-  // TODO:: add logic for secondary index scan
-  is_forward_scan_ = is_forward_scan;
-}
-
-void K2DmlRead::SetColumnRefs() {
-  // TODO: add implementation 
-}
-
-Status K2DmlRead::DeleteEmptyPrimaryBinds() {
-  // TODO: add implementation 
-  return Status::OK();
-}
-
-Status K2DmlRead::Exec(const PgExecParameters *exec_params) {
-  // TODO: add implementation 
-  return Status::OK();
-}
-
-K2DmlWrite::K2DmlWrite(K2Session::ScopedRefPtr k2_session,
-                       const PgObjectId& table_id,
-                       const bool is_single_row_txn)
-    : K2Dml(std::move(k2_session), table_id), is_single_row_txn_(is_single_row_txn) {
-}
-
-K2DmlWrite::~K2DmlWrite() {
-}
-
-Status K2DmlWrite::Prepare() {
-  // TODO: add implementation
-  return Status::OK();
-}
+ private:
+/*   std::unique_ptr<client::YBPgsqlWriteOp> AllocWriteOperation() const override {
+    return target_desc_->NewPgsqlInsert();
+  }
+ */
+};
 
 }  // namespace gate
 }  // namespace k2
+
+#endif //CHOGORI_GATE_DML_INSERT_H
