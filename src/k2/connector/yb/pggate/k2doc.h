@@ -60,7 +60,7 @@ namespace gate {
     };
 
     struct RowRecords {
-        std::vector<SqlValue> cols;
+        std::vector<RowRecord> rows;
         std::string next_token;
     };
 

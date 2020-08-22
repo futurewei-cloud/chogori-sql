@@ -47,6 +47,8 @@
 
 #else
 #define YB_DEFINE_HANDLE_TYPE(name) typedef struct name *YBC##name;
+#define K2_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
+#define K2SQL_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
 #endif  // __cplusplus
 
 #ifdef __cplusplus

@@ -17,8 +17,8 @@
 
 #include <stdint.h>
 
+#include "yb/common/ybc_util.h"
 #include "ybc_pg_typedefs.h"
-#include "yb/common/ybc-internal.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -135,7 +135,7 @@ YBCStatus YBCPgGetCatalogMasterVersion(uint64_t *version);
 void YBCPgInvalidateTableCache(
     const YBCPgOid database_oid,
     const YBCPgOid table_oid);
-    
+
 YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_id);
 
 // TABLE -------------------------------------------------------------------------------------------

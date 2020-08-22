@@ -1,5 +1,6 @@
 #include "ybc_pggate.h"
 
+#include "yb/common/ybc-internal.h"
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
 #include "yb/pggate/pg_env.h"

@@ -15,6 +15,7 @@
 #define MEMNODES_H
 
 #include "nodes/nodes.h"
+#include "yb/pggate/ybc_pg_typedefs.h"
 
 /*
  * MemoryContextCounters
@@ -88,7 +89,7 @@ typedef struct MemoryContextData
 	const char *ident;			/* context ID if any (just for debugging) */
 	MemoryContextCallback *reset_cbs;	/* list of reset/delete callbacks */
 
-	struct PgMemctx *yb_memctx; /* Memory context for objects in yugabyte */
+	YBCPgMemctx yb_memctx;      /* Memory context for objects in k2 connector */
 } MemoryContextData;
 
 /* utils/palloc.h contains typedef struct MemoryContextData *MemoryContext */
