@@ -4,6 +4,7 @@
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/pggate_thread_local_vars.h"
 #include "yb/pggate/k2gate.h"
 
 using namespace yb;
@@ -754,47 +755,56 @@ void YBCSetTimeout(int timeout_ms, void* extra) {
 // Thread-Local variables.
 
 void* YBCPgGetThreadLocalCurrentMemoryContext() {
-    return 0;
+  return PgGetThreadLocalCurrentMemoryContext();
 }
 
 void* YBCPgSetThreadLocalCurrentMemoryContext(void *memctx) {
-    return 0;
+  return PgSetThreadLocalCurrentMemoryContext(memctx);
 }
 
 void YBCPgResetCurrentMemCtxThreadLocalVars() {
+  PgResetCurrentMemCtxThreadLocalVars();
 }
 
 void* YBCPgGetThreadLocalStrTokPtr() {
-    return 0;
+  return PgGetThreadLocalStrTokPtr();
 }
 
 void YBCPgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr) {
+  PgSetThreadLocalStrTokPtr(new_pg_strtok_ptr);
 }
 
 void* YBCPgSetThreadLocalJumpBuffer(void* new_buffer) {
-    return 0;
+  return PgSetThreadLocalJumpBuffer(new_buffer);
 }
 
 void* YBCPgGetThreadLocalJumpBuffer() {
-    return 0;
+  return PgGetThreadLocalJumpBuffer();
 }
 
 void YBCPgSetThreadLocalErrMsg(const void* new_msg) {
+  PgSetThreadLocalErrMsg(new_msg);
 }
 
 const void* YBCPgGetThreadLocalErrMsg() {
-    return 0;
+  return PgGetThreadLocalErrMsg();
 }
 
 const YBCPgTypeEntity *YBCPgFindTypeEntity(int type_oid) {
-    return 0;
+  return k2api->FindTypeEntity(type_oid);
 }
 
 YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
+  if (type_entity) {
+    return type_entity->yb_type;
+  }
   return YB_YQL_DATA_TYPE_UNKNOWN_DATA;
 }
 
 bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {
+  if (type_entity) {
+    return type_entity->allow_for_primary_key;
+  }
   return false;
 }
 
