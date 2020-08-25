@@ -472,6 +472,12 @@ void YBCPgSetThreadLocalErrMsg(const void* new_msg);
 
 const void* YBCPgGetThreadLocalErrMsg();
 
+void YBCSetMasterAddresses(const char *hosts);
+
+void YBCShutdownPgGateBackend();
+
+YBCStatus YBCInitPgGateBackend();
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

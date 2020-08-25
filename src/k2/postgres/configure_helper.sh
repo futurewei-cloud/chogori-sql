@@ -8,8 +8,6 @@ echo "4=$4"
 echo "5=$5"
 echo "pwd=$PWD"
 
-# compile flags
-export CFLAGS=-fPIC
 # extra libraries "-lxxx -lyyy"
 export LIBS=$2
 # extra lib paths "-Lxxx -Lyyy"
