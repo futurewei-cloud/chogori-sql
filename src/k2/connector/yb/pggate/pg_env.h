@@ -107,8 +107,7 @@ class PgEnv {
   virtual ~PgEnv() { }
 };
 
-
-}  // namespace pggate
+}  // namespace gate
 }  // namespace k2
 
 #endif  // CHOGORI_GATE_PG_ENV_H_

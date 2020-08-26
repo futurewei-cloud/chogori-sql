@@ -50,6 +50,7 @@
 #define CHOGORI_SQL_EXPR_H
 
 #include <memory>
+#include <vector>
 
 #include "yb/common/status.h"
 #include "yb/entities/value.h"
@@ -130,6 +131,69 @@ class PgExpr {
     Opcode opcode_;
     const PgTypeEntity *type_entity_;
     const PgTypeAttrs type_attrs_;
+};
+
+class PgConstant : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgConstant> SharedPtr;
+  // Constructor.
+  explicit PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool is_null,
+      PgExpr::Opcode opcode = PgExpr::Opcode::PG_EXPR_CONSTANT);
+
+  // Destructor.
+  virtual ~PgConstant();
+
+  // Update numeric.
+  void UpdateConstant(int8_t value, bool is_null);
+  void UpdateConstant(int16_t value, bool is_null);
+  void UpdateConstant(int32_t value, bool is_null);
+  void UpdateConstant(int64_t value, bool is_null);
+  void UpdateConstant(float value, bool is_null);
+  void UpdateConstant(double value, bool is_null);
+
+  // Update text.
+  void UpdateConstant(const char *value, bool is_null);
+  void UpdateConstant(const uint8_t *value, size_t bytes, bool is_null);
+
+  private:
+  SqlValue value_;
+};
+
+class PgColumnRef : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgColumnRef> SharedPtr;
+  explicit PgColumnRef(int attr_num,
+                       const PgTypeEntity *type_entity,
+                       const PgTypeAttrs *type_attrs);
+  virtual ~PgColumnRef();
+
+  int attr_num() const {
+    return attr_num_;
+  }
+
+  bool is_ybbasetid() const override;
+
+ private:
+  int attr_num_;
+};
+
+class PgOperator : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgOperator> SharedPtr;
+
+  // Constructor.
+  explicit PgOperator(const char *name, const YBCPgTypeEntity *type_entity);
+  virtual ~PgOperator();
+
+  // Append arguments.
+  void AppendArg(PgExpr *arg);
+
+  private:
+  const string opname_;
+  std::vector<PgExpr*> args_;
 };
 
 }  // namespace sql

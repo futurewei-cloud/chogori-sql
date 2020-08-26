@@ -49,6 +49,7 @@
 #include <unordered_map>
 
 #include "yb/entities/expr.h"
+#include "yb/entities/pg_system_attr.h"
 
 namespace k2 {
 namespace sql {
@@ -119,6 +120,70 @@ PgExpr::Opcode PgExpr::NameToOpcode(const char *name) {
   auto iter = kOperatorNames.find(name);
   DCHECK(iter != kOperatorNames.end()) << "Wrong operator name: " << name;
   return iter->second;
+}
+
+PgConstant::PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool is_null,
+    PgExpr::Opcode opcode)
+    : PgExpr(opcode, type_entity), value_(type_entity, datum, is_null) {
+}
+
+PgConstant::~PgConstant() {
+}
+
+void PgConstant::UpdateConstant(int8_t value, bool is_null) {
+    value_.set_int8_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(int16_t value, bool is_null) {
+    value_.set_int16_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(int32_t value, bool is_null) {
+    value_.set_int32_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(int64_t value, bool is_null) {
+    value_.set_int64_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(float value, bool is_null) {
+    value_.set_float_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(double value, bool is_null) {
+    value_.set_double_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(const char *value, bool is_null) {
+    value_.set_string_value(value, is_null);
+}
+
+void PgConstant::UpdateConstant(const uint8_t *value, size_t bytes, bool is_null) {
+    value_.set_binary_value(value, bytes, is_null);
+}
+
+PgColumnRef::PgColumnRef(int attr_num,
+                         const YBCPgTypeEntity *type_entity,
+                         const PgTypeAttrs *type_attrs)
+    : PgExpr(PgExpr::Opcode::PG_EXPR_COLREF, type_entity, type_attrs), attr_num_(attr_num) {
+}
+
+PgColumnRef::~PgColumnRef() {
+}
+
+bool PgColumnRef::is_ybbasetid() const {
+  return attr_num_ == static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId);
+}
+
+PgOperator::PgOperator(const char *opname, const YBCPgTypeEntity *type_entity)
+  : PgExpr(opname, type_entity), opname_(opname) {
+}
+
+PgOperator::~PgOperator() {
+}
+
+void PgOperator::AppendArg(PgExpr *arg) {
+  args_.push_back(arg);
 }
 
 }  // namespace sql

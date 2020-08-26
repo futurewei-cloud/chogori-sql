@@ -32,10 +32,18 @@ namespace sql {
 using yb::Slice;
 
 SqlValue::~SqlValue() {
-    if (type_ == ValueType::SLICE) {
-        delete[] data_->slice_val_.data();
+    Clear();
+}
+
+void SqlValue::Clear() {
+    if (data_) {
+        if (type_ == ValueType::SLICE) {
+            delete[] data_->slice_val_.data();
+        }
+        delete data_;
+        data_ = nullptr;
     }
-    delete data_;
+    null_value_ = true;
 }
 
 SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null) {
@@ -47,6 +55,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -57,6 +68,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -67,6 +81,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -77,6 +94,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -87,6 +107,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -97,6 +120,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -109,6 +135,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         data_ = new Data();
         Slice s(value, bytes);
         data_->slice_val_ = s;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -119,6 +148,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::BOOL;
         data_ = new Data();
         data_->bool_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -129,6 +161,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::FLOAT;
         data_ = new Data();
         data_->float_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -139,6 +174,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::DOUBLE;
         data_ = new Data();
         data_->double_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -151,6 +189,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         data_ = new Data();
         Slice s(value, bytes);
         data_->slice_val_ = s;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -161,6 +202,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         type_ = ValueType::INT;
         data_ = new Data();
         data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -175,6 +219,9 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         data_ = new Data();
         Slice value(s);
         data_->slice_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
       }
       break;
 
@@ -223,7 +270,126 @@ SqlValue* SqlValue::CopySlice(Slice s) {
 
   return new SqlValue(slice_val);
 }
+  
+void SqlValue::set_bool_value(bool value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::BOOL;
+        data_->bool_val_ = value;
+        null_value_ = false;    
+    }
+}
 
+void SqlValue::set_int8_value(int8_t value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::INT;
+        data_->int_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_int16_value(int16_t value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::INT;
+        data_->int_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_int32_value(int32_t value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::INT;
+        data_->int_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_int64_value(int64_t value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::INT;
+        data_->int_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_float_value(float value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::FLOAT;
+        data_->float_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_double_value(double value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::DOUBLE;
+        data_->double_val_ = value;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_string_value(const char *value, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::SLICE;
+        size_t bytes = std::strlen(value);
+        Slice s(value, bytes);
+        data_->slice_val_ = s;
+        null_value_ = false;    
+    }
+}
+
+void SqlValue::set_binary_value(const uint8_t *value, size_t bytes, bool is_null) {
+    if(is_null) {
+        Clear();
+    } else {
+        if (data_ == nullptr) {
+            data_ = new Data();
+        } 
+        type_ = ValueType::SLICE;
+        Slice s(value, bytes);
+        data_->slice_val_ = s;
+        null_value_ = false;    
+    }
+}
 
 }  // namespace sql
 }  // namespace k2

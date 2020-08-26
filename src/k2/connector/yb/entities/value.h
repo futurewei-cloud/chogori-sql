@@ -55,36 +55,42 @@ public:
   SqlValue(ValueType type, Data* data) {
       type_ = type;
       data_ = data;
+      null_value_ = data_ != nullptr;
   }
 
   SqlValue(bool b) {
       type_ = ValueType::BOOL;
       data_ = new Data();
       data_->bool_val_ = b;
+      null_value_ = false;
   }
 
   SqlValue(int64_t v) {
       type_ = ValueType::INT;
       data_ = new Data();
       data_->int_val_ = v;
+      null_value_ = false;
   }
 
   SqlValue(float f) {
       type_ = ValueType::FLOAT;
       data_ = new Data();
       data_->float_val_ = f;
+      null_value_ = false;
   }
 
   SqlValue(double d) {
       type_ = ValueType::DOUBLE;
       data_ = new Data();
       data_->double_val_ = d;
+      null_value_ = false;
   }
 
   SqlValue(Slice s) {
       type_ = ValueType::SLICE;
       data_ = new Data();
       data_->slice_val_ = s;
+      null_value_ = false;
   }
 
   SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
@@ -95,11 +101,28 @@ public:
   // Construct a SQLValue by copying the value of the given Slice.
   static SqlValue* CopySlice(Slice s);
 
+  bool IsNull() {
+      return null_value_;
+  }
+
+  void set_bool_value(bool value, bool is_null); 
+  void set_int8_value(int8_t value, bool is_null);
+  void set_int16_value(int16_t value, bool is_null);
+  void set_int32_value(int32_t value, bool is_null);
+  void set_int64_value(int64_t value, bool is_null);
+  void set_float_value(float value, bool is_null);
+  void set_double_value(double value, bool is_null);
+  void set_string_value(const char *value, bool is_null);
+  void set_binary_value(const uint8_t *value, size_t bytes, bool is_null);
+
   ~SqlValue();
 
   private: 
+  void Clear();
+
   ValueType type_;
   Data* data_;
+  bool null_value_ = true;
 };
 
 
