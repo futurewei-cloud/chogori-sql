@@ -196,7 +196,7 @@ class K2GateApiImpl {
 /*
   //------------------------------------------------------------------------------------------------
   // All DML statements
-  CHECKED_STATUS DmlAppendTarget(K2Statement *handle, SqlExpr *expr);
+  CHECKED_STATUS DmlAppendTarget(K2Statement *handle, PgExpr *expr);
 
   // Binding Columns: Bind column with a value (expression) in a statement.
   // + This API is used to identify the rows you want to operate on. If binding columns are not
@@ -279,7 +279,7 @@ class K2GateApiImpl {
   //------------------------------------------------------------------------------------------------
   // Column reference.
   CHECKED_STATUS NewColumnRef(K2Statement *handle, int attr_num, const PgTypeEntity *type_entity,
-                              const PgTypeAttrs *type_attrs, SqlExpr **expr_handle);
+                              const PgTypeAttrs *type_attrs, PgExpr **expr_handle);
 
   // Constant expressions.
   CHECKED_STATUS NewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
@@ -290,7 +290,7 @@ class K2GateApiImpl {
   // TODO(neil) UpdateConstant should be merged into one.
   // Update constant.
   template<typename value_type>
-  CHECKED_STATUS UpdateConstant(SqlExpr *expr, value_type value, bool is_null) {
+  CHECKED_STATUS UpdateConstant(PgExpr *expr, value_type value, bool is_null) {
     if (expr->opcode() != PgExpr::Opcode::PG_EXPR_CONSTANT) {
       // Invalid handle.
       return STATUS(InvalidArgument, "Invalid expression handle for constant");
@@ -299,15 +299,15 @@ class K2GateApiImpl {
     return Status::OK();
   }
 
-  CHECKED_STATUS UpdateConstant(SqlExpr *expr, const char *value, bool is_null);
+  CHECKED_STATUS UpdateConstant(PgExpr *expr, const char *value, bool is_null);
 
-  CHECKED_STATUS UpdateConstant(SqlExpr *expr, const void *value, int64_t bytes, bool is_null);
+  CHECKED_STATUS UpdateConstant(PgExpr *expr, const void *value, int64_t bytes, bool is_null);
 
   // Operators.
   CHECKED_STATUS NewOperator(K2Statement *stmt, const char *opname,
                              const YBCPgTypeEntity *type_entity,
-                             SqlExpr **op_handle);
-  CHECKED_STATUS OperatorAppendArg(SqlExpr *op_handle, SqlExpr *arg);
+                             PgExpr **op_handle);
+  CHECKED_STATUS OperatorAppendArg(PgExpr *op_handle, PgExpr *arg);
 */
 
   // Foreign key reference caching.
@@ -316,7 +316,7 @@ class K2GateApiImpl {
   CHECKED_STATUS CacheForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
 
   CHECKED_STATUS DeleteForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
-  
+
   void ClearForeignKeyReferenceCache();
 
   // Sets the specified timeout in the rpc service.

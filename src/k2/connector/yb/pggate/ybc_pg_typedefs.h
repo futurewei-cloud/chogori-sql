@@ -67,7 +67,7 @@ K2_DEFINE_HANDLE_TYPE(K2Session, PgSession)
 K2_DEFINE_HANDLE_TYPE(K2Statement, PgStatement)
 
 // Handle to an expression.
-K2_DEFINE_HANDLE_TYPE(K2Expr, PgExpr)
+YB_DEFINE_HANDLE_TYPE(PgExpr);
 
 // Handle to a table description
 K2SQL_DEFINE_HANDLE_TYPE(TableInfo, PgTableDesc)

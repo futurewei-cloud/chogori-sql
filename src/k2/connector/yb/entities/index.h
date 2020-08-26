@@ -81,10 +81,10 @@ namespace k2 {
             ColumnId column_id;         // Column id in the index table.
             std::string column_name;    // Column name in the index table - colexpr.MangledName().
             ColumnId indexed_column_id; // Corresponding column id in indexed table.
-            SqlExpr colexpr;     // Index expression.
+            PgExpr colexpr;     // Index expression.
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
-                ColumnId in_indexed_column_id, SqlExpr in_colexpr)
+                ColumnId in_indexed_column_id, PgExpr in_colexpr)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
                 indexed_column_id(in_indexed_column_id), colexpr(std::move(colexpr)) {
             }

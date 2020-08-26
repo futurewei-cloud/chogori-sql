@@ -60,7 +60,7 @@ K2Statement::K2Statement(K2Session::ScopedRefPtr k2_session) : k2_session_(std::
 K2Statement::~K2Statement() {
 }
 
-void K2Statement::AddExpr(SqlExpr::SharedPtr expr) {
+void K2Statement::AddExpr(PgExpr::SharedPtr expr) {
   exprs_.push_back(expr);
 }
 

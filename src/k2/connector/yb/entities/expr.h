@@ -51,12 +51,17 @@
 
 #include <memory>
 
+#include "yb/common/status.h"
 #include "yb/entities/value.h"
 
 namespace k2 {
 namespace sql {
 
-    enum Opcode {
+using namespace yb;
+
+class PgExpr {
+    public:
+    enum class Opcode {
         PG_EXPR_CONSTANT,
         PG_EXPR_COLREF,
         PG_EXPR_VARIABLE,
@@ -76,33 +81,56 @@ namespace sql {
         PG_EXPR_COUNT,
         PG_EXPR_MAX,
         PG_EXPR_MIN,
+
+        // Serialized YSQL/PG Expr node.
+        PG_EXPR_EVAL_EXPR_CALL,
+
+        PG_EXPR_GENERATE_ROWID,
     };
+    
+    typedef std::shared_ptr<PgExpr> SharedPtr;
 
-    class SqlExpr {
-        public:
-        typedef std::shared_ptr<SqlExpr> SharedPtr;
+    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity);
 
-        explicit SqlExpr(Opcode op, SqlValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
+    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs);
 
-        ~SqlExpr() {
-        }
+    explicit PgExpr(const char *opname, const YBCPgTypeEntity *type_entity);
 
-        Opcode op() {
-            return op_;
-        }
+    virtual ~PgExpr();
 
-        SqlValue value() {
-            return value_;
-        }
+    Opcode opcode() const {
+        return opcode_;
+    }
 
-        const std::string ToString() const;   
+    bool is_constant() const {
+        return opcode_ == Opcode::PG_EXPR_CONSTANT;
+    }
 
-        private:
-        Opcode op_;
-        SqlValue value_;
-    };
+    bool is_colref() const {
+        return opcode_ == Opcode::PG_EXPR_COLREF;
+    }
+
+    bool is_aggregate() const {
+        // Only return true for pushdown supported aggregates.
+        return (opcode_ == Opcode::PG_EXPR_SUM ||
+                opcode_ == Opcode::PG_EXPR_COUNT ||
+                opcode_ == Opcode::PG_EXPR_MAX ||
+                opcode_ == Opcode::PG_EXPR_MIN);
+    }
+
+    virtual bool is_ybbasetid() const {
+        return false;
+    }
+
+    // Find opcode.
+    static CHECKED_STATUS CheckOperatorName(const char *name);
+    static Opcode NameToOpcode(const char *name);
+        
+    protected:
+    Opcode opcode_;
+    const PgTypeEntity *type_entity_;
+    const PgTypeAttrs type_attrs_;
+};
 
 }  // namespace sql
 }  // namespace k2

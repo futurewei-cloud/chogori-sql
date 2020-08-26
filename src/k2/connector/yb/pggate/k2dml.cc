@@ -80,7 +80,7 @@ Status K2Dml::ClearBinds() {
   return STATUS(NotSupported, "Clearing binds for prepared statement is not yet implemented");
 }
 
-Status K2Dml::BindColumn(int attr_num, SqlExpr *attr_value) {
+Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
   // TODO: add implementation
   return Status::OK();
 }

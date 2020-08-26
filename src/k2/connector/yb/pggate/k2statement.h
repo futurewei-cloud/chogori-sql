@@ -60,7 +60,7 @@
 namespace k2 {
 namespace gate {
 
-using k2::sql::SqlExpr;
+using k2::sql::PgExpr;
 using yb::RefCountedThreadSafe;
 using yb::Status;
 
@@ -111,7 +111,7 @@ class K2Statement : public RefCountedThreadSafe<K2Statement> {
 
   //------------------------------------------------------------------------------------------------
   // Add expressions that are belong to this statement.
-  void AddExpr(SqlExpr::SharedPtr expr);
+  void AddExpr(PgExpr::SharedPtr expr);
 
   //------------------------------------------------------------------------------------------------
   // Clear all values and expressions that were bound to the given statement.
@@ -126,7 +126,7 @@ class K2Statement : public RefCountedThreadSafe<K2Statement> {
   string errmsg_;
 
   // Expression list to be destroyed as soon as the statement is removed from the API.
-  std::list<SqlExpr::SharedPtr> exprs_;
+  std::list<PgExpr::SharedPtr> exprs_;
 };
 
 }  // namespace gate

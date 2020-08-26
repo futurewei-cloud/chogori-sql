@@ -32,7 +32,7 @@ namespace gate {
         return RowRecord();
     }
 
-    RowRecords DocApi::batchGetRecords(DocKey& key, std::vector<SqlExpr>& filters, std::string& token) {
+    RowRecords DocApi::batchGetRecords(DocKey& key, std::vector<PgExpr>& filters, std::string& token) {
         return RowRecords();
     }
 
@@ -40,7 +40,7 @@ namespace gate {
         return DeleteRecordResponse();
     }
 
-    DeleteRecordsResponse DocApi::batchDeleteRecords(DocKey& key, std::vector<SqlExpr>& filters) {
+    DeleteRecordsResponse DocApi::batchDeleteRecords(DocKey& key, std::vector<PgExpr>& filters) {
         return DeleteRecordsResponse();
     }
 

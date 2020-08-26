@@ -73,26 +73,26 @@ class K2Dml : public K2Statement {
   virtual ~K2Dml();
 
   // Append a target in SELECT or RETURNING.
-  CHECKED_STATUS AppendTarget(SqlExpr *target);
+  CHECKED_STATUS AppendTarget(PgExpr *target);
 
   // Prepare column for both ends.
   // - Prepare protobuf to communicate with DocDB.
   // - Prepare PgExpr to send data back to Postgres layer.
- // CHECKED_STATUS PrepareColumnForRead(int attr_num, PgsqlExpressionPB *target_pb,
+ // CHECKED_STATUS PrepareColumnForRead(int attr_num, PgPgExpressionPB *target_pb,
   //                                    const PgColumn **col);
- // CHECKED_STATUS PrepareColumnForWrite(PgColumn *pg_col, PgsqlExpressionPB *assign_pb);
+ // CHECKED_STATUS PrepareColumnForWrite(PgColumn *pg_col, PgPgExpressionPB *assign_pb);
 
   // Bind a column with an expression.
   // - For a secondary-index-scan, this bind specify the value of the secondary key which is used to
   //   query a row.
   // - For a primary-index-scan, this bind specify the value of the keys of the table.
-  virtual CHECKED_STATUS BindColumn(int attnum, SqlExpr *attr_value);
+  virtual CHECKED_STATUS BindColumn(int attnum, PgExpr *attr_value);
 
   // Bind the whole table.
   CHECKED_STATUS BindTable();
 
   // Assign an expression to a column.
-  CHECKED_STATUS AssignColumn(int attnum,  SqlExpr *attr_value);
+  CHECKED_STATUS AssignColumn(int attnum,  PgExpr *attr_value);
 
   // This function is not yet working and might not be needed.
   virtual CHECKED_STATUS ClearBinds();
@@ -146,7 +146,7 @@ class K2Dml : public K2Statement {
   // - "target_desc_" is the table descriptor where data will be read from.
   // - "targets_" are either selected or returned expressions by DML statements.
   TableInfo::ScopedRefPtr target_desc_;
-  std::vector<SqlExpr*> targets_;
+  std::vector<PgExpr*> targets_;
 
   // bind_desc_ is the descriptor of the table whose key columns' values will be specified by the
   // the DML statement being executed.
@@ -178,8 +178,8 @@ class K2Dml : public K2Statement {
   // * Bind values are used to identify the selected rows to be operated on.
   // * Set values are used to hold columns' new values in the selected rows.
   bool ybctid_bind_ = false;
-  //std::unordered_map<PgsqlExpressionPB*, PgExpr*> expr_binds_;
-  //std::unordered_map<PgsqlExpressionPB*, PgExpr*> expr_assigns_;
+  //std::unordered_map<PgPgExpressionPB*, PgExpr*> expr_binds_;
+  //std::unordered_map<PgPgExpressionPB*, PgExpr*> expr_assigns_;
 
   // Used for colocated TRUNCATE that doesn't bind any columns.
   bool bind_table_ = false;
@@ -242,13 +242,13 @@ class K2DmlRead : public K2Dml {
   void SetForwardScan(const bool is_forward_scan);
 
   // Bind a column with an EQUALS condition.
-  CHECKED_STATUS BindColumnCondEq(int attnum, SqlExpr *attr_value);
+  CHECKED_STATUS BindColumnCondEq(int attnum, PgExpr *attr_value);
 
   // Bind a range column with a BETWEEN condition.
-  CHECKED_STATUS BindColumnCondBetween(int attr_num, SqlExpr *attr_value, SqlExpr *attr_value_end);
+  CHECKED_STATUS BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end);
 
   // Bind a column with an IN condition.
-  CHECKED_STATUS BindColumnCondIn(int attnum, int n_attr_values, SqlExpr **attr_values);
+  CHECKED_STATUS BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_values);
 
   // Execute.
   virtual CHECKED_STATUS Exec(const PgExecParameters *exec_params);

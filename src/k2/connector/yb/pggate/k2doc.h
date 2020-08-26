@@ -35,7 +35,7 @@ namespace gate {
     using k2::sql::TableName;
     using k2::sql::Schema;
     using k2::sql::SqlValue;
-    using k2::sql::SqlExpr;
+    using k2::sql::PgExpr;
  
     // pass the information so that the under hood SKV client could generate the actual doc key from it
     struct DocKey { 
@@ -86,11 +86,11 @@ namespace gate {
 
         RowRecord getRecord(DocKey& key);
 
-        RowRecords batchGetRecords(DocKey& key, std::vector<SqlExpr>& filters, std::string& token);
+        RowRecords batchGetRecords(DocKey& key, std::vector<PgExpr>& filters, std::string& token);
 
         DeleteRecordResponse deleteRecord(DocKey& key);
 
-        DeleteRecordsResponse batchDeleteRecords(DocKey& key, std::vector<SqlExpr>& filters);
+        DeleteRecordsResponse batchDeleteRecords(DocKey& key, std::vector<PgExpr>& filters);
 
         DeleteRecordsResponse deleteAllRecordsAndSchema(DocKey& key);
     };
