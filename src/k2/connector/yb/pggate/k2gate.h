@@ -272,20 +272,20 @@ class K2GateApiImpl {
   CHECKED_STATUS SetForwardScan(K2Statement *handle, bool is_forward_scan);
 
   CHECKED_STATUS ExecSelect(K2Statement *handle, const PgExecParameters *exec_params);
-
+*/
 
   //------------------------------------------------------------------------------------------------
   // Expressions.
   //------------------------------------------------------------------------------------------------
   // Column reference.
-  CHECKED_STATUS NewColumnRef(K2Statement *handle, int attr_num, const PgTypeEntity *type_entity,
+  CHECKED_STATUS NewColumnRef(K2Statement *stmt, int attr_num, const PgTypeEntity *type_entity,
                               const PgTypeAttrs *type_attrs, PgExpr **expr_handle);
 
   // Constant expressions.
-  CHECKED_STATUS NewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
-                             uint64_t datum, bool is_null, YBCPgExpr *expr_handle);
-  CHECKED_STATUS NewConstantOp(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
-                             uint64_t datum, bool is_null, YBCPgExpr *expr_handle, bool is_gt);
+  CHECKED_STATUS NewConstant(K2Statement *stmt, const YBCPgTypeEntity *type_entity,
+                             uint64_t datum, bool is_null, PgExpr **expr_handle);
+  CHECKED_STATUS NewConstantOp(K2Statement *stmt, const YBCPgTypeEntity *type_entity,
+                             uint64_t datum, bool is_null, PgExpr **expr_handle, bool is_gt);
 
   // TODO(neil) UpdateConstant should be merged into one.
   // Update constant.
@@ -301,14 +301,13 @@ class K2GateApiImpl {
 
   CHECKED_STATUS UpdateConstant(PgExpr *expr, const char *value, bool is_null);
 
-  CHECKED_STATUS UpdateConstant(PgExpr *expr, const void *value, int64_t bytes, bool is_null);
+  CHECKED_STATUS UpdateConstant(PgExpr *expr, const char *value, int64_t bytes, bool is_null);
 
   // Operators.
   CHECKED_STATUS NewOperator(K2Statement *stmt, const char *opname,
                              const YBCPgTypeEntity *type_entity,
                              PgExpr **op_handle);
   CHECKED_STATUS OperatorAppendArg(PgExpr *op_handle, PgExpr *arg);
-*/
 
   // Foreign key reference caching.
   bool ForeignKeyReferenceExists(YBCPgOid table_id, std::string&& ybctid);

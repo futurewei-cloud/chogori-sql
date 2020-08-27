@@ -632,51 +632,59 @@ YBCStatus YBCPgExitSeparateDdlTxnMode(bool success){
 // Column references.
 YBCStatus YBCPgNewColumnRef(YBCPgStatement stmt, int attr_num, const YBCPgTypeEntity *type_entity,
                             const YBCPgTypeAttrs *type_attrs, YBCPgExpr *expr_handle){
-                                return YBCStatusOK();
-                            }
+  return ToYBCStatus(k2api->NewColumnRef(stmt, attr_num, type_entity, type_attrs, expr_handle));
+}
 
 // Constant expressions.
 YBCStatus YBCPgNewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, YBCPgExpr *expr_handle){
-                               return YBCStatusOK();
-                           }
+  return ToYBCStatus(k2api->NewConstant(stmt, type_entity, datum, is_null, expr_handle));
+}
+
 YBCStatus YBCPgNewConstantOp(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, YBCPgExpr *expr_handle, bool is_gt){
-                               return YBCStatusOK();
-                           }
+  return ToYBCStatus(k2api->NewConstantOp(stmt, type_entity, datum, is_null, expr_handle, is_gt));
+}
 
 // The following update functions only work for constants.
 // Overwriting the constant expression with new value.
 YBCStatus YBCPgUpdateConstInt2(YBCPgExpr expr, int16_t value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstInt4(YBCPgExpr expr, int32_t value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstInt8(YBCPgExpr expr, int64_t value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstFloat4(YBCPgExpr expr, float value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstFloat8(YBCPgExpr expr, double value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstText(YBCPgExpr expr, const char *value, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, is_null));
 }
+
 YBCStatus YBCPgUpdateConstChar(YBCPgExpr expr, const char *value, int64_t bytes, bool is_null){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->UpdateConstant(expr, value, bytes, is_null));
 }
 
 // Expressions with operators "=", "+", "between", "in", ...
 YBCStatus YBCPgNewOperator(YBCPgStatement stmt, const char *opname,
                            const YBCPgTypeEntity *type_entity,
                            YBCPgExpr *op_handle){
-                               return YBCStatusOK();
-                           }
+  return ToYBCStatus(k2api->NewOperator(stmt, opname, type_entity, op_handle));
+}
+
 YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->OperatorAppendArg(op_handle, arg));
 }
 
 // Referential Integrity Check Caching.

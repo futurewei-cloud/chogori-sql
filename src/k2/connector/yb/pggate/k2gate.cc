@@ -426,5 +426,97 @@ void K2GateApiImpl::SetTimeout(const int timeout_ms) {
   k2_session_->SetTimeout(timeout_ms);
 }
 
+// Column references -------------------------------------------------------------------------------
+
+Status K2GateApiImpl::NewColumnRef(K2Statement *stmt, int attr_num, const PgTypeEntity *type_entity,
+                               const PgTypeAttrs *type_attrs, PgExpr **expr_handle) {
+  if (!stmt) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  PgColumnRef::SharedPtr colref = make_shared<PgColumnRef>(attr_num, type_entity, type_attrs);
+  stmt->AddExpr(colref);
+
+  *expr_handle = colref.get();
+  return Status::OK();
+}
+
+// Constant ----------------------------------------------------------------------------------------
+
+Status K2GateApiImpl::NewConstant(K2Statement *stmt, const YBCPgTypeEntity *type_entity,
+                              uint64_t datum, bool is_null, PgExpr **expr_handle) {
+  if (!stmt) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  PgExpr::SharedPtr pg_const = make_shared<PgConstant>(type_entity, datum, is_null);
+  stmt->AddExpr(pg_const);
+
+  *expr_handle = pg_const.get();
+  return Status::OK();
+}
+
+Status K2GateApiImpl::NewConstantOp(K2Statement *stmt, const YBCPgTypeEntity *type_entity,
+                              uint64_t datum, bool is_null, PgExpr **expr_handle, bool is_gt) {
+  if (!stmt) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  PgExpr::SharedPtr pg_const = make_shared<PgConstant>(type_entity, datum, is_null,
+      is_gt ? PgExpr::Opcode::PG_EXPR_GT : PgExpr::Opcode::PG_EXPR_LT);
+  stmt->AddExpr(pg_const);
+
+  *expr_handle = pg_const.get();
+  return Status::OK();
+}
+
+// Text constant -----------------------------------------------------------------------------------
+
+Status K2GateApiImpl::UpdateConstant(PgExpr *expr, const char *value, bool is_null) {
+  if (expr->opcode() != PgExpr::Opcode::PG_EXPR_CONSTANT) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid expression handle for constant");
+  }
+  down_cast<PgConstant*>(expr)->UpdateConstant(value, is_null);
+  return Status::OK();
+}
+
+Status K2GateApiImpl::UpdateConstant(PgExpr *expr, const char *value, int64_t bytes, bool is_null) {
+  if (expr->opcode() != PgExpr::Opcode::PG_EXPR_CONSTANT) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid expression handle for constant");
+  }
+  down_cast<PgConstant*>(expr)->UpdateConstant(value, bytes, is_null);
+  return Status::OK();
+}
+
+// Text constant -----------------------------------------------------------------------------------
+
+Status K2GateApiImpl::NewOperator(K2Statement *stmt, const char *opname,
+                              const YBCPgTypeEntity *type_entity,
+                              PgExpr **op_handle) {
+  if (!stmt) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  RETURN_NOT_OK(PgExpr::CheckOperatorName(opname));
+
+  // Create operator.
+  PgExpr::SharedPtr pg_op = make_shared<PgOperator>(opname, type_entity);
+  stmt->AddExpr(pg_op);
+
+  *op_handle = pg_op.get();
+  return Status::OK();
+}
+
+Status K2GateApiImpl::OperatorAppendArg(PgExpr *op_handle, PgExpr *arg) {
+  if (!op_handle || !arg) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid expression handle");
+  }
+  down_cast<PgOperator*>(op_handle)->AppendArg(arg);
+  return Status::OK();
+}
+
 }  // namespace gate
 }  // namespace k2

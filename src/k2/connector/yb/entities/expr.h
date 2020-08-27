@@ -154,7 +154,7 @@ class PgConstant : public PgExpr {
 
   // Update text.
   void UpdateConstant(const char *value, bool is_null);
-  void UpdateConstant(const uint8_t *value, size_t bytes, bool is_null);
+  void UpdateConstant(const char *value, size_t bytes, bool is_null);
 
   private:
   SqlValue value_;

@@ -113,7 +113,7 @@ public:
   void set_float_value(float value, bool is_null);
   void set_double_value(double value, bool is_null);
   void set_string_value(const char *value, bool is_null);
-  void set_binary_value(const uint8_t *value, size_t bytes, bool is_null);
+  void set_binary_value(const char *value, size_t bytes, bool is_null);
 
   ~SqlValue();
 

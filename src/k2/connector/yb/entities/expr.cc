@@ -158,7 +158,7 @@ void PgConstant::UpdateConstant(const char *value, bool is_null) {
     value_.set_string_value(value, is_null);
 }
 
-void PgConstant::UpdateConstant(const uint8_t *value, size_t bytes, bool is_null) {
+void PgConstant::UpdateConstant(const char *value, size_t bytes, bool is_null) {
     value_.set_binary_value(value, bytes, is_null);
 }
 

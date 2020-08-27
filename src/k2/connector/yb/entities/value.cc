@@ -377,7 +377,7 @@ void SqlValue::set_string_value(const char *value, bool is_null) {
     }
 }
 
-void SqlValue::set_binary_value(const uint8_t *value, size_t bytes, bool is_null) {
+void SqlValue::set_binary_value(const char *value, size_t bytes, bool is_null) {
     if(is_null) {
         Clear();
     } else {
