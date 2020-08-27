@@ -119,6 +119,27 @@ namespace sql {
     Result<uint32_t> GetPgsqlTableOid(const TableId& table_id);
     Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id);
 
+    // This enum matches enum RowMarkType defined in src/include/nodes/plannodes.h.
+    // The exception is ROW_MARK_ABSENT, which signifies the absence of a row mark.
+    enum class RowMarkType
+    {
+        // Obtain exclusive tuple lock.
+        ROW_MARK_EXCLUSIVE = 0,
+        // Obtain no-key exclusive tuple lock.
+        ROW_MARK_NOKEYEXCLUSIVE = 1,
+        // Obtain shared tuple lock.
+        ROW_MARK_SHARE = 2,
+        // Obtain keyshare tuple lock.
+        ROW_MARK_KEYSHARE = 3,
+        // Not supported. Used for postgres compatibility.
+        ROW_MARK_REFERENCE = 4,
+        // Not supported. Used for postgres compatibility.
+        ROW_MARK_COPY = 5,
+        // Obtain no tuple lock (this should never sent be on the wire).  The value
+        // should be high for convenient comparisons with the other row lock types.
+        ROW_MARK_ABSENT = 15
+    };
+
 }  // namespace sql
 }  // namespace k2
 

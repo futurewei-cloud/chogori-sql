@@ -53,6 +53,7 @@
 #include <vector>
 
 #include "yb/common/status.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/entities/value.h"
 
 namespace k2 {

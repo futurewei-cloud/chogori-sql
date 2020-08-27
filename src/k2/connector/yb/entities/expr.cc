@@ -49,7 +49,6 @@
 #include <unordered_map>
 
 #include "yb/entities/expr.h"
-#include "yb/entities/pg_system_attr.h"
 
 namespace k2 {
 namespace sql {
