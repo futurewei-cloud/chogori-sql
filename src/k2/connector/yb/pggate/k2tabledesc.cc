@@ -46,83 +46,82 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/pggate/memctx.h"
+#include "yb/pggate/k2tabledesc.h"
 
 namespace k2 {
 namespace gate {
 
-K2Memctx::K2Memctx() {
-}
+K2TableDesc::K2TableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table) {
+  const auto& schema = pg_table->schema();
+  const int num_columns = schema.num_columns();
+  columns_.resize(num_columns);
+  for (size_t idx = 0; idx < num_columns; idx++) {
+    // Find the column descriptor.
+    const auto& col = schema.column(idx);
 
-K2Memctx::~K2Memctx() {
-}
-
-namespace {
-  // Table of memory contexts.
-  // - Although defined in K2Sql, this table is owned and managed by Postgres process.
-  //   Other processes cannot control "K2Memctx" to avoid memory violations.
-  // - Table "postgres_process_memctxs" is to help releasing the references to K2Statement when
-  //   Postgres Process (a C program) is exiting.
-  // - Transaction layer and Postgres BOTH hold references to K2Statement objects, and those
-  //   PgGate objects wouldn't be destroyed unless both layers release their references or both
-  //   layers are terminated.
-  std::unordered_map<K2Memctx *, K2Memctx::SharedPtr> postgres_process_memctxs;
-} // namespace
-
-K2Memctx *K2Memctx::Create() {
-  auto memctx = std::make_shared<K2Memctx>();
-  postgres_process_memctxs[memctx.get()] = memctx;
-  return memctx.get();
-}
-
-Status K2Memctx::Destroy(K2Memctx *handle) {
-  if (handle) {
-    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
-           InternalError, "Invalid memory context handle");
-    postgres_process_memctxs.erase(handle);
+    // TODO(neil) Considering index columns by attr_num instead of ID.
+    ColumnDesc *desc = columns_[idx].desc();
+    desc->Init(idx,
+               schema.column_id(idx),
+               col.name(),
+               idx < schema.num_hash_key_columns(),
+               idx < schema.num_key_columns(),
+               col.order() /* attr_num */,
+               col.type(),
+               col.sorting_type());
+    attr_num_map_[col.order()] = idx;
   }
-  return Status::OK();
+
+  // Create virtual columns.
+  column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
 }
 
-Status K2Memctx::Reset(K2Memctx *handle) {
-  if (handle) {
-    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
-           InternalError, "Invalid memory context handle");
-    handle->Clear();
+Result<K2Column *> K2TableDesc::FindColumn(int attr_num) {
+  // Find virtual columns.
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+    return &column_ybctid_;
   }
-  return Status::OK();
+
+  // Find physical column.
+  const auto itr = attr_num_map_.find(attr_num);
+  if (itr != attr_num_map_.end()) {
+    return &columns_[itr->second];
+  }
+
+  return STATUS_FORMAT(InvalidArgument, "Invalid column number $0", attr_num);
 }
 
-void K2Memctx::Clear() {
-  // The safest option is to retain all K2SQL statement objects.
-  // - Clear the table descriptors from cache. We can just reload them when requested.
-  // - Clear the "stmts_" for now. However, if this causes issue, keep "stmts_" vector around.
-  //
-  // PgGate and its contexts are between Postgres and K2SQL lower layers, and because these
-  // layers might be still operating on the raw pointer or reference to "stmts_" after Postgres's
-  // cancellation, there's a chance we might have an unexpected issue.
-  tabledesc_map_.clear();
-  stmts_.clear();
-}
-
-void K2Memctx::Cache(const K2Statement::ScopedRefPtr &stmt) {
-  // Hold the stmt until the context is released.
-  stmts_.push_back(stmt);
-}
-
-void K2Memctx::Cache(size_t hash_id, const K2TableDesc::ScopedRefPtr &table_desc) {
-  // Add table descriptor to table.
-  tabledesc_map_[hash_id] = table_desc;
-}
-
-void K2Memctx::GetCache(size_t hash_id, K2TableDesc **handle) {
-  // Read table descriptor to table.
-  const auto iter = tabledesc_map_.find(hash_id);
-  if (iter == tabledesc_map_.end()) {
-    *handle = nullptr;
+Status K2TableDesc::GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const {
+  const auto itr = attr_num_map_.find(attr_number);
+  if (itr != attr_num_map_.end()) {
+    const ColumnDesc* desc = columns_[itr->second].desc();
+    *is_primary = desc->is_primary();
+    *is_hash = desc->is_partition();
   } else {
-    *handle = iter->second.get();
+    *is_primary = false;
+    *is_hash = false;
   }
+  return Status::OK();
+}
+
+bool K2TableDesc::IsTransactional() const {
+  return table_->schema().table_properties().is_transactional();
+}
+
+const TableIdentifier& K2TableDesc::table_name() const {
+  return table_->table_identifier();
+}
+
+const size_t K2TableDesc::num_hash_key_columns() const {
+  return table_->schema().num_hash_key_columns();
+}
+
+const size_t K2TableDesc::num_key_columns() const {
+  return table_->schema().num_key_columns();
+}
+
+const size_t K2TableDesc::num_columns() const {
+  return table_->schema().num_columns();
 }
 
 }  // namespace gate

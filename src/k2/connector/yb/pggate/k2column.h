@@ -174,6 +174,14 @@ class K2Column {
     return desc_.name();
   }
 
+  PgExpr *bind_pb() {
+    return bind_pb_;
+  }
+
+  PgExpr *assign_pb() {
+    return assign_pb_;
+  }
+
   int attr_num() const {
     return desc_.attr_num();
   }

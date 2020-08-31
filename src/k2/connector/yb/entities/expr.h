@@ -124,6 +124,14 @@ class PgExpr {
         return false;
     }
 
+    const PgTypeEntity *type_entity() const {
+        return type_entity_;
+    }
+
+    const PgTypeAttrs& type_attrs() const {
+        return type_attrs_;
+    }
+
     // Find opcode.
     static CHECKED_STATUS CheckOperatorName(const char *name);
     static Opcode NameToOpcode(const char *name);

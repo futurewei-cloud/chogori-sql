@@ -430,7 +430,7 @@ YBCStatus YBCPgAsyncUpdateIndexPermissions(
 // - SELECT target_expr1, target_expr2, ...
 // - INSERT / UPDATE / DELETE ... RETURNING target_expr1, target_expr2, ...
 YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->DmlAppendTarget(handle, target));
 }
 
 // Binding Columns: Bind column with a value (expression) in a statement.
@@ -458,49 +458,52 @@ YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target){
 //   The index-scan will use the bind to find base-ybctid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
 YBCStatus YBCPgDmlBindColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->DmlBindColumn(handle, attr_num, attr_value));
 }
+
 YBCStatus YBCPgDmlBindColumnCondEq(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->DmlBindColumnCondEq(handle, attr_num, attr_value));
 }
+
 YBCStatus YBCPgDmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value,
     YBCPgExpr attr_value_end){
-        return YBCStatusOK();
-    }
+  return ToYBCStatus(k2api->DmlBindColumnCondBetween(handle, attr_num, attr_value, attr_value_end));
+}
+
 YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
     YBCPgExpr *attr_values){
-        return YBCStatusOK();
-    }
+  return ToYBCStatus(k2api->DmlBindColumnCondIn(handle, attr_num, n_attr_values, attr_values));
+}
 
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
 YBCStatus YBCPgDmlBindTable(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->DmlBindTable(handle));
 }
 
 // API for SET clause.
 YBCStatus YBCPgDmlAssignColumn(YBCPgStatement handle,
                                int attr_num,
                                YBCPgExpr attr_value){
-                                   return YBCStatusOK();
-                               }
+  return ToYBCStatus(k2api->DmlAssignColumn(handle, attr_num, attr_value));
+}
 
 // This function is to fetch the targets in YBCPgDmlAppendTarget() from the rows that were defined
 // by YBCPgDmlBindColumn().
 YBCStatus YBCPgDmlFetch(YBCPgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
                         YBCPgSysColumns *syscols, bool *has_data){
-                            return YBCStatusOK();
-                        }
+  return ToYBCStatus(k2api->DmlFetch(handle, natts, values, isnulls, syscols, has_data));
+}
 
 // Utility method that checks stmt type and calls either exec insert, update, or delete internally.
 YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_count){
-    return YBCStatusOK();
+  return ToYBCStatus(k2api->DmlExecWriteOp(handle, rows_affected_count));
 }
 
 // This function returns the tuple id (ybctid) of a Postgres tuple.
 YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid){
-                                     return YBCStatusOK();
-                                 }
+  return ToYBCStatus(k2api->DmlBuildYBTupleId(handle, attrs, nattrs, ybctid));
+}
 
 // DB Operations: WHERE, ORDER_BY, GROUP_BY, etc.
 // + The following operations are run by DocDB.

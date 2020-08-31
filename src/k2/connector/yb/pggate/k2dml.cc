@@ -76,12 +76,221 @@ K2Dml::K2Dml(K2Session::ScopedRefPtr k2_session,
 K2Dml::~K2Dml() {
 }
 
+Status K2Dml::AppendTarget(PgExpr *target) {
+  // Except for base_ctid, all targets should be appended to this DML.
+  if (target_desc_ && (prepare_params_.index_only_scan || !target->is_ybbasetid())) {
+    RETURN_NOT_OK(AppendTargetPB(target));
+  } else {
+    // Append base_ctid to the index_query.
+//    RETURN_NOT_OK(secondary_index_query_->AppendTargetPB(target));
+  }
+
+  return Status::OK();
+}
+
+Status K2Dml::AppendTargetPB(PgExpr *target) {
+  // Append to targets_.
+  targets_.push_back(target);
+
+  // Allocate associated protobuf.
+  PgExpr *expr_pb = AllocTargetPB();
+
+  // Prepare expression. Except for constants and place_holders, all other expressions can be
+  // evaluate just one time during prepare.
+  RETURN_NOT_OK(PrepareForRead(target, expr_pb));
+
+  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
+  // constants and place_holders, all other expressions can be setup just one time during prepare.
+  // Example:
+  // - Bind values for a target of SELECT
+  //   SELECT AVG(col + ?) FROM a_table;
+  expr_binds_[expr_pb] = target;
+  return Status::OK();
+}
+
+Status K2Dml::PrepareColumnForRead(int attr_num, PgExpr *target_pb,
+                                   const K2Column **col) {
+  *col = nullptr;
+
+  // Find column from targeted table.
+  K2Column *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
+
+  // Prepare protobuf to send to DocDB.
+  //if (target_pb)
+  //  target_pb->set_column_id(pg_col->id());
+
+  // Mark non-virtual column reference for DocDB.
+  if (!pg_col->is_virtual_column()) {
+    pg_col->set_read_requested(true);
+  }
+
+  *col = pg_col;
+  return Status::OK();
+}
+
+Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb) {
+  // Prepare protobuf to send to DocDB.
+  // assign_pb->set_column_id(pg_col->id());
+
+  // Mark non-virtual column reference for DocDB.
+  if (!pg_col->is_virtual_column()) {
+    pg_col->set_write_requested(true);
+  }
+
+  return Status::OK();
+}
+
+void K2Dml::ColumnRefsToPB(PgColumnRef *column_refs) {
+//  column_refs->Clear();
+  for (const K2Column& col : target_desc_->columns()) {
+    if (col.read_requested() || col.write_requested()) {
+//      column_refs->add_ids(col.id());
+    }
+  }
+}
+
+//--------------------------------------------------------------------------------------------------
+
+Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
+/*   if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindColumn(attr_num, attr_value);
+  } */
+
+  // Find column to bind.
+  K2Column *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
+
+  // Check datatype.
+  //SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
+  //          "Attribute value type does not match column type");
+
+  // Alloc the protobuf.
+  PgExpr *bind_pb = col->bind_pb();
+  if (bind_pb == nullptr) {
+    bind_pb = AllocColumnBindPB(col);
+  } else {
+    if (expr_binds_.find(bind_pb) != expr_binds_.end()) {
+      LOG(WARNING) << strings::Substitute("Column $0 is already bound to another value.", attr_num);
+    }
+  }
+
+  // Link the expression and protobuf. During execution, expr will write result to the pb.
+  RETURN_NOT_OK(PrepareForRead(attr_value, bind_pb));
+
+  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
+  // constants and place_holders, all other expressions can be setup just one time during prepare.
+  // Examples:
+  // - Bind values for primary columns in where clause.
+  //     WHERE hash = ?
+  // - Bind values for a column in INSERT statement.
+  //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
+  expr_binds_[bind_pb] = attr_value;
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+    CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
+    ybctid_bind_ = true;
+  }
+  return Status::OK();
+}
+
+Status K2Dml::UpdateBindPBs() {
+  for (const auto &entry : expr_binds_) {
+    PgExpr *expr_pb = entry.first;
+    PgExpr *attr_value = entry.second;
+    RETURN_NOT_OK(Eval(attr_value, expr_pb));
+  }
+
+  return Status::OK();
+}
+
+//--------------------------------------------------------------------------------------------------
+
+Status K2Dml::BindTable() {
+  bind_table_ = true;
+  return Status::OK();
+}
+
+//--------------------------------------------------------------------------------------------------
+
+Status K2Dml::AssignColumn(int attr_num, PgExpr *attr_value) {
+  // Find column from targeted table.
+  K2Column *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
+
+  // Check datatype.
+//  SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
+ //           "Attribute value type does not match column type");
+
+  // Alloc the protobuf.
+  PgExpr *assign_pb = col->assign_pb();
+  if (assign_pb == nullptr) {
+    assign_pb = AllocColumnAssignPB(col);
+  } else {
+    if (expr_assigns_.find(assign_pb) != expr_assigns_.end()) {
+      return STATUS_SUBSTITUTE(InvalidArgument,
+                               "Column $0 is already assigned to another value", attr_num);
+    }
+  }
+
+  // Link the expression and protobuf. During execution, expr will write result to the pb.
+  // - Prepare the left hand side for write.
+  // - Prepare the right hand side for read. Currently, the right hand side is always constant.
+  RETURN_NOT_OK(PrepareColumnForWrite(col, assign_pb));
+  RETURN_NOT_OK(PrepareForRead(attr_value, assign_pb));
+
+  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
+  // constants and place_holders, all other expressions can be setup just one time during prepare.
+  // Examples:
+  // - Setup rhs values for SET column = assign_pb in UPDATE statement.
+  //     UPDATE a_table SET col = assign_expr;
+  expr_assigns_[assign_pb] = attr_value;
+
+  return Status::OK();
+}
+
+Status K2Dml::UpdateAssignPBs() {
+  // Process the column binds for two cases.
+  // For performance reasons, we might evaluate these expressions together with bind values in YB.
+  for (const auto &entry : expr_assigns_) {
+    PgExpr *expr_pb = entry.first;
+    PgExpr *attr_value = entry.second;
+    RETURN_NOT_OK(Eval(attr_value, expr_pb));
+  }
+
+  return Status::OK();
+}
+
 Status K2Dml::ClearBinds() {
   return STATUS(NotSupported, "Clearing binds for prepared statement is not yet implemented");
 }
 
-Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
-  // TODO: add implementation
+Status K2Dml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
+  return Status::OK();
+}
+
+Result<string> K2Dml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
+
+  return nullptr;
+}
+
+bool K2Dml::has_aggregate_targets() {
+  int num_aggregate_targets = 0;
+  for (const auto& target : targets_) {
+    if (target->is_aggregate())
+      num_aggregate_targets++;
+  }
+
+  CHECK(num_aggregate_targets == 0 || num_aggregate_targets == targets_.size())
+    << "Some, but not all, targets are aggregate expressions.";
+
+  return num_aggregate_targets > 0;
+}
+
+Status K2Dml::PrepareForRead(PgExpr *target, PgExpr *expr_pb) {
+  // TODO: add logic for different PgExpr types
+  return Status::OK();
+}
+
+Status K2Dml::Eval(PgExpr *target, PgExpr *expr_pb) {
+  // TODO: add logic for different PgExpr types
   return Status::OK();
 }
 
@@ -116,6 +325,21 @@ Status K2DmlRead::DeleteEmptyPrimaryBinds() {
   return Status::OK();
 }
 
+Status K2DmlRead::BindColumnCondEq(int attnum, PgExpr *attr_value) {
+  // TODO: add implementation 
+  return Status::OK();
+}
+
+Status K2DmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end) {
+  // TODO: add implementation 
+  return Status::OK();
+}
+
+Status K2DmlRead::BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_values) {
+  // TODO: add implementation 
+  return Status::OK();
+}
+
 Status K2DmlRead::Exec(const PgExecParameters *exec_params) {
   // TODO: add implementation 
   return Status::OK();
@@ -134,6 +358,12 @@ Status K2DmlWrite::Prepare() {
   // TODO: add implementation
   return Status::OK();
 }
+
+Status K2DmlWrite::Exec(bool force_non_bufferable) {
+  // TODO: add implementation
+  return Status::OK();
+}
+
 
 }  // namespace gate
 }  // namespace k2

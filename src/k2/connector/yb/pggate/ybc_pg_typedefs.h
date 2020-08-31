@@ -70,7 +70,7 @@ K2_DEFINE_HANDLE_TYPE(K2Statement, PgStatement)
 K2SQL_DEFINE_HANDLE_TYPE(PgExpr, PgExpr);
 
 // Handle to a table description
-K2SQL_DEFINE_HANDLE_TYPE(TableInfo, PgTableDesc)
+K2_DEFINE_HANDLE_TYPE(K2TableDesc, PgTableDesc)
 
 // Handle to a memory context.
 K2_DEFINE_HANDLE_TYPE(K2Memctx, PgMemctx)

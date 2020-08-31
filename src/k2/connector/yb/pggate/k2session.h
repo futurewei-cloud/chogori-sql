@@ -54,8 +54,8 @@
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/oid_generator.h"
 #include "yb/common/sys/monotime.h"
-#include "yb/entities/table.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/k2tabledesc.h"
 #include "yb/pggate/k2client.h"
 
 namespace k2 {
@@ -138,7 +138,7 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     fk_reference_cache_.clear();
   }
 
-  Result<TableInfo::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+  Result<K2TableDesc::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
 
   void InvalidateTableCache(const PgObjectId& table_id);
       

@@ -117,7 +117,7 @@ void K2Session::InvalidateTableCache(const PgObjectId& table_id) {
   table_cache_.erase(yb_table_id);
 }
 
-Result<TableInfo::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id) {
+Result<K2TableDesc::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id) {
   // TODO: add implementation                                   
   return nullptr;
 }

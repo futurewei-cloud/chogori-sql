@@ -59,6 +59,7 @@
 #include "yb/entities/expr.h"
 #include "yb/pggate/ybc_pg_typedefs.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/k2column.h"
 #include "yb/pggate/k2statement.h"
 
 namespace k2 {
@@ -78,9 +79,8 @@ class K2Dml : public K2Statement {
   // Prepare column for both ends.
   // - Prepare protobuf to communicate with DocDB.
   // - Prepare PgExpr to send data back to Postgres layer.
- // CHECKED_STATUS PrepareColumnForRead(int attr_num, PgPgExpressionPB *target_pb,
-  //                                    const PgColumn **col);
- // CHECKED_STATUS PrepareColumnForWrite(PgColumn *pg_col, PgPgExpressionPB *assign_pb);
+  CHECKED_STATUS PrepareColumnForRead(int attr_num, PgExpr *target_pb, const K2Column **col);
+  CHECKED_STATUS PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb);
 
   // Bind a column with an expression.
   // - For a secondary-index-scan, this bind specify the value of the secondary key which is used to
@@ -123,6 +123,31 @@ class K2Dml : public K2Statement {
         const PgObjectId& index_id,
         const PgPrepareParameters *prepare_params);
 
+  // Allocate protobuf for a SELECTed expression.
+  virtual PgExpr *AllocTargetPB() = 0;
+
+  // Allocate protobuf for expression whose value is bounded to a column.
+  virtual PgExpr *AllocColumnBindPB(K2Column *col) = 0;
+
+  // Allocate protobuf for expression whose value is assigned to a column (SET clause).
+  virtual PgExpr *AllocColumnAssignPB(K2Column *col) = 0;
+
+  // Specify target of the query in protobuf request.
+  CHECKED_STATUS AppendTargetPB(PgExpr *target);
+
+  // Update bind values.
+  CHECKED_STATUS UpdateBindPBs();
+
+  // Update set values.
+  CHECKED_STATUS UpdateAssignPBs();
+
+  // Indicate in the protobuf what columns must be read before the statement is processed.
+  void ColumnRefsToPB(PgColumnRef *column_refs);
+
+  CHECKED_STATUS PrepareForRead(PgExpr *target, PgExpr *expr_pb);
+
+  CHECKED_STATUS Eval(PgExpr *target, PgExpr *expr_pb);
+
   // -----------------------------------------------------------------------------------------------
   // Data members that define the DML statement.
 
@@ -145,7 +170,7 @@ class K2Dml : public K2Statement {
   // Targets of statements (Output parameter).
   // - "target_desc_" is the table descriptor where data will be read from.
   // - "targets_" are either selected or returned expressions by DML statements.
-  TableInfo::ScopedRefPtr target_desc_;
+  K2TableDesc::ScopedRefPtr target_desc_;
   std::vector<PgExpr*> targets_;
 
   // bind_desc_ is the descriptor of the table whose key columns' values will be specified by the
@@ -155,7 +180,7 @@ class K2Dml : public K2Statement {
   // - For secondary key binding, "bind_desc_" is the descriptor of teh secondary index table.
   //   The bound values will be used to read base_ybctid which is then used to read actual data
   //   from the main table.
-  TableInfo::ScopedRefPtr bind_desc_;
+  K2TableDesc::ScopedRefPtr bind_desc_;
 
   // Prepare control parameters.
   PgPrepareParameters prepare_params_ = { kInvalidOid /* index_oid */,
@@ -178,8 +203,8 @@ class K2Dml : public K2Statement {
   // * Bind values are used to identify the selected rows to be operated on.
   // * Set values are used to hold columns' new values in the selected rows.
   bool ybctid_bind_ = false;
-  //std::unordered_map<PgPgExpressionPB*, PgExpr*> expr_binds_;
-  //std::unordered_map<PgPgExpressionPB*, PgExpr*> expr_assigns_;
+  std::unordered_map<PgExpr*, PgExpr*> expr_binds_;
+  std::unordered_map<PgExpr*, PgExpr*> expr_assigns_;
 
   // Used for colocated TRUNCATE that doesn't bind any columns.
   bool bind_table_ = false;

@@ -53,14 +53,11 @@
 #include <string>
 
 #include "yb/common/status.h"
-#include "yb/entities/table.h"
+#include "yb/pggate/k2tabledesc.h"
 #include "yb/pggate/k2statement.h"
 
 namespace k2 {
 namespace gate {
-
-using k2::sql::TableInfo;
-
 // This is the K2 counterpart of Postgres's MemoryContext.
 // K2SQL memory context hold one reference count to PgGate objects such as K2Statement.
 // When Postgres process complete execution, it would release the reference count by destroying
@@ -103,10 +100,10 @@ class K2Memctx {
   void Cache(const K2Statement::ScopedRefPtr &stmt);
 
   // Cache the table descriptor in the memory context to be destroyed later on.
-  void Cache(size_t hash_id, const TableInfo::ScopedRefPtr &table_desc);
+  void Cache(size_t hash_id, const K2TableDesc::ScopedRefPtr &table_desc);
 
   // Read the table descriptor from cache.
-  void GetCache(size_t hash_id, TableInfo **handle);
+  void GetCache(size_t hash_id, K2TableDesc **handle);
 
  private:
   // NOTE:
@@ -122,7 +119,7 @@ class K2Memctx {
   std::vector<K2Statement::ScopedRefPtr> stmts_;
 
   // All table descriptors that are allocated with this memory context.
-  std::unordered_map<size_t, TableInfo::ScopedRefPtr> tabledesc_map_;
+  std::unordered_map<size_t, K2TableDesc::ScopedRefPtr> tabledesc_map_;
 };
 
 }  // namespace gate

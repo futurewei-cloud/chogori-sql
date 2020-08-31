@@ -185,12 +185,12 @@ Status K2GateApiImpl::AddToCurrentMemctx(const K2Statement::ScopedRefPtr &stmt,
 // For now, table_desc is allocated as ScopedPtr and cached in the memory context. The table_desc
 // would then be destructed when the context is destroyed.
 Status K2GateApiImpl::AddToCurrentMemctx(size_t table_desc_id,
-                                       const TableInfo::ScopedRefPtr &table_desc) {
+                                       const K2TableDesc::ScopedRefPtr &table_desc) {
   pg_callbacks_.GetCurrentYbMemctx()->Cache(table_desc_id, table_desc);
   return Status::OK();
 }
 
-Status K2GateApiImpl::GetTabledescFromCurrentMemctx(size_t table_desc_id, TableInfo **handle) {
+Status K2GateApiImpl::GetTabledescFromCurrentMemctx(size_t table_desc_id, K2TableDesc **handle) {
   pg_callbacks_.GetCurrentYbMemctx()->GetCache(table_desc_id, handle);
   return Status::OK();
 }
@@ -255,7 +255,7 @@ Status K2GateApiImpl::GetCatalogMasterVersion(uint64_t *version) {
   return k2_session_->GetCatalogMasterVersion(version);
 }
 
-Result<TableInfo::ScopedRefPtr> K2GateApiImpl::LoadTable(const PgObjectId& table_id) {
+Result<K2TableDesc::ScopedRefPtr> K2GateApiImpl::LoadTable(const PgObjectId& table_id) {
   return k2_session_->LoadTable(table_id);
 }
 
@@ -326,7 +326,7 @@ Status K2GateApiImpl::ExecDropTable(K2Statement *handle) {
 }
 
 Status K2GateApiImpl::GetTableDesc(const PgObjectId& table_id,
-                               TableInfo **handle) {
+                               K2TableDesc **handle) {
   // First read from memory context.
   size_t hash_id = hash_value(table_id);
   RETURN_NOT_OK(GetTabledescFromCurrentMemctx(hash_id, handle));
@@ -343,7 +343,7 @@ Status K2GateApiImpl::GetTableDesc(const PgObjectId& table_id,
   return Status::OK();
 }
 
-Status K2GateApiImpl::GetColumnInfo(TableInfo* table_desc,
+Status K2GateApiImpl::GetColumnInfo(K2TableDesc* table_desc,
                                 int16_t attr_number,
                                 bool *is_primary,
                                 bool *is_hash) {
@@ -403,6 +403,71 @@ Status K2GateApiImpl::SetCatalogCacheVersion(K2Statement *handle, uint64_t catal
       break;
   }
 
+  return STATUS(InvalidArgument, "Invalid statement handle");
+}
+
+// Binding -----------------------------------------------------------------------------------------
+
+Status K2GateApiImpl::DmlAppendTarget(K2Statement *handle, PgExpr *target) {
+  return down_cast<K2Dml*>(handle)->AppendTarget(target);
+}
+
+Status K2GateApiImpl::DmlBindColumn(K2Statement *handle, int attr_num, PgExpr *attr_value) {
+  return down_cast<K2Dml*>(handle)->BindColumn(attr_num, attr_value);
+}
+
+Status K2GateApiImpl::DmlBindColumnCondEq(K2Statement *handle, int attr_num, PgExpr *attr_value) {
+  return down_cast<K2DmlRead*>(handle)->BindColumnCondEq(attr_num, attr_value);
+}
+
+Status K2GateApiImpl::DmlBindColumnCondBetween(K2Statement *handle, int attr_num, PgExpr *attr_value,
+    PgExpr *attr_value_end) {
+  return down_cast<K2DmlRead*>(handle)->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
+}
+
+Status K2GateApiImpl::DmlBindColumnCondIn(K2Statement *handle, int attr_num, int n_attr_values,
+    PgExpr **attr_values) {
+  return down_cast<K2DmlRead*>(handle)->BindColumnCondIn(attr_num, n_attr_values, attr_values);
+}
+
+Status K2GateApiImpl::DmlBindTable(K2Statement *handle) {
+  return down_cast<K2Dml*>(handle)->BindTable();
+}
+
+CHECKED_STATUS K2GateApiImpl::DmlAssignColumn(K2Statement *handle, int attr_num, PgExpr *attr_value) {
+  return down_cast<K2Dml*>(handle)->AssignColumn(attr_num, attr_value);
+}
+
+Status K2GateApiImpl::DmlFetch(K2Statement *handle, int32_t natts, uint64_t *values, bool *isnulls,
+                           PgSysColumns *syscols, bool *has_data) {
+  return down_cast<K2Dml*>(handle)->Fetch(natts, values, isnulls, syscols, has_data);
+}
+
+Status K2GateApiImpl::DmlBuildYBTupleId(K2Statement *handle, const PgAttrValueDescriptor *attrs,
+                                    int32_t nattrs, uint64_t *ybctid) {
+  const string id = VERIFY_RESULT(down_cast<K2Dml*>(handle)->BuildYBTupleId(attrs, nattrs));
+  const YBCPgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
+  *ybctid = type_entity->yb_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
+  return Status::OK();
+}
+
+Status K2GateApiImpl::DmlExecWriteOp(K2Statement *handle, int32_t *rows_affected_count) {
+  switch (handle->stmt_op()) {
+    case StmtOp::STMT_INSERT:
+    case StmtOp::STMT_UPDATE:
+    case StmtOp::STMT_DELETE:
+    case StmtOp::STMT_TRUNCATE:
+      {
+        auto dml_write = down_cast<K2DmlWrite *>(handle);
+        RETURN_NOT_OK(dml_write->Exec(rows_affected_count != nullptr /* force_non_bufferable */));
+        if (rows_affected_count) {
+          *rows_affected_count = dml_write->GetRowsAffectedCount();
+        }
+        return Status::OK();
+      }
+    default:
+      break;
+  }
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 

@@ -59,6 +59,7 @@
 #include "yb/pggate/ybc_pg_typedefs.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/memctx.h"
+#include "yb/pggate/k2tabledesc.h"
 #include "yb/pggate/k2session.h"
 #include "yb/pggate/k2statement.h"
 #include "yb/pggate/k2client.h"
@@ -101,10 +102,10 @@ class K2GateApiImpl {
 
   // Cache table descriptor in YB Memctx. When Memctx is destroyed, the descriptor is destructed.
   CHECKED_STATUS AddToCurrentMemctx(size_t table_desc_id,
-                                      const TableInfo::ScopedRefPtr &table_desc);
+                                      const K2TableDesc::ScopedRefPtr &table_desc);
 
   // Read table descriptor that was cached in YB Memctx.
-  CHECKED_STATUS GetTabledescFromCurrentMemctx(size_t table_desc_id, TableInfo **handle);
+  CHECKED_STATUS GetTabledescFromCurrentMemctx(size_t table_desc_id, K2TableDesc **handle);
 
   // Invalidate the sessions table cache.
   CHECKED_STATUS InvalidateCache();
@@ -148,7 +149,7 @@ class K2GateApiImpl {
   CHECKED_STATUS GetCatalogMasterVersion(uint64_t *version);
 
   // Load table.
-  Result<TableInfo::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+  Result<K2TableDesc::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
 
   // Invalidate the cache entry corresponding to table_id from the PgSession table cache.
   void InvalidateTableCache(const PgObjectId& table_id);
@@ -180,9 +181,9 @@ class K2GateApiImpl {
   CHECKED_STATUS ExecDropTable(K2Statement *handle);
 
   CHECKED_STATUS GetTableDesc(const PgObjectId& table_id,
-                              TableInfo **handle);
+                              K2TableDesc **handle);
 
-  CHECKED_STATUS GetColumnInfo(TableInfo* table_desc,
+  CHECKED_STATUS GetColumnInfo(K2TableDesc* table_desc,
                                int16_t attr_number,
                                bool *is_primary,
                                bool *is_hash);
@@ -193,7 +194,6 @@ class K2GateApiImpl {
 
   CHECKED_STATUS SetCatalogCacheVersion(K2Statement *handle, uint64_t catalog_cache_version);
 
-/*
   //------------------------------------------------------------------------------------------------
   // All DML statements
   CHECKED_STATUS DmlAppendTarget(K2Statement *handle, PgExpr *expr);
@@ -215,18 +215,18 @@ class K2GateApiImpl {
   //   - This bind-column function is used to bind the primary column "key" with "key_expr" that can
   //     contain bind-variables (placeholders) and constants whose values can be updated for each
   //     execution of the same allocated statement.
-  CHECKED_STATUS DmlBindColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
-  CHECKED_STATUS DmlBindColumnCondEq(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
-  CHECKED_STATUS DmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value,
-      YBCPgExpr attr_value_end);
-  CHECKED_STATUS DmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
-      YBCPgExpr *attr_value);
+  CHECKED_STATUS DmlBindColumn(K2Statement *handle, int attr_num, PgExpr *attr_value);
+  CHECKED_STATUS DmlBindColumnCondEq(K2Statement *handle, int attr_num, PgExpr *attr_value);
+  CHECKED_STATUS DmlBindColumnCondBetween(K2Statement *handle, int attr_num, PgExpr *attr_value,
+      PgExpr *attr_value_end);
+  CHECKED_STATUS DmlBindColumnCondIn(K2Statement *handle, int attr_num, int n_attr_values,
+      PgExpr **attr_value);
 
   // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
-  CHECKED_STATUS DmlBindTable(YBCPgStatement handle);
+  CHECKED_STATUS DmlBindTable(K2Statement *handle);
 
   // API for SET clause.
-  CHECKED_STATUS DmlAssignColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
+  CHECKED_STATUS DmlAssignColumn(K2Statement *handle, int attr_num, PgExpr *attr_value);
 
   // This function is to fetch the targets in YBCPgDmlAppendTarget() from the rows that were defined
   // by YBCPgDmlBindColumn().
@@ -272,7 +272,6 @@ class K2GateApiImpl {
   CHECKED_STATUS SetForwardScan(K2Statement *handle, bool is_forward_scan);
 
   CHECKED_STATUS ExecSelect(K2Statement *handle, const PgExecParameters *exec_params);
-*/
 
   //------------------------------------------------------------------------------------------------
   // Expressions.

@@ -46,84 +46,60 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/pggate/memctx.h"
+#ifndef CHOGORI_GATE_K2_TABLE_DESC_H
+#define CHOGORI_GATE_K2_TABLE_DESC_H
+
+#include "yb/common/concurrent/ref_counted.h"
+#include "yb/entities/table.h"
+#include "yb/pggate/k2column.h"
 
 namespace k2 {
 namespace gate {
 
-K2Memctx::K2Memctx() {
-}
+using namespace yb;
+using namespace k2::sql;
 
-K2Memctx::~K2Memctx() {
-}
+// This class can be used to describe any reference of a column.
+class K2TableDesc : public RefCountedThreadSafe<K2TableDesc> {
+ public:
+  typedef scoped_refptr<K2TableDesc> ScopedRefPtr;
 
-namespace {
-  // Table of memory contexts.
-  // - Although defined in K2Sql, this table is owned and managed by Postgres process.
-  //   Other processes cannot control "K2Memctx" to avoid memory violations.
-  // - Table "postgres_process_memctxs" is to help releasing the references to K2Statement when
-  //   Postgres Process (a C program) is exiting.
-  // - Transaction layer and Postgres BOTH hold references to K2Statement objects, and those
-  //   PgGate objects wouldn't be destroyed unless both layers release their references or both
-  //   layers are terminated.
-  std::unordered_map<K2Memctx *, K2Memctx::SharedPtr> postgres_process_memctxs;
-} // namespace
+  explicit K2TableDesc(std::shared_ptr<TableInfo> pg_table);
 
-K2Memctx *K2Memctx::Create() {
-  auto memctx = std::make_shared<K2Memctx>();
-  postgres_process_memctxs[memctx.get()] = memctx;
-  return memctx.get();
-}
+  const TableIdentifier& table_name() const;
 
-Status K2Memctx::Destroy(K2Memctx *handle) {
-  if (handle) {
-    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
-           InternalError, "Invalid memory context handle");
-    postgres_process_memctxs.erase(handle);
+  const std::shared_ptr<TableInfo> table() const {
+    return table_;
   }
-  return Status::OK();
-}
 
-Status K2Memctx::Reset(K2Memctx *handle) {
-  if (handle) {
-    SCHECK(postgres_process_memctxs.find(handle) != postgres_process_memctxs.end(),
-           InternalError, "Invalid memory context handle");
-    handle->Clear();
+  static int ToPgAttrNum(const string &attr_name, int attr_num);
+
+  std::vector<K2Column>& columns() {
+    return columns_;
   }
-  return Status::OK();
-}
 
-void K2Memctx::Clear() {
-  // The safest option is to retain all K2SQL statement objects.
-  // - Clear the table descriptors from cache. We can just reload them when requested.
-  // - Clear the "stmts_" for now. However, if this causes issue, keep "stmts_" vector around.
-  //
-  // PgGate and its contexts are between Postgres and K2SQL lower layers, and because these
-  // layers might be still operating on the raw pointer or reference to "stmts_" after Postgres's
-  // cancellation, there's a chance we might have an unexpected issue.
-  tabledesc_map_.clear();
-  stmts_.clear();
-}
+  const size_t num_hash_key_columns() const;
+  const size_t num_key_columns() const;
+  const size_t num_columns() const;
 
-void K2Memctx::Cache(const K2Statement::ScopedRefPtr &stmt) {
-  // Hold the stmt until the context is released.
-  stmts_.push_back(stmt);
-}
+  // Find the column given the postgres attr number.
+  Result<K2Column *> FindColumn(int attr_num);
 
-void K2Memctx::Cache(size_t hash_id, const K2TableDesc::ScopedRefPtr &table_desc) {
-  // Add table descriptor to table.
-  tabledesc_map_[hash_id] = table_desc;
-}
+  CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
-void K2Memctx::GetCache(size_t hash_id, K2TableDesc **handle) {
-  // Read table descriptor to table.
-  const auto iter = tabledesc_map_.find(hash_id);
-  if (iter == tabledesc_map_.end()) {
-    *handle = nullptr;
-  } else {
-    *handle = iter->second.get();
-  }
-}
+  bool IsTransactional() const;
+
+ private:
+  std::shared_ptr<TableInfo> table_;
+
+  std::vector<K2Column> columns_;
+  std::unordered_map<int, size_t> attr_num_map_; // Attr number to column index map.
+
+  // Hidden columns.
+  K2Column column_ybctid_;
+};
 
 }  // namespace gate
 }  // namespace k2
+
+#endif //CHOGORI_GATE_K2_TABLE_DESC_H

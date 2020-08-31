@@ -21,7 +21,6 @@
 #include <memory>
 #include <string>
 
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/status.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
@@ -29,32 +28,34 @@
 
 namespace k2 {
 namespace sql {
+    struct TableIdentifier {
+        NamespaceName namespace_name; // Can be empty, that means the namespace has not been set yet.
+        TableName table_name;  
+        TableIdentifier(NamespaceName ns, TableName tn) : namespace_name(ns), table_name(tn) {
+        }
+    };
 
-    using yb::RefCountedThreadSafe;
-
-    class TableInfo : public RefCountedThreadSafe<TableInfo> {
+    class TableInfo {
         public: 
           
-        typedef scoped_refptr<TableInfo> ScopedRefPtr;
+        typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(TableId table_id, TableName table_name, Schema schema, IndexMap index_map) : 
-            table_id_(table_id), table_name_(table_name), schema_(std::move(schema)), index_map_(std::move(index_map)) {
-            const int num_columns = schema.num_columns();
-            for (size_t idx = 0; idx < num_columns; idx++) {
-                // Find the column descriptor.
-                const auto& col = schema.column(idx);
-                attr_num_map_[col.order()] = idx;
-            }
+        TableInfo(NamespaceName namespace_name, TableName table_name, Schema schema, IndexMap index_map) : 
+            table_id_(namespace_name, table_name), schema_(std::move(schema)), index_map_(std::move(index_map)) {
         }
 
-        const TableId table_id() const {
+        const NamespaceName& namespace_name() const {
+            return table_id_.namespace_name;
+        }
+
+        const TableName& table_name() const {
+            return table_id_.table_name;
+        }
+
+        const TableIdentifier& table_identifier() {
             return table_id_;
         }
-
-        const TableName table_name() const {
-            return table_name_;
-        }
-
+        
         const Schema& schema() const {
             return schema_;
         }
@@ -83,19 +84,19 @@ namespace sql {
             return schema_.num_range_key_columns();
         }
 
-        CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
+        // CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
         Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
 
         private: 
-        TableId table_id_;
-        TableName table_name_;
+        
+        TableIdentifier table_id_;
         Schema schema_;
         IndexMap index_map_;
         // TODO: add partition information if necessary for PG
 
         // Attr number to column index map.
-        std::unordered_map<int, size_t> attr_num_map_; 
+        // std::unordered_map<int, size_t> attr_num_map_; 
     };
 
 }  // namespace sql
