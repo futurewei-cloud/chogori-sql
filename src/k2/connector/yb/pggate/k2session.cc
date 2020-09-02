@@ -46,7 +46,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "k2session.h"
+#include "yb/common/port.h"
+#include "yb/pggate/k2session.h"
 
 namespace k2 {
 namespace gate {
@@ -191,7 +192,7 @@ Status K2Session::FlushBufferedOperationsImpl() {
   }
   if (!txn_ops.empty()) {
     // No transactional operations are expected in the initdb mode.
-//    DCHECK(!YBCIsInitDbModeEnvVarSet());
+    DCHECK(!YBCIsInitDbModeEnvVarSet());
     RETURN_NOT_OK(FlushBufferedOperationsImpl(txn_ops, true /* transactional */));
   }
   return Status::OK();
@@ -260,6 +261,91 @@ Status K2Session::HandleResponse(const DocOp& op, const PgObjectId& relation_id)
   s = s.CloneAndAddErrorCode(TransactionError(txn_error_code));
   return s; */
   return Status::OK();
+}
+
+bool K2Session::ShouldHandleTransactionally(const DocOp& op) {
+  return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
+}
+
+K2SessionAsyncRunResult::K2SessionAsyncRunResult(std::future<Status> future_status,
+                                                 K2Client* client)
+    :  future_status_(std::move(future_status)),
+       client_(client) {
+}
+
+Status K2SessionAsyncRunResult::GetStatus() {
+  DCHECK(InProgress());
+  auto status = future_status_.get();
+  future_status_ = std::future<Status>();
+  // TODO: populate errors to status if client supports batch operations
+  return status;
+}
+
+bool K2SessionAsyncRunResult::InProgress() const {
+  return future_status_.valid();
+}
+
+K2Session::RunHelper::RunHelper(K2Session* k2_session, K2Client *client, bool transactional)
+    :  k2_session_(*k2_session),
+       client_(client),
+       transactional_(transactional),
+       buffered_ops_(transactional_ ? k2_session_.buffered_txn_ops_
+                                    : k2_session_.buffered_ops_) {
+  if (!transactional_) {
+    k2_session_.InvalidateForeignKeyReferenceCache();
+  }
+}
+
+Status K2Session::RunHelper::Apply(std::shared_ptr<DocOp> op,
+                                   const PgObjectId& relation_id,
+                                   uint64_t* read_time,
+                                   bool force_non_bufferable) {
+  auto& buffered_keys = k2_session_.buffered_keys_;
+  if (k2_session_.buffering_enabled_ && !force_non_bufferable &&
+      op->type() == DocOp::Type::WRITE) {
+    const auto& wop = *down_cast<DocWriteOp*>(op.get());
+    // Check for buffered operation related to same row.
+    // If multiple operations are performed in context of single RPC second operation will not
+    // see the results of first operation on DocDB side.
+    // Multiple operations on same row must be performed in context of different RPC.
+    // Flush is required in this case.
+    if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(wop, client_)).second)) {
+      RETURN_NOT_OK(k2_session_.FlushBufferedOperationsImpl());
+      buffered_keys.insert(RowIdentifier(wop, client_));
+    }
+    buffered_ops_.push_back({std::move(op), relation_id});
+    // Flush buffers in case limit of operations in single RPC exceeded.
+    return PREDICT_TRUE(buffered_keys.size() < default_session_max_batch_size)
+        ? Status::OK()
+        : k2_session_.FlushBufferedOperationsImpl();
+  }
+
+  // Flush all buffered operations (if any) before performing non-bufferable operation
+  if (!buffered_keys.empty()) {
+    RETURN_NOT_OK(k2_session_.FlushBufferedOperationsImpl());
+  }
+
+/*   
+  bool needs_pessimistic_locking = false;
+  bool read_only = op->read_only();
+  if (op->type() == DocOp::Type::READ) {
+    const DocReadRequest &read_req = down_cast<DocReadOp *>(op.get())->request();
+    auto row_mark_type = read_req.row_mark_type;
+    read_only = read_only && !IsValidRowMarkType(row_mark_type);
+    needs_pessimistic_locking = RowMarkNeedsPessimisticLock(row_mark_type);
+  } 
+  */
+
+  // TODO: add execution parameters
+  // should we add async call here?
+  return client_->Run(std::move(op));
+}
+
+Result<K2SessionAsyncRunResult> K2Session::RunHelper::Flush() {
+  auto future_status = MakeFuture<Status>([this](auto callback) {
+      client_->FlushAsync([callback](const Status& status) { callback(status); });
+  });
+  return K2SessionAsyncRunResult(std::move(future_status), client_);  
 }
 
 Result<K2TableDesc::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id) {

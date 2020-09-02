@@ -18,6 +18,9 @@
 #ifndef CHOGORI_GATE_CLIENT_H
 #define CHOGORI_GATE_CLIENT_H
 
+#include <boost/function.hpp>
+
+#include "yb/common/concurrent/async_util.h"
 #include "yb/pggate/k2doc.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
@@ -67,10 +70,14 @@ class K2Client {
 
   CHECKED_STATUS Shutdown();
 
+  CHECKED_STATUS Run(std::shared_ptr<DocOp> op);
+
+  void FlushAsync(StatusFunctor callback);
+
   std::string getDocKey(DocReadRequest& request);
         
   std::string getDocKey(DocWriteRequest& request);
-  
+
 private:
   DocApi doc_api_;
 };

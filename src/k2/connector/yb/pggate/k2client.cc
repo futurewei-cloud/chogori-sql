@@ -63,6 +63,15 @@ Status K2Client::Shutdown() {
   return Status::OK();
 }
 
+Status K2Client::Run(std::shared_ptr<DocOp> op) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+
+void K2Client::FlushAsync(StatusFunctor callback) {
+  // TODO: add implementation                                   
+}
+
 std::string K2Client::getDocKey(DocReadRequest& request) {
   return doc_api_.getDocKey(request);
 }

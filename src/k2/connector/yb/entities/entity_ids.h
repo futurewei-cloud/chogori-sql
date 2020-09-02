@@ -140,6 +140,10 @@ namespace sql {
         ROW_MARK_ABSENT = 15
     };
 
+    bool IsValidRowMarkType(RowMarkType row_mark_type);
+
+    bool RowMarkNeedsPessimisticLock(RowMarkType row_mark_type);
+
 }  // namespace sql
 }  // namespace k2
 

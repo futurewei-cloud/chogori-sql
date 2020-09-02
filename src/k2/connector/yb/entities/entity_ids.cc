@@ -152,5 +152,29 @@ Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id) {
   return STATUS(InvalidArgument, "Invalid PostgreSQL table id", table_id);
 }
 
+    bool IsValidRowMarkType(RowMarkType row_mark_type) {
+        switch (row_mark_type) {
+            case RowMarkType::ROW_MARK_EXCLUSIVE: FALLTHROUGH_INTENDED;
+            case RowMarkType::ROW_MARK_NOKEYEXCLUSIVE: FALLTHROUGH_INTENDED;
+            case RowMarkType::ROW_MARK_SHARE: FALLTHROUGH_INTENDED;
+            case RowMarkType::ROW_MARK_KEYSHARE:
+            return true;
+            break;
+            default:
+            return false;
+            break;
+        }
+    }
+
+    bool RowMarkNeedsPessimisticLock(RowMarkType row_mark_type) {
+        /*
+        * Currently, using pessimistic locking for all supported row marks except the key share lock.
+        * This is because key share locks are used for foreign keys and we don't want pessimistic
+        * locking there.
+        */
+        return IsValidRowMarkType(row_mark_type) &&
+            row_mark_type != RowMarkType::ROW_MARK_KEYSHARE;
+    }
+
 }  // namespace sql
 }  // namespace k2

@@ -58,12 +58,15 @@
 #include "yb/pggate/k2tabledesc.h"
 #include "yb/pggate/k2doc.h"
 #include "yb/pggate/k2client.h"
+#include "yb/pggate/ybc_pggate.h"
 
 namespace k2 {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
 using namespace k2::sql;
+
+static const int default_session_max_batch_size = 5;
 
 struct BufferableOperation {
   std::shared_ptr<DocOp> operation;
@@ -73,6 +76,22 @@ struct BufferableOperation {
 };
 
 typedef std::vector<BufferableOperation> PgsqlOpBuffer;
+
+// This class provides access to run operation's result by reading std::future<Status>
+// and analyzing possible pending errors of k2 client object in GetStatus() method.
+// If GetStatus() method will not be called, possible errors in k2 client object will be preserved.
+class K2SessionAsyncRunResult {
+ public:
+  K2SessionAsyncRunResult() = default;
+  K2SessionAsyncRunResult(std::future<Status> future_status,
+                          K2Client *client);
+  CHECKED_STATUS GetStatus();
+  bool InProgress() const;
+
+ private:
+  std::future<Status> future_status_;
+  K2Client* client_;
+};
 
 struct PgForeignKeyReference {
   const uint32_t table_id;
@@ -199,13 +218,76 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   // Drop all pending buffered operations. Buffering mode remain unchanged.
   void DropBufferedOperations();
 
+  // Run (apply + flush) the given operation to read and write database content.
+  // Template is used here to handle all kind of derived operations
+  // (shared_ptr<DocReadOp>, shared_ptr<DocWriteOp>)
+  // without implicitly conversion to shared_ptr<DocReadOp>.
+  // Conversion to shared_ptr<DocOp> will be done later and result will re-used with move.
+  template<class Op>
+  Result<K2SessionAsyncRunResult> RunAsync(const std::shared_ptr<Op>& op,
+                                           const PgObjectId& relation_id,
+                                           uint64_t* read_time,
+                                           bool force_non_bufferable) {
+    return RunAsync(&op, 1, relation_id, read_time, force_non_bufferable);
+  }
+
+  // Run (apply + flush) list of given operations to read and write database content.
+  template<class Op>
+  Result<K2SessionAsyncRunResult> RunAsync(const std::vector<std::shared_ptr<Op>>& ops,
+                                           const PgObjectId& relation_id,
+                                           uint64_t* read_time,
+                                           bool force_non_bufferable) {
+    DCHECK(!ops.empty());
+    return RunAsync(ops.data(), ops.size(), relation_id, read_time, force_non_bufferable);
+  }
+
+  // Run multiple operations.
+  template<class Op>
+  Result<K2SessionAsyncRunResult> RunAsync(const std::shared_ptr<Op>* op,
+                                           size_t ops_count,
+                                           const PgObjectId& relation_id,
+                                           uint64_t* read_time,
+                                           bool force_non_bufferable) {
+    DCHECK_GT(ops_count, 0);
+    RunHelper runner(this, ShouldHandleTransactionally(**op));
+    for (auto end = op + ops_count; op != end; ++op) {
+      RETURN_NOT_OK(runner.Apply(*op, relation_id, read_time, force_non_bufferable));
+    }
+    return runner.Flush();
+  }
+
   private:
   CHECKED_STATUS FlushBufferedOperationsImpl();
 
   CHECKED_STATUS FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool transactional);
 
+  // Helper class to run multiple operations on single session.
+  // This class allows to keep implementation of RunAsync template method simple
+  // without moving its implementation details into header file.
+  class RunHelper {
+   public:
+    RunHelper(K2Session* k2_session, K2Client *client, bool transactional);
+    CHECKED_STATUS Apply(std::shared_ptr<DocOp> op,
+                         const PgObjectId& relation_id,
+                         uint64_t* read_time,
+                         bool force_non_bufferable);
+    Result<K2SessionAsyncRunResult> Flush();
+
+   private:
+    K2Session& k2_session_;
+    K2Client *client_;
+    bool transactional_;
+    PgsqlOpBuffer& buffered_ops_;
+  };
+
   CHECKED_STATUS HandleResponse(const DocOp& op, const PgObjectId& relation_id);
-  
+
+  // Flush buffered write operations from the given buffer.
+  Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);
+
+  // Whether we should use transactional or non-transactional session.
+  bool ShouldHandleTransactionally(const DocOp& op);
+
   // Connected database.
   std::string connected_database_;
 

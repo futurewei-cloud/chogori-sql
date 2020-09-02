@@ -11,7 +11,6 @@
 // under the License.
 
 #include "yb/common/concurrent/async_util.h"
-
 #include "yb/common/log/logging.h"
 
 namespace yb {
