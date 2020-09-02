@@ -56,6 +56,7 @@
 #include "yb/common/sys/monotime.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/k2tabledesc.h"
+#include "yb/pggate/k2doc.h"
 #include "yb/pggate/k2client.h"
 
 namespace k2 {
@@ -63,6 +64,15 @@ namespace gate {
 
 using yb::RefCountedThreadSafe;
 using namespace k2::sql;
+
+struct BufferableOperation {
+  std::shared_ptr<DocOp> operation;
+  // Postgres's relation id. Required to resolve constraint name in case
+  // operation will fail with PGSQL_STATUS_DUPLICATE_KEY_ERROR.
+  PgObjectId relation_id;
+};
+
+typedef std::vector<BufferableOperation> PgsqlOpBuffer;
 
 struct PgForeignKeyReference {
   const uint32_t table_id;
@@ -76,6 +86,18 @@ struct PgForeignKeyReference {
     return Format("{ table_id: $0 ybctid: $1 }",
                   table_id, ybctid);
   }
+};
+
+class RowIdentifier {
+ public:
+  explicit RowIdentifier(const DocWriteOp& op, K2Client* k2_client);
+  inline const string& ybctid() const;
+  inline const string& table_id() const;
+
+ private:
+  const std::string* table_id_;
+  const std::string* ybctid_;
+  string             ybctid_holder_;
 };
 
 // This class is not thread-safe as it is mostly used by a single-threaded PostgreSQL backend
@@ -163,8 +185,28 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   // Deletes the row referenced by ybctid from FK reference cache.
   CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid);
 
+  // Start operation buffering. Buffering must not be in progress.
+  void StartOperationsBuffering();
+  // Flush all pending buffered operation and stop further buffering.
+  // Buffering must be in progress.
+  CHECKED_STATUS StopOperationsBuffering();
+  // Stop further buffering. Buffering may be in any state,
+  // but pending buffered operations are not allowed.
+  CHECKED_STATUS ResetOperationsBuffering();
+
+  // Flush all pending buffered operations. Buffering mode remain unchanged.
+  CHECKED_STATUS FlushBufferedOperations();
+  // Drop all pending buffered operations. Buffering mode remain unchanged.
+  void DropBufferedOperations();
+
   private:
-    // Connected database.
+  CHECKED_STATUS FlushBufferedOperationsImpl();
+
+  CHECKED_STATUS FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool transactional);
+
+  CHECKED_STATUS HandleResponse(const DocOp& op, const PgObjectId& relation_id);
+  
+  // Connected database.
   std::string connected_database_;
 
   // Execution status.
@@ -181,6 +223,9 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
 
   // Should write operations be buffered?
   bool buffering_enabled_ = false;
+  PgsqlOpBuffer buffered_ops_;
+  PgsqlOpBuffer buffered_txn_ops_;
+  std::unordered_set<RowIdentifier, boost::hash<RowIdentifier>> buffered_keys_;
 
   const YBCPgCallbacks& pg_callbacks_;
 

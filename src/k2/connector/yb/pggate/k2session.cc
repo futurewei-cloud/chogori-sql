@@ -51,6 +51,37 @@
 namespace k2 {
 namespace gate {
 
+RowIdentifier::RowIdentifier(const DocWriteOp& op, K2Client* k2_client) :
+  table_id_(&op.request().table_id) {
+  auto& request = op.request();
+  if (request.ybctid_column_value) {
+    // ybctid_ = &request.ybctid_column_value->binary_value();
+  } else {
+    // calculate the doc key from k2 client
+//    ybctid_holder_ = k2_client->getDocKey(request);
+    ybctid_ = nullptr;
+  }
+}
+
+const string& RowIdentifier::ybctid() const {
+  return ybctid_ ? *ybctid_ : ybctid_holder_;
+}
+
+const string& RowIdentifier::table_id() const {
+  return *table_id_;
+}
+
+bool operator==(const RowIdentifier& k1, const RowIdentifier& k2) {
+  return k1.table_id() == k2.table_id() && k1.ybctid() == k2.ybctid();
+}
+
+size_t hash_value(const RowIdentifier& key) {
+  size_t hash = 0;
+  boost::hash_combine(hash, key.table_id());
+  boost::hash_combine(hash, key.ybctid());
+  return hash;
+}
+
 K2Session::K2Session(
     K2Client* k2_client,
     const string& database_name,
@@ -115,6 +146,120 @@ Status K2Session::GetCatalogMasterVersion(uint64_t *version) {
 void K2Session::InvalidateTableCache(const PgObjectId& table_id) {
   const TableId yb_table_id = table_id.GetYBTableId();
   table_cache_.erase(yb_table_id);
+}
+
+void K2Session::StartOperationsBuffering() {
+  DCHECK(!buffering_enabled_);
+  DCHECK(buffered_keys_.empty());
+  buffering_enabled_ = true;
+}
+
+Status K2Session::StopOperationsBuffering() {
+  DCHECK(buffering_enabled_);
+  buffering_enabled_ = false;
+  return FlushBufferedOperationsImpl();
+}
+
+Status K2Session::ResetOperationsBuffering() {
+  SCHECK(buffered_keys_.empty(),
+         IllegalState,
+         Format("Pending operations are not expected, $0 found", buffered_keys_.size()));
+  buffering_enabled_ = false;
+  return Status::OK();
+}
+
+Status K2Session::FlushBufferedOperations() {
+  return FlushBufferedOperationsImpl();
+}
+
+void K2Session::DropBufferedOperations() {
+  VLOG_IF(1, !buffered_keys_.empty())
+          << "Dropping " << buffered_keys_.size() << " pending operations";
+  buffered_keys_.clear();
+  buffered_ops_.clear();
+  buffered_txn_ops_.clear();
+}
+
+Status K2Session::FlushBufferedOperationsImpl() {
+  auto ops = std::move(buffered_ops_);
+  auto txn_ops = std::move(buffered_txn_ops_);
+  buffered_keys_.clear();
+  buffered_ops_.clear();
+  buffered_txn_ops_.clear();
+  if (!ops.empty()) {
+    RETURN_NOT_OK(FlushBufferedOperationsImpl(ops, false /* transactional */));
+  }
+  if (!txn_ops.empty()) {
+    // No transactional operations are expected in the initdb mode.
+//    DCHECK(!YBCIsInitDbModeEnvVarSet());
+    RETURN_NOT_OK(FlushBufferedOperationsImpl(txn_ops, true /* transactional */));
+  }
+  return Status::OK();
+}
+
+Status K2Session::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool transactional) {
+
+/*   
+  DCHECK(ops.size() > 0 && ops.size() <= FLAGS_ysql_session_max_batch_size);
+  auto session = VERIFY_RESULT(GetSession(transactional, false));
+  if (session != session_.get()) {
+    DCHECK(transactional);
+    session->SetInTxnLimit(HybridTime(clock_->Now().ToUint64()));
+  }
+
+  for (auto buffered_op : ops) {
+    const auto& op = buffered_op.operation;
+    DCHECK_EQ(ShouldHandleTransactionally(*op), transactional)
+        << "Table name: " << op->table()->name().ToString()
+        << ", table is transactional: "
+        << op->table()->schema().table_properties().is_transactional()
+        << ", initdb mode: " << YBCIsInitDbModeEnvVarSet();
+    RETURN_NOT_OK(session->Apply(op));
+  }
+  const auto status = session->FlushFuture().get();
+  RETURN_NOT_OK(CombineErrorsToStatus(session->GetPendingErrors(), status));
+
+  for (const auto& buffered_op : ops) {
+    RETURN_NOT_OK(HandleResponse(*buffered_op.operation, buffered_op.relation_id));
+  } */
+
+  return Status::OK();
+}
+
+Status K2Session::HandleResponse(const DocOp& op, const PgObjectId& relation_id) {
+/*   if (op.succeeded()) {
+    return Status::OK();
+  }
+  const auto& response = op.response();
+  YBPgErrorCode pg_error_code = YBPgErrorCode::YB_PG_INTERNAL_ERROR;
+  if (response.has_pg_error_code()) {
+    pg_error_code = static_cast<YBPgErrorCode>(response.pg_error_code());
+  }
+
+  TransactionErrorCode txn_error_code = TransactionErrorCode::kNone;
+  if (response.txn_error_code != 0) {
+    txn_error_code = static_cast<TransactionErrorCode>(response.txn_error_code());
+  }
+
+  Status s;
+  if (response.status() == PgsqlResponsePB::PGSQL_STATUS_DUPLICATE_KEY_ERROR) {
+    char constraint_name[0xFF];
+    constraint_name[sizeof(constraint_name) - 1] = 0;
+    pg_callbacks_.FetchUniqueConstraintName(relation_id.object_oid,
+                                            constraint_name,
+                                            sizeof(constraint_name) - 1);
+    s = STATUS(
+        AlreadyPresent,
+        Format("duplicate key value violates unique constraint \"$0\"", Slice(constraint_name)),
+        Slice(),
+        PgsqlError(YBPgErrorCode::YB_PG_UNIQUE_VIOLATION));
+  } else {
+    s = STATUS(QLError, op.response().error_message(), Slice(),
+               PgsqlError(pg_error_code));
+  }
+  s = s.CloneAndAddErrorCode(TransactionError(txn_error_code));
+  return s; */
+  return Status::OK();
 }
 
 Result<K2TableDesc::ScopedRefPtr> K2Session::LoadTable(const PgObjectId& table_id) {

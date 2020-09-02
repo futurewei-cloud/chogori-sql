@@ -66,6 +66,11 @@ class K2Client {
   CHECKED_STATUS Init();
 
   CHECKED_STATUS Shutdown();
+
+  std::string getDocKey(DocReadRequest& request);
+        
+  std::string getDocKey(DocWriteRequest& request);
+  
 private:
   DocApi doc_api_;
 };

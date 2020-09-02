@@ -135,7 +135,7 @@ class PgExpr {
     // Find opcode.
     static CHECKED_STATUS CheckOperatorName(const char *name);
     static Opcode NameToOpcode(const char *name);
-        
+
     protected:
     Opcode opcode_;
     const PgTypeEntity *type_entity_;

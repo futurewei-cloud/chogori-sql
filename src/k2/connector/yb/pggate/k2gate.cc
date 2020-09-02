@@ -583,5 +583,25 @@ Status K2GateApiImpl::OperatorAppendArg(PgExpr *op_handle, PgExpr *arg) {
   return Status::OK();
 }
 
+void K2GateApiImpl::StartOperationsBuffering() {
+  k2_session_->StartOperationsBuffering();
+}
+
+Status K2GateApiImpl::StopOperationsBuffering() {
+  return k2_session_->StopOperationsBuffering();
+}
+
+Status K2GateApiImpl::ResetOperationsBuffering() {
+  return k2_session_->ResetOperationsBuffering();
+}
+
+Status K2GateApiImpl::FlushBufferedOperations() {
+  return k2_session_->FlushBufferedOperations();
+}
+
+void K2GateApiImpl::DropBufferedOperations() {
+  k2_session_->DropBufferedOperations();
+}
+
 }  // namespace gate
 }  // namespace k2

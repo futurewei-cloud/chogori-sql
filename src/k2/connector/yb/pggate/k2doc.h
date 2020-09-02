@@ -27,9 +27,12 @@
 #include "yb/entities/type.h"
 #include "yb/entities/value.h"
 #include "yb/entities/expr.h"
+#include "yb/entities/table.h"
 
 namespace k2 {
 namespace gate {
+    using std::shared_ptr;
+    using std::unique_ptr;
 
     using namespace k2::sql;
  
@@ -157,6 +160,105 @@ namespace gate {
         int32_t txn_error_code;      
     };
 
+    class DocOp {
+        public: 
+        enum Type {
+            WRITE = 8,
+            READ = 9,
+        };
+
+        explicit DocOp(const std::shared_ptr<TableInfo>& table);
+
+        ~DocOp();
+
+        virtual std::string ToString() const = 0;
+        virtual Type type() const = 0;
+        virtual bool read_only() const = 0;
+        virtual bool returns_sidecar() = 0;
+
+        const DocResponse& response() const { return *response_; }
+
+        std::string&& rows_data() { return std::move(rows_data_); }
+
+        bool IsTransactional() const {
+            return table_->schema().table_properties().is_transactional();
+        }
+
+        bool succeeded() const {
+            return response().status == DocResponse::RequestStatus::PGSQL_STATUS_OK;
+        }
+
+        bool applied() {
+            return succeeded() && !response_->skipped;
+        }
+
+        bool is_active() const {
+            return is_active_;
+        }
+
+        void set_active(bool val) {
+            is_active_ = val;
+        }
+
+        protected:
+        std::shared_ptr<TableInfo> table_;
+        std::unique_ptr<DocResponse> response_;
+        std::string rows_data_;
+        bool is_active_ = true;
+    };
+
+    class DocWriteOp : public DocOp {
+        public:
+        explicit DocWriteOp(const std::shared_ptr<TableInfo>& table);
+
+        ~DocWriteOp();
+
+        virtual Type type() const { 
+            return WRITE; 
+        }
+
+        const DocWriteRequest& request() const { return *write_request_; }
+
+        std::string ToString() const;
+
+        bool read_only() const override { return false; };
+
+         // TODO check for e.g. returning clause.
+        bool returns_sidecar() override { return true; }
+
+        bool IsTransactional() const;
+
+        void set_is_single_row_txn(bool is_single_row_txn) {
+            is_single_row_txn_ = is_single_row_txn;
+        }
+
+        private: 
+        std::unique_ptr<DocWriteRequest> write_request_;
+        // Whether this operation should be run as a single row txn.
+        // Else could be distributed transaction (or non-transactional) depending on target table type.
+        bool is_single_row_txn_ = false;
+    };
+
+    class DocReadOp : public DocOp {
+        public:
+        explicit DocReadOp(const std::shared_ptr<TableInfo>& table);
+
+        ~DocReadOp();
+
+        const DocReadRequest& request() const { return *read_request_; }
+  
+        std::string ToString() const;
+
+        bool read_only() const override { return true; };
+
+        bool returns_sidecar() override { return true; }
+
+        virtual Type type() const { return READ; }
+
+        private:
+        std::unique_ptr<DocReadRequest> read_request_;
+    };
+
     struct SaveOrUpdateSchemaResponse {
         std::optional<std::string> error_code;
     };
@@ -189,6 +291,10 @@ namespace gate {
 
         ~DocApi() {
         }
+
+        std::string getDocKey(DocReadRequest& request);
+
+        std::string getDocKey(DocWriteRequest& request);
 
         DocResponse read(DocReadRequest request);
 

@@ -63,5 +63,13 @@ Status K2Client::Shutdown() {
   return Status::OK();
 }
 
+std::string K2Client::getDocKey(DocReadRequest& request) {
+  return doc_api_.getDocKey(request);
+}
+        
+std::string K2Client::getDocKey(DocWriteRequest& request) {
+  return doc_api_.getDocKey(request);
+}
+
 }  // namespace gate
 }  // namespace k2

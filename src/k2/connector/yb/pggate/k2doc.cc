@@ -20,6 +20,41 @@
 namespace k2 {
 namespace gate {   
 
+    DocOp::DocOp(const std::shared_ptr<TableInfo>& table)  : table_(table) {
+    }
+
+    DocOp::~DocOp() {}
+ 
+    DocWriteOp::DocWriteOp(const shared_ptr<TableInfo>& table)
+            : DocOp(table), write_request_(new DocWriteRequest()) {
+    }
+
+    DocWriteOp::~DocWriteOp() {}
+
+    bool DocWriteOp::IsTransactional() const {
+        return !is_single_row_txn_ && table_->schema().table_properties().is_transactional();
+    }
+
+    std::string DocWriteOp::ToString() const {
+        return "PGSQL WRITE: " + write_request_->stmt_id;
+    }
+
+    DocReadOp::DocReadOp(const shared_ptr<TableInfo>& table)
+        : DocOp(table), read_request_(new DocReadRequest()) {
+    }
+    
+    std::string DocReadOp::ToString() const {
+        return "PGSQL READ: " + read_request_->stmt_id;
+    }
+
+    std::string DocApi::getDocKey(DocReadRequest& request) {
+        return "Not implemented";
+    }
+        
+    std::string DocApi::getDocKey(DocWriteRequest& request) {
+        return "Not implemented";
+    }
+
     SaveOrUpdateSchemaResponse DocApi::saveOrUpdateSchema(DocKey& key, Schema& schema) {
         return SaveOrUpdateSchemaResponse();
     }

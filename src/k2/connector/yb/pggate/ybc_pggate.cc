@@ -27,6 +27,8 @@ YBCStatus ExtractValueFromResult(const Result<T>& result, T* value) {
 
 } // anonymous namespace
 
+extern "C" {
+
 void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
     CHECK(k2api == nullptr) << ": " << __PRETTY_FUNCTION__ << " can only be called once";
     k2api_shutdown_done.exchange(false);
@@ -517,14 +519,24 @@ YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDesc
 
 
 // Buffer write operations.
-YBCStatus YBCPgStopOperationsBuffering(){
-    return YBCStatusOK();
+void YBCPgStartOperationsBuffering() {
+  k2api->StartOperationsBuffering();
 }
-YBCStatus YBCPgResetOperationsBuffering(){
-    return YBCStatusOK();
+
+YBCStatus YBCPgStopOperationsBuffering() {
+  return ToYBCStatus(k2api->StopOperationsBuffering());
 }
-YBCStatus YBCPgFlushBufferedOperations(){
-    return YBCStatusOK();
+
+YBCStatus YBCPgResetOperationsBuffering() {
+  return ToYBCStatus(k2api->ResetOperationsBuffering());
+}
+
+YBCStatus YBCPgFlushBufferedOperations() {
+  return ToYBCStatus(k2api->FlushBufferedOperations());
+}
+
+void YBCPgDropBufferedOperations() {
+  k2api->DropBufferedOperations();
 }
 
 // INSERT ------------------------------------------------------------------------------------------
@@ -825,13 +837,6 @@ YBCStatus YBCInit(const char* argv0,
     return YBCStatusOK();
 }
 
-extern "C" {
-void YBCPgDropBufferedOperations() {
-}
-
-void YBCPgStartOperationsBuffering() {
-}
-
 void YBCAssignTransactionPriorityLowerBound(double newval, void* extra) {
 }
 
@@ -849,8 +854,8 @@ YBCStatus YBCInitPgGateBackend() {
 void YBCShutdownPgGateBackend() {
 }
 
-}
-
 yb::Env* yb::Env::Default() {
   return nullptr;
 }
+
+} // extern "C"
