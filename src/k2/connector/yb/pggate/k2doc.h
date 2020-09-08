@@ -19,15 +19,19 @@
 #define CHOGORI_GATE_DOC_H
 
 #include <string>
+#include <list>
 #include <vector>
 #include <optional>
 
+#include "yb/common/type/slice.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
 #include "yb/entities/type.h"
 #include "yb/entities/value.h"
 #include "yb/entities/expr.h"
 #include "yb/entities/table.h"
+
+#include "yb/pggate/pg_tuple.h"
 
 namespace k2 {
 namespace gate {
@@ -158,6 +162,102 @@ namespace gate {
         // Transaction error code, obtained by static_cast of TransactionErrorTag::Decode
         // of Status::ErrorData(TransactionErrorTag::kCategory)
         int32_t txn_error_code;      
+    };
+
+    //--------------------------------------------------------------------------------------------------
+    // PgDocResult represents a batch of rows in ONE reply from tablet servers.
+    class PgDocResult {
+        public:
+        explicit PgDocResult(string&& data);
+        PgDocResult(string&& data, std::list<int64_t>&& row_orders);
+        ~PgDocResult();
+
+        PgDocResult(const PgDocResult&) = delete;
+        PgDocResult& operator=(const PgDocResult&) = delete;
+
+        // Get the order of the next row in this batch.
+        int64_t NextRowOrder();
+
+        // End of this batch.
+        bool is_eof() const {
+            return row_count_ == 0 || row_iterator_.empty();
+        }
+
+        // Get the postgres tuple from this batch.
+        CHECKED_STATUS WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+                                    int64_t *row_order);
+
+        // Get system columns' values from this batch.
+        // Currently, we only have ybctids, but there could be more.
+        CHECKED_STATUS ProcessSystemColumns();
+
+        // Access function to ybctids value in this batch.
+        // Sys columns must be processed before this function is called.
+        const vector<Slice>& ybctids() const {
+            DCHECK(syscol_processed_) << "System columns are not yet setup";
+            return ybctids_;
+        }
+
+        // Row count in this batch.
+        int64_t row_count() const {
+            return row_count_;
+        }
+
+        static void LoadCache(const string& data, int64_t *total_row_count, Slice *cursor);
+
+        //------------------------------------------------------------------------------------------------
+        // Read Numeric Data
+        template<typename num_type>
+        static size_t ReadNumericValue(num_type (*reader)(const void*), Slice *cursor, num_type *value) {
+            *value = reader(cursor->data());
+            return sizeof(num_type);
+        }
+
+        static size_t ReadNumber(Slice *cursor, bool *value);
+        static size_t ReadNumber(Slice *cursor, uint8 *value);
+        static size_t ReadNumber(Slice *cursor, int8 *value);
+        static size_t ReadNumber(Slice *cursor, uint16 *value);
+        static size_t ReadNumber(Slice *cursor, int16 *value);
+        static size_t ReadNumber(Slice *cursor, uint32 *value);
+        static size_t ReadNumber(Slice *cursor, int32 *value);
+        static size_t ReadNumber(Slice *cursor, uint64 *value);
+        static size_t ReadNumber(Slice *cursor, int64 *value);
+        static size_t ReadNumber(Slice *cursor, float *value);
+        static size_t ReadNumber(Slice *cursor, double *value);
+
+        // Read Text Data
+        static size_t ReadBytes(Slice *cursor, char *value, int64_t bytes);
+
+        // Function translate_data_() reads the received data from K2 Doc API and writes it to Postgres buffer
+        // using to_datum().
+        // - K2 Doc storage supports a number of datatypes, and we would need to provide one translate function for
+        //   each datatype to read them correctly. The translate_data() function pointer must be setup
+        //   correctly during the compilation of a statement.
+        // - For each postgres data type, to_datum() function pointer must be setup properly during
+        //   the compilation of a statement.
+        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
+            // TODO: implementation
+        }      
+
+        private:
+        // Data selected from DocDB.
+        string data_;
+
+        // Iterator on "data_" from row to row.
+        Slice row_iterator_;
+
+        // The row number of only this batch.
+        int64_t row_count_ = 0;
+
+        // The indexing order of the row in this batch.
+        // These order values help to identify the row order across all batches.
+        std::list<int64_t> row_orders_;
+
+        // System columns.
+        // - ybctids_ contains pointers to the buffers "data_".
+        // - System columns must be processed before these fields have any meaning.
+        vector<Slice> ybctids_;
+        bool syscol_processed_ = false;
     };
 
     class DocOp {
