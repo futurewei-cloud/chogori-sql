@@ -263,11 +263,71 @@ Status K2Dml::ClearBinds() {
 }
 
 Status K2Dml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
+  // Each isnulls and values correspond (in order) to columns from the table schema.
+  // Initialize to nulls for any columns not present in result.
+  if (isnulls) {
+    memset(isnulls, true, natts * sizeof(bool));
+  }
+  if (syscols) {
+    memset(syscols, 0, sizeof(PgSysColumns));
+  }
+
+  // Keep reading until we either reach the end or get some rows.
+  *has_data = true;
+  PgTuple pg_tuple(values, isnulls, syscols);
+  while (!VERIFY_RESULT(GetNextRow(&pg_tuple))) {
+    if (!VERIFY_RESULT(FetchDataFromServer())) {
+      // Stop processing as server returns no more rows.
+      *has_data = false;
+      return Status::OK();
+    }
+  }
+
   return Status::OK();
 }
 
-Result<string> K2Dml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
+Result<bool> K2Dml::FetchDataFromServer() {
+  // TODO: implementation
 
+  return true;
+}
+
+Result<bool> K2Dml::GetNextRow(PgTuple *pg_tuple) {
+  for (auto rowset_iter = rowsets_.begin(); rowset_iter != rowsets_.end();) {
+    // Check if the rowset has any data.
+    auto& rowset = *rowset_iter;
+    if (rowset.is_eof()) {
+      rowset_iter = rowsets_.erase(rowset_iter);
+      continue;
+    }
+
+    // If this rowset has the next row of the index order, load it. Otherwise, continue looking for
+    // the next row in the order.
+    //
+    // NOTE:
+    //   DML <Table> WHERE ybctid IN (SELECT base_ybctid FROM <Index> ORDER BY <Index Range>)
+    // The nested subquery should return rows in indexing order, but the ybctids are then grouped
+    // by hash-code for BATCH-DML-REQUEST, so the response here are out-of-order.
+    if (rowset.NextRowOrder() <= current_row_order_) {
+      // Write row to postgres tuple.
+      int64_t row_order = -1;
+      RETURN_NOT_OK(rowset.WritePgTuple(targets_, pg_tuple, &row_order));
+      SCHECK(row_order == -1 || row_order == current_row_order_, InternalError,
+             "The resulting row are not arranged in indexing order");
+
+      // Found the current row. Move cursor to next row.
+      current_row_order_++;
+      return true;
+    }
+
+    rowset_iter++;
+  }
+
+  return false;
+}
+
+Result<string> K2Dml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
+  // get Doc Key from DOC API client
   return nullptr;
 }
 

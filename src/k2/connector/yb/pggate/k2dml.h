@@ -59,6 +59,7 @@
 #include "yb/entities/expr.h"
 #include "yb/pggate/ybc_pg_typedefs.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/pg_tuple.h"
 #include "yb/pggate/k2column.h"
 #include "yb/pggate/k2statement.h"
 
@@ -104,8 +105,11 @@ class K2Dml : public K2Statement {
                        PgSysColumns *syscols,
                        bool *has_data);
 
+  // Returns TRUE if K2 doc api replies with more data.
+  Result<bool> FetchDataFromServer();
+
   // Returns TRUE if desired row is found.
- // Result<bool> GetNextRow(PgTuple *pg_tuple);
+  Result<bool> GetNextRow(PgTuple *pg_tuple);
 
   // Build tuple id (ybctid) of the given Postgres tuple.
   Result<std::string> BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs);
@@ -211,7 +215,7 @@ class K2Dml : public K2Statement {
 
   //------------------------------------------------------------------------------------------------
   // Data members for navigating the output / result-set from either seleted or returned targets.
-  //std::list<PgDocResult> rowsets_;
+  std::list<PgDocResult> rowsets_;
   int64_t current_row_order_ = 0;
 
   //------------------------------------------------------------------------------------------------
