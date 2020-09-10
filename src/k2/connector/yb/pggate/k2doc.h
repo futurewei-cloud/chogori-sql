@@ -152,7 +152,7 @@ namespace gate {
         // External statuses.
         //
         // If you add more of those, make sure they are correctly picked up, e.g.
-        // by PgDocReadOp::ReceiveResponse and PgDocOp::HandleResponseStatus
+        // by PgDocReadCall::ReceiveResponse and PgDocCall::HandleResponseStatus
         //
 
         // PostgreSQL error code encoded as in errcodes.h or yb_pg_errcodes.h.
@@ -260,16 +260,16 @@ namespace gate {
         bool syscol_processed_ = false;
     };
 
-    class DocOp {
+    class DocCall {
         public: 
         enum Type {
             WRITE = 8,
             READ = 9,
         };
 
-        explicit DocOp(const std::shared_ptr<TableInfo>& table);
+        explicit DocCall(const std::shared_ptr<TableInfo>& table);
 
-        ~DocOp();
+        ~DocCall();
 
         virtual std::string ToString() const = 0;
         virtual Type type() const = 0;
@@ -307,11 +307,11 @@ namespace gate {
         bool is_active_ = true;
     };
 
-    class DocWriteOp : public DocOp {
+    class DocWriteCall : public DocCall {
         public:
-        explicit DocWriteOp(const std::shared_ptr<TableInfo>& table);
+        explicit DocWriteCall(const std::shared_ptr<TableInfo>& table);
 
-        ~DocWriteOp();
+        ~DocWriteCall();
 
         virtual Type type() const { 
             return WRITE; 
@@ -339,11 +339,11 @@ namespace gate {
         bool is_single_row_txn_ = false;
     };
 
-    class DocReadOp : public DocOp {
+    class DocReadCall : public DocCall {
         public:
-        explicit DocReadOp(const std::shared_ptr<TableInfo>& table);
+        explicit DocReadCall(const std::shared_ptr<TableInfo>& table);
 
-        ~DocReadOp();
+        ~DocReadCall();
 
         const DocReadRequest& request() const { return *read_request_; }
   

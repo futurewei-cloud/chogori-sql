@@ -63,7 +63,7 @@ Status K2Client::Shutdown() {
   return Status::OK();
 }
 
-Status K2Client::Run(std::shared_ptr<DocOp> op) {
+Status K2Client::Run(std::shared_ptr<DocCall> op) {
   // TODO: add implementation                                   
   return Status::OK();
 }

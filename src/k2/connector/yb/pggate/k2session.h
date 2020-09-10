@@ -69,7 +69,7 @@ using namespace k2::sql;
 static const int default_session_max_batch_size = 5;
 
 struct BufferableOperation {
-  std::shared_ptr<DocOp> operation;
+  std::shared_ptr<DocCall> operation;
   // Postgres's relation id. Required to resolve constraint name in case
   // operation will fail with PGSQL_STATUS_DUPLICATE_KEY_ERROR.
   PgObjectId relation_id;
@@ -109,7 +109,7 @@ struct PgForeignKeyReference {
 
 class RowIdentifier {
  public:
-  explicit RowIdentifier(const DocWriteOp& op, K2Client* k2_client);
+  explicit RowIdentifier(const DocWriteCall& op, K2Client* k2_client);
   inline const string& ybctid() const;
   inline const string& table_id() const;
 
@@ -220,9 +220,9 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
 
   // Run (apply + flush) the given operation to read and write database content.
   // Template is used here to handle all kind of derived operations
-  // (shared_ptr<DocReadOp>, shared_ptr<DocWriteOp>)
-  // without implicitly conversion to shared_ptr<DocReadOp>.
-  // Conversion to shared_ptr<DocOp> will be done later and result will re-used with move.
+  // (shared_ptr<DocReadCall>, shared_ptr<DocWriteCall>)
+  // without implicitly conversion to shared_ptr<DocReadCall>.
+  // Conversion to shared_ptr<DocCall> will be done later and result will re-used with move.
   template<class Op>
   Result<K2SessionAsyncRunResult> RunAsync(const std::shared_ptr<Op>& op,
                                            const PgObjectId& relation_id,
@@ -267,7 +267,7 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
   class RunHelper {
    public:
     RunHelper(K2Session* k2_session, K2Client *client, bool transactional);
-    CHECKED_STATUS Apply(std::shared_ptr<DocOp> op,
+    CHECKED_STATUS Apply(std::shared_ptr<DocCall> op,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
                          bool force_non_bufferable);
@@ -280,13 +280,13 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     PgsqlOpBuffer& buffered_ops_;
   };
 
-  CHECKED_STATUS HandleResponse(const DocOp& op, const PgObjectId& relation_id);
+  CHECKED_STATUS HandleResponse(const DocCall& op, const PgObjectId& relation_id);
 
   // Flush buffered write operations from the given buffer.
   Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);
 
   // Whether we should use transactional or non-transactional session.
-  bool ShouldHandleTransactionally(const DocOp& op);
+  bool ShouldHandleTransactionally(const DocCall& op);
 
   // Connected database.
   std::string connected_database_;

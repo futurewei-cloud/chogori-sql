@@ -156,30 +156,30 @@ namespace gate {
         return Status::OK();
     }
 
-    DocOp::DocOp(const std::shared_ptr<TableInfo>& table)  : table_(table) {
+    DocCall::DocCall(const std::shared_ptr<TableInfo>& table)  : table_(table) {
     }
 
-    DocOp::~DocOp() {}
+    DocCall::~DocCall() {}
  
-    DocWriteOp::DocWriteOp(const shared_ptr<TableInfo>& table)
-            : DocOp(table), write_request_(new DocWriteRequest()) {
+    DocWriteCall::DocWriteCall(const shared_ptr<TableInfo>& table)
+            : DocCall(table), write_request_(new DocWriteRequest()) {
     }
 
-    DocWriteOp::~DocWriteOp() {}
+    DocWriteCall::~DocWriteCall() {}
 
-    bool DocWriteOp::IsTransactional() const {
+    bool DocWriteCall::IsTransactional() const {
         return !is_single_row_txn_ && table_->schema().table_properties().is_transactional();
     }
 
-    std::string DocWriteOp::ToString() const {
+    std::string DocWriteCall::ToString() const {
         return "PGSQL WRITE: " + write_request_->stmt_id;
     }
 
-    DocReadOp::DocReadOp(const shared_ptr<TableInfo>& table)
-        : DocOp(table), read_request_(new DocReadRequest()) {
+    DocReadCall::DocReadCall(const shared_ptr<TableInfo>& table)
+        : DocCall(table), read_request_(new DocReadRequest()) {
     }
     
-    std::string DocReadOp::ToString() const {
+    std::string DocReadCall::ToString() const {
         return "PGSQL READ: " + read_request_->stmt_id;
     }
 

@@ -52,7 +52,7 @@
 namespace k2 {
 namespace gate {
 
-RowIdentifier::RowIdentifier(const DocWriteOp& op, K2Client* k2_client) :
+RowIdentifier::RowIdentifier(const DocWriteCall& op, K2Client* k2_client) :
   table_id_(&op.request().table_id) {
   auto& request = op.request();
   if (request.ybctid_column_value) {
@@ -227,7 +227,7 @@ Status K2Session::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool tra
   return Status::OK();
 }
 
-Status K2Session::HandleResponse(const DocOp& op, const PgObjectId& relation_id) {
+Status K2Session::HandleResponse(const DocCall& op, const PgObjectId& relation_id) {
 /*   if (op.succeeded()) {
     return Status::OK();
   }
@@ -263,7 +263,7 @@ Status K2Session::HandleResponse(const DocOp& op, const PgObjectId& relation_id)
   return Status::OK();
 }
 
-bool K2Session::ShouldHandleTransactionally(const DocOp& op) {
+bool K2Session::ShouldHandleTransactionally(const DocCall& op) {
   return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
 }
 
@@ -296,14 +296,14 @@ K2Session::RunHelper::RunHelper(K2Session* k2_session, K2Client *client, bool tr
   }
 }
 
-Status K2Session::RunHelper::Apply(std::shared_ptr<DocOp> op,
+Status K2Session::RunHelper::Apply(std::shared_ptr<DocCall> op,
                                    const PgObjectId& relation_id,
                                    uint64_t* read_time,
                                    bool force_non_bufferable) {
   auto& buffered_keys = k2_session_.buffered_keys_;
   if (k2_session_.buffering_enabled_ && !force_non_bufferable &&
-      op->type() == DocOp::Type::WRITE) {
-    const auto& wop = *down_cast<DocWriteOp*>(op.get());
+      op->type() == DocCall::Type::WRITE) {
+    const auto& wop = *down_cast<DocWriteCall*>(op.get());
     // Check for buffered operation related to same row.
     // If multiple operations are performed in context of single RPC second operation will not
     // see the results of first operation on DocDB side.
@@ -328,8 +328,8 @@ Status K2Session::RunHelper::Apply(std::shared_ptr<DocOp> op,
 /*   
   bool needs_pessimistic_locking = false;
   bool read_only = op->read_only();
-  if (op->type() == DocOp::Type::READ) {
-    const DocReadRequest &read_req = down_cast<DocReadOp *>(op.get())->request();
+  if (op->type() == DocCall::Type::READ) {
+    const DocReadRequest &read_req = down_cast<DocReadCall *>(op.get())->request();
     auto row_mark_type = read_req.row_mark_type;
     read_only = read_only && !IsValidRowMarkType(row_mark_type);
     needs_pessimistic_locking = RowMarkNeedsPessimisticLock(row_mark_type);

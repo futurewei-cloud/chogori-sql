@@ -70,7 +70,7 @@ class K2Client {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Run(std::shared_ptr<DocOp> op);
+  CHECKED_STATUS Run(std::shared_ptr<DocCall> op);
 
   void FlushAsync(StatusFunctor callback);
 
