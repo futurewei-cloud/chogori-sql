@@ -21,7 +21,7 @@
 #include <boost/function.hpp>
 
 #include "yb/common/concurrent/async_util.h"
-#include "yb/pggate/k2doc.h"
+#include "yb/pggate/k2docapi.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
 

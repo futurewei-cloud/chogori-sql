@@ -62,6 +62,7 @@
 #include "yb/pggate/pg_tuple.h"
 #include "yb/pggate/k2column.h"
 #include "yb/pggate/k2statement.h"
+#include "yb/pggate/k2docop.h"
 
 namespace k2 {
 namespace gate {
@@ -215,7 +216,7 @@ class K2Dml : public K2Statement {
 
   //------------------------------------------------------------------------------------------------
   // Data members for navigating the output / result-set from either seleted or returned targets.
-  std::list<PgDocResult> rowsets_;
+  std::list<K2DocResult> rowsets_;
   int64_t current_row_order_ = 0;
 
   //------------------------------------------------------------------------------------------------

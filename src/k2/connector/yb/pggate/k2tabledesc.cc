@@ -108,6 +108,11 @@ bool K2TableDesc::IsTransactional() const {
   return table_->schema().table_properties().is_transactional();
 }
 
+int K2TableDesc::GetPartitionCount() const {
+  // TODO: add logic for k2 storage partition count calculation
+  return 1;
+}
+
 const TableIdentifier& K2TableDesc::table_name() const {
   return table_->table_identifier();
 }

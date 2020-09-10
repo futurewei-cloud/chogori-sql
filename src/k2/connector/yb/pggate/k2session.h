@@ -56,7 +56,7 @@
 #include "yb/common/sys/monotime.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/k2tabledesc.h"
-#include "yb/pggate/k2doc.h"
+#include "yb/pggate/k2docapi.h"
 #include "yb/pggate/k2client.h"
 #include "yb/pggate/ybc_pggate.h"
 
@@ -249,12 +249,14 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
                                            uint64_t* read_time,
                                            bool force_non_bufferable) {
     DCHECK_GT(ops_count, 0);
-    RunHelper runner(this, ShouldHandleTransactionally(**op));
+    RunHelper runner(this, k2_client_, ShouldHandleTransactionally(**op));
     for (auto end = op + ops_count; op != end; ++op) {
       RETURN_NOT_OK(runner.Apply(*op, relation_id, read_time, force_non_bufferable));
     }
     return runner.Flush();
   }
+
+  CHECKED_STATUS HandleResponse(const DocCall& op, const PgObjectId& relation_id);
 
   private:
   CHECKED_STATUS FlushBufferedOperationsImpl();
@@ -279,8 +281,6 @@ class K2Session : public RefCountedThreadSafe<K2Session> {
     bool transactional_;
     PgsqlOpBuffer& buffered_ops_;
   };
-
-  CHECKED_STATUS HandleResponse(const DocCall& op, const PgObjectId& relation_id);
 
   // Flush buffered write operations from the given buffer.
   Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);

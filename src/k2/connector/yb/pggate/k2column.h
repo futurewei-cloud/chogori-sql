@@ -53,7 +53,7 @@
 #include "yb/entities/type.h"
 #include "yb/entities/expr.h"
 #include "yb/entities/schema.h"
-#include "yb/pggate/k2doc.h"
+#include "yb/pggate/k2docapi.h"
 
 namespace k2 {
 namespace gate {
@@ -225,7 +225,7 @@ class K2Column {
   PgExpr *bind_pb_ = nullptr;
   PgExpr *bind_condition_expr_pb_ = nullptr;
 
-  // Protobuf for new-values of a column in the tuple.
+  // new-values of a column in the tuple.
   PgExpr *assign_pb_ = nullptr;
 
   // Wether or not this column must be read from DB for the SQL request.

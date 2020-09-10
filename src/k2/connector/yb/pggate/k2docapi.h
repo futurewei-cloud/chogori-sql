@@ -15,8 +15,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_DOC_H
-#define CHOGORI_GATE_DOC_H
+#ifndef CHOGORI_GATE_DOC_API_H
+#define CHOGORI_GATE_DOC_API_H
 
 #include <string>
 #include <list>
@@ -38,6 +38,7 @@ namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
+    using namespace yb;
     using namespace k2::sql;
  
     // pass the information so that the under hood SKV client could generate the actual doc key from it
@@ -61,6 +62,8 @@ namespace gate {
     };
 
     struct RSRowDesc {
+        RSRowDesc() = default;
+
         std::vector<RSColDesc> rscol_descs;
     };
 
@@ -71,6 +74,8 @@ namespace gate {
     };
 
     struct DocReadRequest {
+        DocReadRequest() = default;
+
         string client_id;
         int64_t stmt_id;
         NamespaceId namespace_id;
@@ -80,6 +85,10 @@ namespace gate {
         std::vector<PgExpr*> partition_column_values;
         std::vector<PgExpr*> range_column_values;
         PgExpr* ybctid_column_value;
+        // For select using local secondary index: this request selects the ybbasectids to fetch the rows
+        // in place of the primary key above.
+        DocReadRequest* index_request;
+
         RSRowDesc rsrow_desc;
         std::vector<PgExpr*> targets;
         PgExpr* where_expr;
@@ -94,11 +103,15 @@ namespace gate {
         uint32_t max_hash_code;
         uint64_t catalog_version;
         RowMarkType row_mark_type;
-        string max_partition_key;
+        string* max_partition_key;
+
+        std::unique_ptr<DocReadRequest> clone();
     };
 
     struct DocWriteRequest {
-        enum StmtType {
+       DocWriteRequest() = default;
+
+       enum StmtType {
             PGSQL_INSERT = 1,
             PGSQL_UPDATE = 2,
             PGSQL_DELETE = 3,
@@ -129,6 +142,8 @@ namespace gate {
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;
+
+        std::unique_ptr<DocWriteRequest> clone();
     };
 
     // Response from K2 storage for both read and write.
@@ -162,102 +177,6 @@ namespace gate {
         // Transaction error code, obtained by static_cast of TransactionErrorTag::Decode
         // of Status::ErrorData(TransactionErrorTag::kCategory)
         int32_t txn_error_code;      
-    };
-
-    //--------------------------------------------------------------------------------------------------
-    // PgDocResult represents a batch of rows in ONE reply from tablet servers.
-    class PgDocResult {
-        public:
-        explicit PgDocResult(string&& data);
-        PgDocResult(string&& data, std::list<int64_t>&& row_orders);
-        ~PgDocResult();
-
-        PgDocResult(const PgDocResult&) = delete;
-        PgDocResult& operator=(const PgDocResult&) = delete;
-
-        // Get the order of the next row in this batch.
-        int64_t NextRowOrder();
-
-        // End of this batch.
-        bool is_eof() const {
-            return row_count_ == 0 || row_iterator_.empty();
-        }
-
-        // Get the postgres tuple from this batch.
-        CHECKED_STATUS WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
-                                    int64_t *row_order);
-
-        // Get system columns' values from this batch.
-        // Currently, we only have ybctids, but there could be more.
-        CHECKED_STATUS ProcessSystemColumns();
-
-        // Access function to ybctids value in this batch.
-        // Sys columns must be processed before this function is called.
-        const vector<Slice>& ybctids() const {
-            DCHECK(syscol_processed_) << "System columns are not yet setup";
-            return ybctids_;
-        }
-
-        // Row count in this batch.
-        int64_t row_count() const {
-            return row_count_;
-        }
-
-        static void LoadCache(const string& data, int64_t *total_row_count, Slice *cursor);
-
-        //------------------------------------------------------------------------------------------------
-        // Read Numeric Data
-        template<typename num_type>
-        static size_t ReadNumericValue(num_type (*reader)(const void*), Slice *cursor, num_type *value) {
-            *value = reader(cursor->data());
-            return sizeof(num_type);
-        }
-
-        static size_t ReadNumber(Slice *cursor, bool *value);
-        static size_t ReadNumber(Slice *cursor, uint8 *value);
-        static size_t ReadNumber(Slice *cursor, int8 *value);
-        static size_t ReadNumber(Slice *cursor, uint16 *value);
-        static size_t ReadNumber(Slice *cursor, int16 *value);
-        static size_t ReadNumber(Slice *cursor, uint32 *value);
-        static size_t ReadNumber(Slice *cursor, int32 *value);
-        static size_t ReadNumber(Slice *cursor, uint64 *value);
-        static size_t ReadNumber(Slice *cursor, int64 *value);
-        static size_t ReadNumber(Slice *cursor, float *value);
-        static size_t ReadNumber(Slice *cursor, double *value);
-
-        // Read Text Data
-        static size_t ReadBytes(Slice *cursor, char *value, int64_t bytes);
-
-        // Function translate_data_() reads the received data from K2 Doc API and writes it to Postgres buffer
-        // using to_datum().
-        // - K2 Doc storage supports a number of datatypes, and we would need to provide one translate function for
-        //   each datatype to read them correctly. The translate_data() function pointer must be setup
-        //   correctly during the compilation of a statement.
-        // - For each postgres data type, to_datum() function pointer must be setup properly during
-        //   the compilation of a statement.
-        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
-            // TODO: implementation
-        }      
-
-        private:
-        // Data selected from DocDB.
-        string data_;
-
-        // Iterator on "data_" from row to row.
-        Slice row_iterator_;
-
-        // The row number of only this batch.
-        int64_t row_count_ = 0;
-
-        // The indexing order of the row in this batch.
-        // These order values help to identify the row order across all batches.
-        std::list<int64_t> row_orders_;
-
-        // System columns.
-        // - ybctids_ contains pointers to the buffers "data_".
-        // - System columns must be processed before these fields have any meaning.
-        vector<Slice> ybctids_;
-        bool syscol_processed_ = false;
     };
 
     class DocCall {
@@ -299,7 +218,7 @@ namespace gate {
         void set_active(bool val) {
             is_active_ = val;
         }
-
+        
         protected:
         std::shared_ptr<TableInfo> table_;
         std::unique_ptr<DocResponse> response_;
@@ -332,6 +251,10 @@ namespace gate {
             is_single_row_txn_ = is_single_row_txn;
         }
 
+        // Create a deep copy of this call, copying all fields and request PB content.
+        // Does NOT, however, copy response and rows data.
+        std::unique_ptr<DocWriteCall> DeepCopy();
+
         private: 
         std::unique_ptr<DocWriteRequest> write_request_;
         // Whether this operation should be run as a single row txn.
@@ -343,9 +266,9 @@ namespace gate {
         public:
         explicit DocReadCall(const std::shared_ptr<TableInfo>& table);
 
-        ~DocReadCall();
+        ~DocReadCall() {};
 
-        const DocReadRequest& request() const { return *read_request_; }
+        DocReadRequest& request() const { return *read_request_; }
   
         std::string ToString() const;
 
@@ -355,9 +278,18 @@ namespace gate {
 
         virtual Type type() const { return READ; }
 
+        // Create a deep copy of this call, copying all fields and request PB content.
+        // Does NOT, however, copy response and rows data.
+        std::unique_ptr<DocReadCall> DeepCopy();
+
+        void set_return_paging_state(bool return_paging_state) {
+            read_request_->return_paging_state = return_paging_state;
+        }
+
         private:
         std::unique_ptr<DocReadRequest> read_request_;
     };
+
 
     struct SaveOrUpdateSchemaResponse {
         std::optional<std::string> error_code;
@@ -418,4 +350,4 @@ namespace gate {
 }  // namespace gate
 }  // namespace k2
 
-#endif //CHOGORI_GATE_DOC_H
+#endif //CHOGORI_GATE_DOC_API_H

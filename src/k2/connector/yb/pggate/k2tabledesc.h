@@ -89,6 +89,8 @@ class K2TableDesc : public RefCountedThreadSafe<K2TableDesc> {
 
   bool IsTransactional() const;
 
+  int GetPartitionCount() const;
+  
  private:
   std::shared_ptr<TableInfo> table_;
 
