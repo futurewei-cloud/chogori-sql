@@ -70,6 +70,8 @@ namespace gate {
 using namespace yb;
 using namespace k2::sql;
 
+class K2SelectIndex;
+
 class K2Dml : public K2Statement {
  public:
 
@@ -98,7 +100,7 @@ class K2Dml : public K2Statement {
 
   // This function is not yet working and might not be needed.
   virtual CHECKED_STATUS ClearBinds();
-  
+
   // Process the secondary index request if it is nested within this statement.
   Result<bool> ProcessSecondaryIndexRequest(const PgExecParameters *exec_params);
 
@@ -229,6 +231,16 @@ class K2Dml : public K2Statement {
   // DML Operator.
   K2DocOp::SharedPtr doc_op_;
 
+  // -----------------------------------------------------------------------------------------------
+  // Data members for nested query: This is used for an optimization in PgGate.
+  //
+  // - Each DML operation can be understood as
+  //     Read / Write TABLE WHERE ybctid IN (SELECT ybctid from INDEX).
+  // - In most cases, the Postgres layer processes the subquery "SELECT ybctid from INDEX".
+  // - Under certain conditions, to optimize the performance, the PgGate layer might operate on
+  //   the INDEX subquery itself.
+  scoped_refptr<K2SelectIndex> secondary_index_query_;
+
   //------------------------------------------------------------------------------------------------
   // Hashed and range values/components used to compute the tuple id.
   //
@@ -293,6 +305,10 @@ class K2DmlRead : public K2Dml {
   // Execute.
   virtual CHECKED_STATUS Exec(const PgExecParameters *exec_params);
 
+  void SetCatalogCacheVersion(const uint64_t catalog_cache_version) override {
+    DCHECK_NOTNULL(read_req_)->catalog_version = catalog_cache_version;
+  }
+
   protected:
   // Add column refs to protobuf read request.
   void SetColumnRefs();
@@ -300,8 +316,8 @@ class K2DmlRead : public K2Dml {
   // Delete allocated target for columns that have no bind-values.
   CHECKED_STATUS DeleteEmptyPrimaryBinds();
 
-  private:
-  bool is_forward_scan_;
+  // References read request from template operation of doc_op_.
+  DocReadRequest *read_req_ = nullptr;
 };
 
 //--------------------------------------------------------------------------------------------------

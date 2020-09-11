@@ -47,7 +47,7 @@
 //
 
 #include "yb/pggate/k2dml.h"
-
+#include "yb/pggate/k2select.h"
 namespace k2 {
 namespace gate {
 
@@ -82,7 +82,7 @@ Status K2Dml::AppendTarget(PgExpr *target) {
     RETURN_NOT_OK(AppendTargetPB(target));
   } else {
     // Append base_ctid to the index_query.
-//    RETURN_NOT_OK(secondary_index_query_->AppendTargetPB(target));
+    RETURN_NOT_OK(secondary_index_query_->AppendTargetPB(target));
   }
 
   return Status::OK();
@@ -115,7 +115,7 @@ Status K2Dml::PrepareColumnForRead(int attr_num, PgExpr *target_pb,
   // Find column from targeted table.
   K2Column *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
 
-  // Prepare protobuf to send to DocDB.
+  // TODO: enable the column id assign logic
   //if (target_pb)
   //  target_pb->set_column_id(pg_col->id());
 
@@ -129,7 +129,7 @@ Status K2Dml::PrepareColumnForRead(int attr_num, PgExpr *target_pb,
 }
 
 Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb) {
-  // Prepare protobuf to send to DocDB.
+  // TODO: update column id assignment logic
   // assign_pb->set_column_id(pg_col->id());
 
   // Mark non-virtual column reference for DocDB.
@@ -141,10 +141,11 @@ Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb) {
 }
 
 void K2Dml::ColumnRefsToPB(PgColumnRef *column_refs) {
-//  column_refs->Clear();
+  // TODO: update the logic here
+  //  column_refs->Clear();
   for (const K2Column& col : target_desc_->columns()) {
     if (col.read_requested() || col.write_requested()) {
-//      column_refs->add_ids(col.id());
+  //      column_refs->add_ids(col.id());
     }
   }
 }
@@ -152,10 +153,10 @@ void K2Dml::ColumnRefsToPB(PgColumnRef *column_refs) {
 //--------------------------------------------------------------------------------------------------
 
 Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
-/*   if (secondary_index_query_) {
+  if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumn(attr_num, attr_value);
-  } */
+  }
 
   // Find column to bind.
   K2Column *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
@@ -302,7 +303,7 @@ Result<bool> K2Dml::FetchDataFromServer() {
 
     // Execute doc_op_ again for the new set of WHERE condition from the nested query.
     SCHECK_EQ(VERIFY_RESULT(doc_op_->Execute()), RequestSent::kTrue, IllegalState,
-              "YSQL read operation was not sent");
+              "SQL read operation was not sent");
 
     // Get the rowsets from doc-operator.
     RETURN_NOT_OK(doc_op_->GetResult(&rowsets_));
@@ -312,8 +313,37 @@ Result<bool> K2Dml::FetchDataFromServer() {
 }
 
 Result<bool> K2Dml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_params) {
-  // TODO: add implementation
-  
+  if (!secondary_index_query_) {
+    // Secondary INDEX is not used in this request.
+    return false;
+  }
+
+  // Execute query in PgGate.
+  // If index query is not yet executed, run it.
+  if (!secondary_index_query_->is_executed()) {
+    secondary_index_query_->set_is_executed(true);
+    RETURN_NOT_OK(secondary_index_query_->Exec(exec_params));
+  }
+
+  // Not processing index request if it does not require its own doc operator.
+  //
+  // When INDEX is used for system catalog (colocated table), the index subquery does not have its
+  // own operator. The request is combined with 'this' outer SELECT using 'index_request' attribute.
+  //   (PgDocOp)doc_op_->(YBPgsqlReadOp)read_op_->(PgsqlReadRequestPB)read_request_::index_request
+  if (!secondary_index_query_->has_doc_op()) {
+    return false;
+  }
+
+  // When INDEX has its own doc_op, execute it to fetch next batch of ybctids which is then used
+  // to read data from the main table.
+  const vector<Slice> *ybctids;
+  if (!VERIFY_RESULT(secondary_index_query_->FetchYbctidBatch(&ybctids))) {
+    // No more rows of ybctids.
+    return false;
+  }
+
+  // Update request with the new batch of ybctids to fetch the next batch of rows.
+  RETURN_NOT_OK(doc_op_->PopulateDmlByYbctidOps(ybctids));
   return true;
 }
 
@@ -352,7 +382,7 @@ Result<bool> K2Dml::GetNextRow(PgTuple *pg_tuple) {
 }
 
 Result<string> K2Dml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
-  // get Doc Key from DOC API client
+  // TODO: get Doc Key from DOC API client
   return nullptr;
 }
 
@@ -393,12 +423,16 @@ void K2DmlRead::PrepareBinds() {
     return;
   }
 
-  // TODO: add column processing
+  for (K2Column &col : bind_desc_->columns()) {
+    col.AllocPrimaryBind(read_req_);
+  }
 }
 
 void K2DmlRead::SetForwardScan(const bool is_forward_scan) {
-  // TODO:: add logic for secondary index scan
-  is_forward_scan_ = is_forward_scan;
+   if (secondary_index_query_) {
+    return secondary_index_query_->SetForwardScan(is_forward_scan);
+  }
+  read_req_->is_forward_scan = is_forward_scan;
 }
 
 void K2DmlRead::SetColumnRefs() {
@@ -426,7 +460,41 @@ Status K2DmlRead::BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_
 }
 
 Status K2DmlRead::Exec(const PgExecParameters *exec_params) {
-  // TODO: add implementation 
+  // Initialize doc operator.
+  if (doc_op_) {
+    doc_op_->ExecuteInit(exec_params);
+  }
+
+  // Set column references in protobuf and whether query is aggregate.
+  SetColumnRefs();
+
+  // Delete key columns that are not bound to any values.
+  RETURN_NOT_OK(DeleteEmptyPrimaryBinds());
+
+  // First, process the secondary index request.
+  bool has_ybctid = VERIFY_RESULT(ProcessSecondaryIndexRequest(exec_params));
+
+  if (!has_ybctid && secondary_index_query_ && secondary_index_query_->has_doc_op()) {
+    // No ybctid is found from the IndexScan. Instruct "doc_op_" to abandon the execution and not
+    // querying any data from tablet server.
+    //
+    // Note: For system catalog (colocated table), the secondary_index_query_ won't send a separate
+    // scan read request to DocDB.  For this case, the index request is embedded inside the SELECT
+    // request (PgsqlReadRequestPB::index_request).
+    doc_op_->AbandonExecution();
+
+  } else {
+    // Update bind values for constants and placeholders.
+    RETURN_NOT_OK(UpdateBindPBs());
+
+    // Execute select statement and prefetching data from DocDB.
+    // Note: For SysTable, doc_op_ === null, IndexScan doesn't send separate request.
+    if (doc_op_) {
+      SCHECK_EQ(VERIFY_RESULT(doc_op_->Execute()), RequestSent::kTrue, IllegalState,
+                "YSQL read operation was not sent");
+    }
+  }
+    
   return Status::OK();
 }
 
