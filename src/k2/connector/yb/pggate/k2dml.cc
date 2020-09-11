@@ -287,8 +287,33 @@ Status K2Dml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns
 }
 
 Result<bool> K2Dml::FetchDataFromServer() {
-  // TODO: implementation
+  // Get the rowsets from doc-operator.
+  RETURN_NOT_OK(doc_op_->GetResult(&rowsets_));
 
+  // Check if EOF is reached.
+  if (rowsets_.empty()) {
+    // Process the secondary index to find the next WHERE condition.
+    //   DML(Table) WHERE ybctid IN (SELECT base_ybctid FROM IndexTable),
+    //   The nested query would return many rows each of which yields different result-set.
+    if (!VERIFY_RESULT(ProcessSecondaryIndexRequest(nullptr))) {
+      // Return EOF as the nested subquery does not have any more data.
+      return false;
+    }
+
+    // Execute doc_op_ again for the new set of WHERE condition from the nested query.
+    SCHECK_EQ(VERIFY_RESULT(doc_op_->Execute()), RequestSent::kTrue, IllegalState,
+              "YSQL read operation was not sent");
+
+    // Get the rowsets from doc-operator.
+    RETURN_NOT_OK(doc_op_->GetResult(&rowsets_));
+  }
+
+  return true;
+}
+
+Result<bool> K2Dml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_params) {
+  // TODO: add implementation
+  
   return true;
 }
 

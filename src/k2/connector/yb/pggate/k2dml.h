@@ -98,6 +98,9 @@ class K2Dml : public K2Statement {
 
   // This function is not yet working and might not be needed.
   virtual CHECKED_STATUS ClearBinds();
+  
+  // Process the secondary index request if it is nested within this statement.
+  Result<bool> ProcessSecondaryIndexRequest(const PgExecParameters *exec_params);
 
   // Fetch a row and return it to Postgres layer.
   CHECKED_STATUS Fetch(int32_t natts,
@@ -118,6 +121,10 @@ class K2Dml : public K2Statement {
   virtual void SetCatalogCacheVersion(uint64_t catalog_cache_version) = 0;
 
   bool has_aggregate_targets();
+
+  bool has_doc_op() {
+    return doc_op_ != nullptr;
+  }
 
   protected:
   // Method members.
@@ -218,6 +225,9 @@ class K2Dml : public K2Statement {
   // Data members for navigating the output / result-set from either seleted or returned targets.
   std::list<K2DocResult> rowsets_;
   int64_t current_row_order_ = 0;
+
+  // DML Operator.
+  K2DocOp::SharedPtr doc_op_;
 
   //------------------------------------------------------------------------------------------------
   // Hashed and range values/components used to compute the tuple id.
