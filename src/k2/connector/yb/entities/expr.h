@@ -77,6 +77,12 @@ class PgExpr {
         PG_EXPR_LE,
         PG_EXPR_LT,
 
+        // Logic operators that take two or more operands.
+        PG_EXPR_AND,
+        PG_EXPR_OR,
+        PG_EXPR_IN,
+        PG_EXPR_BETWEEN,
+
         // Aggregate functions.
         PG_EXPR_AVG,
         PG_EXPR_SUM,
@@ -165,6 +171,10 @@ class PgConstant : public PgExpr {
   void UpdateConstant(const char *value, bool is_null);
   void UpdateConstant(const char *value, size_t bytes, bool is_null);
 
+  SqlValue* getValue() {
+      return &value_;
+  }
+  
   private:
   SqlValue value_;
 };

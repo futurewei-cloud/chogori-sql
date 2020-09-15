@@ -87,6 +87,7 @@ bool K2Column::is_virtual_column() {
 }
 
 DocExpr *K2Column::AllocPrimaryBind(DocWriteRequest *write_req) {
+  bind_pb_ = new DocExpr();
   if (desc_.is_partition()) {
     write_req->partition_column_values.push_back(bind_pb_);
   } else if (desc_.is_primary()) {
@@ -102,11 +103,13 @@ DocExpr *K2Column::AllocBind(DocWriteRequest *write_req) {
 
     if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
       bind_pb_ = write_req->ybctid_column_value;
+      if (bind_pb_ == nullptr) {
+        bind_pb_ = new DocExpr();
+      }
     } else {        
       ColumnValue col;
       col.column_id = id();
-      // TODO: initialize PgExpr
-      col.expr = nullptr;
+      col.expr = new DocExpr();
       bind_pb_ = col.expr;
       write_req->column_values.push_back(col);
     }
@@ -118,8 +121,7 @@ DocExpr *K2Column::AllocAssign(DocWriteRequest *write_req) {
   if (assign_pb_ == nullptr) {
     ColumnValue col;
     col.column_id = id();
-    // TODO: initialize PgExpr
-    col.expr = nullptr;
+    col.expr = new DocExpr();
     assign_pb_ = col.expr;    
     write_req->column_new_values.push_back(col);
   }
@@ -127,6 +129,7 @@ DocExpr *K2Column::AllocAssign(DocWriteRequest *write_req) {
 }
 
 DocExpr *K2Column::AllocPrimaryBind(DocReadRequest *read_req) {
+  bind_pb_ = new DocExpr();
    if (desc_.is_partition()) {
     read_req->partition_column_values.push_back(bind_pb_);
   } else if (desc_.is_primary()) {
@@ -138,26 +141,32 @@ DocExpr *K2Column::AllocPrimaryBind(DocReadRequest *read_req) {
 //--------------------------------------------------------------------------------------------------
 
 DocExpr *K2Column::AllocBind(DocReadRequest *read_req) {
-  if (desc_.is_partition()) {
-    read_req->partition_column_values.push_back(bind_pb_);
-  } else if (desc_.is_primary()) {
-    read_req->range_column_values.push_back(bind_pb_);  
-  }
-  return bind_pb_;
-}
-
-DocExpr *K2Column::AllocBindConditionExpr(DocReadRequest *read_req) {
   if (bind_pb_ == nullptr) {
     DCHECK(!desc_.is_partition() && !desc_.is_primary())
-      << "Binds for primary columns should have already been allocated by AllocPrimaryBind()";
+      << "Binds for primary columns should have already been allocated by AllocPrimaryBindPB()";
 
     if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
       bind_pb_ = read_req->ybctid_column_value;
+      if (bind_pb_ == nullptr) {
+        bind_pb_ = new DocExpr();
+      }
     } else {
       DLOG(FATAL) << "Binds for other columns are not allowed";
     }
   }
-  return bind_pb_;
+  return bind_pb_;  
+}
+
+DocCondition *K2Column::AllocBindConditionExpr(DocReadRequest *read_req) {
+  if (bind_condition_expr_pb_ == nullptr) {
+    bind_condition_expr_pb_ = read_req->condition_expr;
+    if (bind_condition_expr_pb_ == nullptr) {
+      bind_condition_expr_pb_ = new DocCondition();
+    }
+    bind_condition_expr_pb_->setOp(PgExpr::Opcode::PG_EXPR_AND);
+  }
+
+  return bind_condition_expr_pb_; 
 }
 
 }  // namespace gate

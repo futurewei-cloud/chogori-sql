@@ -159,7 +159,6 @@ class K2Dml : public K2Statement {
   CHECKED_STATUS UpdateAssignDocs();
 
   // Indicate in the doc api what columns must be read before the statement is processed.
-//  void ColumnRefsToPB(PgColumnRef *column_refs);
   void ColumnRefsToDoc(DocColumnRefs *column_refs);
 
   CHECKED_STATUS PrepareForRead(PgExpr *target, DocExpr *expr_pb);
@@ -314,7 +313,17 @@ class K2DmlRead : public K2Dml {
   }
 
   protected:
-  // Add column refs to protobuf read request.
+   // Allocate column doc.
+  DocExpr *AllocColumnBindDoc(K2Column *col) override;
+  DocCondition *AllocColumnBindConditionExprDoc(K2Column *col);
+
+  // Allocate protobuf for target.
+  DocExpr *AllocTargetDoc() override;
+
+  // Allocate column expression.
+  DocExpr *AllocColumnAssignDoc(K2Column *col) override;
+  
+  // Add column refs to doc api read request.
   void SetColumnRefs();
 
   // Delete allocated target for columns that have no bind-values.

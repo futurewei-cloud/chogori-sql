@@ -157,7 +157,7 @@ class K2Column {
   DocExpr *AllocBind(DocReadRequest *read_req);
 
   // Bindings for read requests.
-  DocExpr *AllocBindConditionExpr(DocReadRequest *read_req);
+  DocCondition *AllocBindConditionExpr(DocReadRequest *read_req);
 
   // Assign values for write requests.
   DocExpr *AllocAssign(DocWriteRequest *write_req);
@@ -223,7 +223,7 @@ class K2Column {
   // - During DML execution, the reserved expression spaces will be filled with actual values.
   // - The data-member "primary_exprs" is to map column id with the reserved expression spaces.
   DocExpr *bind_pb_ = nullptr;
-  DocExpr *bind_condition_expr_pb_ = nullptr;
+  DocCondition *bind_condition_expr_pb_ = nullptr;
 
   // new-values of a column in the tuple.
   DocExpr *assign_pb_ = nullptr;

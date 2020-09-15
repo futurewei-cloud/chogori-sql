@@ -40,7 +40,9 @@ namespace gate {
 
     using namespace yb;
     using namespace k2::sql;
-     
+
+    class DocCondition; 
+
     // An expression in a WHERE condition.
     // - Bind values would be given by client and grouped into a repeated field that can be accessed
     //   by their indexes.
@@ -51,10 +53,10 @@ namespace gate {
         public:
         enum class ExprType {
             VALUE,
+            LIST_VALUES,
             COLUMN_ID,
             BIND_ID,
             ALIAS_ID,
-            BUILT_IN_CALL,
             CONDITION,
         };
 
@@ -64,10 +66,11 @@ namespace gate {
         DocExpr(ExprType type, int32_t id) : type_(type), id_(id) {
         }
 
-        DocExpr() {       
+        DocExpr(DocCondition *condition) : type_(ExprType::CONDITION), condition_(condition) {
         }
 
-        // TODO: add condition and built-in call for constructors
+        DocExpr() {       
+        }
 
         ~DocExpr() {
         }
@@ -92,7 +95,19 @@ namespace gate {
             id_ = id;
         }
 
-        // TODO: add condition and built-in call for setters
+        void setCondition(DocCondition* condition) {
+            type_ = ExprType::CONDITION;
+            condition_ = condition;
+        }
+
+        void addListValue(SqlValue* value) {
+            type_ = ExprType::LIST_VALUES;
+            values_.push_back(value);
+        }
+
+        ExprType getType() {
+            return type_;
+        }
 
         SqlValue* getValue() {
             return value_;
@@ -102,10 +117,46 @@ namespace gate {
             return id_;
         }
 
+        DocCondition* getCondition() {
+            return condition_;
+        }
+
+        std::vector<SqlValue*> getListValues() {
+            return values_;
+        }
+
         private:
         ExprType type_;
         SqlValue* value_;
+        std::vector<SqlValue*> values_;
+        DocCondition* condition_;
         int32_t id_;
+    };
+
+    class DocCondition {
+        public:  
+        DocCondition() = default;
+        ~DocCondition() = default;
+
+        void setOp(PgExpr::Opcode op) {
+            op_ = op;
+        }
+
+        PgExpr::Opcode getOp() {
+            return op_;
+        }
+
+        void addOperand(DocExpr* expr) {
+            operands_.push_back(expr);
+        }
+
+        std::vector<DocExpr*>& getOperands() {
+            return operands_;
+        }
+
+        private: 
+        PgExpr::Opcode op_;
+        std::vector<DocExpr*> operands_;
     };
 
     struct DocColumnRefs {
@@ -163,8 +214,8 @@ namespace gate {
         RSRowDesc rsrow_desc;
         std::vector<DocExpr*> targets;
         DocExpr* where_expr;
-        DocExpr* condition_expr;
-        std::vector<ColumnId> column_refs;
+        DocCondition* condition_expr;
+        DocColumnRefs* column_refs;
         bool is_forward_scan = true;
         bool distinct = false;
         bool is_aggregate = false;
@@ -208,8 +259,8 @@ namespace gate {
         RSRowDesc rsrow_desc;
         std::vector<DocExpr*> targets;
         DocExpr* where_expr;
-        DocExpr* condition_expr;
-        std::vector<ColumnId> column_refs;
+        DocCondition* condition_expr;
+        DocColumnRefs* column_refs;
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;

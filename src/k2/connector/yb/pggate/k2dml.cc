@@ -139,7 +139,6 @@ Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, DocExpr *assign_pb) {
 }
 
 void K2Dml::ColumnRefsToDoc(DocColumnRefs *column_refs) {
-  // TODO: update the logic here
   column_refs->ids.clear();
   for (const K2Column& col : target_desc_->columns()) {
     if (col.read_requested() || col.write_requested()) {
@@ -173,10 +172,10 @@ Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
     }
   }
 
-  // Link the expression and protobuf. During execution, expr will write result to the pb.
+  // Link the expression and doc api. During execution, expr will write result to the doc api.
   RETURN_NOT_OK(PrepareForRead(attr_value, bind_pb));
 
-  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
+  // Link the given expression "attr_value" with the allocated doc api. Note that except for
   // constants and place_holders, all other expressions can be setup just one time during prepare.
   // Examples:
   // - Bind values for primary columns in where clause.
@@ -188,6 +187,7 @@ Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
     ybctid_bind_ = true;
   }
+
   return Status::OK();
 }
 
@@ -229,13 +229,13 @@ Status K2Dml::AssignColumn(int attr_num, PgExpr *attr_value) {
     }
   }
 
-  // Link the expression and protobuf. During execution, expr will write result to the pb.
+  // Link the expression and doc api. During execution, expr will write result to the pb.
   // - Prepare the left hand side for write.
   // - Prepare the right hand side for read. Currently, the right hand side is always constant.
   RETURN_NOT_OK(PrepareColumnForWrite(col, assign_pb));
   RETURN_NOT_OK(PrepareForRead(attr_value, assign_pb));
 
-  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
+  // Link the given expression "attr_value" with the allocated doc api. Note that except for
   // constants and place_holders, all other expressions can be setup just one time during prepare.
   // Examples:
   // - Setup rhs values for SET column = assign_pb in UPDATE statement.
@@ -433,27 +433,304 @@ void K2DmlRead::SetForwardScan(const bool is_forward_scan) {
   read_req_->is_forward_scan = is_forward_scan;
 }
 
+// Allocate column doc.
+DocExpr *K2DmlRead::AllocColumnBindDoc(K2Column *col) {
+  return col->AllocBind(read_req_);
+}
+
+DocCondition *K2DmlRead::AllocColumnBindConditionExprDoc(K2Column *col) {
+  return col->AllocBindConditionExpr(read_req_);
+}
+
+// Allocate protobuf for target.
+DocExpr *K2DmlRead::AllocTargetDoc() {
+  DocExpr* target = new DocExpr();
+  read_req_->targets.push_back(target);
+  return target;
+}
+
+// Allocate column expression.
+DocExpr *K2DmlRead::AllocColumnAssignDoc(K2Column *col) {
+  // SELECT statement should not have an assign expression (SET clause).
+  LOG(FATAL) << "Pure virtual function is being call";
+  return nullptr;
+}
+
 void K2DmlRead::SetColumnRefs() {
-  // TODO: add implementation 
+   if (secondary_index_query_) {
+    DCHECK(!has_aggregate_targets()) << "Aggregate pushdown should not happen with index";
+  }
+  read_req_->is_aggregate = has_aggregate_targets();
+  if (read_req_->column_refs == nullptr) {
+    read_req_->column_refs = new DocColumnRefs();
+  }
+  ColumnRefsToDoc(read_req_->column_refs); 
 }
 
 Status K2DmlRead::DeleteEmptyPrimaryBinds() {
-  // TODO: add implementation 
+  if (secondary_index_query_) {
+    RETURN_NOT_OK(secondary_index_query_->DeleteEmptyPrimaryBinds());
+  }
+
+  if (!bind_desc_) {
+    // This query does not have any binds.
+    read_req_->partition_column_values.clear();
+    read_req_->range_column_values.clear();
+    return Status::OK();
+  }
+
+  // NOTE: ybctid is a system column and not processed as bind.
+  bool miss_partition_columns = false;
+  bool has_partition_columns = false;
+
+  for (size_t i = 0; i < bind_desc_->num_hash_key_columns(); i++) {
+    K2Column& col = bind_desc_->columns()[i];
+    DocExpr* expr = col.bind_pb();
+    // TODO: fix the condition logic here after we add condition to doc expr
+    if (expr_binds_.find(expr) == expr_binds_.end() && expr->getType() != DocExpr::ExprType::CONDITION) {
+      // For IN clause on hash_column, expr->has_condition() returns 'true'.
+      miss_partition_columns = true;
+    } else {
+      has_partition_columns = true;
+    }
+  }
+
+  if (miss_partition_columns) {
+    VLOG(1) << "Full scan is needed";
+    read_req_->partition_column_values.clear();
+    read_req_->range_column_values.clear();
+  }
+
+  if (has_partition_columns && miss_partition_columns) {
+    return STATUS(InvalidArgument, "Partition key must be fully specified");
+  }
+
+  bool miss_range_columns = false;
+  size_t num_bound_range_columns = 0;
+
+  for (size_t i = bind_desc_->num_hash_key_columns(); i < bind_desc_->num_key_columns(); i++) {
+    K2Column &col = bind_desc_->columns()[i];
+    if (expr_binds_.find(col.bind_pb()) == expr_binds_.end()) {
+      miss_range_columns = true;
+    } else if (miss_range_columns) {
+      return STATUS(InvalidArgument,
+                    "Unspecified range key column must be at the end of the range key");
+    } else {
+      num_bound_range_columns++;
+    }
+  }
+
+  auto range_column_values = read_req_->range_column_values;
+  // TODO: double check if the logic is correct here
+  range_column_values.erase(range_column_values.begin() + num_bound_range_columns, range_column_values.end());
   return Status::OK();
 }
 
-Status K2DmlRead::BindColumnCondEq(int attnum, PgExpr *attr_value) {
-  // TODO: add implementation 
+Status K2DmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindColumnCondEq(attr_num, attr_value);
+  }
+
+  // Find column.
+  K2Column *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
+
+  // Check datatype.
+  // if (attr_value) {
+  //   SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
+  //             "Attribute value type does not match column type");
+  // }
+
+  // Alloc the doc api.
+  DocCondition *condition_expr_doc = AllocColumnBindConditionExprDoc(col);
+
+  if (attr_value != nullptr) {
+    condition_expr_doc->setOp(PgExpr::Opcode::PG_EXPR_EQ);
+
+    DocExpr* op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+    condition_expr_doc->addOperand(op1_doc);
+
+    DocExpr* op2_doc = new DocExpr();
+    condition_expr_doc->addOperand(op2_doc);
+
+    // read value from attr_value, which should be a PgConstant
+    RETURN_NOT_OK(Eval(attr_value, op2_doc));
+  }
+
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+    CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
+    ybctid_bind_ = true;
+  }
+  
   return Status::OK();
 }
 
 Status K2DmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end) {
-  // TODO: add implementation 
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
+  }
+
+  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kYBTupleId))
+    << "Operator BETWEEN cannot be applied to ROWID";
+
+  // Find column.
+  K2Column *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
+
+  // Check datatype.
+  // if (attr_value) {
+  //   SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
+  //             "Attribute value type does not match column type");
+  // }
+
+  // if (attr_value_end) {
+  //   SCHECK_EQ(col->internal_type(), attr_value_end->internal_type(), Corruption,
+  //             "Attribute value type does not match column type");
+  // }
+
+  CHECK(!col->desc()->is_partition()) << "This method cannot be used for binding partition column!";
+
+  // Alloc the doc condition
+  DocCondition *condition_expr_pb = AllocColumnBindConditionExprDoc(col);
+
+  if (attr_value != nullptr) {
+    if (attr_value_end != nullptr) {
+      condition_expr_pb->setOp(PgExpr::Opcode::PG_EXPR_BETWEEN);
+      DocExpr *op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+      condition_expr_pb->addOperand(op1_doc);
+
+      DocExpr *op2_doc = new DocExpr();
+      condition_expr_pb->addOperand(op2_doc);
+      DocExpr *op3_doc = new DocExpr();
+      condition_expr_pb->addOperand(op3_doc);
+
+      RETURN_NOT_OK(Eval(attr_value, op2_doc));
+      RETURN_NOT_OK(Eval(attr_value_end, op3_doc));
+    } else {
+      condition_expr_pb->setOp(PgExpr::Opcode::PG_EXPR_GE);
+      DocExpr *op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+      condition_expr_pb->addOperand(op1_doc);
+
+      DocExpr *op2_doc = new DocExpr();
+      condition_expr_pb->addOperand(op2_doc);
+
+      RETURN_NOT_OK(Eval(attr_value, op2_doc));
+    }
+  } else {
+    if (attr_value_end != nullptr) {
+      condition_expr_pb->setOp(PgExpr::Opcode::PG_EXPR_LE);
+      DocExpr *op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+      condition_expr_pb->addOperand(op1_doc);
+
+      DocExpr *op2_doc = new DocExpr();
+      condition_expr_pb->addOperand(op2_doc);
+
+      RETURN_NOT_OK(Eval(attr_value_end, op2_doc));
+    } else {
+      // Unreachable.
+    }
+  }  
+  
   return Status::OK();
 }
 
-Status K2DmlRead::BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_values) {
-  // TODO: add implementation 
+Status K2DmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **attr_values) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindColumnCondIn(attr_num, n_attr_values, attr_values);
+  }
+
+  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kYBTupleId))
+    << "Operator IN cannot be applied to ROWID";
+
+  // Find column.
+  K2Column *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
+
+  // Check datatype.
+  // TODO(neil) Current code combine TEXT and BINARY datatypes into ONE representation.  Once that
+  // is fixed, we can remove the special if() check for BINARY type.
+  // if (col->internal_type() != InternalType::kBinaryValue) {
+  //   for (int i = 0; i < n_attr_values; i++) {
+  //     if (attr_values[i]) {
+  //       SCHECK_EQ(col->internal_type(), attr_values[i]->internal_type(), Corruption,
+  //           "Attribute value type does not match column type");
+  //     }
+  //   }
+  // }
+
+  if (col->desc()->is_partition()) {
+    // Alloc the doc expression.
+    DocExpr* bind_pb = col->bind_pb();
+    if (bind_pb == nullptr) {
+      bind_pb = AllocColumnBindDoc(col);
+    } else {
+      if (expr_binds_.find(bind_pb) != expr_binds_.end()) {
+        LOG(WARNING) << strings::Substitute("Column $0 is already bound to another value.",
+                                            attr_num);
+      }
+    }
+
+    DocCondition* doc_condition = new DocCondition();
+    doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
+    DocExpr *op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+    doc_condition->addOperand(op1_doc);
+    bind_pb->setCondition(doc_condition);
+
+    // There's no "list of expressions" field so we simulate it with an artificial nested OR
+    // with repeated operands, one per bind expression.
+    // This is only used for operation unrolling in pg_doc_op and is not understood by DocDB.
+    // TODO: double check if we need this logic for K2 storage as well
+    DocCondition* nested_condition = new DocCondition();
+    nested_condition->setOp(PgExpr::Opcode::PG_EXPR_OR);
+    DocExpr *op2_doc = new DocExpr(nested_condition);
+    doc_condition->addOperand(op2_doc);
+
+    for (int i = 0; i < n_attr_values; i++) {
+      DocExpr* attr_doc = new DocExpr();
+      nested_condition->addOperand(attr_doc);
+
+      // Link the expression and doc expression. During execution, expr will write result to the doc object.
+      RETURN_NOT_OK(PrepareForRead(attr_values[i], attr_doc));
+
+      expr_binds_[attr_doc] = attr_values[i];
+
+      if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+        CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
+        ybctid_bind_ = true;
+      }
+    }
+  } else {
+    // Alloc the doc condition
+    DocCondition* doc_condition = AllocColumnBindConditionExprDoc(col);
+    doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
+    DocExpr *op1_doc = new DocExpr(DocExpr::ExprType::COLUMN_ID, col->id());
+    doc_condition->addOperand(op1_doc);
+    DocExpr *op2_doc = new DocExpr();
+    doc_condition->addOperand(op2_doc);
+
+    for (int i = 0; i < n_attr_values; i++) {
+      // Link the given expression "attr_value" with the allocated doc object.
+      // Note that except for constants and place_holders, all other expressions can be setup
+      // just one time during prepare.
+      // Examples:
+      // - Bind values for primary columns in where clause.
+      //     WHERE hash = ?
+      // - Bind values for a column in INSERT statement.
+      //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
+
+      if (attr_values[i]) {
+        DocExpr* attr_val = new DocExpr();
+        RETURN_NOT_OK(Eval(attr_values[i], attr_val));
+        op2_doc->addListValue(attr_val->getValue());
+      }
+
+      if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+        CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
+        ybctid_bind_ = true;
+      }
+    }
+  }
+  
   return Status::OK();
 }
 
