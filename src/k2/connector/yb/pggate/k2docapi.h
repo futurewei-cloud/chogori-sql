@@ -328,6 +328,7 @@ namespace gate {
 
         std::string getDocKey(DocWriteRequest& request);
 
+/*
         DocResponse read(DocReadRequest request);
 
         DocResponse write(DocWriteRequest request);
@@ -345,6 +346,7 @@ namespace gate {
         DeleteRecordsResponse batchDeleteRecords(DocKey& key, std::vector<PgExpr>& filters);
 
         DeleteRecordsResponse deleteAllRecordsAndSchema(DocKey& key);
+        */
     };
 
 }  // namespace gate

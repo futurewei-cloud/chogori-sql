@@ -125,6 +125,7 @@ namespace gate {
         return "Not implemented";
     }
 
+/*
     SaveOrUpdateSchemaResponse DocApi::saveOrUpdateSchema(DocKey& key, Schema& schema) {
         return SaveOrUpdateSchemaResponse();
     }
@@ -152,6 +153,6 @@ namespace gate {
     DeleteRecordsResponse DocApi::deleteAllRecordsAndSchema(DocKey& key) {
         return DeleteRecordsResponse();
     }
-
+*/
 }  // namespace gate
 }  // namespace k2
