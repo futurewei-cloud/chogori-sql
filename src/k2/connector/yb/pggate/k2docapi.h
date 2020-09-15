@@ -28,7 +28,7 @@
 #include "yb/entities/schema.h"
 #include "yb/entities/type.h"
 #include "yb/entities/value.h"
-#include "yb/entities/expr.h"
+//#include "yb/entities/expr.h"
 #include "yb/entities/table.h"
 
 #include "yb/pggate/pg_tuple.h"
@@ -40,7 +40,78 @@ namespace gate {
 
     using namespace yb;
     using namespace k2::sql;
- 
+     
+    // An expression in a WHERE condition.
+    // - Bind values would be given by client and grouped into a repeated field that can be accessed
+    //   by their indexes.
+    // - Alias values would be computed by server and grouped into repeated field that can be accessed
+    //   by their indexes.
+    // - Code generator write indexes as ref. Executor deref indexes to get actual values.
+    class DocExpr {
+        public:
+        enum class ExprType {
+            VALUE,
+            COLUMN_ID,
+            BIND_ID,
+            ALIAS_ID,
+            BUILT_IN_CALL,
+            CONDITION,
+        };
+
+        DocExpr(ExprType type, SqlValue* value) : type_(type), value_(value) {
+        }
+
+        DocExpr(ExprType type, int32_t id) : type_(type), id_(id) {
+        }
+
+        DocExpr() {       
+        }
+
+        // TODO: add condition and built-in call for constructors
+
+        ~DocExpr() {
+        }
+
+        void setValue(SqlValue *value) {
+            type_ = ExprType::VALUE;
+            value_ = value;
+        }
+
+        void setColumnId(int32_t id) {
+            type_ = ExprType::COLUMN_ID;
+            id_ = id;
+        }
+
+        void setBindId(int32_t id) {
+            type_ = ExprType::BIND_ID;
+            id_ = id;
+        }
+
+        void setAliasId(int32_t id) {
+            type_ = ExprType::ALIAS_ID;
+            id_ = id;
+        }
+
+        // TODO: add condition and built-in call for setters
+
+        SqlValue* getValue() {
+            return value_;
+        }
+
+        int32_t getId() {
+            return id_;
+        }
+
+        private:
+        ExprType type_;
+        SqlValue* value_;
+        int32_t id_;
+    };
+
+    struct DocColumnRefs {
+        std::vector<int32_t> ids;
+    };
+
     // pass the information so that the under hood SKV client could generate the actual doc key from it
     struct DocKey { 
         NamespaceId namespace_id;
@@ -53,7 +124,7 @@ namespace gate {
 
     struct ColumnValue {
         int column_id;
-        PgExpr* expr;
+        DocExpr* expr;
     };
 
     struct RSColDesc {
@@ -82,17 +153,17 @@ namespace gate {
         TableId table_id;
         uint64_t schema_version;
         uint32_t hash_code;
-        std::vector<PgExpr*> partition_column_values;
-        std::vector<PgExpr*> range_column_values;
-        PgExpr* ybctid_column_value;
+        std::vector<DocExpr*> partition_column_values;
+        std::vector<DocExpr*> range_column_values;
+        DocExpr* ybctid_column_value;
         // For select using local secondary index: this request selects the ybbasectids to fetch the rows
         // in place of the primary key above.
         DocReadRequest* index_request;
 
         RSRowDesc rsrow_desc;
-        std::vector<PgExpr*> targets;
-        PgExpr* where_expr;
-        PgExpr* condition_expr;
+        std::vector<DocExpr*> targets;
+        DocExpr* where_expr;
+        DocExpr* condition_expr;
         std::vector<ColumnId> column_refs;
         bool is_forward_scan = true;
         bool distinct = false;
@@ -126,18 +197,18 @@ namespace gate {
         TableId table_id;
         uint64_t schema_version;
         uint32_t hash_code;
-        std::vector<PgExpr*> partition_column_values;
-        std::vector<PgExpr*> range_column_values;
-        PgExpr* ybctid_column_value;
+        std::vector<DocExpr*> partition_column_values;
+        std::vector<DocExpr*> range_column_values;
+        DocExpr* ybctid_column_value;
         // Not used with UPDATEs. Use column_new_values to UPDATE a value.
         std::vector<ColumnValue> column_values;
         // Column New Values.
         // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
         std::vector<ColumnValue> column_new_values;
         RSRowDesc rsrow_desc;
-        std::vector<PgExpr*> targets;
-        PgExpr* where_expr;
-        PgExpr* condition_expr;
+        std::vector<DocExpr*> targets;
+        DocExpr* where_expr;
+        DocExpr* condition_expr;
         std::vector<ColumnId> column_refs;
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).

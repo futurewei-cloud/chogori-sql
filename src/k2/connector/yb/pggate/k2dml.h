@@ -83,8 +83,11 @@ class K2Dml : public K2Statement {
   // Prepare column for both ends.
   // - Prepare protobuf to communicate with DocDB.
   // - Prepare PgExpr to send data back to Postgres layer.
-  CHECKED_STATUS PrepareColumnForRead(int attr_num, PgExpr *target_pb, const K2Column **col);
-  CHECKED_STATUS PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb);
+  // CHECKED_STATUS PrepareColumnForRead(int attr_num, PgExpr *target_pb, const K2Column **col);
+  //  CHECKED_STATUS PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb);
+  CHECKED_STATUS PrepareColumnForRead(int attr_num, DocExpr *target_pb, const K2Column **col);
+
+  CHECKED_STATUS PrepareColumnForWrite(K2Column *pg_col, DocExpr *assign_pb);
 
   // Bind a column with an expression.
   // - For a secondary-index-scan, this bind specify the value of the secondary key which is used to
@@ -137,30 +140,31 @@ class K2Dml : public K2Statement {
         const PgObjectId& index_id,
         const PgPrepareParameters *prepare_params);
 
-  // Allocate protobuf for a SELECTed expression.
-  virtual PgExpr *AllocTargetPB() = 0;
+  // Allocate doc expression for a SELECTed expression.
+  virtual DocExpr *AllocTargetDoc() = 0;
 
-  // Allocate protobuf for expression whose value is bounded to a column.
-  virtual PgExpr *AllocColumnBindPB(K2Column *col) = 0;
+  // Allocate doc expression for expression whose value is bounded to a column.
+  virtual DocExpr *AllocColumnBindDoc(K2Column *col) = 0;
 
-  // Allocate protobuf for expression whose value is assigned to a column (SET clause).
-  virtual PgExpr *AllocColumnAssignPB(K2Column *col) = 0;
+  // Allocate doc expression for expression whose value is assigned to a column (SET clause).
+  virtual DocExpr *AllocColumnAssignDoc(K2Column *col) = 0;
 
   // Specify target of the query in protobuf request.
-  CHECKED_STATUS AppendTargetPB(PgExpr *target);
+  CHECKED_STATUS AppendTargetDoc(PgExpr *target);
 
   // Update bind values.
-  CHECKED_STATUS UpdateBindPBs();
+  CHECKED_STATUS UpdateBindDocs();
 
   // Update set values.
-  CHECKED_STATUS UpdateAssignPBs();
+  CHECKED_STATUS UpdateAssignDocs();
 
-  // Indicate in the protobuf what columns must be read before the statement is processed.
-  void ColumnRefsToPB(PgColumnRef *column_refs);
+  // Indicate in the doc api what columns must be read before the statement is processed.
+//  void ColumnRefsToPB(PgColumnRef *column_refs);
+  void ColumnRefsToDoc(DocColumnRefs *column_refs);
 
-  CHECKED_STATUS PrepareForRead(PgExpr *target, PgExpr *expr_pb);
+  CHECKED_STATUS PrepareForRead(PgExpr *target, DocExpr *expr_pb);
 
-  CHECKED_STATUS Eval(PgExpr *target, PgExpr *expr_pb);
+  CHECKED_STATUS Eval(PgExpr *target, DocExpr *expr_pb);
 
   // -----------------------------------------------------------------------------------------------
   // Data members that define the DML statement.
@@ -217,8 +221,8 @@ class K2Dml : public K2Statement {
   // * Bind values are used to identify the selected rows to be operated on.
   // * Set values are used to hold columns' new values in the selected rows.
   bool ybctid_bind_ = false;
-  std::unordered_map<PgExpr*, PgExpr*> expr_binds_;
-  std::unordered_map<PgExpr*, PgExpr*> expr_assigns_;
+  std::unordered_map<DocExpr*, PgExpr*> expr_binds_;
+  std::unordered_map<DocExpr*, PgExpr*> expr_assigns_;
 
   // Used for colocated TRUNCATE that doesn't bind any columns.
   bool bind_table_ = false;

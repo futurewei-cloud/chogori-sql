@@ -79,21 +79,21 @@ K2Dml::~K2Dml() {
 Status K2Dml::AppendTarget(PgExpr *target) {
   // Except for base_ctid, all targets should be appended to this DML.
   if (target_desc_ && (prepare_params_.index_only_scan || !target->is_ybbasetid())) {
-    RETURN_NOT_OK(AppendTargetPB(target));
+    RETURN_NOT_OK(AppendTargetDoc(target));
   } else {
     // Append base_ctid to the index_query.
-    RETURN_NOT_OK(secondary_index_query_->AppendTargetPB(target));
+    RETURN_NOT_OK(secondary_index_query_->AppendTargetDoc(target));
   }
 
   return Status::OK();
 }
 
-Status K2Dml::AppendTargetPB(PgExpr *target) {
+Status K2Dml::AppendTargetDoc(PgExpr *target) {
   // Append to targets_.
   targets_.push_back(target);
 
-  // Allocate associated protobuf.
-  PgExpr *expr_pb = AllocTargetPB();
+  // Allocate associated doc expression.
+  DocExpr *expr_pb = AllocTargetDoc();
 
   // Prepare expression. Except for constants and place_holders, all other expressions can be
   // evaluate just one time during prepare.
@@ -108,18 +108,17 @@ Status K2Dml::AppendTargetPB(PgExpr *target) {
   return Status::OK();
 }
 
-Status K2Dml::PrepareColumnForRead(int attr_num, PgExpr *target_pb,
+Status K2Dml::PrepareColumnForRead(int attr_num, DocExpr *target_pb,
                                    const K2Column **col) {
   *col = nullptr;
 
   // Find column from targeted table.
   K2Column *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
 
-  // TODO: enable the column id assign logic
-  //if (target_pb)
-  //  target_pb->set_column_id(pg_col->id());
+  if (target_pb)
+    target_pb->setColumnId(pg_col->id());
 
-  // Mark non-virtual column reference for DocDB.
+  // Mark non-virtual column reference for Doc API.
   if (!pg_col->is_virtual_column()) {
     pg_col->set_read_requested(true);
   }
@@ -128,9 +127,8 @@ Status K2Dml::PrepareColumnForRead(int attr_num, PgExpr *target_pb,
   return Status::OK();
 }
 
-Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb) {
-  // TODO: update column id assignment logic
-  // assign_pb->set_column_id(pg_col->id());
+Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, DocExpr *assign_pb) {
+  assign_pb->setColumnId(pg_col->id());
 
   // Mark non-virtual column reference for DocDB.
   if (!pg_col->is_virtual_column()) {
@@ -140,12 +138,12 @@ Status K2Dml::PrepareColumnForWrite(K2Column *pg_col, PgExpr *assign_pb) {
   return Status::OK();
 }
 
-void K2Dml::ColumnRefsToPB(PgColumnRef *column_refs) {
+void K2Dml::ColumnRefsToDoc(DocColumnRefs *column_refs) {
   // TODO: update the logic here
-  //  column_refs->Clear();
+  column_refs->ids.clear();
   for (const K2Column& col : target_desc_->columns()) {
     if (col.read_requested() || col.write_requested()) {
-  //      column_refs->add_ids(col.id());
+      column_refs->ids.push_back(col.id());
     }
   }
 }
@@ -165,10 +163,10 @@ Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
   //SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
   //          "Attribute value type does not match column type");
 
-  // Alloc the protobuf.
-  PgExpr *bind_pb = col->bind_pb();
+  // Alloc the doc expression.
+  DocExpr *bind_pb = col->bind_pb();
   if (bind_pb == nullptr) {
-    bind_pb = AllocColumnBindPB(col);
+    bind_pb = AllocColumnBindDoc(col);
   } else {
     if (expr_binds_.find(bind_pb) != expr_binds_.end()) {
       LOG(WARNING) << strings::Substitute("Column $0 is already bound to another value.", attr_num);
@@ -193,9 +191,9 @@ Status K2Dml::BindColumn(int attr_num, PgExpr *attr_value) {
   return Status::OK();
 }
 
-Status K2Dml::UpdateBindPBs() {
+Status K2Dml::UpdateBindDocs() {
   for (const auto &entry : expr_binds_) {
-    PgExpr *expr_pb = entry.first;
+    DocExpr *expr_pb = entry.first;
     PgExpr *attr_value = entry.second;
     RETURN_NOT_OK(Eval(attr_value, expr_pb));
   }
@@ -220,10 +218,10 @@ Status K2Dml::AssignColumn(int attr_num, PgExpr *attr_value) {
 //  SCHECK_EQ(col->internal_type(), attr_value->internal_type(), Corruption,
  //           "Attribute value type does not match column type");
 
-  // Alloc the protobuf.
-  PgExpr *assign_pb = col->assign_pb();
+  // Alloc the doc expression.
+  DocExpr *assign_pb = col->assign_pb();
   if (assign_pb == nullptr) {
-    assign_pb = AllocColumnAssignPB(col);
+    assign_pb = AllocColumnAssignDoc(col);
   } else {
     if (expr_assigns_.find(assign_pb) != expr_assigns_.end()) {
       return STATUS_SUBSTITUTE(InvalidArgument,
@@ -247,11 +245,11 @@ Status K2Dml::AssignColumn(int attr_num, PgExpr *attr_value) {
   return Status::OK();
 }
 
-Status K2Dml::UpdateAssignPBs() {
+Status K2Dml::UpdateAssignDocs() {
   // Process the column binds for two cases.
   // For performance reasons, we might evaluate these expressions together with bind values in YB.
   for (const auto &entry : expr_assigns_) {
-    PgExpr *expr_pb = entry.first;
+    DocExpr *expr_pb = entry.first;
     PgExpr *attr_value = entry.second;
     RETURN_NOT_OK(Eval(attr_value, expr_pb));
   }
@@ -399,12 +397,12 @@ bool K2Dml::has_aggregate_targets() {
   return num_aggregate_targets > 0;
 }
 
-Status K2Dml::PrepareForRead(PgExpr *target, PgExpr *expr_pb) {
+Status K2Dml::PrepareForRead(PgExpr *target, DocExpr *expr_pb) {
   // TODO: add logic for different PgExpr types
   return Status::OK();
 }
 
-Status K2Dml::Eval(PgExpr *target, PgExpr *expr_pb) {
+Status K2Dml::Eval(PgExpr *target, DocExpr *expr_pb) {
   // TODO: add logic for different PgExpr types
   return Status::OK();
 }
@@ -485,7 +483,7 @@ Status K2DmlRead::Exec(const PgExecParameters *exec_params) {
 
   } else {
     // Update bind values for constants and placeholders.
-    RETURN_NOT_OK(UpdateBindPBs());
+    RETURN_NOT_OK(UpdateBindDocs());
 
     // Execute select statement and prefetching data from DocDB.
     // Note: For SysTable, doc_op_ === null, IndexScan doesn't send separate request.

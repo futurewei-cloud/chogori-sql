@@ -86,7 +86,7 @@ bool K2Column::is_virtual_column() {
   return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
 }
 
-PgExpr *K2Column::AllocPrimaryBind(DocWriteRequest *write_req) {
+DocExpr *K2Column::AllocPrimaryBind(DocWriteRequest *write_req) {
   if (desc_.is_partition()) {
     write_req->partition_column_values.push_back(bind_pb_);
   } else if (desc_.is_primary()) {
@@ -95,7 +95,7 @@ PgExpr *K2Column::AllocPrimaryBind(DocWriteRequest *write_req) {
   return bind_pb_;
 }
 
-PgExpr *K2Column::AllocBind(DocWriteRequest *write_req) {
+DocExpr *K2Column::AllocBind(DocWriteRequest *write_req) {
   if (bind_pb_ == nullptr) {
     DCHECK(!desc_.is_partition() && !desc_.is_primary())
       << "Binds for primary columns should have already been allocated by AllocPrimaryBindPB()";
@@ -114,7 +114,7 @@ PgExpr *K2Column::AllocBind(DocWriteRequest *write_req) {
   return bind_pb_;
 }
 
-PgExpr *K2Column::AllocAssign(DocWriteRequest *write_req) {
+DocExpr *K2Column::AllocAssign(DocWriteRequest *write_req) {
   if (assign_pb_ == nullptr) {
     ColumnValue col;
     col.column_id = id();
@@ -126,7 +126,7 @@ PgExpr *K2Column::AllocAssign(DocWriteRequest *write_req) {
   return assign_pb_;
 }
 
-PgExpr *K2Column::AllocPrimaryBind(DocReadRequest *read_req) {
+DocExpr *K2Column::AllocPrimaryBind(DocReadRequest *read_req) {
    if (desc_.is_partition()) {
     read_req->partition_column_values.push_back(bind_pb_);
   } else if (desc_.is_primary()) {
@@ -137,7 +137,7 @@ PgExpr *K2Column::AllocPrimaryBind(DocReadRequest *read_req) {
 
 //--------------------------------------------------------------------------------------------------
 
-PgExpr *K2Column::AllocBind(DocReadRequest *read_req) {
+DocExpr *K2Column::AllocBind(DocReadRequest *read_req) {
   if (desc_.is_partition()) {
     read_req->partition_column_values.push_back(bind_pb_);
   } else if (desc_.is_primary()) {
@@ -146,7 +146,7 @@ PgExpr *K2Column::AllocBind(DocReadRequest *read_req) {
   return bind_pb_;
 }
 
-PgExpr *K2Column::AllocBindConditionExpr(DocReadRequest *read_req) {
+DocExpr *K2Column::AllocBindConditionExpr(DocReadRequest *read_req) {
   if (bind_pb_ == nullptr) {
     DCHECK(!desc_.is_partition() && !desc_.is_primary())
       << "Binds for primary columns should have already been allocated by AllocPrimaryBind()";

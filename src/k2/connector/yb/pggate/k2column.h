@@ -149,18 +149,18 @@ class K2Column {
   void Init(PgSystemAttrNum attr_num);
 
   // Bindings for write requests.
-  PgExpr *AllocPrimaryBind(DocWriteRequest *write_req);
-  PgExpr *AllocBind(DocWriteRequest *write_req);
+  DocExpr *AllocPrimaryBind(DocWriteRequest *write_req);
+  DocExpr *AllocBind(DocWriteRequest *write_req);
 
   // Bindings for read requests.
-  PgExpr *AllocPrimaryBind(DocReadRequest *write_req);
-  PgExpr *AllocBind(DocReadRequest *read_req);
+  DocExpr *AllocPrimaryBind(DocReadRequest *write_req);
+  DocExpr *AllocBind(DocReadRequest *read_req);
 
   // Bindings for read requests.
-  PgExpr *AllocBindConditionExpr(DocReadRequest *read_req);
+  DocExpr *AllocBindConditionExpr(DocReadRequest *read_req);
 
   // Assign values for write requests.
-  PgExpr *AllocAssign(DocWriteRequest *write_req);
+  DocExpr *AllocAssign(DocWriteRequest *write_req);
 
   ColumnDesc *desc() {
     return &desc_;
@@ -174,11 +174,11 @@ class K2Column {
     return desc_.name();
   }
 
-  PgExpr *bind_pb() {
+  DocExpr *bind_pb() {
     return bind_pb_;
   }
 
-  PgExpr *assign_pb() {
+  DocExpr *assign_pb() {
     return assign_pb_;
   }
 
@@ -222,11 +222,11 @@ class K2Column {
   //   structures for associated expressions of the primary columns in the specified order.
   // - During DML execution, the reserved expression spaces will be filled with actual values.
   // - The data-member "primary_exprs" is to map column id with the reserved expression spaces.
-  PgExpr *bind_pb_ = nullptr;
-  PgExpr *bind_condition_expr_pb_ = nullptr;
+  DocExpr *bind_pb_ = nullptr;
+  DocExpr *bind_condition_expr_pb_ = nullptr;
 
   // new-values of a column in the tuple.
-  PgExpr *assign_pb_ = nullptr;
+  DocExpr *assign_pb_ = nullptr;
 
   // Wether or not this column must be read from DB for the SQL request.
   bool read_requested_ = false;
