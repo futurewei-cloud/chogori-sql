@@ -368,10 +368,25 @@ class K2DmlWrite : public K2Dml {
   K2DmlWrite(K2Session::ScopedRefPtr K2_session,
              const PgObjectId& table_id,
              bool is_single_row_txn = false);
+ 
+  // Allocate write request.
+  void AllocWriteRequest();
+
+  // Allocate column expression.
+  DocExpr *AllocColumnBindDoc(K2Column *col) override;
+
+  // Allocate target for selected or returned expressions.
+  DocExpr *AllocTargetDoc() override;
+
+  // Allocate column expression.
+  DocExpr *AllocColumnAssignDoc(K2Column *col) override;
 
   // Delete allocated target for columns that have no bind-values.
   CHECKED_STATUS DeleteEmptyPrimaryBinds();
 
+  // doc object
+  DocWriteRequest *write_req_ = nullptr;
+  
   bool is_single_row_txn_ = false; // default.
 
   int32_t rows_affected_count_ = 0;
@@ -379,6 +394,9 @@ class K2DmlWrite : public K2Dml {
   bool ysql_catalog_change_ = false;
 
   uint64_t ysql_catalog_version_ = 0;
+
+  private:
+  virtual std::unique_ptr<DocWriteCall> AllocWriteOperation() const = 0;
 };
 
 }  // namespace gate

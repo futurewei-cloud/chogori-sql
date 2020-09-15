@@ -58,10 +58,6 @@ class K2Insert : public K2DmlWrite {
  public:
   // Public types.
   typedef scoped_refptr<K2Insert> ScopedRefPtr;
-  typedef scoped_refptr<const K2Insert> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<K2Insert> UniPtr;
-  typedef std::unique_ptr<const K2Insert> UniPtrConst;
 
   // Constructors.
   K2Insert(K2Session::ScopedRefPtr k2_session, const PgObjectId& table_id, bool is_single_row_txn)
@@ -70,14 +66,13 @@ class K2Insert : public K2DmlWrite {
   StmtOp stmt_op() const override { return StmtOp::STMT_INSERT; }
 
   void SetUpsertMode() {
-  //  write_req_->set_stmt_type(PgsqlWriteRequestPB::PGSQL_UPSERT);
+    write_req_->stmt_type = DocWriteRequest::PGSQL_UPSERT;
   }
 
- private:
-/*   std::unique_ptr<client::YBPgsqlWriteOp> AllocWriteOperation() const override {
-    return target_desc_->NewPgsqlInsert();
+  private:
+  std::unique_ptr<DocWriteCall> AllocWriteOperation() const override {
+      return target_desc_->NewPgsqlInsert();
   }
- */
 };
 
 }  // namespace gate

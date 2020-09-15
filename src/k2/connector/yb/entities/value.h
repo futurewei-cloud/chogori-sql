@@ -105,6 +105,10 @@ public:
       return null_value_;
   }
 
+  bool isBinaryValue() {
+      return type_ == ValueType::SLICE;
+  }
+
   void set_bool_value(bool value, bool is_null); 
   void set_int8_value(int8_t value, bool is_null);
   void set_int16_value(int16_t value, bool is_null);

@@ -129,5 +129,25 @@ const size_t K2TableDesc::num_columns() const {
   return table_->schema().num_columns();
 }
 
+std::unique_ptr<DocReadCall> K2TableDesc::NewPgsqlSelect() {
+  // TODO: add implementation
+  return nullptr;
+}
+
+std::unique_ptr<DocWriteCall> K2TableDesc::NewPgsqlInsert() {
+  // TODO: add implementation
+  return nullptr;
+}
+
+std::unique_ptr<DocWriteCall> K2TableDesc::NewPgsqlUpdate() {
+  // TODO: add implementation
+  return nullptr;
+}
+
+std::unique_ptr<DocWriteCall> K2TableDesc::NewPgsqlDelete() {
+  // TODO: add implementation
+  return nullptr;
+}
+
 }  // namespace gate
 }  // namespace k2

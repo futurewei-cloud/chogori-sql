@@ -783,15 +783,121 @@ K2DmlWrite::~K2DmlWrite() {
 }
 
 Status K2DmlWrite::Prepare() {
-  // TODO: add implementation
+  // Setup descriptors for target and bind columns.
+  target_desc_ = bind_desc_ = VERIFY_RESULT(k2_session_->LoadTable(table_id_));
+
+  // Allocate either INSERT, UPDATE, or DELETE request.
+  AllocWriteRequest();
+  PrepareColumns();
+
   return Status::OK();
+}
+
+void K2DmlWrite::PrepareColumns() {
+  // Because DocDB API requires that primary columns must be listed in their created-order,
+  // the slots for primary column bind expressions are allocated here in correct order.
+  // TODO: verify this is true for K2 storage
+  for (K2Column &col : target_desc_->columns()) {
+    col.AllocPrimaryBind(write_req_);
+  }
 }
 
 Status K2DmlWrite::Exec(bool force_non_bufferable) {
-  // TODO: add implementation
+  // Delete allocated binds that are not associated with a value.
+  // YBClient interface enforce us to allocate binds for primary key columns in their indexing
+  // order, so we have to allocate these binds before associating them with values. When the values
+  // are not assigned, these allocated binds must be deleted.
+  RETURN_NOT_OK(DeleteEmptyPrimaryBinds());
+
+  // First update doc request with new bind values.
+  RETURN_NOT_OK(UpdateBindDocs());
+  RETURN_NOT_OK(UpdateAssignDocs());
+
+  if (write_req_->ybctid_column_value != nullptr) {
+    DocExpr *expr_doc = write_req_->ybctid_column_value;
+    CHECK(expr_doc->isValueType() && expr_doc->getValue() != nullptr && expr_doc->getValue()->isBinaryValue())
+      << "YBCTID must be of BINARY datatype";
+  }
+
+  // Initialize doc operator.
+  doc_op_->ExecuteInit(nullptr);
+
+  // Set column references in protobuf.
+  ColumnRefsToDoc(write_req_->column_refs);
+
+  // Execute the statement. If the request has been sent, get the result and handle any rows
+  // returned.
+  if (VERIFY_RESULT(doc_op_->Execute(force_non_bufferable)) == RequestSent::kTrue) {
+    RETURN_NOT_OK(doc_op_->GetResult(&rowsets_));
+
+    // Save the number of rows affected by the op.
+    rows_affected_count_ = VERIFY_RESULT(doc_op_->GetRowsAffectedCount());
+  }
+  
   return Status::OK();
 }
 
+Status K2DmlWrite::DeleteEmptyPrimaryBinds() {
+  // Iterate primary-key columns and remove the binds without values.
+  bool missing_primary_key = false;
+
+  // Either ybctid or primary key must be present.
+  if (!ybctid_bind_) {
+    // Remove empty binds from partition list.
+    auto partition_iter = write_req_->partition_column_values.begin();
+    while (partition_iter != write_req_->partition_column_values.end()) {
+      if (expr_binds_.find(*partition_iter) == expr_binds_.end()) {
+        missing_primary_key = true;
+        partition_iter = write_req_->partition_column_values.erase(partition_iter);
+      } else {
+        partition_iter++;
+      }
+    }
+
+    // Remove empty binds from range list.
+    auto range_iter = write_req_->range_column_values.begin();
+    while (range_iter != write_req_->range_column_values.end()) {
+      if (expr_binds_.find(*range_iter) == expr_binds_.end()) {
+        missing_primary_key = true;
+        range_iter = write_req_->range_column_values.erase(range_iter);
+      } else {
+        range_iter++;
+      }
+    }
+  } else {
+    write_req_->partition_column_values.clear();
+    write_req_->range_column_values.clear();
+  }
+
+  // Check for missing key.  This is okay when binding the whole table (for colocated truncate).
+  if (missing_primary_key && !bind_table_) {
+    return STATUS(InvalidArgument, "Primary key must be fully specified for modifying table");
+  }
+
+  return Status::OK();
+}
+
+void K2DmlWrite::AllocWriteRequest() {
+  auto wop = AllocWriteOperation();
+  DCHECK(wop);
+  wop->set_is_single_row_txn(is_single_row_txn_);
+  write_req_ = &wop->request();
+  doc_op_ = std::make_shared<K2DocWriteOp>(k2_session_, target_desc_, table_id_, std::move(wop));
+}
+
+DocExpr *K2DmlWrite::AllocColumnBindDoc(K2Column *col) {
+  return col->AllocBind(write_req_);
+}
+
+DocExpr *K2DmlWrite::AllocColumnAssignDoc(K2Column *col) {
+  return col->AllocAssign(write_req_);
+}
+
+DocExpr *K2DmlWrite::AllocTargetDoc() {
+  DocExpr *target_doc = new DocExpr();
+  write_req_->targets.push_back(target_doc);
+  return target_doc;
+}
 
 }  // namespace gate
 }  // namespace k2

@@ -109,6 +109,10 @@ namespace gate {
             return type_;
         }
 
+        bool isValueType() {
+            return type_ == ExprType::VALUE;
+        }
+
         SqlValue* getValue() {
             return value_;
         }
@@ -238,6 +242,7 @@ namespace gate {
             PGSQL_UPDATE = 2,
             PGSQL_DELETE = 3,
             PGSQL_UPSERT = 4,
+            // TODO: not used in K2, remove it
             PGSQL_TRUNCATE_COLOCATED = 5
         };
         
@@ -358,7 +363,7 @@ namespace gate {
             return WRITE; 
         }
 
-        const DocWriteRequest& request() const { return *write_request_; }
+        DocWriteRequest& request() const { return *write_request_; }
 
         std::string ToString() const;
 

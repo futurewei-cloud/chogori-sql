@@ -52,6 +52,7 @@
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/k2column.h"
+#include "yb/pggate/k2docapi.h"
 
 namespace k2 {
 namespace gate {
@@ -81,6 +82,11 @@ class K2TableDesc : public RefCountedThreadSafe<K2TableDesc> {
   const size_t num_hash_key_columns() const;
   const size_t num_key_columns() const;
   const size_t num_columns() const;
+
+  std::unique_ptr<DocReadCall> NewPgsqlSelect();
+  std::unique_ptr<DocWriteCall> NewPgsqlInsert();
+  std::unique_ptr<DocWriteCall> NewPgsqlUpdate();
+  std::unique_ptr<DocWriteCall> NewPgsqlDelete();
 
   // Find the column given the postgres attr number.
   Result<K2Column *> FindColumn(int attr_num);
