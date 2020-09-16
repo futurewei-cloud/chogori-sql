@@ -69,11 +69,10 @@ class K2Delete : public K2DmlWrite {
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DELETE; }
 
- private:
-/*   std::unique_ptr<client::YBPgsqlWriteOp> AllocWriteOperation() const override {
+  private:
+  std::unique_ptr<DocWriteCall> AllocWriteOperation() const override {
     return target_desc_->NewPgsqlDelete();
   } 
-  */
 };
 
 }  // namespace gate

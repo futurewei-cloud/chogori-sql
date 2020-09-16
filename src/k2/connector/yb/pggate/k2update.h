@@ -65,11 +65,10 @@ class K2Update : public K2DmlWrite {
 
   StmtOp stmt_op() const override { return StmtOp::STMT_UPDATE; }
 
- private:
-/*   std::unique_ptr<client::YBPgsqlWriteOp> AllocWriteOperation() const override {
+  private:
+  std::unique_ptr<DocWriteCall> AllocWriteOperation() const override {
     return target_desc_->NewPgsqlUpdate();
   } 
-  */
 };
 
 }  // namespace gate

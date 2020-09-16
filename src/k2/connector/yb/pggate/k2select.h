@@ -102,9 +102,9 @@ class K2SelectIndex : public K2DmlRead {
 
   // Prepare NESTED query for secondary index. This function is called when Postgres layer is
   // accessing the IndexTable via an outer select (Sequential or primary scans)
- // CHECKED_STATUS PrepareSubquery(PgsqlReadRequestPB *read_req);
+  CHECKED_STATUS PrepareSubquery(DocReadRequest *read_req);
 
- // CHECKED_STATUS PrepareQuery(PgsqlReadRequestPB *read_req);
+  CHECKED_STATUS PrepareQuery(DocReadRequest *read_req);
 
   // The output parameter "ybctids" are pointer to the data buffer in "ybctid_batch_".
   Result<bool> FetchYbctidBatch(const vector<Slice> **ybctids);
