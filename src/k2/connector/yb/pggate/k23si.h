@@ -27,52 +27,43 @@ class K23SIGate {
 public:
     K23SIGate();
     std::future<K23SITxn> beginTxn(const k2::K2TxnOptions& txnOpts);
-private:
-    void poller();
-    bool _stopPoller = false;
-
-    // this polls for completed requests across all of the response queues.
-    std::future<void> pollerFut = std::async([this]{poller();});
+    std::future<k2::Schema> getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion);
 };  // class K23SIGate
 
 
-struct BeginTxnQTx{
+struct BeginTxnRequest{
     k2::K2TxnOptions opts;
     std::promise<K23SITxn> prom;
 };
-struct BeginTxnQRx {
-    TxnId txnid;
-    std::promise<K23SITxn> prom;
-};
 
-struct EndTxnQTx {
+struct EndTxnRequest {
     TxnId txnid;
     bool shouldCommit;
     std::promise<k2::EndResult> prom;
 };
-struct EndTxnQRx {
-    k2::EndResult result;
-    std::promise<k2::EndResult> prom;
+
+struct SchemaRequest {
+    k2::String collectionName;
+    k2::String schemaName;
+    uint64_t schemaVersion;
+    std::promise<k2::Schema> prom;
 };
 
-struct ReadQTx {
+struct QueryRequest {
+    TxnId txnid;
+    std::promise<void*> prom;
+};
+
+struct ReadRequest {
     TxnId txnid;
     k2::SKVRecord record;
     std::promise<k2::ReadResult<k2::SKVRecord>> prom;
 };
-struct ReadQRx {
-    k2::ReadResult<k2::dto::SKVRecord> result;
-    std::promise<k2::ReadResult<k2::dto::SKVRecord>> prom;
-};
 
-struct WriteQTx {
+struct WriteRequest {
     TxnId txnid;
-    bool erase;
+    bool erase=false;
     k2::SKVRecord record;
-    std::promise<k2::WriteResult> prom;
-};
-struct WriteQRx {
-    k2::WriteResult result;
     std::promise<k2::WriteResult> prom;
 };
 
@@ -83,8 +74,7 @@ private:
 
 public:
     void lock() {
-        while (_flag.test_and_set(std::memory_order_acquire))
-            ;
+        while (_flag.test_and_set(std::memory_order_acquire));
     }
     void unlock() {
         _flag.clear(std::memory_order_release);
@@ -95,19 +85,11 @@ public:
 
 // mutex for locking outgoing request queues
 extern LFMutex requestQMutex;
-extern std::queue<BeginTxnQTx> beginTxQ;
-extern std::queue<EndTxnQTx> endTxQ;
-extern std::queue<ReadQTx> readTxQ;
-extern std::queue<WriteQTx> writeTxQ;
-extern std::atomic<bool> pg_ready;
-
-// mutex for locking incoming result queue and the conditional variable
-extern LFMutex resultQMutex;
-// condvar used by the 3si lib to signal that results are ready for pickup
-extern std::condition_variable_any resultReady;
-extern std::queue<BeginTxnQRx> beginRxQ;
-extern std::queue<EndTxnQRx> endRxQ;
-extern std::queue<ReadQRx> readRxQ;
-extern std::queue<WriteQRx> writeRxQ;
+extern std::queue<BeginTxnRequest> beginTxQ;
+extern std::queue<EndTxnRequest> endTxQ;
+extern std::queue<SchemaRequest> schemaTxQ;
+extern std::queue<QueryRequest> queryTxQ;
+extern std::queue<ReadRequest> readTxQ;
+extern std::queue<WriteRequest> writeTxQ;
 
 }  // namespace k2gate

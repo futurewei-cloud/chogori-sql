@@ -11,9 +11,19 @@ public:
     seastar::future<> gracefulStop();
     seastar::future<> start();
 private:
-    seastar::future<> _poller = seastar::make_ready_future();
-    seastar::future<> pollForWork();
     k2::K23SIClient _client;
+    uint64_t _txnidCounter;
+    std::unordered_map<uint64_t, k2::K2TxnHandle> _txns;
+
+    seastar::future<> _poller = seastar::make_ready_future();
+    seastar::future<> _pollForWork();
+
+    seastar::future<> _pollBeginQ();
+    seastar::future<> _pollEndQ();
+    seastar::future<> _pollSchemaQ();
+    seastar::future<> _pollReadQ();
+    seastar::future<> _pollQueryQ();
+    seastar::future<> _pollWriteQ();
 };
 
 }// ns k2gate

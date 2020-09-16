@@ -4213,9 +4213,11 @@ BackendInitialize(Port *port)
 	pq_init();					/* initialize libpq to talk to client */
 	/* initialize k2 */
 	if (k2_init_func) {
-		const char* argv[] = {"k2_pg", "-c1" , "-m200M"};
-		k2_init_func(3, argv);
-	}
+		// TODO K2 setup command line args for the seastar thread
+
+		const char* const argv[] = {"k2_pg", "-c1" , "-m200M", "--partition_request_timeout=10ms", "--cpo=rdma+k2rpc://ffff:123456", "--tso_endpoint=rdma+k2rpc://ffff:123456", "--cpo_request_timeout=100ms", "--cpo_request_backoff=10ms"};
+		k2_init_func(sizeof(argv), argv);
+    }
 
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
