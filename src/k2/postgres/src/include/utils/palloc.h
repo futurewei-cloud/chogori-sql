@@ -28,7 +28,7 @@
 #ifndef PALLOC_H
 #define PALLOC_H
 
-#include "yb/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 /*
  * Type MemoryContextData is declared in nodes/memnodes.h.  Most users

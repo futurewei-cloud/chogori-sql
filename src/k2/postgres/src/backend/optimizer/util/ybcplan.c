@@ -37,7 +37,7 @@
 #include "utils/syscache.h"
 #include "utils/lsyscache.h"
 
-#include "yb/pggate/ybc_pggate.h"
+#include "yb/pggate/pg_gate_api.h"
 #include "pg_yb_utils.h"
 
 /*

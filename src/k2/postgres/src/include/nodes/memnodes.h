@@ -15,7 +15,7 @@
 #define MEMNODES_H
 
 #include "nodes/nodes.h"
-#include "yb/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 /*
  * MemoryContextCounters

@@ -25,7 +25,7 @@
 
 #include "yb/common/macros.h"
 #include "yb/common/type/slice.h"
-#include "yb/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 namespace k2 {
 namespace sql {

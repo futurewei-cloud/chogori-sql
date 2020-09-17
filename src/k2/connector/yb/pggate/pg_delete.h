@@ -46,48 +46,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TUPLE_H
-#define CHOGORI_GATE_PG_TUPLE_H
+#ifndef CHOGORI_GATE_DML_DELETE_H
+#define CHOGORI_GATE_DML_DELETE_H
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "yb/pggate/pg_dml.h"
 
 namespace k2 {
 namespace gate {
 
-using namespace yb;
-
-// PgTuple.
-// TODO(neil) This code needs to be optimize. We might be able to use DocDB buffer directly for
-// most datatype except numeric. A simpler optimization would be allocate one buffer for each
-// tuple and write the value there.
-//
-// Currently we allocate one individual buffer per column and write result there.
-class PgTuple {
+class PgDelete : public PgDmlWrite {
  public:
-  PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);
+  // Public types.
+  typedef scoped_refptr<PgDelete> ScopedRefPtr;
+  typedef scoped_refptr<const PgDelete> ScopedRefPtrConst;
 
-  // Write null value.
-  void WriteNull(int index);
+  typedef std::unique_ptr<PgDelete> UniPtr;
+  typedef std::unique_ptr<const PgDelete> UniPtrConst;
 
-  // Write datum to tuple slot.
-  void WriteDatum(int index, uint64_t datum);
+  // Constructors.
+  PgDelete(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id, bool is_single_row_txn)
+      : PgDmlWrite(std::move(pg_session), table_id, is_single_row_txn) {}
 
-  // Write data in Postgres format.
-  void Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes);
+  StmtOp stmt_op() const override { return StmtOp::STMT_DELETE; }
 
-  // Get returning-space for system columns. Tuple writer will save values in this struct.
-  PgSysColumns *syscols() {
-    return syscols_;
-  }
-
- private:
-  uint64_t *datums_;
-  bool *isnulls_;
-  PgSysColumns *syscols_;
+  private:
+  std::unique_ptr<SqlOpWriteCall> AllocWriteOperation() const override {
+    return target_desc_->NewPgsqlDelete();
+  } 
 };
 
 }  // namespace gate
 }  // namespace k2
 
-#endif  // CHOGORI_GATE_PG_TUPLE_H
-
+#endif //CHOGORI_GATE_DML_DELETE_H

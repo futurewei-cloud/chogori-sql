@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2 {
 namespace sql {
 
-    // this type definition is synced with the PgDataType in ybc_pg_typedefs.h. We might not support all of them
+    // this type definition is synced with the PgDataType in pg_gate_typedefs.h. We might not support all of them
     typedef enum PgSqlDataType {
         NOT_SUPPORTED = -1,
         UNKNOWN_DATA = 999,

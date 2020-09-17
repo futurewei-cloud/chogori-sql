@@ -107,7 +107,7 @@ We could adopt the modified version of PG from [YugaByteDB](https://github.com/f
 * Implemented sequence support
 * Implemented column projection and predicate pushdown to external data sources
 * Implemented aggression pushdown for min, max, sum, and count
-* Used the [PG Gate APIs](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/yb/pggate/ybc_pggate.h) to interact
+* Used the [PG Gate APIs](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/include/yb/pggate/pg_gate_api.h) to interact
 with external catalog manager and data sources.
 However, we need to change PG for our own use, which means we might need to change the PG Gate APIs as well.
 * Update the SQL grammar [gram.y](https://github.com/futurewei-cloud/chogori-sql/blob/master/src/k2/postgres/src/backend/parser/gram.y) to only enable

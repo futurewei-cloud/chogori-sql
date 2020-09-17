@@ -46,48 +46,68 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TUPLE_H
-#define CHOGORI_GATE_PG_TUPLE_H
+#ifndef CHOGORI_GATE_PG_TABLE_DESC_H
+#define CHOGORI_GATE_PG_TABLE_DESC_H
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "yb/common/concurrent/ref_counted.h"
+#include "yb/entities/table.h"
+#include "yb/pggate/pg_column.h"
+#include "yb/pggate/pg_op_api.h"
 
 namespace k2 {
 namespace gate {
 
 using namespace yb;
+using namespace k2::sql;
 
-// PgTuple.
-// TODO(neil) This code needs to be optimize. We might be able to use DocDB buffer directly for
-// most datatype except numeric. A simpler optimization would be allocate one buffer for each
-// tuple and write the value there.
-//
-// Currently we allocate one individual buffer per column and write result there.
-class PgTuple {
+// This class can be used to describe any reference of a column.
+class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
  public:
-  PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);
+  typedef scoped_refptr<PgTableDesc> ScopedRefPtr;
 
-  // Write null value.
-  void WriteNull(int index);
+  explicit PgTableDesc(std::shared_ptr<TableInfo> pg_table);
 
-  // Write datum to tuple slot.
-  void WriteDatum(int index, uint64_t datum);
+  const TableIdentifier& table_name() const;
 
-  // Write data in Postgres format.
-  void Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes);
-
-  // Get returning-space for system columns. Tuple writer will save values in this struct.
-  PgSysColumns *syscols() {
-    return syscols_;
+  const std::shared_ptr<TableInfo> table() const {
+    return table_;
   }
 
+  static int ToPgAttrNum(const string &attr_name, int attr_num);
+
+  std::vector<PgColumn>& columns() {
+    return columns_;
+  }
+
+  const size_t num_hash_key_columns() const;
+  const size_t num_key_columns() const;
+  const size_t num_columns() const;
+
+  std::unique_ptr<SqlOpReadCall> NewPgsqlSelect();
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlInsert();
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlUpdate();
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlDelete();
+
+  // Find the column given the postgres attr number.
+  Result<PgColumn *> FindColumn(int attr_num);
+
+  CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
+
+  bool IsTransactional() const;
+
+  int GetPartitionCount() const;
+  
  private:
-  uint64_t *datums_;
-  bool *isnulls_;
-  PgSysColumns *syscols_;
+  std::shared_ptr<TableInfo> table_;
+
+  std::vector<PgColumn> columns_;
+  std::unordered_map<int, size_t> attr_num_map_; // Attr number to column index map.
+
+  // Hidden columns.
+  PgColumn column_ybctid_;
 };
 
 }  // namespace gate
 }  // namespace k2
 
-#endif  // CHOGORI_GATE_PG_TUPLE_H
-
+#endif //CHOGORI_GATE_PG_TABLE_DESC_H

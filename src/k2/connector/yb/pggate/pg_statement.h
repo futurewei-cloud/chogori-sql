@@ -46,48 +46,90 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TUPLE_H
-#define CHOGORI_GATE_PG_TUPLE_H
+#ifndef CHOGORI_GATE_PG_STATEMENT_H
+#define CHOGORI_GATE_PG_STATEMENT_H
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include <memory>
+#include <string>
+#include <list>
+
+#include "yb/entities/expr.h"
+#include "yb/common/status.h"
+#include "yb/pggate/pg_session.h"
 
 namespace k2 {
 namespace gate {
 
-using namespace yb;
+using k2::sql::PgExpr;
+using yb::RefCountedThreadSafe;
+using yb::Status;
 
-// PgTuple.
-// TODO(neil) This code needs to be optimize. We might be able to use DocDB buffer directly for
-// most datatype except numeric. A simpler optimization would be allocate one buffer for each
-// tuple and write the value there.
-//
-// Currently we allocate one individual buffer per column and write result there.
-class PgTuple {
+// Statement types.
+enum StmtOp {
+  STMT_NOOP = 0,
+  STMT_CREATE_DATABASE,
+  STMT_DROP_DATABASE,
+  STMT_CREATE_SCHEMA,
+  STMT_DROP_SCHEMA,
+  STMT_CREATE_TABLE,
+  STMT_DROP_TABLE,
+  STMT_TRUNCATE_TABLE,
+  STMT_CREATE_INDEX,
+  STMT_DROP_INDEX,
+  STMT_ALTER_TABLE,
+  STMT_INSERT,
+  STMT_UPDATE,
+  STMT_DELETE,
+  STMT_TRUNCATE,
+  STMT_SELECT,
+  STMT_ALTER_DATABASE,
+};
+
+class PgStatement : public RefCountedThreadSafe<PgStatement> {
  public:
-  PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);
+  // Public types.
+  typedef scoped_refptr<PgStatement> ScopedRefPtr;
 
-  // Write null value.
-  void WriteNull(int index);
+  //------------------------------------------------------------------------------------------------
+  // Constructors.
+  // pg_session is the session that this statement belongs to. If PostgreSQL cancels the session
+  // while statement is running, pg_session::sharedptr can still be accessed without crashing.
+  explicit PgStatement(PgSession::ScopedRefPtr pg_session);
+  virtual ~PgStatement();
 
-  // Write datum to tuple slot.
-  void WriteDatum(int index, uint64_t datum);
-
-  // Write data in Postgres format.
-  void Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes);
-
-  // Get returning-space for system columns. Tuple writer will save values in this struct.
-  PgSysColumns *syscols() {
-    return syscols_;
+  const PgSession::ScopedRefPtr& pg_session() {
+    return pg_session_;
   }
 
- private:
-  uint64_t *datums_;
-  bool *isnulls_;
-  PgSysColumns *syscols_;
+  // Statement type.
+  virtual StmtOp stmt_op() const = 0;
+
+  //------------------------------------------------------------------------------------------------
+  static bool IsValidStmt(PgStatement* stmt, StmtOp op) {
+    return (stmt != nullptr && stmt->stmt_op() == op);
+  }
+
+  //------------------------------------------------------------------------------------------------
+  // Add expressions that are belong to this statement.
+  void AddExpr(PgExpr::SharedPtr expr);
+
+  //------------------------------------------------------------------------------------------------
+  // Clear all values and expressions that were bound to the given statement.
+  virtual CHECKED_STATUS ClearBinds() = 0;
+
+ protected:
+  // YBSession that this statement belongs to.
+  PgSession::ScopedRefPtr pg_session_;
+
+  // Execution status.
+  Status status_;
+  string errmsg_;
+
+  // Expression list to be destroyed as soon as the statement is removed from the API.
+  std::list<PgExpr::SharedPtr> exprs_;
 };
 
 }  // namespace gate
 }  // namespace k2
 
-#endif  // CHOGORI_GATE_PG_TUPLE_H
-
+#endif //CHOGORI_GATE_PG_STATEMENT_H

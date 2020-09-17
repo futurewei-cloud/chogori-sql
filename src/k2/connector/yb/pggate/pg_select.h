@@ -46,48 +46,90 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TUPLE_H
-#define CHOGORI_GATE_PG_TUPLE_H
+#ifndef CHOGORI_GATE_DML_SELECT_H
+#define CHOGORI_GATE_DML_SELECT_H
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "yb/pggate/pg_dml.h"
 
 namespace k2 {
 namespace gate {
 
 using namespace yb;
+using namespace k2::sql;
 
-// PgTuple.
-// TODO(neil) This code needs to be optimize. We might be able to use DocDB buffer directly for
-// most datatype except numeric. A simpler optimization would be allocate one buffer for each
-// tuple and write the value there.
-//
-// Currently we allocate one individual buffer per column and write result there.
-class PgTuple {
+//--------------------------------------------------------------------------------------------------
+// SELECT
+//--------------------------------------------------------------------------------------------------
+
+class PgSelect : public PgDmlRead {
  public:
-  PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);
+  // Public types.
+  typedef scoped_refptr<PgSelect> ScopedRefPtr;
 
-  // Write null value.
-  void WriteNull(int index);
+  // Constructors.
+  PgSelect(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+           const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
 
-  // Write datum to tuple slot.
-  void WriteDatum(int index, uint64_t datum);
+  virtual ~PgSelect();
 
-  // Write data in Postgres format.
-  void Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes);
+  // Prepare query before execution.
+  virtual CHECKED_STATUS Prepare();
 
-  // Get returning-space for system columns. Tuple writer will save values in this struct.
-  PgSysColumns *syscols() {
-    return syscols_;
+  // Prepare secondary index if that index is used by this query.
+  CHECKED_STATUS PrepareSecondaryIndex();
+};
+
+//--------------------------------------------------------------------------------------------------
+// SELECT FROM Secondary Index Table
+//--------------------------------------------------------------------------------------------------
+
+class PgSelectIndex : public PgDmlRead {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgSelectIndex> ScopedRefPtr;
+  typedef std::shared_ptr<PgSelectIndex> SharedPtr;
+
+  // Constructors.
+  PgSelectIndex(PgSession::ScopedRefPtr pg_session,
+                const PgObjectId& table_id,
+                const PgObjectId& index_id,
+                const PgPrepareParameters *prepare_params);
+  virtual ~PgSelectIndex();
+
+  // Prepare query for secondary index. This function is called when Postgres layer is accessing
+  // the IndexTable directy (IndexOnlyScan).
+  CHECKED_STATUS Prepare();
+
+  // Prepare NESTED query for secondary index. This function is called when Postgres layer is
+  // accessing the IndexTable via an outer select (Sequential or primary scans)
+  CHECKED_STATUS PrepareSubquery(SqlOpReadRequest *read_req);
+
+  CHECKED_STATUS PrepareQuery(SqlOpReadRequest *read_req);
+
+  // The output parameter "ybctids" are pointer to the data buffer in "ybctid_batch_".
+  Result<bool> FetchYbctidBatch(const vector<Slice> **ybctids);
+
+  // Get next batch of ybctids from either PgGate::cache or server.
+  Result<bool> GetNextYbctidBatch();
+
+  void set_is_executed(bool value) {
+    is_executed_ = value;
+  }
+
+  bool is_executed() {
+    return is_executed_;
   }
 
  private:
-  uint64_t *datums_;
-  bool *isnulls_;
-  PgSysColumns *syscols_;
+  // Collect ybctids from IndexTable.
+  CHECKED_STATUS FetchYbctids();
+
+  // This secondary query should be executed just one time.
+  bool is_executed_ = false;
 };
 
 }  // namespace gate
 }  // namespace k2
 
-#endif  // CHOGORI_GATE_PG_TUPLE_H
+#endif //CHOGORI_GATE_DML_SELECT_H
 

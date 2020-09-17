@@ -145,7 +145,7 @@ explain analyze SELECT users.id, users.name, users.email, orders.id, orders.tota
 
 YugabyteDB uses DocDB on top of RocksDB to store data in a document format on storage layer. The data consists of Catalog, i.e., system databases/tables and user
 databases/tables, and table data. To minimize the code change on Postgres, YugabyteDb introduced a PG gate to abstract all the interaction with
-the DocDB layer. The API from Postgres side is defined in yb/pggate/ybc_pggate.h. For example,
+the DocDB layer. The API from Postgres side is defined in yb/pggate/pg_gate_api.h. For example,
 
 ``` c++
 // This must be called exactly once to initialize the YB/PostgreSQL gateway API before any other
@@ -500,7 +500,7 @@ code snippet in catcache.c.
 
 YugaByteDB enabled sequence support in this [commit](https://github.com/yugabyte/yugabyte-db/commit/c7310c1f23755552252f7ccf6307c148cc903aa0).
 
-The following APIs are introduced in [yb/pggate/ybc_pggate.h](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/pggate/ybc_pggate.h).
+The following APIs are introduced in [yb/pggate/pg_gate_api.h](https://github.com/yugabyte/yugabyte-db/blob/master/src/yb/pggate/pg_gate_api.h).
 
 ``` c
 YBCStatus YBCInsertSequenceTuple(int64_t db_oid,

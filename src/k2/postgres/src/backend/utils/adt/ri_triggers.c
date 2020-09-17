@@ -62,7 +62,7 @@
 #include "utils/tqual.h"
 
 #include "pg_yb_utils.h"
-#include "yb/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 
 /* ----------
