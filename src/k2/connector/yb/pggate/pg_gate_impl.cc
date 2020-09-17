@@ -71,8 +71,8 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
 
 K2Adapter* PgGateApiImpl::CreateK2Adapter() {
   // TODO: add more complex logic to create k2 client, for example, from a pool  
-  K2Adapter* client = new K2Adapter();
-  return client;
+  K2Adapter* adapter = new K2Adapter();
+  return adapter;
 }
 
 PgGateApiImpl::~PgGateApiImpl() {
