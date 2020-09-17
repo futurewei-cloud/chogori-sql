@@ -85,7 +85,7 @@ namespace gate {
     YB_STRONGLY_TYPED_BOOL(RequestSent);
    
     //--------------------------------------------------------------------------------------------------
-    // PgOpResult represents a batch of rows in ONE reply from tablet servers.
+    // PgOpResult represents a batch of rows in ONE reply from storage layer.
     class PgOpResult {
         public:
         explicit PgOpResult(string&& data);
@@ -197,7 +197,7 @@ namespace gate {
         virtual Result<RequestSent> Execute(bool force_non_bufferable = false);
 
         // Instruct this doc_op to abandon execution and querying data by setting end_of_data_ to 'true'.
-        // - This op will not send request to tablet server.
+        // - This op will not send request to storage layer.
         // - This op will return empty result-set when being requested for data.
         void AbandonExecution() {
             end_of_data_ = true;
@@ -230,7 +230,7 @@ namespace gate {
         //       PopulateDmlByYbctidOps()
         //       PopulateParallelSelectCountOps()
         // - When parallelism by arguments is applied, each operator has only one argument.
-        //   When tablet server will run the requests in parallel as it assigned one thread per request.
+        //   When storage layer will run the requests in parallel as it assigned one thread per request.
         //       PopulateNextHashPermutationOps()
         CHECKED_STATUS ClonePgsqlOps(int op_count);
 
@@ -287,7 +287,7 @@ namespace gate {
         // NOTE:
         // - Currently, PgSession's default behavior is to get all responses in a batch together.
         // - We set this flag only to prevent future optimization where requests & their responses to
-        //   and from different tablet servers are sent and received independently. That optimization
+        //   and from different storage servers are sent and received independently. That optimization
         //   should only be done when "wait_for_batch_completion_ == false"
         bool wait_for_batch_completion_ = true;
 
@@ -442,7 +442,7 @@ namespace gate {
         // this will be initialized to [[1], [2, 3], [4, 5, 6], [7]]
         std::vector<std::vector<PgExpr *>> partition_exprs_;
 
-        // The partition key identifying the sole tablet to read from.
+        // The partition key identifying the sole storage server to read from.
         boost::optional<std::string> partition_key_;
     };
 

@@ -106,7 +106,7 @@ Status PgSelect::PrepareSecondaryIndex() {
   //   For this case, "index_request" is allocated here and passed to PgSelectIndex node to
   //   fill in with bind-values when necessary.
   //
-  // - For regular tables, the index subquery will send separate request to tablet servers collect
+  // - For regular tables, the index subquery will send separate request to storage servers collect
   //   batches of ybctids which is then used by 'this' outer select to query actual data.
   SqlOpReadRequest *index_req = nullptr;
   if (prepare_params_.querying_colocated_table) {

@@ -32,15 +32,15 @@ using namespace yb;
 
 namespace k2 {
 namespace sql {
-    class SqlExecutor {
+    class SQLCatalogManager {
 
     public:
-        SqlExecutor() = default;
-        ~SqlExecutor();
+        SQLCatalogManager() = default;
+        ~SQLCatalogManager();
 
         CHECKED_STATUS Init();
 
-        // Waits for the tablet server to complete the initialization.
+        // Waits for the storage server to complete the initialization.
         CHECKED_STATUS WaitInited();
 
         CHECKED_STATUS Start();

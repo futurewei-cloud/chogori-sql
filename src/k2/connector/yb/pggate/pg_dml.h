@@ -363,6 +363,8 @@ class PgDmlWrite : public PgDml {
     return rows_affected_count_;
   }
 
+  CHECKED_STATUS SetWriteTime(const uint64_t write_time);
+
  protected:
   // Constructor.
   PgDmlWrite(PgSession::ScopedRefPtr pg_session,

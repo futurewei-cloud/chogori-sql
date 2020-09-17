@@ -273,6 +273,34 @@ class PgGateApiImpl {
 
   CHECKED_STATUS ExecSelect(PgStatement *handle, const PgExecParameters *exec_params);
 
+// INSERT ------------------------------------------------------------------------------------------
+
+  CHECKED_STATUS NewInsert(const PgObjectId& table_id,
+                           bool is_single_row_txn,
+                           PgStatement **handle);
+
+  CHECKED_STATUS ExecInsert(PgStatement *handle);
+
+  CHECKED_STATUS InsertStmtSetUpsertMode(PgStatement *handle);
+
+  CHECKED_STATUS InsertStmtSetWriteTime(PgStatement *handle, const uint64_t write_time);
+  
+  //------------------------------------------------------------------------------------------------
+  // Update.
+  CHECKED_STATUS NewUpdate(const PgObjectId& table_id,
+                           bool is_single_row_txn,
+                           PgStatement **handle);
+
+  CHECKED_STATUS ExecUpdate(PgStatement *handle);
+
+  //------------------------------------------------------------------------------------------------
+  // Delete.
+  CHECKED_STATUS NewDelete(const PgObjectId& table_id,
+                           bool is_single_row_txn,
+                           PgStatement **handle);
+
+  CHECKED_STATUS ExecDelete(PgStatement *handle);
+
   //------------------------------------------------------------------------------------------------
   // Expressions.
   //------------------------------------------------------------------------------------------------

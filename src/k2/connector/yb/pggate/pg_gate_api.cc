@@ -117,46 +117,6 @@ YBCStatus YBCPgIsDatabaseColocated(const YBCPgOid database_oid, bool *colocated)
   return YBCStatusOK();
 }
 
-YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
-                                 int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
-                                 int64_t last_val,
-                                 bool is_called) {
-  return YBCStatusOK();
-}
-
-YBCStatus YBCUpdateSequenceTupleConditionally(int64_t db_oid,
-                                              int64_t seq_oid,
-                                              uint64_t ysql_catalog_version,
-                                              int64_t last_val,
-                                              bool is_called,
-                                              int64_t expected_last_val,
-                                              bool expected_is_called,
-                                              bool *skipped) {
-  return YBCStatusOK();
-}
-
-YBCStatus YBCUpdateSequenceTuple(int64_t db_oid,
-                                 int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
-                                 int64_t last_val,
-                                 bool is_called,
-                                 bool* skipped) {
-  return YBCStatusOK();
-}
-
-YBCStatus YBCReadSequenceTuple(int64_t db_oid,
-                               int64_t seq_oid,
-                               uint64_t ysql_catalog_version,
-                               int64_t *last_val,
-                               bool *is_called) {
-  return YBCStatusOK();
-}
-
-YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
-    return YBCStatusOK();
-}
-
 // Create database.
 YBCStatus YBCPgNewCreateDatabase(const char *database_name,
                                  YBCPgOid database_oid,
@@ -227,7 +187,50 @@ YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_id) {
   return YBCStatusOK();
 }
 
+// Sequence Operations -----------------------------------------------------------------------------
+
+YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
+                                 int64_t seq_oid,
+                                 uint64_t ysql_catalog_version,
+                                 int64_t last_val,
+                                 bool is_called) {
+  return YBCStatusOK();
+}
+
+YBCStatus YBCUpdateSequenceTupleConditionally(int64_t db_oid,
+                                              int64_t seq_oid,
+                                              uint64_t ysql_catalog_version,
+                                              int64_t last_val,
+                                              bool is_called,
+                                              int64_t expected_last_val,
+                                              bool expected_is_called,
+                                              bool *skipped) {
+  return YBCStatusOK();
+}
+
+YBCStatus YBCUpdateSequenceTuple(int64_t db_oid,
+                                 int64_t seq_oid,
+                                 uint64_t ysql_catalog_version,
+                                 int64_t last_val,
+                                 bool is_called,
+                                 bool* skipped) {
+  return YBCStatusOK();
+}
+
+YBCStatus YBCReadSequenceTuple(int64_t db_oid,
+                               int64_t seq_oid,
+                               uint64_t ysql_catalog_version,
+                               int64_t *last_val,
+                               bool *is_called) {
+  return YBCStatusOK();
+}
+
+YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
+    return YBCStatusOK();
+}
+
 // TABLE -------------------------------------------------------------------------------------------
+
 // Create and drop table "database_name.schema_name.table_name()".
 // - When "schema_name" is NULL, the table "database_name.table_name" is created.
 // - When "database_name" is NULL, the table "connected_database_name.table_name" is created.
@@ -362,6 +365,7 @@ YBCStatus YBCPgIsTableColocated(const YBCPgOid database_oid,
 }
 
 // INDEX -------------------------------------------------------------------------------------------
+
 // Create and drop index "database_name.schema_name.index_name()".
 // - When "schema_name" is NULL, the index "database_name.index_name" is created.
 // - When "database_name" is NULL, the index "connected_database_name.index_name" is created.
@@ -540,23 +544,26 @@ void YBCPgDropBufferedOperations() {
 }
 
 // INSERT ------------------------------------------------------------------------------------------
+
 YBCStatus YBCPgNewInsert(YBCPgOid database_oid,
                          YBCPgOid table_oid,
                          bool is_single_row_txn,
                          YBCPgStatement *handle){
-                             return YBCStatusOK();
-                         }
+  const PgObjectId table_id(database_oid, table_oid);                         
+  return ToYBCStatus(api_impl->NewInsert(table_id, is_single_row_txn, handle));
+  return YBCStatusOK();
+}
 
 YBCStatus YBCPgExecInsert(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecInsert(handle));
 }
 
 YBCStatus YBCPgInsertStmtSetUpsertMode(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->InsertStmtSetUpsertMode(handle));
 }
 
 YBCStatus YBCPgInsertStmtSetWriteTime(YBCPgStatement handle, const uint64_t write_time){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->InsertStmtSetWriteTime(handle, write_time));
 }
 
 // UPDATE ------------------------------------------------------------------------------------------
@@ -564,11 +571,12 @@ YBCStatus YBCPgNewUpdate(YBCPgOid database_oid,
                          YBCPgOid table_oid,
                          bool is_single_row_txn,
                          YBCPgStatement *handle){
-                             return YBCStatusOK();
-                         }
+  const PgObjectId table_id(database_oid, table_oid);
+  return ToYBCStatus(api_impl->NewUpdate(table_id, is_single_row_txn, handle));
+}
 
 YBCStatus YBCPgExecUpdate(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecUpdate(handle));
 }
 
 // DELETE ------------------------------------------------------------------------------------------
@@ -576,11 +584,12 @@ YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
                          YBCPgOid table_oid,
                          bool is_single_row_txn,
                          YBCPgStatement *handle){
-                             return YBCStatusOK();
-                         }
+  const PgObjectId table_id(database_oid, table_oid);
+  return ToYBCStatus(api_impl->NewDelete(table_id, is_single_row_txn, handle));
+}
 
 YBCStatus YBCPgExecDelete(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecDelete(handle));
 }
 
 // Colocated TRUNCATE ------------------------------------------------------------------------------
@@ -600,16 +609,19 @@ YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
                          YBCPgOid table_oid,
                          const YBCPgPrepareParameters *prepare_params,
                          YBCPgStatement *handle){
-                             return YBCStatusOK();
-                         }
+  const PgObjectId table_id(database_oid, table_oid);
+  const PgObjectId index_id(database_oid,
+                            prepare_params ? prepare_params->index_oid : kInvalidOid);
+  return ToYBCStatus(api_impl->NewSelect(table_id, index_id, prepare_params, handle));
+}
 
 // Set forward/backward scan direction.
 YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->SetForwardScan(handle, is_forward_scan));
 }
 
 YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecSelect(handle, exec_params));
 }
 
 // Transaction control -----------------------------------------------------------------------------

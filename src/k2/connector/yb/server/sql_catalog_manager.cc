@@ -21,7 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "sql_executor.h"
+#include "sql_catalog_manager.h"
 #include <algorithm>
 #include <list>
 #include <thread>
@@ -37,7 +37,7 @@ Copyright(c) 2020 Futurewei Cloud
 using namespace yb;
 
 DEFINE_int32(sql_executor_svc_num_threads, -1,
-"Number of threads for the SqlExecutor service. If -1, it is auto configured.");
+"Number of threads for the SQLCatalogManager service. If -1, it is auto configured.");
 TAG_FLAG(sql_executor_svc_num_threads, advanced);
 
 namespace k2 {
@@ -45,11 +45,11 @@ namespace k2 {
 namespace sql {
     static yb::Env* default_env;
 
-    SqlExecutor::~SqlExecutor() {
+    SQLCatalogManager::~SQLCatalogManager() {
         Shutdown();
     }
 
-    Status SqlExecutor::Init() {
+    Status SQLCatalogManager::Init() {
         CHECK(!initted_.load(std::memory_order_acquire));
         log_prefix_ = Format("P $0: ", cluster_uuid());
 
@@ -59,12 +59,12 @@ namespace sql {
         return Status::OK();
     }
 
-    Status SqlExecutor::WaitInited() {
+    Status SQLCatalogManager::WaitInited() {
         //TODO: WaitForAllBootstrapsToFinish();
         return Status::OK();
     }
 
-    void SqlExecutor::AutoInitServiceFlags() {
+    void SQLCatalogManager::AutoInitServiceFlags() {
         const int32 num_cores = base::NumCPUs();
 
         if (FLAGS_sql_executor_svc_num_threads == -1) {
@@ -77,13 +77,13 @@ namespace sql {
         }
     }
 
-    Status SqlExecutor::RegisterServices() {
+    Status SQLCatalogManager::RegisterServices() {
         // TODO: wire service components
 
         return Status::OK();
     }
 
-    Status SqlExecutor::Start() {
+    Status SQLCatalogManager::Start() {
         CHECK(initted_.load(std::memory_order_acquire));
 
         AutoInitServiceFlags();
@@ -97,8 +97,8 @@ namespace sql {
         return Status::OK();
     }
 
-    void SqlExecutor::Shutdown() {
-        LOG(INFO) << "SqlExecutor shutting down...";
+    void SQLCatalogManager::Shutdown() {
+        LOG(INFO) << "SQLCatalogManager shutting down...";
 
         bool expected = true;
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
@@ -106,24 +106,24 @@ namespace sql {
 
         }
 
-        LOG(INFO) << "SqlExecutor shut down complete. Bye!";
+        LOG(INFO) << "SQLCatalogManager shut down complete. Bye!";
     }
 
-    void SqlExecutor::set_cluster_uuid(const std::string& cluster_uuid) {
+    void SQLCatalogManager::set_cluster_uuid(const std::string& cluster_uuid) {
         std::lock_guard<simple_spinlock> l(lock_);
         cluster_uuid_ = cluster_uuid;
     }
 
-    std::string SqlExecutor::cluster_uuid() const {
+    std::string SQLCatalogManager::cluster_uuid() const {
         std::lock_guard<simple_spinlock> l(lock_);
         return cluster_uuid_;
     }
 
-    Env* SqlExecutor::GetEnv() {
+    Env* SQLCatalogManager::GetEnv() {
         return default_env;
     }
 
-    void SqlExecutor::SetCatalogVersion(uint64_t new_version) {
+    void SQLCatalogManager::SetCatalogVersion(uint64_t new_version) {
         std::lock_guard<simple_spinlock> l(lock_);
         uint64_t ysql_catalog_version_ = catalog_version_.load(std::memory_order_acquire);
         if (new_version > ysql_catalog_version_) {

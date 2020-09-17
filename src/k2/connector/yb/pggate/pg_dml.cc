@@ -751,7 +751,7 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
 
   if (!has_ybctid && secondary_index_query_ && secondary_index_query_->has_doc_op()) {
     // No ybctid is found from the IndexScan. Instruct "doc_op_" to abandon the execution and not
-    // querying any data from tablet server.
+    // querying any data from storage server.
     //
     // Note: For system catalog (colocated table), the secondary_index_query_ won't send a separate
     // scan read request to DocDB.  For this case, the index request is embedded inside the SELECT
@@ -897,6 +897,12 @@ SqlOpExpr *PgDmlWrite::AllocTargetDoc() {
   SqlOpExpr *target_doc = new SqlOpExpr();
   write_req_->targets.push_back(target_doc);
   return target_doc;
+}
+
+Status PgDmlWrite::SetWriteTime(const uint64_t write_time) {
+  SCHECK(doc_op_.get() != nullptr, RuntimeError, "expected doc_op_ to be initialized");
+  down_cast<PgWriteOp*>(doc_op_.get())->SetWriteTime(write_time);
+  return Status::OK();
 }
 
 }  // namespace gate

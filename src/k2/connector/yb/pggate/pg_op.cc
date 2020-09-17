@@ -221,7 +221,7 @@ namespace gate {
         // have to call query execution every time.
         // - Normal SQL convention: Exec, Fetch, Fetch, ...
         // - Our SQL convention: Exec & Fetch, Exec & Fetch, ...
-        // This refers to the sequence of operations between this layer and the underlying tablet
+        // This refers to the sequence of operations between this layer and the underlying storage layer
         // server / DocDB layer, not to the sequence of operations between the PostgreSQL layer and this
         // layer.
         exec_status_ = SendRequest(force_non_bufferable);
@@ -352,12 +352,12 @@ namespace gate {
     Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {
         VLOG(1) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
 
-        // Check for errors reported by tablet server.
+        // Check for errors reported by storage server.
         for (int op_index = 0; op_index < active_op_count_; op_index++) {
             RETURN_NOT_OK(pg_session_->HandleResponse(*pgsql_ops_[op_index], PgObjectId()));
         }
 
-        // Process data coming from tablet server.
+        // Process data coming from storage server.
         std::list<PgOpResult> result;
         bool no_sorting_order = batch_row_orders_.size() == 0;
 
@@ -403,7 +403,7 @@ namespace gate {
     }
 
     Result<std::list<PgOpResult>> PgReadOp::ProcessResponseImpl() {
-        // Process result from tablet server and check result status.
+        // Process result from storage server and check result status.
         auto result = VERIFY_RESULT(ProcessResponseResult());
 
         // Process paging state and check status.
@@ -457,7 +457,7 @@ namespace gate {
         //
         // 4- Assign the selected 1024 ybctids to the batch of operators.
         //
-        // 5- Send requests to tablet servers to read data from <tab> associated with ybctid values.
+        // 5- Send requests to storage servers to read data from <tab> associated with ybctid values.
         //
         // 6- Repeat step 2 thru 5 for the next batch of 1024 ybctids till done.
         RETURN_NOT_OK(InitializeYbctidOperators());
@@ -483,7 +483,7 @@ namespace gate {
         if (batch_row_orders_.size() == 0) {
             // First batch:
             // - Create operators.
-            // - Allocate row orders for each tablet server.
+            // - Allocate row orders for each storage server.
             // - Protobuf fields in requests are not yet set so not needed to be cleared.
             RETURN_NOT_OK(ClonePgsqlOps(op_count));
             batch_row_orders_.resize(op_count);
@@ -545,9 +545,9 @@ namespace gate {
             }
         }
 
-        // If partition key of tablet to scan is specified, then we should be done.  This is because,
+        // If partition key of storage server to scan is specified, then we should be done.  This is because,
         // curently, only `BACKFILL INDEX ... PARTITION ...` statements set `partition_key`, and they scan
-        // a single tablet.
+        // a single storage server.
         if (partition_key_) {
             has_more_data = false;
         }

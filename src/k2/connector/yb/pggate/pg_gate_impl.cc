@@ -49,6 +49,10 @@
 #include "yb/pggate/pg_gate_impl.h"
 #include "yb/pggate/pg_ddl.h"
 #include "yb/pggate/pg_dml.h"
+#include "yb/pggate/pg_select.h"
+#include "yb/pggate/pg_insert.h"
+#include "yb/pggate/pg_update.h"
+#include "yb/pggate/pg_delete.h"
 
 namespace k2 {
 namespace gate {
@@ -87,7 +91,7 @@ const YBCPgTypeEntity *PgGateApiImpl::FindTypeEntity(int type_oid) {
   return nullptr;
 }
 
-CHECKED_STATUS AddColumn(PgCreateTable* pg_stmt, const char *attr_name, int attr_num,
+Status AddColumn(PgCreateTable* pg_stmt, const char *attr_name, int attr_num,
                          const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                          bool is_desc, bool is_nulls_first) {
   using SortingType = ColumnSchema::SortingType;
@@ -601,6 +605,131 @@ Status PgGateApiImpl::FlushBufferedOperations() {
 
 void PgGateApiImpl::DropBufferedOperations() {
   pg_session_->DropBufferedOperations();
+}
+
+// Select ------------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::NewSelect(const PgObjectId& table_id,
+                            const PgObjectId& index_id,
+                            const PgPrepareParameters *prepare_params,
+                            PgStatement **handle) {
+  // Scenarios:
+  // - Sequential Scan: PgSelect to read from table_id.
+  // - Primary Scan: PgSelect from table_id. YugaByte does not have separate table for primary key.
+  // - Index-Only-Scan: PgSelectIndex directly from secondary index_id.
+  // - IndexScan: Use PgSelectIndex to read from index_id and then PgSelect to read from table_id.
+  //     Note that for SysTable, only one request is send for both table_id and index_id.
+  *handle = nullptr;
+  PgDmlRead::ScopedRefPtr stmt;
+  if (prepare_params && prepare_params->index_only_scan && prepare_params->use_secondary_index) {
+    if (!index_id.IsValid()) {
+      return STATUS(InvalidArgument, "Cannot run query with invalid index ID");
+    }
+    stmt = make_scoped_refptr<PgSelectIndex>(pg_session_, table_id, index_id, prepare_params);
+  } else {
+    // For IndexScan PgSelect processing will create subquery PgSelectIndex.
+    stmt = make_scoped_refptr<PgSelect>(pg_session_, table_id, index_id, prepare_params);
+  }
+
+  RETURN_NOT_OK(stmt->Prepare());
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::SetForwardScan(PgStatement *handle, bool is_forward_scan) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_SELECT)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  down_cast<PgDmlRead*>(handle)->SetForwardScan(is_forward_scan);
+  return Status::OK();
+}
+
+Status PgGateApiImpl::ExecSelect(PgStatement *handle, const PgExecParameters *exec_params) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_SELECT)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgDmlRead*>(handle)->Exec(exec_params);
+}
+
+// Insert ------------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::NewInsert(const PgObjectId& table_id,
+                            const bool is_single_row_txn,
+                            PgStatement **handle) {
+  *handle = nullptr;
+  auto stmt = make_scoped_refptr<PgInsert>(pg_session_, table_id, is_single_row_txn);
+  RETURN_NOT_OK(stmt->Prepare());
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::ExecInsert(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_INSERT)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgInsert*>(handle)->Exec();
+}
+
+Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_INSERT)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  down_cast<PgInsert*>(handle)->SetUpsertMode();
+
+  return Status::OK();
+}
+
+Status PgGateApiImpl::InsertStmtSetWriteTime(PgStatement *handle, const uint64_t write_time) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_INSERT)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  RETURN_NOT_OK(down_cast<PgInsert*>(handle)->SetWriteTime(write_time));
+  return Status::OK();
+}
+
+// Update ------------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::NewUpdate(const PgObjectId& table_id,
+                            const bool is_single_row_txn,
+                            PgStatement **handle) {
+  *handle = nullptr;
+  auto stmt = make_scoped_refptr<PgUpdate>(pg_session_, table_id, is_single_row_txn);
+  RETURN_NOT_OK(stmt->Prepare());
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_UPDATE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgUpdate*>(handle)->Exec();
+}
+
+// Delete ------------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::NewDelete(const PgObjectId& table_id,
+                            const bool is_single_row_txn,
+                            PgStatement **handle) {
+  *handle = nullptr;
+  auto stmt = make_scoped_refptr<PgDelete>(pg_session_, table_id, is_single_row_txn);
+  RETURN_NOT_OK(stmt->Prepare());
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_DELETE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgDelete*>(handle)->Exec();
 }
 
 }  // namespace gate
