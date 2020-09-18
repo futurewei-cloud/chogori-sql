@@ -293,7 +293,7 @@ namespace gate {
         // External statuses.
         //
         // If you add more of those, make sure they are correctly picked up, e.g.
-        // by PgSqlOpReadCall::ReceiveResponse and PgSqlOpCall::HandleResponseStatus
+        // by PgPgReadOpTemplate::ReceiveResponse and PgPgOpTemplate::HandleResponseStatus
         //
 
         // PostgreSQL error code encoded as in errcodes.h or yb_pg_errcodes.h.
@@ -305,16 +305,17 @@ namespace gate {
         int32_t txn_error_code;      
     };
 
-    class SqlOpCall {
+    // template operation that could be cloned and updated for actual PG operations
+    class PgOpTemplate {
         public: 
         enum Type {
             WRITE = 8,
             READ = 9,
         };
 
-        explicit SqlOpCall(const std::shared_ptr<TableInfo>& table);
+        explicit PgOpTemplate(const std::shared_ptr<TableInfo>& table);
 
-        ~SqlOpCall();
+        ~PgOpTemplate();
 
         virtual std::string ToString() const = 0;
         virtual Type type() const = 0;
@@ -352,11 +353,11 @@ namespace gate {
         bool is_active_ = true;
     };
 
-    class SqlOpWriteCall : public SqlOpCall {
+    class PgWriteOpTemplate : public PgOpTemplate {
         public:
-        explicit SqlOpWriteCall(const std::shared_ptr<TableInfo>& table);
+        explicit PgWriteOpTemplate(const std::shared_ptr<TableInfo>& table);
 
-        ~SqlOpWriteCall();
+        ~PgWriteOpTemplate();
 
         virtual Type type() const { 
             return WRITE; 
@@ -379,7 +380,7 @@ namespace gate {
 
         // Create a deep copy of this call, copying all fields and request PB content.
         // Does NOT, however, copy response and rows data.
-        std::unique_ptr<SqlOpWriteCall> DeepCopy();
+        std::unique_ptr<PgWriteOpTemplate> DeepCopy();
 
         private: 
         std::unique_ptr<SqlOpWriteRequest> write_request_;
@@ -388,11 +389,11 @@ namespace gate {
         bool is_single_row_txn_ = false;
     };
 
-    class SqlOpReadCall : public SqlOpCall {
+    class PgReadOpTemplate : public PgOpTemplate {
         public:
-        explicit SqlOpReadCall(const std::shared_ptr<TableInfo>& table);
+        explicit PgReadOpTemplate(const std::shared_ptr<TableInfo>& table);
 
-        ~SqlOpReadCall() {};
+        ~PgReadOpTemplate() {};
 
         SqlOpReadRequest& request() const { return *read_request_; }
   
@@ -406,7 +407,7 @@ namespace gate {
 
         // Create a deep copy of this call, copying all fields and request PB content.
         // Does NOT, however, copy response and rows data.
-        std::unique_ptr<SqlOpReadCall> DeepCopy();
+        std::unique_ptr<PgReadOpTemplate> DeepCopy();
 
         void set_return_paging_state(bool return_paging_state) {
             read_request_->return_paging_state = return_paging_state;

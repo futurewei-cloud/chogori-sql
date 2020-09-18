@@ -52,7 +52,7 @@
 namespace k2 {
 namespace gate {
 
-RowIdentifier::RowIdentifier(const SqlOpWriteCall& op, K2Adapter* k2_adapter) :
+RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter) :
   table_id_(&op.request().table_name) {
   auto& request = op.request();
   if (request.ybctid_column_value) {
@@ -227,7 +227,7 @@ Status PgSession::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool tra
   return Status::OK();
 }
 
-Status PgSession::HandleResponse(const SqlOpCall& op, const PgObjectId& relation_id) {
+Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
 /*   if (op.succeeded()) {
     return Status::OK();
   }
@@ -263,7 +263,7 @@ Status PgSession::HandleResponse(const SqlOpCall& op, const PgObjectId& relation
   return Status::OK();
 }
 
-bool PgSession::ShouldHandleTransactionally(const SqlOpCall& op) {
+bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
   return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
 }
 
@@ -296,14 +296,14 @@ PgSession::RunHelper::RunHelper(PgSession* pg_session, K2Adapter *client, bool t
   }
 }
 
-Status PgSession::RunHelper::Apply(std::shared_ptr<SqlOpCall> op,
+Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
                                    const PgObjectId& relation_id,
                                    uint64_t* read_time,
                                    bool force_non_bufferable) {
   auto& buffered_keys = pg_session_.buffered_keys_;
   if (pg_session_.buffering_enabled_ && !force_non_bufferable &&
-      op->type() == SqlOpCall::Type::WRITE) {
-    const auto& wop = *down_cast<SqlOpWriteCall*>(op.get());
+      op->type() == PgOpTemplate::Type::WRITE) {
+    const auto& wop = *down_cast<PgWriteOpTemplate*>(op.get());
     // Check for buffered operation related to same row.
     // If multiple operations are performed in context of single RPC second operation will not
     // see the results of first operation on DocDB side.
@@ -328,8 +328,8 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<SqlOpCall> op,
 /*   
   bool needs_pessimistic_locking = false;
   bool read_only = op->read_only();
-  if (op->type() == SqlOpCall::Type::READ) {
-    const SqlOpReadRequest &read_req = down_cast<SqlOpReadCall *>(op.get())->request();
+  if (op->type() == PgOpTemplate::Type::READ) {
+    const SqlOpReadRequest &read_req = down_cast<PgReadOpTemplate *>(op.get())->request();
     auto row_mark_type = read_req.row_mark_type;
     read_only = read_only && !IsValidRowMarkType(row_mark_type);
     needs_pessimistic_locking = RowMarkNeedsPessimisticLock(row_mark_type);

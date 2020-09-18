@@ -240,7 +240,7 @@ namespace gate {
         void MoveInactiveOpsOutside();
 
         // Clone READ or WRITE "template_op_" into new operators.
-        virtual std::unique_ptr<SqlOpCall> CloneFromTemplate() = 0;
+        virtual std::unique_ptr<PgOpTemplate> CloneFromTemplate() = 0;
 
         // Process the result set in server response.
         Result<std::list<PgOpResult>> ProcessResponseResult();
@@ -275,7 +275,7 @@ namespace gate {
         bool suppress_next_result_prefetching_ = false;
 
         // Populated protobuf request.
-        std::vector<std::shared_ptr<SqlOpCall>> pgsql_ops_;
+        std::vector<std::shared_ptr<PgOpTemplate>> pgsql_ops_;
 
         // Number of active operators in the pgsql_ops_ list.
         int32_t active_op_count_ = 0;
@@ -354,7 +354,7 @@ namespace gate {
         // Constructors & Destructors.
         PgReadOp(const PgSession::ScopedRefPtr& pg_session,
                     const PgTableDesc::ScopedRefPtr& table_desc,
-                    std::unique_ptr<SqlOpReadCall> read_op);
+                    std::unique_ptr<PgReadOpTemplate> read_op);
 
         void ExecuteInit(const PgExecParameters *exec_params) override;
 
@@ -407,19 +407,19 @@ namespace gate {
         void SetPartitionKey();
 
         // Clone the template into actual requests to be sent to server.
-        std::unique_ptr<SqlOpCall> CloneFromTemplate() override {
+        std::unique_ptr<PgOpTemplate> CloneFromTemplate() override {
             return template_op_->DeepCopy();
         }
 
         // Get the read_op for a specific operation index from pgsql_ops_.
-        SqlOpReadCall *GetReadOp(int op_index) {
-            return static_cast<SqlOpReadCall *>(pgsql_ops_[op_index].get());
+        PgReadOpTemplate *GetReadOp(int op_index) {
+            return static_cast<PgReadOpTemplate *>(pgsql_ops_[op_index].get());
         }
 
         //----------------------------------- Data Members -----------------------------------------------
 
         // Template operation, used to fill in pgsql_ops_ by either assigning or cloning.
-        std::shared_ptr<SqlOpReadCall> template_op_;
+        std::shared_ptr<PgReadOpTemplate> template_op_;
 
         // Used internally for PopulateNextHashPermutationOps to keep track of which permutation should
         // be used to construct the next read_op.
@@ -457,7 +457,7 @@ namespace gate {
         PgWriteOp(const PgSession::ScopedRefPtr& pg_session,
                     const PgTableDesc::ScopedRefPtr& table_desc,
                     const PgObjectId& relation_id,
-                    std::unique_ptr<SqlOpWriteCall> write_op);
+                    std::unique_ptr<PgWriteOpTemplate> write_op);
 
         // Set write time.
         void SetWriteTime(const uint64_t write_time);
@@ -478,18 +478,18 @@ namespace gate {
         }
 
         // Get WRITE operator for a specific operator index in pgsql_ops_.
-        SqlOpWriteCall *GetWriteOp(int op_index) {
-            return static_cast<SqlOpWriteCall *>(pgsql_ops_[op_index].get());
+        PgWriteOpTemplate *GetWriteOp(int op_index) {
+            return static_cast<PgWriteOpTemplate *>(pgsql_ops_[op_index].get());
         }
 
         // Clone user data from template to actual protobuf requests.
-        std::unique_ptr<SqlOpCall> CloneFromTemplate() override {
+        std::unique_ptr<PgOpTemplate> CloneFromTemplate() override {
             return write_op_->DeepCopy();
         }
 
         //----------------------------------- Data Members -----------------------------------------------
         // Template operation all write ops.
-        std::shared_ptr<SqlOpWriteCall> write_op_;
+        std::shared_ptr<PgWriteOpTemplate> write_op_;
         uint64_t write_time_ = 0;
     };
 

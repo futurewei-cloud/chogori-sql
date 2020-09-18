@@ -363,7 +363,7 @@ namespace gate {
 
         rows_affected_count_ = 0;
         for (int op_index = 0; op_index < active_op_count_; op_index++) {
-            SqlOpCall *pgsql_op = pgsql_ops_[op_index].get();
+            PgOpTemplate *pgsql_op = pgsql_ops_[op_index].get();
             // Get total number of rows that are operated on.
             rows_affected_count_ += pgsql_op->response().rows_affected_count;
 
@@ -384,7 +384,7 @@ namespace gate {
 
     PgReadOp::PgReadOp(const PgSession::ScopedRefPtr& pg_session,
                             const PgTableDesc::ScopedRefPtr& table_desc,
-                            std::unique_ptr<SqlOpReadCall> read_op)
+                            std::unique_ptr<PgReadOpTemplate> read_op)
         : PgOp(pg_session, table_desc), template_op_(std::move(read_op)) {
     }
 
@@ -519,7 +519,7 @@ namespace gate {
         int32_t send_count = std::min(parallelism_level_, active_op_count_);
 
         for (int op_index = 0; op_index < send_count; op_index++) {
-            SqlOpReadCall *read_op = GetReadOp(op_index);
+            PgReadOpTemplate *read_op = GetReadOp(op_index);
             auto& res = read_op->response();
             // Check for completion.
             bool has_more_arg = false;
@@ -630,7 +630,7 @@ namespace gate {
     PgWriteOp::PgWriteOp(const PgSession::ScopedRefPtr& pg_session,
                             const PgTableDesc::ScopedRefPtr& table_desc,
                             const PgObjectId& relation_id,
-                            std::unique_ptr<SqlOpWriteCall> write_op)
+                            std::unique_ptr<PgWriteOpTemplate> write_op)
         : PgOp(pg_session, table_desc, relation_id),
         write_op_(std::move(write_op)) {
     }

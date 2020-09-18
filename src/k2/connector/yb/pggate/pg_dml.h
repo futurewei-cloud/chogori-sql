@@ -398,7 +398,7 @@ class PgDmlWrite : public PgDml {
   uint64_t ysql_catalog_version_ = 0;
 
   private:
-  virtual std::unique_ptr<SqlOpWriteCall> AllocWriteOperation() const = 0;
+  virtual std::unique_ptr<PgWriteOpTemplate> AllocWriteOperation() const = 0;
 };
 
 }  // namespace gate

@@ -69,7 +69,7 @@ using namespace k2::sql;
 static const int default_session_max_batch_size = 5;
 
 struct BufferableOperation {
-  std::shared_ptr<SqlOpCall> operation;
+  std::shared_ptr<PgOpTemplate> operation;
   // Postgres's relation id. Required to resolve constraint name in case
   // operation will fail with PGSQL_STATUS_DUPLICATE_KEY_ERROR.
   PgObjectId relation_id;
@@ -109,7 +109,7 @@ struct PgForeignKeyReference {
 
 class RowIdentifier {
  public:
-  explicit RowIdentifier(const SqlOpWriteCall& op, K2Adapter* k2_adapter);
+  explicit RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter);
   inline const string& ybctid() const;
   inline const string& table_id() const;
 
@@ -220,9 +220,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   // Run (apply + flush) the given operation to read and write database content.
   // Template is used here to handle all kind of derived operations
-  // (shared_ptr<SqlOpReadCall>, shared_ptr<SqlOpWriteCall>)
-  // without implicitly conversion to shared_ptr<SqlOpReadCall>.
-  // Conversion to shared_ptr<SqlOpCall> will be done later and result will re-used with move.
+  // (shared_ptr<PgReadOpTemplate>, shared_ptr<PgWriteOpTemplate>)
+  // without implicitly conversion to shared_ptr<PgReadOpTemplate>.
+  // Conversion to shared_ptr<PgOpTemplate> will be done later and result will re-used with move.
   template<class Op>
   Result<PgSessionAsyncRunResult> RunAsync(const std::shared_ptr<Op>& op,
                                            const PgObjectId& relation_id,
@@ -256,7 +256,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     return runner.Flush();
   }
 
-  CHECKED_STATUS HandleResponse(const SqlOpCall& op, const PgObjectId& relation_id);
+  CHECKED_STATUS HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id);
 
   private:
   CHECKED_STATUS FlushBufferedOperationsImpl();
@@ -269,7 +269,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   class RunHelper {
    public:
     RunHelper(PgSession* pg_session, K2Adapter *client, bool transactional);
-    CHECKED_STATUS Apply(std::shared_ptr<SqlOpCall> op,
+    CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
                          bool force_non_bufferable);
@@ -286,7 +286,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);
 
   // Whether we should use transactional or non-transactional session.
-  bool ShouldHandleTransactionally(const SqlOpCall& op);
+  bool ShouldHandleTransactionally(const PgOpTemplate& op);
 
   // Connected database.
   std::string connected_database_;

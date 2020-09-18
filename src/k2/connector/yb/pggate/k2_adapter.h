@@ -68,7 +68,7 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Run(std::shared_ptr<SqlOpCall> op);
+  CHECKED_STATUS Run(std::shared_ptr<PgOpTemplate> op);
 
   void FlushAsync(StatusFunctor callback);
 

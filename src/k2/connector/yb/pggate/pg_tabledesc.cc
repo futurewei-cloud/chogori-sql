@@ -129,8 +129,8 @@ const size_t PgTableDesc::num_columns() const {
   return table_->schema().num_columns();
 }
 
-std::unique_ptr<SqlOpReadCall> PgTableDesc::NewPgsqlSelect(const string& client_id, int64_t stmt_id) {
-  std::unique_ptr<SqlOpReadCall> op = std::make_unique<SqlOpReadCall>(table_);
+std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& client_id, int64_t stmt_id) {
+  std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>(table_);
   SqlOpReadRequest& req = op->request();
   req.client_id = client_id;
   req.namespace_name = table_->namespace_name();
@@ -141,8 +141,8 @@ std::unique_ptr<SqlOpReadCall> PgTableDesc::NewPgsqlSelect(const string& client_
   return op;        
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id) {
-  std::unique_ptr<SqlOpWriteCall> op = std::make_unique<SqlOpWriteCall>(table_);
+std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id) {
+  std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>(table_);
   SqlOpWriteRequest& req = op->request();
   req.client_id = client_id;
   req.namespace_name = table_->namespace_name();
@@ -154,15 +154,15 @@ std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::
   return op;   
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlInsert(const string& client_id, int64_t stmt_id) {
+std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlInsert(const string& client_id, int64_t stmt_id) {
   return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_INSERT, client_id, stmt_id);
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlUpdate(const string& client_id, int64_t stmt_id) {
+std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlUpdate(const string& client_id, int64_t stmt_id) {
   return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_UPDATE, client_id, stmt_id);
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlDelete(const string& client_id, int64_t stmt_id) {
+std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlDelete(const string& client_id, int64_t stmt_id) {
   return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_DELETE, client_id, stmt_id);
 }
 

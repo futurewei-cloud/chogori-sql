@@ -83,10 +83,10 @@ class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
   const size_t num_key_columns() const;
   const size_t num_columns() const;
 
-  std::unique_ptr<SqlOpReadCall> NewPgsqlSelect(const string& client_id, int64_t stmt_id);
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlInsert(const string& client_id, int64_t stmt_id);
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlUpdate(const string& client_id, int64_t stmt_id);
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlDelete(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<PgReadOpTemplate> NewPgsqlSelect(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<PgWriteOpTemplate> NewPgsqlInsert(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<PgWriteOpTemplate> NewPgsqlUpdate(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<PgWriteOpTemplate> NewPgsqlDelete(const string& client_id, int64_t stmt_id);
 
   // Find the column given the postgres attr number.
   Result<PgColumn *> FindColumn(int attr_num);
@@ -98,7 +98,7 @@ class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
   int GetPartitionCount() const;
   
   protected:   
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id);
+  std::unique_ptr<PgWriteOpTemplate> NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id);
 
   private:
   std::shared_ptr<TableInfo> table_;

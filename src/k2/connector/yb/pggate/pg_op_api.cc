@@ -75,43 +75,43 @@ namespace gate {
        return newRequest;        
     }
 
-    SqlOpCall::SqlOpCall(const std::shared_ptr<TableInfo>& table)  : table_(table) {
+    PgOpTemplate::PgOpTemplate(const std::shared_ptr<TableInfo>& table)  : table_(table) {
     }
 
-    SqlOpCall::~SqlOpCall() {}
+    PgOpTemplate::~PgOpTemplate() {}
  
-    SqlOpWriteCall::SqlOpWriteCall(const shared_ptr<TableInfo>& table)
-            : SqlOpCall(table), write_request_(new SqlOpWriteRequest()) {
+    PgWriteOpTemplate::PgWriteOpTemplate(const shared_ptr<TableInfo>& table)
+            : PgOpTemplate(table), write_request_(new SqlOpWriteRequest()) {
     }
 
-    SqlOpWriteCall::~SqlOpWriteCall() {}
+    PgWriteOpTemplate::~PgWriteOpTemplate() {}
 
-    bool SqlOpWriteCall::IsTransactional() const {
+    bool PgWriteOpTemplate::IsTransactional() const {
         return !is_single_row_txn_ && table_->schema().table_properties().is_transactional();
     }
 
-    std::string SqlOpWriteCall::ToString() const {
+    std::string PgWriteOpTemplate::ToString() const {
         return "PGSQL WRITE: " + write_request_->stmt_id;
     }
 
-    std::unique_ptr<SqlOpWriteCall> SqlOpWriteCall::DeepCopy() {
-        std::unique_ptr<SqlOpWriteCall> result = std::make_unique<SqlOpWriteCall>(table_);
+    std::unique_ptr<PgWriteOpTemplate> PgWriteOpTemplate::DeepCopy() {
+        std::unique_ptr<PgWriteOpTemplate> result = std::make_unique<PgWriteOpTemplate>(table_);
         result->set_active(is_active());
         result->write_request_ = write_request_->clone();
         result->is_single_row_txn_ = is_single_row_txn_;
         return result;
     }
 
-    SqlOpReadCall::SqlOpReadCall(const shared_ptr<TableInfo>& table)
-        : SqlOpCall(table), read_request_(new SqlOpReadRequest()) {
+    PgReadOpTemplate::PgReadOpTemplate(const shared_ptr<TableInfo>& table)
+        : PgOpTemplate(table), read_request_(new SqlOpReadRequest()) {
     }
     
-    std::string SqlOpReadCall::ToString() const {
+    std::string PgReadOpTemplate::ToString() const {
         return "PGSQL READ: " + read_request_->stmt_id;
     }
 
-    std::unique_ptr<SqlOpReadCall> SqlOpReadCall::DeepCopy() {
-        std::unique_ptr<SqlOpReadCall> result = std::make_unique<SqlOpReadCall>(table_);
+    std::unique_ptr<PgReadOpTemplate> PgReadOpTemplate::DeepCopy() {
+        std::unique_ptr<PgReadOpTemplate> result = std::make_unique<PgReadOpTemplate>(table_);
         result->set_active(is_active());
         result->read_request_ = read_request_->clone();
         return result;

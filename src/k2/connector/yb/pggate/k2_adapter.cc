@@ -63,7 +63,7 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
-Status K2Adapter::Run(std::shared_ptr<SqlOpCall> op) {
+Status K2Adapter::Run(std::shared_ptr<PgOpTemplate> op) {
   // TODO: add implementation                                   
   return Status::OK();
 }

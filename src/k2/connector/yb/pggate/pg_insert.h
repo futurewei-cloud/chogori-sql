@@ -70,7 +70,7 @@ class PgInsert : public PgDmlWrite {
   }
 
   private:
-  std::unique_ptr<SqlOpWriteCall> AllocWriteOperation() const override {
+  std::unique_ptr<PgWriteOpTemplate> AllocWriteOperation() const override {
       return target_desc_->NewPgsqlInsert(client_id_, stmt_id_);
   }
 };
