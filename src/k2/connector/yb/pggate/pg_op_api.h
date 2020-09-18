@@ -168,11 +168,11 @@ namespace gate {
 
     // pass the information so that the under hood SKV client could generate the actual doc key from it
     struct DocKey { 
-        NamespaceId namespace_id;
-        TableId table_id;
+        NamespaceName namespace_name;
+        TableName table_name;
         std::vector<SqlValue> key_cols;
-        DocKey(NamespaceId& nid, TableId& tid, std::vector<SqlValue>& keys) : 
-            namespace_id(nid), table_id(tid), key_cols(std::move(keys)) {
+        DocKey(NamespaceName& nid, TableName& tid, std::vector<SqlValue>& keys) : 
+            namespace_name(nid), table_name(tid), key_cols(std::move(keys)) {
         }
     };
 
@@ -192,8 +192,8 @@ namespace gate {
         std::vector<RSColDesc> rscol_descs;
     };
 
-    struct DocPagingState {
-        TableId table_id;
+    struct SqlOpPagingState {
+        TableName table_name;
         string next_token;
         uint64_t total_num_rows_read;
     };
@@ -203,8 +203,8 @@ namespace gate {
 
         string client_id;
         int64_t stmt_id;
-        NamespaceId namespace_id;
-        TableId table_id;
+        NamespaceName namespace_name;
+        TableName table_name;
         uint64_t schema_version;
         uint32_t hash_code;
         std::vector<SqlOpExpr*> partition_column_values;
@@ -223,7 +223,7 @@ namespace gate {
         bool distinct = false;
         bool is_aggregate = false;
         uint64_t limit;
-        DocPagingState* paging_state;
+        SqlOpPagingState* paging_state;
         bool return_paging_state = false;
         uint32_t max_hash_code;
         uint64_t catalog_version;
@@ -248,8 +248,8 @@ namespace gate {
         string client_id;
         int64_t stmt_id;
         StmtType stmt_type;
-        NamespaceId namespace_id;
-        TableId table_id;
+        NamespaceId namespace_name;
+        TableName table_name;
         uint64_t schema_version;
         uint32_t hash_code;
         std::vector<SqlOpExpr*> partition_column_values;
@@ -286,7 +286,7 @@ namespace gate {
         bool skipped;
         string error_message;
         int32_t rows_data_sidecar;
-        DocPagingState* paging_state;
+        SqlOpPagingState* paging_state;
         int32_t rows_affected_count;
    
         //

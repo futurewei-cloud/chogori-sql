@@ -129,24 +129,41 @@ const size_t PgTableDesc::num_columns() const {
   return table_->schema().num_columns();
 }
 
-std::unique_ptr<SqlOpReadCall> PgTableDesc::NewPgsqlSelect() {
-  // TODO: add implementation
-  return nullptr;
+std::unique_ptr<SqlOpReadCall> PgTableDesc::NewPgsqlSelect(const string& client_id, int64_t stmt_id) {
+  std::unique_ptr<SqlOpReadCall> op = std::make_unique<SqlOpReadCall>(table_);
+  SqlOpReadRequest& req = op->request();
+  req.client_id = client_id;
+  req.namespace_name = table_->namespace_name();
+  req.table_name = table_->table_name();
+  req.schema_version = table_->schema().version();
+  req.stmt_id = stmt_id;
+
+  return op;        
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlInsert() {
-  // TODO: add implementation
-  return nullptr;
+std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id) {
+  std::unique_ptr<SqlOpWriteCall> op = std::make_unique<SqlOpWriteCall>(table_);
+  SqlOpWriteRequest& req = op->request();
+  req.client_id = client_id;
+  req.namespace_name = table_->namespace_name();
+  req.table_name = table_->table_name();
+  req.schema_version = table_->schema().version();
+  req.stmt_id = stmt_id;
+  req.stmt_type = stmt_type;
+
+  return op;   
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlUpdate() {
-  // TODO: add implementation
-  return nullptr;
+std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlInsert(const string& client_id, int64_t stmt_id) {
+  return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_INSERT, client_id, stmt_id);
 }
 
-std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlDelete() {
-  // TODO: add implementation
-  return nullptr;
+std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlUpdate(const string& client_id, int64_t stmt_id) {
+  return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_UPDATE, client_id, stmt_id);
+}
+
+std::unique_ptr<SqlOpWriteCall> PgTableDesc::NewPgsqlDelete(const string& client_id, int64_t stmt_id) {
+  return NewPgsqlOpWrite(SqlOpWriteRequest::StmtType::PGSQL_DELETE, client_id, stmt_id);
 }
 
 }  // namespace gate

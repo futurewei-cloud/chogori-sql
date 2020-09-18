@@ -25,8 +25,8 @@ namespace gate {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
-       newRequest->namespace_id = namespace_id;
-       newRequest->table_id = table_id;
+       newRequest->namespace_name = namespace_name;
+       newRequest->table_name = table_name;
        newRequest->schema_version = schema_version;
        newRequest->hash_code = hash_code;
        // TODO: double check if we need to deep clone vector fields
@@ -56,8 +56,8 @@ namespace gate {
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
        newRequest->stmt_type = stmt_type;
-       newRequest->namespace_id = namespace_id;
-       newRequest->table_id = table_id;
+       newRequest->namespace_name = namespace_name;
+       newRequest->table_name = table_name;
        newRequest->schema_version = schema_version;
        newRequest->hash_code = hash_code;
        // TODO: double check if we need to deep clone vector fields

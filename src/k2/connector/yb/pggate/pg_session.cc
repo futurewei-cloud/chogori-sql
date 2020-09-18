@@ -53,7 +53,7 @@ namespace k2 {
 namespace gate {
 
 RowIdentifier::RowIdentifier(const SqlOpWriteCall& op, K2Adapter* k2_adapter) :
-  table_id_(&op.request().table_id) {
+  table_id_(&op.request().table_name) {
   auto& request = op.request();
   if (request.ybctid_column_value) {
     // ybctid_ = &request.ybctid_column_value->binary_value();

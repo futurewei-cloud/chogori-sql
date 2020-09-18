@@ -386,7 +386,7 @@ class PgDmlWrite : public PgDml {
   // Delete allocated target for columns that have no bind-values.
   CHECKED_STATUS DeleteEmptyPrimaryBinds();
 
-  // doc object
+  // Sql Op object
   SqlOpWriteRequest *write_req_ = nullptr;
 
   bool is_single_row_txn_ = false; // default.

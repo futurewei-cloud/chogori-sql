@@ -83,10 +83,10 @@ class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
   const size_t num_key_columns() const;
   const size_t num_columns() const;
 
-  std::unique_ptr<SqlOpReadCall> NewPgsqlSelect();
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlInsert();
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlUpdate();
-  std::unique_ptr<SqlOpWriteCall> NewPgsqlDelete();
+  std::unique_ptr<SqlOpReadCall> NewPgsqlSelect(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlInsert(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlUpdate(const string& client_id, int64_t stmt_id);
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlDelete(const string& client_id, int64_t stmt_id);
 
   // Find the column given the postgres attr number.
   Result<PgColumn *> FindColumn(int attr_num);
@@ -97,7 +97,10 @@ class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
 
   int GetPartitionCount() const;
   
- private:
+  protected:   
+  std::unique_ptr<SqlOpWriteCall> NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id);
+
+  private:
   std::shared_ptr<TableInfo> table_;
 
   std::vector<PgColumn> columns_;

@@ -67,7 +67,7 @@ class PgUpdate : public PgDmlWrite {
 
   private:
   std::unique_ptr<SqlOpWriteCall> AllocWriteOperation() const override {
-    return target_desc_->NewPgsqlUpdate();
+    return target_desc_->NewPgsqlUpdate(client_id_, stmt_id_);
   } 
 };
 

@@ -74,8 +74,8 @@ Status PgSelect::Prepare() {
       make_scoped_refptr<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
   }
 
-  // Allocate READ requests to send to Doc api.
-  auto read_op = target_desc_->NewPgsqlSelect();
+  // Allocate READ requests to send to op api.
+  auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
   read_req_ = &read_op->request();
   auto doc_op = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
 
@@ -153,10 +153,10 @@ Status PgSelectIndex::PrepareQuery(SqlOpReadRequest *read_req) {
     // case.
     DSCHECK(prepare_params_.querying_colocated_table, InvalidArgument, "Read request invalid");
     read_req_ = read_req;
-    read_req_->table_id = index_id_.GetYBTableId();
+    read_req_->table_name = index_id_.GetYBTableId();
     doc_op_ = nullptr;
   } else {
-    auto read_op = target_desc_->NewPgsqlSelect();
+    auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
     read_req_ = &read_op->request();
     doc_op_ = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
   }

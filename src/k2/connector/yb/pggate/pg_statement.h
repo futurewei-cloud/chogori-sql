@@ -117,6 +117,14 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
   // Clear all values and expressions that were bound to the given statement.
   virtual CHECKED_STATUS ClearBinds() = 0;
 
+  void SetClientId(string& client_id) {
+    client_id_ = std::move(client_id);
+  }
+
+  void SetStmtId(int64_t stmt_id) {
+    stmt_id_ = stmt_id;
+  }
+
  protected:
   // YBSession that this statement belongs to.
   PgSession::ScopedRefPtr pg_session_;
@@ -127,6 +135,10 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
 
   // Expression list to be destroyed as soon as the statement is removed from the API.
   std::list<PgExpr::SharedPtr> exprs_;
+
+  string client_id_;
+
+  int64_t stmt_id_;
 };
 
 }  // namespace gate
