@@ -326,6 +326,9 @@ namespace gate {
 
         std::string&& rows_data() { return std::move(rows_data_); }
 
+        // api to get row_data reference and set the value, for example, using std::string assign() or other ways
+        std::string* mutable_rows_data() { return &rows_data_; }
+
         bool IsTransactional() const {
             return table_->schema().table_properties().is_transactional();
         }
@@ -346,6 +349,10 @@ namespace gate {
             is_active_ = val;
         }
         
+        std::shared_ptr<TableInfo> getTable() {
+            return table_;
+        }
+
         protected:
         std::shared_ptr<TableInfo> table_;
         std::unique_ptr<SqlOpResponse> response_;

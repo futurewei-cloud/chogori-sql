@@ -199,68 +199,47 @@ Status PgSession::FlushBufferedOperationsImpl() {
 }
 
 Status PgSession::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool transactional) {
+  DCHECK(ops.size() > 0 && ops.size() <= default_session_max_batch_size);
 
-/*   
-  DCHECK(ops.size() > 0 && ops.size() <= FLAGS_ysql_session_max_batch_size);
-  auto session = VERIFY_RESULT(GetSession(transactional, false));
-  if (session != session_.get()) {
-    DCHECK(transactional);
-    session->SetInTxnLimit(HybridTime(clock_->Now().ToUint64()));
-  }
+  // TODO: add logic to check if the ops belong to the current transaction, if not, might need to set the new transaction time
 
   for (auto buffered_op : ops) {
     const auto& op = buffered_op.operation;
     DCHECK_EQ(ShouldHandleTransactionally(*op), transactional)
-        << "Table name: " << op->table()->name().ToString()
+        << "Table name: " << op->getTable()->table_name()
         << ", table is transactional: "
-        << op->table()->schema().table_properties().is_transactional()
+        << op->IsTransactional()
         << ", initdb mode: " << YBCIsInitDbModeEnvVarSet();
-    RETURN_NOT_OK(session->Apply(op));
+    RETURN_NOT_OK(k2_adapter_->Apply(op));
   }
-  const auto status = session->FlushFuture().get();
-  RETURN_NOT_OK(CombineErrorsToStatus(session->GetPendingErrors(), status));
+  const auto status = k2_adapter_->FlushFuture().get();
+
+  // TODO: need to combine errors from the batch to the status if they exist
 
   for (const auto& buffered_op : ops) {
     RETURN_NOT_OK(HandleResponse(*buffered_op.operation, buffered_op.relation_id));
-  } */
+  } 
 
   return Status::OK();
 }
 
 Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
-/*   if (op.succeeded()) {
+  if (op.succeeded()) {
     return Status::OK();
   }
+
   const auto& response = op.response();
-  YBPgErrorCode pg_error_code = YBPgErrorCode::YB_PG_INTERNAL_ERROR;
-  if (response.has_pg_error_code()) {
-    pg_error_code = static_cast<YBPgErrorCode>(response.pg_error_code());
+  if (response.pg_error_code != 0) {
+    // TODO: handle pg error code 
   }
 
-  TransactionErrorCode txn_error_code = TransactionErrorCode::kNone;
   if (response.txn_error_code != 0) {
-    txn_error_code = static_cast<TransactionErrorCode>(response.txn_error_code());
+    // TODO: handle txn error code
   }
 
   Status s;
-  if (response.status() == PgsqlResponsePB::PGSQL_STATUS_DUPLICATE_KEY_ERROR) {
-    char constraint_name[0xFF];
-    constraint_name[sizeof(constraint_name) - 1] = 0;
-    pg_callbacks_.FetchUniqueConstraintName(relation_id.object_oid,
-                                            constraint_name,
-                                            sizeof(constraint_name) - 1);
-    s = STATUS(
-        AlreadyPresent,
-        Format("duplicate key value violates unique constraint \"$0\"", Slice(constraint_name)),
-        Slice(),
-        PgsqlError(YBPgErrorCode::YB_PG_UNIQUE_VIOLATION));
-  } else {
-    s = STATUS(QLError, op.response().error_message(), Slice(),
-               PgsqlError(pg_error_code));
-  }
-  s = s.CloneAndAddErrorCode(TransactionError(txn_error_code));
-  return s; */
-  return Status::OK();
+  // TODO: add errors to s
+  return s; 
 }
 
 bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
@@ -325,20 +304,12 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
     RETURN_NOT_OK(pg_session_.FlushBufferedOperationsImpl());
   }
 
-/*   
-  bool needs_pessimistic_locking = false;
-  bool read_only = op->read_only();
-  if (op->type() == PgOpTemplate::Type::READ) {
-    const SqlOpReadRequest &read_req = down_cast<PgReadOpTemplate *>(op.get())->request();
-    auto row_mark_type = read_req.row_mark_type;
-    read_only = read_only && !IsValidRowMarkType(row_mark_type);
-    needs_pessimistic_locking = RowMarkNeedsPessimisticLock(row_mark_type);
-  } 
-  */
+  // TODO: ybc has the logic to check if needs_pessimistic_locking here by looking at row_mark_type
+  // in the request, but K2 SKV does not support pessimistic locking, should we simply skip that logic?
 
-  // TODO: add execution parameters
-  // should we add async call here?
-  return client_->Run(std::move(op));
+  // TODO: transaction related check to make sure op belongs to the current transaction
+
+  return client_->Apply(std::move(op));
 }
 
 Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {

@@ -68,9 +68,13 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Run(std::shared_ptr<PgOpTemplate> op);
+  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op);
 
   void FlushAsync(StatusFunctor callback);
+
+  std::future<Status> FlushFuture() {
+    return MakeFuture<Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
+  }
 
   std::string getDocKey(SqlOpReadRequest& request);
         

@@ -336,17 +336,17 @@ namespace gate {
     }
 
     Result<std::list<PgOpResult>> PgOp::ProcessResponse(const Status& status) {
-    // Check operation status.
-    DCHECK(exec_status_.ok());
-    exec_status_ = status;
-    if (exec_status_.ok()) {
-        auto result = ProcessResponseImpl();
-        if (result.ok()) {
-        return result;
+        // Check operation status.
+        DCHECK(exec_status_.ok());
+        exec_status_ = status;
+        if (exec_status_.ok()) {
+            auto result = ProcessResponseImpl();
+            if (result.ok()) {
+            return result;
+            }
+            exec_status_ = result.status();
         }
-        exec_status_ = result.status();
-    }
-    return exec_status_;
+        return exec_status_;
     }
 
     Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {

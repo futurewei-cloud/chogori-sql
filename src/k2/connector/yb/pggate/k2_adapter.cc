@@ -63,13 +63,15 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
-Status K2Adapter::Run(std::shared_ptr<PgOpTemplate> op) {
-  // TODO: add implementation                                   
+Status K2Adapter::Apply(std::shared_ptr<PgOpTemplate> op) {
+  // TODO: add implementation  
+  // could add the op to a batch and then process the batch in FlushAsync()                                 
   return Status::OK();
 }
 
 void K2Adapter::FlushAsync(StatusFunctor callback) {
-  // TODO: add implementation                                   
+  // TODO: add implementation  
+  // send one or batch of operations asynchronously                                 
 }
 
 std::string K2Adapter::getDocKey(SqlOpReadRequest& request) {
