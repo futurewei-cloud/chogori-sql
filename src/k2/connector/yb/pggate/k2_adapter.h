@@ -30,6 +30,14 @@ namespace gate {
 
 using namespace yb;
 
+class K23SITxn {
+  // TODO: merge in Ivan'
+  public:
+  bool endTxn(bool shouldCommit) {
+    return true;
+  }
+};
+
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
  public:
@@ -79,6 +87,8 @@ class K2Adapter {
   std::string getDocKey(SqlOpReadRequest& request);
         
   std::string getDocKey(SqlOpWriteRequest& request);
+
+  std::shared_ptr<K23SITxn> beginTransaction();
 };
 
 }  // namespace gate

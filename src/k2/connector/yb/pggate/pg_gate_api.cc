@@ -625,32 +625,41 @@ YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec
 }
 
 // Transaction control -----------------------------------------------------------------------------
+
 YBCStatus YBCPgBeginTransaction(){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->BeginTransaction());
 }
+
 YBCStatus YBCPgRestartTransaction(){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->RestartTransaction());
 }
+
 YBCStatus YBCPgCommitTransaction(){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->CommitTransaction());
 }
+
 YBCStatus YBCPgAbortTransaction(){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->AbortTransaction());
 }
+
 YBCStatus YBCPgSetTransactionIsolationLevel(int isolation){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->SetTransactionIsolationLevel(isolation));
 }
+
 YBCStatus YBCPgSetTransactionReadOnly(bool read_only){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->SetTransactionReadOnly(read_only));
 }
+
 YBCStatus YBCPgSetTransactionDeferrable(bool deferrable){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->SetTransactionDeferrable(deferrable));
 }
+
 YBCStatus YBCPgEnterSeparateDdlTxnMode(){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->EnterSeparateDdlTxnMode());
 }
+
 YBCStatus YBCPgExitSeparateDdlTxnMode(bool success){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExitSeparateDdlTxnMode(success));
 }
 
 //--------------------------------------------------------------------------------------------------

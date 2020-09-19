@@ -84,5 +84,10 @@ std::string K2Adapter::getDocKey(SqlOpWriteRequest& request) {
   return nullptr;                                
 }
 
+std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
+  // TODO: add options to the method signature
+  return nullptr;
+}
+
 }  // namespace gate
 }  // namespace k2

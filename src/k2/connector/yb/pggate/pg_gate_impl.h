@@ -62,6 +62,7 @@
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_session.h"
 #include "yb/pggate/pg_statement.h"
+#include "yb/pggate/pg_txn_handler.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2 {
@@ -284,7 +285,7 @@ class PgGateApiImpl {
   CHECKED_STATUS InsertStmtSetUpsertMode(PgStatement *handle);
 
   CHECKED_STATUS InsertStmtSetWriteTime(PgStatement *handle, const uint64_t write_time);
-  
+
   //------------------------------------------------------------------------------------------------
   // Update.
   CHECKED_STATUS NewUpdate(const PgObjectId& table_id,
@@ -348,6 +349,27 @@ class PgGateApiImpl {
   // Sets the specified timeout in the rpc service.
   void SetTimeout(int timeout_ms);
 
+  //------------------------------------------------------------------------------------------------
+  // Transaction control.
+
+  CHECKED_STATUS BeginTransaction();
+
+  CHECKED_STATUS RestartTransaction();
+
+  CHECKED_STATUS CommitTransaction();
+
+  CHECKED_STATUS AbortTransaction();
+
+  CHECKED_STATUS SetTransactionIsolationLevel(int isolation);
+
+  CHECKED_STATUS SetTransactionReadOnly(bool read_only);
+
+  CHECKED_STATUS SetTransactionDeferrable(bool deferrable);
+
+  CHECKED_STATUS EnterSeparateDdlTxnMode();
+  
+  CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
+
   private:
 
   K2Adapter* CreateK2Adapter();
@@ -371,6 +393,8 @@ class PgGateApiImpl {
   scoped_refptr<PgSession> pg_session_;
 
   YBCPgCallbacks pg_callbacks_;
+
+  scoped_refptr<PgTxnHandler> pg_txn_handler_;
 };
 
 }  // namespace gate

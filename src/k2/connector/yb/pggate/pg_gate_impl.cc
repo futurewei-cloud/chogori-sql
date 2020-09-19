@@ -64,7 +64,8 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
       metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(), "k2.pggate")),
       mem_tracker_(MemTracker::CreateTracker("PostgreSQL")),
       k2_adapter_(CreateK2Adapter()),
-      pg_callbacks_(callbacks) {
+      pg_callbacks_(callbacks), 
+      pg_txn_handler_(new PgTxnHandler(k2_adapter_)) {
   // Setup type mapping.
   for (int idx = 0; idx < count; idx++) {
     const YBCPgTypeEntity *type_entity = &YBCDataTypeArray[idx];
@@ -730,6 +731,55 @@ Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
   return down_cast<PgDelete*>(handle)->Exec();
+}
+
+Status PgGateApiImpl::BeginTransaction() {
+  pg_session_->InvalidateForeignKeyReferenceCache();
+  return pg_txn_handler_->BeginTransaction();
+}
+
+Status PgGateApiImpl::RestartTransaction() {
+  pg_session_->InvalidateForeignKeyReferenceCache();
+  return pg_txn_handler_->RestartTransaction();
+}
+
+Status PgGateApiImpl::CommitTransaction() {
+  pg_session_->InvalidateForeignKeyReferenceCache();
+  return pg_txn_handler_->CommitTransaction();
+}
+
+Status PgGateApiImpl::AbortTransaction() {
+  pg_session_->InvalidateForeignKeyReferenceCache();
+  return pg_txn_handler_->AbortTransaction();
+}
+
+Status PgGateApiImpl::SetTransactionIsolationLevel(int isolation) {
+  return pg_txn_handler_->SetIsolationLevel(isolation);
+}
+
+Status PgGateApiImpl::SetTransactionReadOnly(bool read_only) {
+  return pg_txn_handler_->SetReadOnly(read_only);
+}
+
+Status PgGateApiImpl::SetTransactionDeferrable(bool deferrable) {
+  return pg_txn_handler_->SetDeferrable(deferrable);
+}
+
+Status PgGateApiImpl::EnterSeparateDdlTxnMode() {
+  // Flush all buffered operations as ddl txn use its own transaction session.
+  RETURN_NOT_OK(pg_session_->FlushBufferedOperations());
+  return pg_txn_handler_->EnterSeparateDdlTxnMode();
+}
+  
+Status PgGateApiImpl::ExitSeparateDdlTxnMode(bool success) {
+  // Flush all buffered operations as ddl txn use its own transaction session.
+  if (success) {
+    RETURN_NOT_OK(pg_session_->FlushBufferedOperations());
+  } else {
+    pg_session_->DropBufferedOperations();
+  }
+
+  return pg_txn_handler_->ExitSeparateDdlTxnMode(success);
 }
 
 }  // namespace gate
