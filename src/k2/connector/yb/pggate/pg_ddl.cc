@@ -178,7 +178,7 @@ Status PgCreateTable::AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_
   return Status::OK();
 }
 
-Result<std::vector<std::string>> PgCreateTable::BuildSplitRows(const Schema& schema) {
+Result<std::vector<std::string>> PgCreateTable::BuildSplitRows(const PgSchema& schema) {
   std::vector<std::string> rows;
   rows.reserve(split_rows_.size());
   // TODO: add logic to handle split_rows_ and validate them
@@ -193,7 +193,7 @@ Status PgCreateTable::Exec() {
   schema_builder_.SetTableProperties(table_properties);
 
   // Construct schema.
-  Schema schema = schema_builder_.Build();
+  PgSchema schema = schema_builder_.Build();
 
   std::vector<std::string> split_rows = VERIFY_RESULT(BuildSplitRows(schema));
 

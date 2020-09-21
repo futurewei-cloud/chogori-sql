@@ -21,6 +21,8 @@
 #include <boost/function.hpp>
 
 #include "yb/common/concurrent/async_util.h"
+#include "yb/entities/schema.h"
+#include "yb/pggate/k23si.h"
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
@@ -29,14 +31,7 @@ namespace k2 {
 namespace gate {
 
 using namespace yb;
-
-class K23SITxn {
-  // TODO: merge in Ivan'
-  public:
-  bool endTxn(bool shouldCommit) {
-    return true;
-  }
-};
+using k2gate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
@@ -58,7 +53,7 @@ class K2Adapter {
                                  const std::string& namespace_id = "");
 
   CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
   // Delete the specified table.
@@ -80,8 +75,8 @@ class K2Adapter {
 
   void FlushAsync(StatusFunctor callback);
 
-  std::future<Status> FlushFuture() {
-    return MakeFuture<Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
+  std::future<yb::Status> FlushFuture() {
+    return MakeFuture<yb::Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
   }
 
   std::string getDocKey(SqlOpReadRequest& request);

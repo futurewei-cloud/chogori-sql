@@ -705,4 +705,6 @@ namespace sql {
 }  // namespace sql
 }  // namespace k2
 
+typedef class k2::sql::Schema PgSchema;
+
 #endif //CHOGORI_SQL_SCHEMA_H

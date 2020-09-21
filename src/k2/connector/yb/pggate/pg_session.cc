@@ -121,7 +121,7 @@ Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) 
 }
 
 Status PgSession::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
    return k2_adapter_->CreateTable(namespace_id, namespace_name, table_name, table_id, schema, range_columns, split_rows, 
     is_pg_catalog_table, is_shared_table, if_not_exist);

@@ -51,6 +51,8 @@
 namespace k2 {
 namespace gate {
 
+using yb::Status;
+
 PgTxnHandler::PgTxnHandler(K2Adapter *adapter) : adapter_(adapter) {
 }
 
@@ -101,8 +103,10 @@ Status PgTxnHandler::CommitTransaction() {
 
   VLOG(2) << "Committing transaction.";
   // TODO: add more logic for transaction result handling
-  bool result = txn_->endTxn(true);
-  VLOG(2) << "Transaction commit status: " << result;
+  std::future<k2::EndResult> result = txn_->endTxn(true);
+  result.get();
+  // TODO:: log commit status
+  VLOG(2) << "Transaction commit status: ";
   ResetTransaction();
   return Status::OK();
 }

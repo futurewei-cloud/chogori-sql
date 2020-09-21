@@ -198,7 +198,7 @@ class PgCreateTable : public PgDdl {
   virtual size_t PrimaryKeyRangeColumnCount() const;
 
  private:
-  Result<std::vector<std::string>> BuildSplitRows(const Schema& schema);
+  Result<std::vector<std::string>> BuildSplitRows(const PgSchema& schema);
 
   NamespaceId namespace_id_;
   NamespaceName namespace_name_;

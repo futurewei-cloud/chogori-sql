@@ -54,6 +54,7 @@
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/oid_generator.h"
 #include "yb/common/sys/monotime.h"
+#include "yb/entities/schema.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_op_api.h"
@@ -65,6 +66,7 @@ namespace gate {
 
 using yb::RefCountedThreadSafe;
 using namespace k2::sql;
+using yb::Status;
 
 static const int default_session_max_batch_size = 5;
 
@@ -143,7 +145,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   CHECKED_STATUS DropDatabase(const std::string& database_name, PgOid database_oid);
 
   CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    Schema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
   CHECKED_STATUS DropTable(const PgObjectId& table_id);

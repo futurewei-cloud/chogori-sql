@@ -1,6 +1,7 @@
 #include "k23si.h"
 #include <k2/dto/Collection.h>
 namespace k2gate {
+
 using namespace k2;
 
 template <typename Q, typename Request>
