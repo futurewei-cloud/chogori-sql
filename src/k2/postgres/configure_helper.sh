@@ -1,14 +1,13 @@
 #!/bin/bash
 set -e
 
-echo "1=$1"
-echo "2=$2"
-echo "3=$3"
-echo "4=$4"
-echo $PWD
+echo "script=$1"
+echo "LIBS=$2"
+echo "LDFLAGS=$3"
+echo "CPPFLAGS=$4"
+echo "prefix=$5"
+echo "pwd=$PWD"
 
-# compile flags
-export CFLAGS=-fPIC
 # extra libraries "-lxxx -lyyy"
 export LIBS=$2
 # extra lib paths "-Lxxx -Lyyy"

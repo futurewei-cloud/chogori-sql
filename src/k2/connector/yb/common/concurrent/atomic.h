@@ -35,12 +35,11 @@
 
 #include <algorithm>
 #include <atomic>
+#include <boost/type_traits/make_signed.hpp>
 #include <thread>
 
-#include <boost/type_traits/make_signed.hpp>
-
-#include "yb/common/concurrent/atomicops.h"
 #include "yb/common/casts.h"
+#include "yb/common/concurrent/atomicops.h"
 #include "yb/common/macros.h"
 #include "yb/common/port.h"
 
@@ -378,7 +377,7 @@ AtomicUniquePtr<T> MakeAtomicUniquePtr(Args&&... args) {
 template <class T>
 T GetAtomicFlag(T* flag) {
   std::atomic<T>& atomic_flag = *pointer_cast<std::atomic<T>*>(flag);
-  return atomic_flag.load(std::memory_order::memory_order_relaxed);
+  return atomic_flag.load(std::memory_order_relaxed);
 }
 
 template <class U, class T>

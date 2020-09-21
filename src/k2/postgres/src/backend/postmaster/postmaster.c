@@ -113,6 +113,7 @@
 #include "postmaster/fork_process.h"
 #include "postmaster/pgarch.h"
 #include "postmaster/postmaster.h"
+#include "postmaster/postmaster_hook.h"
 #include "postmaster/syslogger.h"
 #include "replication/logicallauncher.h"
 #include "replication/walsender.h"
@@ -946,7 +947,7 @@ PostmasterMain(int argc, char *argv[])
 	YBReportIfYugaByteEnabled();
 #ifdef __APPLE__
 	if (YBIsEnabledInPostgresEnvVar()) {
-		/* 
+		/*
 		 * Resolve local hostname to initialize macOS network libraries. If we
 		 * don't do this, there might be a lot of segmentation faults in
 		 * PostgreSQL backend processes in tests on macOS (especially debug
@@ -4210,6 +4211,14 @@ BackendInitialize(Port *port)
 	 * Must do this now because authentication uses libpq to send messages.
 	 */
 	pq_init();					/* initialize libpq to talk to client */
+	/* initialize k2 */
+	if (k2_init_func) {
+		// TODO K2 setup command line args for the seastar thread
+
+		const char* const argv[] = {"k2_pg", "-c1" , "-m200M", "--partition_request_timeout=10ms", "--cpo=rdma+k2rpc://ffff:123456", "--tso_endpoint=rdma+k2rpc://ffff:123456", "--cpo_request_timeout=100ms", "--cpo_request_backoff=10ms"};
+		k2_init_func(sizeof(argv), argv);
+    }
+
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
 	/*
