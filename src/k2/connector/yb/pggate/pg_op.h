@@ -160,7 +160,7 @@ namespace gate {
         }      
 
         private:
-        // Data selected from DocDB.
+        // Data selected from k2 storage.
         string data_;
 
         // Iterator on "data_" from row to row.
@@ -274,7 +274,7 @@ namespace gate {
         // Next request will be sent in case upper level will ask for additional data.
         bool suppress_next_result_prefetching_ = false;
 
-        // Populated protobuf request.
+        // Populated operation request.
         std::vector<std::shared_ptr<PgOpTemplate>> pgsql_ops_;
 
         // Number of active operators in the pgsql_ops_ list.
@@ -291,10 +291,10 @@ namespace gate {
         //   should only be done when "wait_for_batch_completion_ == false"
         bool wait_for_batch_completion_ = true;
 
-        // Future object to fetch a response from DocDB after sending a request.
+        // Future object to fetch a response from storage after sending a request.
         // Object's valid() method returns false in case no request is sent
         // or sent request was buffered by the session.
-        // Only one RunAsync() can be called to sent to DocDB at a time.
+        // Only one RunAsync() can be called to sent storage at a time.
         PgSessionAsyncRunResult response_;
 
         // Executed row count.
