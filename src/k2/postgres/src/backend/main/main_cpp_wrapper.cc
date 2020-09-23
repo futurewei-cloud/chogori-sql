@@ -4,7 +4,7 @@
 #include <k2/tso/client/tso_clientlib.h>
 
 #include "postmaster/postmaster_hook.h"
-#include "yb/pggate/k23si_app.h"
+#include "yb/pggate/k23si_seastar_app.h"
 
 extern "C" {
 

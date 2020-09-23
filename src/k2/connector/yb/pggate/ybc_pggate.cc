@@ -2,7 +2,7 @@
 
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
-#include "k23si.h"
+#include "k23si_gate.h"
 
 k2gate::K23SIGate* k23si;
 std::atomic<bool> k23si_shutdown_done;
