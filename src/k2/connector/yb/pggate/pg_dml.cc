@@ -740,7 +740,7 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
     doc_op_->ExecuteInit(exec_params);
   }
 
-  // Set column references in protobuf and whether query is aggregate.
+  // Set column references in request and whether query is aggregate.
   SetColumnRefs();
 
   // Delete key columns that are not bound to any values.

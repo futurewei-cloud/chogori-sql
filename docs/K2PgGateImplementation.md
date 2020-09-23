@@ -7,6 +7,8 @@ The design draft is proposed [here] (./K2SqlDesignProposal). Here the PG gate is
 adopted the modified version of PG from YugabyteDB and thus, we also inherit most of its logic implemented inside PG. Here we only cover the PG gate 
 implementation from PG to SKV client. The SKV client itself is outside of the scope of this document.
 
+![Architecture](./images/PgGateSystemDiagram01.png)
+
 ## Interface between PG and PG Gate 
 
 To better understand the PG gate implemenation, we need to understand some context since our implementation is not built from scratch, but 
@@ -51,6 +53,11 @@ the following life cycle:
 * Fetch result: get statement result, for example, the YBCPgDmlFetch() is called by the Select statement.
 
 ## PG Internal 
+
+Pg Gate class diagram is illustrated in the following diagram. We will cover the main classes in the next subsections.
+
+![Class Diagram](./images/PgGateClassDiagram01.png)
+
 ### Statement 
 
 Statement type and its base class are defined in [pg_statement.h](../src/k2/connector/yb/pggate/pg_statement.h).
@@ -524,7 +531,153 @@ The response that PG gate expects from K2 adapter is defined in SqlOpResponse.
         int32_t txn_error_code;      
     };
 ```
+
 However, the actual data is stored in the rows_data_ variable in PgOpTemplate and the rows_data_ is automatically processed 
 by PgOp as PgOpResult for PG to consume.
 
-# Example 
+# Examples 
+
+We are going to use the following to examples to demonstrate how the pg logic works.
+
+## Foreign Data Wrapper
+
+Here we take the select statement in foreign data wrapper as an example to show the logic flow among Pg and Pg Gate. First, the YbFdwExecState structure in [ybc_fdw.c](../src/k2/postgres/src/backend/executor/ybc_fdw.c) consists of a Sql statement handle, the owner, and the runtime parameters exec_params.
+
+``` c
+typedef struct YbFdwExecState
+{
+	/* The handle for the internal YB Select statement. */
+	YBCPgStatement	handle;
+	ResourceOwner	stmt_owner;
+	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
+	bool is_exec_done; /* Each statement should be executed exactly one time */
+} YbFdwExecState;
+```
+
+[ybc_fdw.c](../src/k2/postgres/src/backend/executor/ybc_fdw.c) is the foreign data wrapper to scan data from external data source. It first calls ybcBeginForeignScan()
+to allocate a Select handler. (only related logic is shown for the sake of clarity).
+
+``` c
+static void
+ybcBeginForeignScan(ForeignScanState *node, int eflags)
+{
+	/* Allocate and initialize YB scan state. */
+	ybc_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
+
+	node->fdw_state = (void *) ybc_state;
+	HandleYBStatus(YBCPgNewSelect(YBCGetDatabaseOid(relation),
+				   RelationGetRelid(relation),
+				   NULL /* prepare_params */,
+				   &ybc_state->handle));  
+  ...
+ 	ybc_state->is_exec_done = false;
+   
+	/* Set the current syscatalog version (will check that we are up to date) */
+	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
+														yb_catalog_cache_version),
+														ybc_state->handle,
+														ybc_state->stmt_owner);
+}                                     
+```
+
+Then it calls ybcSetupScanTargets() to setup the scan targets either column references or aggregates.
+
+``` c
+static void
+ybcSetupScanTargets(ForeignScanState *node)
+{
+	/* Set scan targets. */
+	if (node->yb_fdw_aggs == NIL)
+	{
+		/* Set non-aggregate column targets. */
+		bool has_targets = false;
+		foreach(lc, target_attrs)
+		{
+      ...
+			YBCPgTypeAttrs type_attrs = {attr_typmod};
+			YBCPgExpr      expr       = YBCNewColumnRef(ybc_state->handle,
+														target->resno,
+														attr_typid,
+														&type_attrs);
+			HandleYBStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
+																									 expr),
+															ybc_state->handle,
+															ybc_state->stmt_owner);
+			has_targets = true;
+		}
+  ...
+ 		/* Set aggregate scan targets. */
+		foreach(lc, node->yb_fdw_aggs)
+		{
+ 			YBCPgExpr op_handle;
+			const YBCPgTypeEntity *type_entity;
+
+			/* Get type entity for the operator from the aggref. */
+			type_entity = YBCPgFindTypeEntity(aggref->aggtranstype);
+
+			/* Create operator. */
+			HandleYBStatusWithOwner(YBCPgNewOperator(ybc_state->handle,
+													 func_name,
+													 type_entity,
+													 &op_handle),
+									ybc_state->handle,
+									ybc_state->stmt_owner);
+
+			/* Handle arguments. */
+			if (aggref->aggstar) {
+				/*
+				 * Add dummy argument for COUNT(*) case, turning it into COUNT(0).
+				 * We don't use a column reference as we want to count rows
+				 * even if all column values are NULL.
+				 */
+				YBCPgExpr const_handle;
+				YBCPgNewConstant(ybc_state->handle,
+								 type_entity,
+								 0 /* datum */,
+								 false /* is_null */,
+								 &const_handle);
+				HandleYBStatusWithOwner(YBCPgOperatorAppendArg(op_handle, const_handle),
+										ybc_state->handle,
+										ybc_state->stmt_owner);
+...
+}
+```
+
+After that, it calls ybcIterateForeignScan() to run the statement and fetch the results.
+
+``` c
+static TupleTableSlot *
+ybcIterateForeignScan(ForeignScanState *node)
+{
+  ...
+	if (!ybc_state->is_exec_done) {
+		ybcSetupScanTargets(node);
+		HandleYBStatusWithOwner(YBCPgExecSelect(ybc_state->handle, ybc_state->exec_params),
+								ybc_state->handle,
+								ybc_state->stmt_owner);
+		ybc_state->is_exec_done = true;
+	}
+  ...
+	/* Fetch one row. */
+	HandleYBStatusWithOwner(YBCPgDmlFetch(ybc_state->handle,
+	                                      tupdesc->natts,
+	                                      (uint64_t *) values,
+	                                      isnull,
+	                                      &syscols,
+	                                      &has_data),
+	                        ybc_state->handle,
+	                        ybc_state->stmt_owner);
+  ...                            
+}
+```
+
+The following sequence diagram illustrates the logic in Pg gate.
+
+![Sequence Diagram](./images/PgSelectSequenceDiagram01.png)
+
+## System catalag scan
+
+[ybcam.c](../src/k2/postgres/src/backend/executor/ybcam.c) includes the logic to scan the system catalog tables. Please check the source code for more details.
+
+
+
