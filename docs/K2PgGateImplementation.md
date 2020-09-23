@@ -2,7 +2,7 @@ This document is to explain how Pg gate is implemented to provide integration be
 
 # Introduction
 
-PG gate is a component of the SQL layer for K2 Chorgori SQL, which is based on Postgres running on top of K2 SKV, a schema aware in-memory key value store.
+PG gate is a component of the SQL layer for K2 Chogori SQL, which is based on Postgres running on top of K2 SKV, a schema aware in-memory key value store.
 The design draft is proposed [here] (./K2SqlDesignProposal). Here the PG gate is a component that integrates Postgres and K2 SKV. Please be aware that we 
 adopted the modified version of PG from YugabyteDB and thus, we also inherit most of its logic implemented inside PG. Here we only cover the PG gate 
 implementation from PG to SKV client. The SKV client itself is outside of the scope of this document.
@@ -11,7 +11,7 @@ implementation from PG to SKV client. The SKV client itself is outside of the sc
 
 ## Interface between PG and PG Gate 
 
-To better understand the PG gate implemenation, we need to understand some context since our implementation is not built from scratch, but 
+To better understand the PG gate implementation, we need to understand some context since our implementation is not built from scratch, but 
 is adopted the modified version of PG from YugabyteDB. We inherited almost all the logic whatever Yugabytedb have modified inside PG.
 
 ### PG Gate APIs 
@@ -26,7 +26,7 @@ PG, but PG Gate is implemented in C++. The following C files inside PG calls the
 
 ### Shared Data Structures 
 
-The above PG gate APIs defined a set of data structures that are used to exchange data and status between PG and PG gate c++ implemenation. These data structures
+The above PG gate APIs defined a set of data structures that are used to exchange data and status between PG and PG gate c++ implementation. These data structures
 are defined in [pg_gate_typedefs.h](../src/k2/connector/yb/pggate/pg_gate_typedefs.h). But the following data structures are mapped from PG to PG gate via 
 c/C++ template typedef. 
 * [YBCPgExpr](../src/k2/postgres/src/backend/executor/ybcExpr.c) -> [PgExpr](../src/k2/connector/yb/entities/expr.h): column reference and conditions in where clause. 
@@ -39,13 +39,13 @@ PgCreateTable.
 * YBCPgMemCtx -> [PgMemctx](../src/k2/connector/yb/pggate/pg_memctx.h): the PG gate counterpart of PG's MemoryContext and it holds PgStatements and PgTableDesc.
 
 Apart from the above, YBCStatus is mapped to the C [Status](../src/k2/connector/yb/common/status.h) and a [PgSession](../src/k2/connector/yb/pggate/pg_session.h)
-is implicited used by the PG gate APIs. 
+is implicitly used by the PG gate APIs. 
 
 ### Statement Lifecycle
 A major portion of the PG gate APIs are for SQL statements, for example, select, insert, update, and delete. For a statement, i.e., PgStatement, it consists of
 the following life cycle:
 * Prepare statement: 
-** Intialize: create the data structures for the statement, for example, base request.
+** Initialize: create the data structures for the statement, for example, base request.
 ** Bind columns: bind the conditions in the where clause as a list of PgExpr.
 ** Append targets: set the columns that the statement needs to return as a list of PgExpr.
 ** Assign columns: used in update statement for the Set clause.
@@ -54,7 +54,7 @@ the following life cycle:
 
 ## PG Internal 
 
-Pg Gate class diagram is illustrated in the following diagram. We will cover the main classes in the next subsections.
+Pg Gate class diagram is illustrated in the following diagram. We cover the main classes in the next subsections.
 
 ![Class Diagram](./images/PgGateClassDiagram01.png)
 
@@ -83,7 +83,7 @@ enum StmtOp {
   STMT_ALTER_DATABASE,
 };
 ```
-The base class PgStatement is extened as PgDml for DMLs 
+The base class PgStatement is extended as PgDml for DMLs 
 
 ``` c
 class PgDml : public PgStatement {
@@ -129,7 +129,7 @@ and [PgDelete](../src/k2/connector/yb/pggate/pg_delete.h).
 ### Operations 
 
 A Sql statement could consists of one or a set of operations, for example, a select statement could consists of multiple read operations for pagination 
-or different read operations for different data partitions. To avoid creating the same requests from scratch repeatingly, PG gate first implements a 
+or different read operations for different data partitions. To avoid creating the same requests from scratch repeatedly, PG gate first implements a 
 template operation for read and write so that the requests could be cloned and updated. The template operation is very simply and mainly consists of 
 request and response that will be interacted with SKV client in K2 Adapter as defined by the following base class [pg_op_api.h](../src/k2/connector/yb/pggate/pg_op_api.h).
 
@@ -150,7 +150,7 @@ class PgOpTemplate {
     bool is_active_ = true;
 };       
 ```
-PgWriteOpTemplate and PgReadOpTemplate are read and write tempate operation, respectively. 
+PgWriteOpTemplate and PgReadOpTemplate are read and write template operation, respectively. 
 
 ``` c
 class PgReadOpTemplate : public PgOpTemplate {
@@ -258,7 +258,7 @@ and async runner together.
 * table schema cache by table id 
 * foreign key reference cache 
 * Operation buffer for transactional ones and non-transactional ones
-* Run helper to buffer and flush operations in an asynchourous fashion 
+* Run helper to buffer and flush operations in an asynchronous fashion 
 * K2 adapter reference 
 
 ``` c
@@ -379,8 +379,8 @@ enum class PgIsolationLevel {
 ### K2 Adapter 
 
 The PgOpTemplate in [pg_op_api.h](../src/k2/connector/yb/pggate/pg_op_api.h) defines the request and response that PG gate expects from SKV. 
-Its [K2 adapter's](../src/k2/connector/yb/pggate/k2_adapter.h) responsibility to convet the request to SKV client request and then convert the response back from SKV client response. Please
-be aware that the k2 adapter handle the requests in an asynchourous fashion and it could handle a batch of operations one by one when PgSession 
+Its [K2 adapter's](../src/k2/connector/yb/pggate/k2_adapter.h) responsibility to convert the request to SKV client request and then convert the response back from SKV client response. Please
+be aware that the k2 adapter handle the requests in an asynchronous fashion and it could handle a batch of operations one by one when PgSession 
 flushes buffered operations.
 
 ``` c
@@ -675,7 +675,7 @@ The following sequence diagram illustrates the logic in Pg gate.
 
 ![Sequence Diagram](./images/PgSelectSequenceDiagram01.png)
 
-## System catalag scan
+## System catalog scan
 
 [ybcam.c](../src/k2/postgres/src/backend/executor/ybcam.c) includes the logic to scan the system catalog tables. Please check the source code for more details.
 
