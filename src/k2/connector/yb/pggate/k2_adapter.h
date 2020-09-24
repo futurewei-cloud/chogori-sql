@@ -71,7 +71,7 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op);
+  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn);
 
   void FlushAsync(StatusFunctor callback);
 

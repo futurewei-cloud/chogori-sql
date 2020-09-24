@@ -128,6 +128,7 @@ Status PgGateApiImpl::InitSession(const PgEnv *pg_env,
   CHECK(!pg_session_);
   auto session = make_scoped_refptr<PgSession>(k2_adapter_,
                                                database_name,
+                                               pg_txn_handler_,
                                                pg_callbacks_);
   if (!database_name.empty()) {
     RETURN_NOT_OK(session->ConnectDatabase(database_name));

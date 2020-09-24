@@ -63,7 +63,7 @@ yb::Status K2Adapter::Shutdown() {
   return yb::Status::OK();
 }
 
-yb::Status K2Adapter::Apply(std::shared_ptr<PgOpTemplate> op) {
+yb::Status K2Adapter::Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn) {
   // TODO: add implementation  
   // could add the op to a batch and then process the batch in FlushAsync()                                 
   return yb::Status::OK();

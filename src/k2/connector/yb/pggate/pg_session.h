@@ -60,6 +60,7 @@
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/pg_gate_api.h"
+#include "yb/pggate/pg_txn_handler.h"
 
 namespace k2 {
 namespace gate {
@@ -131,6 +132,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // Constructors.
   PgSession(K2Adapter* k2_adapter,
             const string& database_name,
+            scoped_refptr<PgTxnHandler> pg_txn_handler,
             const YBCPgCallbacks& pg_callbacks);
 
   virtual ~PgSession();
@@ -260,6 +262,10 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   CHECKED_STATUS HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id);
 
+  // Returns the appropriate session to use, in most cases the one used by the current transaction.
+  // read_only - whether this is being done in the context of a read-only operation.
+  std::shared_ptr<K23SITxn> GetTxnHandler(bool transactional, bool read_onl);
+
   private:
   CHECKED_STATUS FlushBufferedOperationsImpl();
 
@@ -301,6 +307,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   ObjectIdGenerator rowid_generator_;
 
   K2Adapter* const k2_adapter_;
+
+  // A transaction handler allowing to begin/abort/commit transactions.
+  scoped_refptr<PgTxnHandler> pg_txn_handler_;
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;

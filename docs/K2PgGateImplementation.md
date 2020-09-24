@@ -304,6 +304,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   ObjectIdGenerator rowid_generator_;
 
   K2Adapter* const k2_adapter_;
+  
+  // A transaction handler allowing to begin/abort/commit transactions.
+  scoped_refptr<PgTxnHandler> pg_txn_handler_;
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
@@ -390,7 +393,7 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op);
+  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn);
 
   void FlushAsync(StatusFunctor callback);
 

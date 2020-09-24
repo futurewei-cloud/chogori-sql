@@ -99,13 +99,15 @@ class PgTxnHandler : public RefCountedThreadSafe<PgTxnHandler> {
     return txn_;
   }
 
+  std::shared_ptr<K23SITxn> GetNewTransactionIfNecessary(bool read_only);
+
   private:  
 
   void ResetTransaction();
 
   void StartNewTransaction();
 
-  std::shared_ptr<K23SITxn> txn_;
+  std::shared_ptr<K23SITxn> txn_ = nullptr;
 
   bool txn_in_progress_ = false;
 

@@ -151,6 +151,16 @@ Status PgTxnHandler::ExitSeparateDdlTxnMode(bool success) {
   return Status::OK();
 }
 
+std::shared_ptr<K23SITxn> PgTxnHandler::GetNewTransactionIfNecessary(bool read_only) {
+    if (txn_ == nullptr) {
+        BeginTransaction();
+        return txn_;
+    } else {
+        // SKV does not support read only transaction yet, we always use the K23SI transaction
+        return txn_;
+    }
+}
+
 void PgTxnHandler::ResetTransaction() {
   txn_in_progress_ = false;
   txn_ = nullptr;

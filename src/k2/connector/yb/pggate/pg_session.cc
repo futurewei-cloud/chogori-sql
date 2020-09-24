@@ -86,8 +86,10 @@ size_t hash_value(const RowIdentifier& key) {
 PgSession::PgSession(
     K2Adapter* k2_adapter,
     const string& database_name,
+    scoped_refptr<PgTxnHandler> pg_txn_handler,
     const YBCPgCallbacks& pg_callbacks)
     : k2_adapter_(k2_adapter),
+      pg_txn_handler_(pg_txn_handler),
       pg_callbacks_(pg_callbacks) {
     ConnectDatabase(database_name);
 }
@@ -210,7 +212,9 @@ Status PgSession::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool tra
         << ", table is transactional: "
         << op->IsTransactional()
         << ", initdb mode: " << YBCIsInitDbModeEnvVarSet();
-    RETURN_NOT_OK(k2_adapter_->Apply(op));
+
+    std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler(transactional, op->read_only());    
+    RETURN_NOT_OK(k2_adapter_->Apply(op, k23SITxn));
   }
   const auto status = k2_adapter_->FlushFuture().get();
 
@@ -307,9 +311,8 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
   // TODO: ybc has the logic to check if needs_pessimistic_locking here by looking at row_mark_type
   // in the request, but K2 SKV does not support pessimistic locking, should we simply skip that logic?
 
-  // TODO: transaction related check to make sure op belongs to the current transaction
-
-  return client_->Apply(std::move(op));
+  std::shared_ptr<K23SITxn> k23SITxn = pg_session_.GetTxnHandler(transactional_, op->read_only());
+  return client_->Apply(std::move(op), k23SITxn);
 }
 
 Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
@@ -361,6 +364,10 @@ Status PgSession::DeleteForeignKeyReference(uint32_t table_id, std::string&& ybc
   PgForeignKeyReference reference = {table_id, std::move(ybctid)};
   fk_reference_cache_.erase(reference);
   return Status::OK();
+}
+
+std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool transactional, bool read_only) {
+  return pg_txn_handler_->GetNewTransactionIfNecessary(read_only);
 }
 
 }  // namespace gate
