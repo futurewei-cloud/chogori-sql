@@ -1,12 +1,12 @@
 file(GLOB HEADERS "*.h")
 file(GLOB SOURCES "*.cc")
 
-add_library(ybpggate SHARED ${HEADERS} ${SOURCES})
+add_library(ybpggate STATIC ${HEADERS} ${SOURCES})
 
 set_target_properties(ybpggate PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION 1
         )
-target_link_libraries (ybpggate PRIVATE glog gflags ybcommon k2entities)
+target_link_libraries (ybpggate PRIVATE glog gflags ybcommon k2entities k2::dto Seastar::seastar)
 
 set_target_properties(ybpggate PROPERTIES LINKER_LANGUAGE C)

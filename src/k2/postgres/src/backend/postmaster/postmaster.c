@@ -113,6 +113,7 @@
 #include "postmaster/fork_process.h"
 #include "postmaster/pgarch.h"
 #include "postmaster/postmaster.h"
+#include "postmaster/postmaster_hook.h"
 #include "postmaster/syslogger.h"
 #include "replication/logicallauncher.h"
 #include "replication/walsender.h"
@@ -946,7 +947,7 @@ PostmasterMain(int argc, char *argv[])
 	YBReportIfYugaByteEnabled();
 #ifdef __APPLE__
 	if (YBIsEnabledInPostgresEnvVar()) {
-		/* 
+		/*
 		 * Resolve local hostname to initialize macOS network libraries. If we
 		 * don't do this, there might be a lot of segmentation faults in
 		 * PostgreSQL backend processes in tests on macOS (especially debug
@@ -4210,6 +4211,52 @@ BackendInitialize(Port *port)
 	 * Must do this now because authentication uses libpq to send messages.
 	 */
 	pq_init();					/* initialize libpq to talk to client */
+	/* initialize k2 */
+	if (k2_init_func) {
+		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
+		if (NULL == rdmaDevice) {
+			ereport(LOG, (errmsg("missing env variable K2_RDMA_DEVICE")));
+			proc_exit(1);
+		}
+
+		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
+		if (NULL == cpoAddress) {
+			ereport(LOG, (errmsg("missing env variable K2_CPO_ADDRESS")));
+			proc_exit(1);
+		}
+
+		const char* tsoAddress = getenv("K2_TSO_ADDRESS");
+		if (NULL == tsoAddress) {
+			ereport(LOG, (errmsg("missing env variable K2_TSO_ADDRESS")));
+			proc_exit(1);
+		}
+
+		const char* k2Cores = getenv("K2_PG_CORES");
+		if (NULL == k2Cores) {
+			k2Cores= "0";
+		}
+
+		const char* memToUse = getenv("K2_PG_MEM");
+		if (NULL == memToUse) {
+			memToUse="200m";
+		}
+
+		const char* cpoTimeout = getenv("K2_CPO_TIMEOUT");
+		if (NULL == cpoTimeout) {
+			cpoTimeout = "100ms";
+		}
+
+		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
+		if (NULL == cpoBackoff) {
+			cpoBackoff = "10ms";
+		}
+
+		char* argv[] = {"k2_pg", "--cpuset", k2Cores, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
+			"--partition_request_timeout", cpoTimeout, "--cpo", cpoAddress, "--tso_endpoint", tsoAddress,
+			"--cpo_request_timeout", cpoTimeout, "--cpo_request_backoff", cpoBackoff};
+		k2_init_func(sizeof(argv), argv);
+    }
+
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
 	/*

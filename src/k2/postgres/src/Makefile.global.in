@@ -14,7 +14,8 @@
 # parent directory of the directory this file is in.)
 #------------------------------------------------------------------------------
 
-override CFLAGS += -fPIC
+# enable fPIC for the project
+#override CFLAGS += -fPIC
 
 ##########################################################################
 #
