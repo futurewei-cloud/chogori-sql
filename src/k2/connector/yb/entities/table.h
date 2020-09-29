@@ -26,7 +26,7 @@
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
     struct TableIdentifier {
         NamespaceName namespace_name; // Can be empty, that means the namespace has not been set yet.
@@ -100,6 +100,6 @@ namespace sql {
     };
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_TABLE_H

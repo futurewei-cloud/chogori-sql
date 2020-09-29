@@ -48,7 +48,7 @@
 
 #include "yb/pggate/pg_memctx.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 PgMemctx::PgMemctx() {
@@ -126,4 +126,4 @@ void PgMemctx::GetCache(size_t hash_id, PgTableDesc **handle) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

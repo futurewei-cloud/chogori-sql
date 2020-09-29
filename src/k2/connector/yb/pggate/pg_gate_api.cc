@@ -8,11 +8,11 @@
 #include "yb/pggate/pg_gate_impl.h"
 
 using namespace yb;
-using namespace k2::gate;
+using namespace k2pg::gate;
 
 namespace {
 // Using a raw pointer here to fully control object initialization and destruction.
-k2::gate::PgGateApiImpl* api_impl;
+k2pg::gate::PgGateApiImpl* api_impl;
 std::atomic<bool> api_impl_shutdown_done;
 int default_client_read_write_timeout_ms = 60000;
 
@@ -32,7 +32,7 @@ extern "C" {
 void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
     CHECK(api_impl == nullptr) << ": " << __PRETTY_FUNCTION__ << " can only be called once";
     api_impl_shutdown_done.exchange(false);
-    api_impl = new k2::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
+    api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
     VLOG(1) << "K2 PgGate open";
 }
 
@@ -40,7 +40,7 @@ void YBCDestroyPgGate() {
     if (api_impl_shutdown_done.exchange(true)) {
         LOG(DFATAL) << __PRETTY_FUNCTION__ << " should only be called once";
     } else {
-        k2::gate::PgGateApiImpl* local_api_impl = api_impl;
+        k2pg::gate::PgGateApiImpl* local_api_impl = api_impl;
         api_impl = nullptr; // YBCPgIsYugaByteEnabled() must return false from now on.
         delete local_api_impl;
         VLOG(1) << __PRETTY_FUNCTION__ << " finished";

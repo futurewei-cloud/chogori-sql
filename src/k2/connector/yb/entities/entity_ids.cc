@@ -20,7 +20,7 @@
 
 using boost::uuids::uuid;
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 using namespace yb;   
@@ -177,4 +177,4 @@ Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id) {
     }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

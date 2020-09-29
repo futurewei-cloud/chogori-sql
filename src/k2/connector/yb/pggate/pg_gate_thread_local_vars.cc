@@ -21,7 +21,7 @@
 #include "yb/common/singleton.h"
 #include "yb/common/status.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 /*
@@ -88,4 +88,4 @@ void PgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

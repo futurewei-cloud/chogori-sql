@@ -1,6 +1,6 @@
 #include "k23si.h"
 #include <k2/dto/Collection.h>
-namespace k2gate {
+namespace k2pggate {
 
 using namespace k2;
 

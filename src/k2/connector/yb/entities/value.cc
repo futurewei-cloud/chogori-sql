@@ -26,7 +26,7 @@
 #include "yb/common/type/slice.h"
 #include "yb/common/type/decimal.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 using yb::Slice;
@@ -392,4 +392,4 @@ void SqlValue::set_binary_value(const char *value, size_t bytes, bool is_null) {
 }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

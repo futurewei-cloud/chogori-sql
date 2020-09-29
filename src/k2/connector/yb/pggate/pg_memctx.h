@@ -56,7 +56,7 @@
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_statement.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 // This is the K2 counterpart of Postgres's MemoryContext.
 // K2SQL memory context hold one reference count to PgGate objects such as PgStatement.
@@ -123,6 +123,6 @@ class PgMemctx {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_MEMCTX_H

@@ -10,7 +10,7 @@
 
 #include "yb/pggate/k2_adapter.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 yb::Status K2Adapter::CreateNamespace(const std::string& namespace_name,
@@ -90,4 +90,4 @@ std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

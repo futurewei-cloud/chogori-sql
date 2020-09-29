@@ -62,11 +62,11 @@
 #include "yb/pggate/pg_gate_api.h"
 #include "yb/pggate/pg_txn_handler.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
-using namespace k2::sql;
+using namespace k2pg::sql;
 using yb::Status;
 
 static const int default_session_max_batch_size = 5;
@@ -326,6 +326,6 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_PG_SESSION_H

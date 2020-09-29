@@ -48,7 +48,7 @@
 
 #include "yb/pggate/pg_column.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 void PgColumn::Init(PgSystemAttrNum attr_num) {
@@ -170,4 +170,4 @@ SqlOpCondition *PgColumn::AllocBindConditionExpr(SqlOpReadRequest *read_req) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

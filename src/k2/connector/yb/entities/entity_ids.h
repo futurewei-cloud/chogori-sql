@@ -55,7 +55,7 @@
 #include "yb/common/result.h"
 #include "yb/common/type/strongly_typed_string.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     using namespace yb;   
@@ -145,6 +145,6 @@ namespace sql {
     bool RowMarkNeedsPessimisticLock(RowMarkType row_mark_type);
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_ENTITY_IDS_H

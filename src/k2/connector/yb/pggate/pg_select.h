@@ -51,11 +51,11 @@
 
 #include "yb/pggate/pg_dml.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 //--------------------------------------------------------------------------------------------------
 // SELECT
@@ -129,7 +129,7 @@ class PgSelectIndex : public PgDmlRead {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_DML_SELECT_H
 

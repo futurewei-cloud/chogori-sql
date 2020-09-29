@@ -6,7 +6,7 @@
 #include <future>
 #include <queue>
 
-namespace k2gate {
+namespace k2pggate {
 
 struct TxnId{
     uint64_t id;
@@ -92,4 +92,4 @@ extern std::queue<QueryRequest> queryTxQ;
 extern std::queue<ReadRequest> readTxQ;
 extern std::queue<WriteRequest> writeTxQ;
 
-}  // namespace k2gate
+}  // namespace k2pggate

@@ -49,7 +49,7 @@
 #include "yb/pggate/pg_ddl.h"
 #include "yb/pggate/pg_gate_typedefs.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using std::make_shared;
@@ -57,7 +57,7 @@ using std::shared_ptr;
 using std::string;
 using namespace std::literals;  // NOLINT
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 //--------------------------------------------------------------------------------------------------
 // PgCreateDatabase
@@ -246,4 +246,4 @@ Status PgDropTable::Exec() {
 
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

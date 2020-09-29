@@ -67,7 +67,7 @@
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_op_api.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
@@ -75,7 +75,7 @@ namespace gate {
     using std::vector;
 
     using namespace yb;
-    using namespace k2::sql;
+    using namespace k2pg::sql;
 
     const uint64_t default_ysql_prefetch_limit = 4;
     const uint64_t default_ysql_request_limit = 1;
@@ -494,6 +494,6 @@ namespace gate {
     };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_PG_OP_H    

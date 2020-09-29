@@ -48,7 +48,7 @@
 
 #include "yb/pggate/pg_txn_handler.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using yb::Status;
@@ -172,4 +172,4 @@ void PgTxnHandler::StartNewTransaction() {
 }
 
 }  // namespace gate
-}  // namespace k2    
+}  // namespace k2pg    

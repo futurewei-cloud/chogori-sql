@@ -54,7 +54,7 @@
 #include "yb/pggate/pg_update.h"
 #include "yb/pggate/pg_delete.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using std::make_shared;
@@ -784,4 +784,4 @@ Status PgGateApiImpl::ExitSeparateDdlTxnMode(bool success) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

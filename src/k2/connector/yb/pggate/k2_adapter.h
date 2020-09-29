@@ -27,11 +27,11 @@
 #include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using k2gate::K23SITxn;
+using k2pggate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
@@ -87,6 +87,6 @@ class K2Adapter {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_K2_ADAPTER_H

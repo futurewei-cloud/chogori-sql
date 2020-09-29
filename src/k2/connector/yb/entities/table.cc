@@ -17,7 +17,7 @@
 
 #include "yb/entities/table.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
     Result<const IndexInfo*> TableInfo::FindIndex(const TableId& index_id) const {
         return index_map_.FindIndex(index_id);
@@ -36,4 +36,4 @@ namespace sql {
     } */
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

@@ -51,7 +51,7 @@
 #include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_env.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
     PgOpResult::PgOpResult(string&& data) : data_(move(data)) {
@@ -666,4 +666,4 @@ namespace gate {
     }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

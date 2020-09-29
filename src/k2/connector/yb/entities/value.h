@@ -27,7 +27,7 @@
 #include "yb/common/type/slice.h"
 #include "yb/pggate/pg_gate_typedefs.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 using yb::Slice;
@@ -131,6 +131,6 @@ public:
 
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_VALUE_H

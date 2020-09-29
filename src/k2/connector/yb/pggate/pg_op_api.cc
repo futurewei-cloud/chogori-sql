@@ -18,7 +18,7 @@
 #include "yb/pggate/pg_op_api.h"
 #include "yb/common/endian.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {  
 
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
@@ -117,4 +117,4 @@ namespace gate {
         return result;
     }  
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

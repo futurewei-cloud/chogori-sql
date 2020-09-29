@@ -32,13 +32,13 @@
 
 #include "yb/pggate/pg_tuple.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
     using namespace yb;
-    using namespace k2::sql;
+    using namespace k2pg::sql;
 
     class SqlOpCondition; 
 
@@ -424,6 +424,6 @@ namespace gate {
         std::unique_ptr<SqlOpReadRequest> read_request_;
     };
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_OP_CALL_H

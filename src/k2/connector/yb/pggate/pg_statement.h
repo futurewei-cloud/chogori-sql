@@ -57,10 +57,10 @@
 #include "yb/common/status.h"
 #include "yb/pggate/pg_session.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
-using k2::sql::PgExpr;
+using k2pg::sql::PgExpr;
 using yb::RefCountedThreadSafe;
 using yb::Status;
 
@@ -142,6 +142,6 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_PG_STATEMENT_H

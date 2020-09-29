@@ -64,11 +64,11 @@
 #include "yb/pggate/pg_statement.h"
 #include "yb/pggate/pg_op.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 class PgSelectIndex;
 
@@ -402,6 +402,6 @@ class PgDmlWrite : public PgDml {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_PG_DML_H

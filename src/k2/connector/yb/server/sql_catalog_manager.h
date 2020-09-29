@@ -30,7 +30,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 using namespace yb;
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
     class SQLCatalogManager {
 

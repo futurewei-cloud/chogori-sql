@@ -49,7 +49,7 @@
 #include "yb/common/port.h"
 #include "yb/pggate/pg_session.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter) :
@@ -371,4 +371,4 @@ std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool transactional, bool read
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

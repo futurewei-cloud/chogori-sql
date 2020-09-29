@@ -40,7 +40,7 @@ DEFINE_int32(sql_executor_svc_num_threads, -1,
 "Number of threads for the SQLCatalogManager service. If -1, it is auto configured.");
 TAG_FLAG(sql_executor_svc_num_threads, advanced);
 
-namespace k2 {
+namespace k2pg {
 
 namespace sql {
     static yb::Env* default_env;

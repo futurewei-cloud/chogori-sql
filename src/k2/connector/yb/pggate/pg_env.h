@@ -28,10 +28,10 @@
 
 #include "yb/entities/entity_ids.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 // Postgres object identifier (OID).
 typedef uint32_t PgOid;
@@ -108,6 +108,6 @@ class PgEnv {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif  // CHOGORI_GATE_PG_ENV_H_

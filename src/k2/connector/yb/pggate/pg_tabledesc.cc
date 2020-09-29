@@ -48,7 +48,7 @@
 
 #include "yb/pggate/pg_tabledesc.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table) {
@@ -167,4 +167,4 @@ std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlDelete(const string& cli
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

@@ -51,7 +51,7 @@
 
 #include "yb/pggate/pg_dml.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 class PgInsert : public PgDmlWrite {
@@ -76,6 +76,6 @@ class PgInsert : public PgDmlWrite {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_DML_INSERT_H

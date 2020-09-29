@@ -50,7 +50,7 @@
 
 #include "yb/entities/expr.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
    
 using std::string;
@@ -186,5 +186,5 @@ void PgOperator::AppendArg(PgExpr *arg) {
 }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 

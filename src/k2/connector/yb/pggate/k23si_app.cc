@@ -1,7 +1,7 @@
 #include "k23si_app.h"
 #include "k23si.h"
 
-namespace k2gate {
+namespace k2pggate {
 
 PGK2Client::PGK2Client():
     _client(k2::K23SIClientConfig()) {
@@ -126,4 +126,4 @@ seastar::future<> PGK2Client::_pollForWork() {
         _pollBeginQ(), _pollEndQ(), _pollSchemaQ(), _pollQueryQ(), _pollReadQ(), _pollWriteQ());
 }
 
-}  // namespace k2gate
+}  // namespace k2pggate

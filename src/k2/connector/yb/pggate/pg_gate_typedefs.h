@@ -30,20 +30,20 @@
     typedef class yb::pggate::name *YBC##name;
 
 #define K2_DEFINE_HANDLE_TYPE(name, target) \
-    namespace k2 { \
+    namespace k2pg { \
     namespace gate { \
     class name; \
     } \
     } \
-    typedef class k2::gate::name *YBC##target;
+    typedef class k2pg::gate::name *YBC##target;
 
 #define K2SQL_DEFINE_HANDLE_TYPE(name, target) \
-    namespace k2 { \
+    namespace k2pg { \
     namespace sql { \
     class name; \
     } \
     } \
-    typedef class k2::sql::name *YBC##target;
+    typedef class k2pg::sql::name *YBC##target;
 
 #else
 #define YB_DEFINE_HANDLE_TYPE(name) typedef struct name *YBC##name;

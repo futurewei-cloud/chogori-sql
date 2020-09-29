@@ -55,11 +55,11 @@
 #include "yb/entities/schema.h"
 #include "yb/pggate/pg_op_api.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 // This class can be used to describe any reference of a column.
 class ColumnDesc {
@@ -236,6 +236,6 @@ class PgColumn {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_PG_COLUMN_H

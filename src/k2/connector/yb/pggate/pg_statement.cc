@@ -48,7 +48,7 @@
 
 #include "pg_statement.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 //--------------------------------------------------------------------------------------------------
 // Class PgStatement
@@ -65,4 +65,4 @@ void PgStatement::AddExpr(PgExpr::SharedPtr expr) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

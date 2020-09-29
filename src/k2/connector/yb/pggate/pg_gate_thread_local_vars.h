@@ -24,7 +24,7 @@
 
 #include "yb/pggate/pg_gate_typedefs.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 //-----------------------------------------------------------------------------
@@ -75,6 +75,6 @@ void* PgGetThreadLocalStrTokPtr();
 void PgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr);
 
 } // namespace gate
-} // namespace k2
+} // namespace k2pg
 
 #endif // YB_YQL_PGGATE_PGGATE_THREAD_LOCAL_VARS_H

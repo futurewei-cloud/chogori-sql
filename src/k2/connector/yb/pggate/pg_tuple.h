@@ -51,7 +51,7 @@
 
 #include "yb/pggate/pg_gate_typedefs.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
@@ -87,7 +87,7 @@ class PgTuple {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif  // CHOGORI_GATE_PG_TUPLE_H
 

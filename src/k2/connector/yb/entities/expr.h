@@ -56,7 +56,7 @@
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/value.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 using namespace yb;
@@ -174,7 +174,7 @@ class PgConstant : public PgExpr {
   SqlValue* getValue() {
       return &value_;
   }
-  
+
   private:
   SqlValue value_;
 };
@@ -216,6 +216,6 @@ class PgOperator : public PgExpr {
 };
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_EXPR_H

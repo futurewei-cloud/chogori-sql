@@ -48,11 +48,11 @@
 
 #include "yb/pggate/pg_dml.h"
 #include "yb/pggate/pg_select.h"
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 PgDml::PgDml(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id)
     : PgStatement(std::move(pg_session)), table_id_(table_id) {
@@ -906,4 +906,4 @@ Status PgDmlWrite::SetWriteTime(const uint64_t write_time) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

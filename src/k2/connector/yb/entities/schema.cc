@@ -59,7 +59,7 @@
 #include "yb/common/status.h"
 #include "yb/common/util/map-util.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     using std::shared_ptr;
@@ -393,4 +393,4 @@ namespace sql {
     }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

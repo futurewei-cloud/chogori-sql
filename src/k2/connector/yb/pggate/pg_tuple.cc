@@ -49,7 +49,7 @@
 #include "yb/common/ybc-internal.h"
 #include "yb/pggate/pg_tuple.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 PgTuple::PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols)
@@ -75,4 +75,4 @@ void PgTuple::Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes) {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg

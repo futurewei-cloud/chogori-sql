@@ -59,11 +59,11 @@
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_statement.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using namespace k2::sql;
+using namespace k2pg::sql;
 
 class PgDdl : public PgStatement {
  public:
@@ -238,6 +238,6 @@ class PgDropTable: public PgDdl {
 };
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_GATE_DDL_H

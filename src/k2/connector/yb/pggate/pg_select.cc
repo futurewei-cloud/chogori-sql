@@ -48,7 +48,7 @@
 
 #include "yb/pggate/pg_select.h"
 
-namespace k2 {
+namespace k2pg {
 namespace gate {
 
 using std::make_shared;
@@ -197,4 +197,4 @@ Result<bool> PgSelectIndex::GetNextYbctidBatch() {
 }
 
 }  // namespace gate
-}  // namespace k2
+}  // namespace k2pg
