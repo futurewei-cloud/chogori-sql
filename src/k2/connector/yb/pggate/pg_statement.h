@@ -117,16 +117,17 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
   // Clear all values and expressions that were bound to the given statement.
   virtual CHECKED_STATUS ClearBinds() = 0;
 
-  void SetClientId(string& client_id) {
+ /*  void SetClientId(string& client_id) {
     client_id_ = std::move(client_id);
   }
 
   void SetStmtId(int64_t stmt_id) {
     stmt_id_ = stmt_id;
   }
+ */
 
  protected:
-  // YBSession that this statement belongs to.
+  // PgSession that this statement belongs to.
   PgSession::ScopedRefPtr pg_session_;
 
   // Execution status.

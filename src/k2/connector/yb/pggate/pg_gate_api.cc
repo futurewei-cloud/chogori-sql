@@ -194,7 +194,7 @@ YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
                                  uint64_t ysql_catalog_version,
                                  int64_t last_val,
                                  bool is_called) {
-  return YBCStatusOK();
+  return ToYBCStatus(api_impl->InsertSequenceTuple(db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
 }
 
 YBCStatus YBCUpdateSequenceTupleConditionally(int64_t db_oid,
@@ -205,7 +205,9 @@ YBCStatus YBCUpdateSequenceTupleConditionally(int64_t db_oid,
                                               int64_t expected_last_val,
                                               bool expected_is_called,
                                               bool *skipped) {
-  return YBCStatusOK();
+  return ToYBCStatus(
+      api_impl->UpdateSequenceTupleConditionally(db_oid, seq_oid, ysql_catalog_version,
+          last_val, is_called, expected_last_val, expected_is_called, skipped));
 }
 
 YBCStatus YBCUpdateSequenceTuple(int64_t db_oid,
@@ -214,7 +216,8 @@ YBCStatus YBCUpdateSequenceTuple(int64_t db_oid,
                                  int64_t last_val,
                                  bool is_called,
                                  bool* skipped) {
-  return YBCStatusOK();
+  return ToYBCStatus(api_impl->UpdateSequenceTuple(
+      db_oid, seq_oid, ysql_catalog_version, last_val, is_called, skipped));
 }
 
 YBCStatus YBCReadSequenceTuple(int64_t db_oid,
@@ -222,11 +225,12 @@ YBCStatus YBCReadSequenceTuple(int64_t db_oid,
                                uint64_t ysql_catalog_version,
                                int64_t *last_val,
                                bool *is_called) {
-  return YBCStatusOK();
+  return ToYBCStatus(api_impl->ReadSequenceTuple(
+      db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
 }
 
 YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->DeleteSequenceTuple(db_oid, seq_oid));
 }
 
 // TABLE -------------------------------------------------------------------------------------------

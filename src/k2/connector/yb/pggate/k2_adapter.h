@@ -73,6 +73,11 @@ class K2Adapter {
 
   CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn);
 
+  // for read only operation
+  CHECKED_STATUS ReadSync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn);
+
+  void ReadAsync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn, StatusFunctor callback);
+
   void FlushAsync(StatusFunctor callback);
 
   std::future<yb::Status> FlushFuture() {

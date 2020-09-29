@@ -74,6 +74,18 @@ void K2Adapter::FlushAsync(StatusFunctor callback) {
   // send one or batch of operations asynchronously                                 
 }
 
+yb::Status K2Adapter::ReadSync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn) {
+  Synchronizer s;
+  ReadAsync(std::move(pg_op), k23SITxn, s.AsStatusFunctor());
+  return s.Wait();
+}
+
+void K2Adapter::ReadAsync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn, StatusFunctor callback) {
+  CHECK(pg_op->read_only());
+  CHECK_OK(Apply(std::move(pg_op), k23SITxn));
+  FlushAsync(std::move(callback));
+}
+
 std::string K2Adapter::getDocKey(SqlOpReadRequest& request) {
   // TODO: add implementation   
   return nullptr;                                

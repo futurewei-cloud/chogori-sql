@@ -77,6 +77,9 @@ class PgExpr {
         PG_EXPR_LE,
         PG_EXPR_LT,
 
+        // exists
+        PG_EXPR_EXISTS,
+        
         // Logic operators that take two or more operands.
         PG_EXPR_AND,
         PG_EXPR_OR,

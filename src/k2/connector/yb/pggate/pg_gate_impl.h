@@ -195,6 +195,41 @@ class PgGateApiImpl {
 
   CHECKED_STATUS SetCatalogCacheVersion(PgStatement *handle, uint64_t catalog_cache_version);
 
+// Sequence Operations -----------------------------------------------------------------------------
+
+  // Setup the table to store sequences data.
+  CHECKED_STATUS CreateSequencesDataTable();
+
+  CHECKED_STATUS InsertSequenceTuple(int64_t db_oid,
+                                     int64_t seq_oid,
+                                     uint64_t ysql_catalog_version,
+                                     int64_t last_val,
+                                     bool is_called);
+
+  CHECKED_STATUS UpdateSequenceTupleConditionally(int64_t db_oid,
+                                                  int64_t seq_oid,
+                                                  uint64_t ysql_catalog_version,
+                                                  int64_t last_val,
+                                                  bool is_called,
+                                                  int64_t expected_last_val,
+                                                  bool expected_is_called,
+                                                  bool *skipped);
+
+  CHECKED_STATUS UpdateSequenceTuple(int64_t db_oid,
+                                     int64_t seq_oid,
+                                     uint64_t ysql_catalog_version,
+                                     int64_t last_val,
+                                     bool is_called,
+                                     bool* skipped);
+
+  CHECKED_STATUS ReadSequenceTuple(int64_t db_oid,
+                                   int64_t seq_oid,
+                                   uint64_t ysql_catalog_version,
+                                   int64_t *last_val,
+                                   bool *is_called);
+
+  CHECKED_STATUS DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
+
   //------------------------------------------------------------------------------------------------
   // All DML statements
   CHECKED_STATUS DmlAppendTarget(PgStatement *handle, PgExpr *expr);

@@ -47,10 +47,32 @@
 //
 
 #include "yb/common/port.h"
+#include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_session.h"
 
 namespace k2pg {
 namespace gate {
+
+using namespace std::chrono;
+
+//--------------------------------------------------------------------------------------------------
+// Constants used for the sequences data table.
+//--------------------------------------------------------------------------------------------------
+static constexpr const char* const kPgSequencesNamespaceName = "system_postgres";
+static constexpr const char* const kPgSequencesDataTableName = "sequences_data";
+
+static const string kPgSequencesDataNamespaceId = GetPgsqlNamespaceId(kPgSequencesDataDatabaseOid);
+
+// Columns names and ids.
+static constexpr const char* const kPgSequenceDbOidColName = "db_oid";
+
+static constexpr const char* const kPgSequenceSeqOidColName = "seq_oid";
+
+static constexpr const char* const kPgSequenceLastValueColName = "last_value";
+static constexpr const size_t kPgSequenceLastValueColIdx = 2;
+
+static constexpr const char* const kPgSequenceIsCalledColName = "is_called";
+static constexpr const size_t kPgSequenceIsCalledColIdx = 3;
 
 RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter) :
   table_id_(&op.request().table_name) {
@@ -90,7 +112,8 @@ PgSession::PgSession(
     const YBCPgCallbacks& pg_callbacks)
     : k2_adapter_(k2_adapter),
       pg_txn_handler_(pg_txn_handler),
-      pg_callbacks_(pg_callbacks) {
+      pg_callbacks_(pg_callbacks),
+      client_id_("K2PG") {
     ConnectDatabase(database_name);
 }
 
@@ -117,8 +140,7 @@ Status PgSession::CreateDatabase(const string& database_name,
 Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) {
   RETURN_NOT_OK(k2_adapter_->DeleteNamespace(database_name,
                                          GetPgsqlNamespaceId(database_oid)));
-  // TODO: enable the following code once adding sequence support                                       
-  // RETURN_NOT_OK(DeleteDBSequences(database_oid));
+  RETURN_NOT_OK(DeleteDBSequences(database_oid));
   return Status::OK();
 }
 
@@ -144,6 +166,190 @@ Status PgSession::ReserveOids(const PgOid database_oid,
 
 Status PgSession::GetCatalogMasterVersion(uint64_t *version) {
   return k2_adapter_->GetYsqlCatalogMasterVersion(version);
+}
+
+// Sequence -----------------------------------------------------------------------------------------
+
+Status PgSession::CreateSequencesDataTable() {
+  // TODO: add implementation
+  return Status::OK();
+}
+
+Status PgSession::InsertSequenceTuple(int64_t db_oid,
+                                      int64_t seq_oid,
+                                      uint64_t ysql_catalog_version,
+                                      int64_t last_val,
+                                      bool is_called) {
+  PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
+  auto result = LoadTable(oid);
+  if (!result.ok()) {
+    RETURN_NOT_OK(CreateSequencesDataTable());
+    // Try one more time.
+    result = LoadTable(oid);
+  }
+  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(result);
+
+  std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlInsert(GetClientId(), GetNextStmtId());
+  SqlOpWriteRequest& write_request = psql_write->request();
+  write_request.catalog_version = ysql_catalog_version;
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
+  ColumnValue colVal1(kPgSequenceLastValueColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(last_val)));
+  ColumnValue colVal2(kPgSequenceIsCalledColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(is_called)));
+  write_request.column_values.push_back(colVal1);
+  write_request.column_values.push_back(colVal2);
+
+  std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
+  uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
+              (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  VERIFY_RESULT(RunAsync(write_op, oid, &rt, true));
+
+  return Status::OK();
+}
+
+Status PgSession::UpdateSequenceTuple(int64_t db_oid,
+                                      int64_t seq_oid,
+                                      uint64_t ysql_catalog_version,
+                                      int64_t last_val,
+                                      bool is_called,
+                                      std::optional<int64_t> expected_last_val,
+                                      std::optional<bool> expected_is_called,
+                                      bool* skipped) {
+  PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
+  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+
+  std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlUpdate(GetClientId(), GetNextStmtId());
+  SqlOpWriteRequest& write_request = psql_write->request();
+  write_request.catalog_version = ysql_catalog_version;
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
+  ColumnValue colVal1(kPgSequenceLastValueColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(last_val)));
+  ColumnValue colVal2(kPgSequenceIsCalledColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(is_called)));
+  write_request.column_new_values.push_back(colVal1);
+  write_request.column_new_values.push_back(colVal2);
+  
+  SqlOpExpr* where_expr;
+  if (expected_last_val.has_value() && expected_is_called.has_value()) {
+    SqlOpExpr *colRef1 = new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx);
+    SqlOpExpr *colVal1 = new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(expected_last_val.value()));
+    SqlOpCondition *eq1 = new SqlOpCondition();
+    eq1->setOp(PgExpr::Opcode::PG_EXPR_EQ);
+    eq1->addOperand(colRef1);
+    eq1->addOperand(colVal1);
+    SqlOpExpr *expr1 = new SqlOpExpr(eq1);
+
+    SqlOpExpr *colRef2 = new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx);
+    SqlOpExpr *colVal2 = new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(expected_is_called.value()));
+    SqlOpCondition *eq2 = new SqlOpCondition();
+    eq2->setOp(PgExpr::Opcode::PG_EXPR_EQ);
+    eq2->addOperand(colRef2);
+    eq2->addOperand(colVal2);
+    SqlOpExpr *expr2 = new SqlOpExpr(eq2);
+
+    SqlOpCondition *cond = new SqlOpCondition();
+    cond->setOp(PgExpr::Opcode::PG_EXPR_AND);
+    cond->addOperand(expr1);
+    cond->addOperand(expr2);
+    where_expr = new SqlOpExpr(cond);
+  } else {
+    SqlOpCondition *cond = new SqlOpCondition();
+    cond->setOp(PgExpr::Opcode::PG_EXPR_EXISTS);
+    where_expr = new SqlOpExpr(cond);
+  }
+  write_request.where_expr = where_expr;
+
+  SqlOpColumnRefs *colRefs = new SqlOpColumnRefs();
+  colRefs->ids.push_back(kPgSequenceLastValueColIdx);
+  colRefs->ids.push_back(kPgSequenceIsCalledColIdx);
+  write_request.column_refs = colRefs;
+  std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
+  uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
+              (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  RETURN_NOT_OK(RunAsync(write_op, oid, &rt, true));
+
+  if (skipped) {
+    const SqlOpResponse& resp = psql_write->response();
+    *skipped = resp.skipped;
+  }
+  return Status::OK();
+}
+
+Status PgSession::ReadSequenceTuple(int64_t db_oid,
+                                    int64_t seq_oid,
+                                    uint64_t ysql_catalog_version,
+                                    int64_t *last_val,
+                                    bool *is_called) {
+  PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
+  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+
+  std::unique_ptr<PgReadOpTemplate> psql_read = t->NewPgsqlSelect(GetClientId(), GetNextStmtId());
+  SqlOpReadRequest& read_request = psql_read->request();
+  read_request.catalog_version = ysql_catalog_version;
+  read_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  read_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
+  read_request.targets.push_back(new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx));
+  read_request.targets.push_back(new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx));
+  SqlOpColumnRefs *colRefs = new SqlOpColumnRefs();
+  colRefs->ids.push_back(kPgSequenceLastValueColIdx);
+  colRefs->ids.push_back(kPgSequenceIsCalledColIdx);
+  read_request.column_refs = colRefs;
+  std::shared_ptr<PgReadOpTemplate> read_op = std::move(psql_read);
+
+  // TODO: might need to refactor this logic since SKV does not support read-only transactions
+  std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler(read_op->IsTransactional(), read_op->read_only());
+  RETURN_NOT_OK(k2_adapter_->ReadSync(read_op, k23SITxn));
+
+  // TODO: make sure the response is populated correctly in K2 Adapter
+  Slice cursor;
+  int64_t row_count = 0;
+  PgOpResult::LoadCache(psql_read->rows_data(), &row_count, &cursor);
+  if (row_count == 0) {
+     return STATUS_SUBSTITUTE(NotFound, "Unable to find relation for sequence $0", seq_oid);   
+  }
+  size_t read_size = PgOpResult::ReadNumber(&cursor, last_val);
+  cursor.remove_prefix(read_size);
+  read_size = PgOpResult::ReadNumber(&cursor, is_called);
+  return Status::OK();
+}
+
+Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
+  PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
+  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+
+  std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlDelete(GetClientId(), GetNextStmtId());
+  SqlOpWriteRequest& write_request = psql_write->request();
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
+  
+  std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
+  uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
+              (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  RETURN_NOT_OK(RunAsync(write_op, oid, &rt, true));
+  return Status::OK();
+}
+
+Status PgSession::DeleteDBSequences(int64_t db_oid) {
+  PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
+  Result<PgTableDesc::ScopedRefPtr> r = LoadTable(oid);
+  if (!r.ok()) {
+    // Sequence table is not yet created.
+    return Status::OK();
+  }
+
+  PgTableDesc::ScopedRefPtr t = CHECK_RESULT(r);
+  if (t == nullptr) {
+    return Status::OK();
+  }
+
+  std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlDelete(GetClientId(), GetNextStmtId());
+  SqlOpWriteRequest& write_request = psql_write->request();
+  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
+  uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
+              (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+  RETURN_NOT_OK(RunAsync(write_op, oid, &rt, true));
+
+  return Status::OK();
 }
 
 void PgSession::InvalidateTableCache(const PgObjectId& table_id) {

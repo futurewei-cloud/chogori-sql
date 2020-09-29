@@ -49,11 +49,13 @@
 #ifndef CHOGORI_GATE_PG_SESSION_H
 #define CHOGORI_GATE_PG_SESSION_H
 
+#include <optional>
 #include <unordered_set>
 
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/oid_generator.h"
 #include "yb/common/sys/monotime.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_tabledesc.h"
@@ -160,6 +162,34 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   CHECKED_STATUS GetCatalogMasterVersion(uint64_t *version);
 
+  // API for sequences data operations.
+  CHECKED_STATUS CreateSequencesDataTable();
+
+  CHECKED_STATUS InsertSequenceTuple(int64_t db_oid,
+                                     int64_t seq_oid,
+                                     uint64_t ysql_catalog_version,
+                                     int64_t last_val,
+                                     bool is_called);
+
+  CHECKED_STATUS UpdateSequenceTuple(int64_t db_oid,
+                                     int64_t seq_oid,
+                                     uint64_t ysql_catalog_version,
+                                     int64_t last_val,
+                                     bool is_called,
+                                     std::optional<int64_t> expected_last_val,
+                                     std::optional<bool> expected_is_called,
+                                     bool* skipped);
+
+  CHECKED_STATUS ReadSequenceTuple(int64_t db_oid,
+                                   int64_t seq_oid,
+                                   uint64_t ysql_catalog_version,
+                                   int64_t *last_val,
+                                   bool *is_called);
+
+  CHECKED_STATUS DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
+
+  CHECKED_STATUS DeleteDBSequences(int64_t db_oid);
+
   // Access functions for connected database.
   const char* connected_dbname() const {
     return connected_database_.c_str();
@@ -193,6 +223,15 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // Returns the local catalog version stored in shared memory, or an error if
   // the shared memory has not been initialized (e.g. in initdb).
   Result<uint64_t> GetSharedCatalogVersion();
+
+  const string& GetClientId() const {
+    return client_id_;
+  }
+
+  int64_t GetNextStmtId() {
+    // TODO: add more complext stmt id generation logic
+    return stmt_id_++;
+  }
 
   void SetTimeout(const int timeout_ms) {
       timeout_ = MonoDelta::FromMilliseconds(timeout_ms);
@@ -321,6 +360,11 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   std::unordered_set<RowIdentifier, boost::hash<RowIdentifier>> buffered_keys_;
 
   const YBCPgCallbacks& pg_callbacks_;
+
+  // TODO: pass client/user id from pg?
+  string client_id_;
+
+  int64_t stmt_id_ = 1;
 
   MonoDelta timeout_;
 };

@@ -54,7 +54,10 @@ namespace gate {
 // Class PgStatement
 //--------------------------------------------------------------------------------------------------
 
-PgStatement::PgStatement(PgSession::ScopedRefPtr pg_session) : pg_session_(std::move(pg_session)) {
+PgStatement::PgStatement(PgSession::ScopedRefPtr pg_session) : 
+  pg_session_(std::move(pg_session)),
+  client_id_(pg_session_->GetClientId()),
+  stmt_id_(pg_session_->GetNextStmtId()) {
 }
 
 PgStatement::~PgStatement() {

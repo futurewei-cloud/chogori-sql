@@ -412,6 +412,57 @@ Status PgGateApiImpl::SetCatalogCacheVersion(PgStatement *handle, uint64_t catal
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 
+// Sequence -----------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::CreateSequencesDataTable() {
+  return pg_session_->CreateSequencesDataTable();
+}
+
+Status PgGateApiImpl::InsertSequenceTuple(int64_t db_oid,
+                                      int64_t seq_oid,
+                                      uint64_t ysql_catalog_version,
+                                      int64_t last_val,
+                                      bool is_called) {
+  return pg_session_->InsertSequenceTuple(
+      db_oid, seq_oid, ysql_catalog_version, last_val, is_called);
+}
+
+Status PgGateApiImpl::UpdateSequenceTupleConditionally(int64_t db_oid,
+                                                   int64_t seq_oid,
+                                                   uint64_t ysql_catalog_version,
+                                                   int64_t last_val,
+                                                   bool is_called,
+                                                   int64_t expected_last_val,
+                                                   bool expected_is_called,
+                                                   bool *skipped) {
+  return pg_session_->UpdateSequenceTuple(
+      db_oid, seq_oid, ysql_catalog_version, last_val, is_called,
+      expected_last_val, expected_is_called, skipped);
+}
+
+Status PgGateApiImpl::UpdateSequenceTuple(int64_t db_oid,
+                                      int64_t seq_oid,
+                                      uint64_t ysql_catalog_version,
+                                      int64_t last_val,
+                                      bool is_called,
+                                      bool* skipped) {
+  return pg_session_->UpdateSequenceTuple(
+      db_oid, seq_oid, ysql_catalog_version, last_val,
+      is_called, std::nullopt, std::nullopt, skipped);
+}
+
+Status PgGateApiImpl::ReadSequenceTuple(int64_t db_oid,
+                                    int64_t seq_oid,
+                                    uint64_t ysql_catalog_version,
+                                    int64_t *last_val,
+                                    bool *is_called) {
+  return pg_session_->ReadSequenceTuple(db_oid, seq_oid, ysql_catalog_version, last_val, is_called);
+}
+
+Status PgGateApiImpl::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
+  return pg_session_->DeleteSequenceTuple(db_oid, seq_oid);
+}
+
 // Binding -----------------------------------------------------------------------------------------
 
 Status PgGateApiImpl::DmlAppendTarget(PgStatement *handle, PgExpr *target) {

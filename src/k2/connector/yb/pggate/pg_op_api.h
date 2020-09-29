@@ -177,6 +177,12 @@ namespace gate {
     };
 
     struct ColumnValue {
+        ColumnValue() {
+        };
+
+        ColumnValue(int columnId, SqlOpExpr* expression) : column_id(columnId), expr(expression) {
+        };
+        
         int column_id;
         SqlOpExpr* expr;
     };
