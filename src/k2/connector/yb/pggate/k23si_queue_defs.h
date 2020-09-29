@@ -27,7 +27,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include <future>
 #include <queue>
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 struct BeginTxnRequest {
     k2::K2TxnOptions opts;
     std::promise<K23SITxn> prom;
@@ -104,4 +105,5 @@ void pushQ(Q& queue, Request&& r) {
     queue.push(std::forward<Request>(r));
 }
 
-}  // namespace k2gate
+}  // namespace gate
+}  // namespace k2pg

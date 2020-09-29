@@ -31,7 +31,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include <k2/module/k23si/client/k23si_client.h>
 #include <future>
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 
 // These transaction handles are produced by the K23SIGate class. The user should use this
 // handle to perform operation which should be part of the transaction
@@ -68,4 +69,5 @@ private: // fields
 
  };  // class K23SITxn
 
-} // ns k2gate
+} // ns gate
+} // ns k2pg

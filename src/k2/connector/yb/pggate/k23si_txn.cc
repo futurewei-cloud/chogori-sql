@@ -23,7 +23,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k23si_txn.h"
 #include "k23si_queue_defs.h"
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 using namespace k2;
 
 
@@ -57,4 +58,5 @@ const k2::dto::K23SI_MTR& K23SITxn::mtr() const {
     return _mtr;
 }
 
-} // ns k2gate
+} // ns gate
+} // ns k2pg

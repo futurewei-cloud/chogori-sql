@@ -22,7 +22,8 @@ Copyright(c) 2020 Futurewei Cloud
 */
 #include "k23si_queue_defs.h"
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 
 LFMutex requestQMutex;
 std::queue<BeginTxnRequest> beginTxQ;
@@ -33,4 +34,5 @@ std::queue<ReadRequest> readTxQ;
 std::queue<ScanReadRequest> scanReadTxQ;
 std::queue<WriteRequest> writeTxQ;
 
-} // ns k2gate
+} // ns gate
+} // ns k2pg

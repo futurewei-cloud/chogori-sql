@@ -4,14 +4,14 @@
 #include "yb/common/env.h"
 #include "k23si_gate.h"
 
-k2gate::K23SIGate* k23si;
+k2pg::gate::K23SIGate* k23si;
 std::atomic<bool> k23si_shutdown_done;
 
 void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
     CHECK(k23si == nullptr) << ": " << __PRETTY_FUNCTION__ << " can only be called once";
 
     k23si_shutdown_done.exchange(false);
-    k23si = new k2gate::K23SIGate();
+    k23si = new k2pg::gate::K23SIGate();
 
     VLOG(1) << "K23SI gate open";
 }
@@ -20,7 +20,7 @@ void YBCDestroyPgGate() {
     if (k23si_shutdown_done.exchange(true)) {
         LOG(DFATAL) << __PRETTY_FUNCTION__ << " should only be called once";
     } else {
-        k2gate::K23SIGate *local_k23si = k23si;
+        k2pg::gate::K23SIGate *local_k23si = k23si;
         k23si = nullptr;  // YBCPgIsYugaByteEnabled() must return false from now on.
         delete local_k23si;
         VLOG(1) << __PRETTY_FUNCTION__ << "K23SI gate closed";

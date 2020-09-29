@@ -32,7 +32,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k23si_txn.h"
 #include <future>
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 
 // This class is the client library for interacting with K2. Most importantly, it allows the user to start
 // a new K2 transaction
@@ -50,4 +51,5 @@ public:
     std::future<k2::CreateSchemaResult> createSchema(const k2::String& collectionName, k2::dto::Schema schema);
 };  // class K23SIGate
 
-} // ns k2gate
+}  // namespace gate
+}  // namespace k2pg

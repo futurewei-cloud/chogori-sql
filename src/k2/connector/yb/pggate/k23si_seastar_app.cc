@@ -25,7 +25,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k23si_queue_defs.h"
 #include "k23si_txn.h"
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 
 PGK2Client::PGK2Client():
     _client(k2::K23SIClientConfig()) {
@@ -158,4 +159,5 @@ seastar::future<> PGK2Client::_pollForWork() {
         _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ());
 }
 
-}  // namespace k2gate
+}  // namespace gate
+}  // namespace k2pg

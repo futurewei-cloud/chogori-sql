@@ -4215,26 +4215,45 @@ BackendInitialize(Port *port)
 	if (k2_init_func) {
 		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
 		if (NULL == rdmaDevice) {
-			ereport(LOG,
-					(errmsg("missing env variable K2_RDMA_DEVICE")));
+			ereport(LOG, (errmsg("missing env variable K2_RDMA_DEVICE")));
 			proc_exit(1);
 		}
 
 		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
 		if (NULL == cpoAddress) {
-			ereport(LOG,
-					(errmsg("missing env variable K2_CPO_ADDRESS")));
+			ereport(LOG, (errmsg("missing env variable K2_CPO_ADDRESS")));
 			proc_exit(1);
 		}
 
 		const char* tsoAddress = getenv("K2_TSO_ADDRESS");
 		if (NULL == tsoAddress) {
-			ereport(LOG,
-					(errmsg("missing env variable K2_TSO_ADDRESS")));
+			ereport(LOG, (errmsg("missing env variable K2_TSO_ADDRESS")));
 			proc_exit(1);
 		}
 
-		char* argv[] = {"k2_pg", "-c1" , "--hugepages", "--rdma", rdmaDevice, "-m200M", "--partition_request_timeout=10ms", "--cpo", cpoAddress, "--tso_endpoint", tsoAddress, "--cpo_request_timeout=100ms", "--cpo_request_backoff=10ms"};
+		const char* k2Cores = getenv("K2_PG_CORES");
+		if (NULL == k2Cores) {
+			k2Cores= "0";
+		}
+
+		const char* memToUse = getenv("K2_PG_MEM");
+		if (NULL == memToUse) {
+			memToUse="200m";
+		}
+
+		const char* cpoTimeout = getenv("K2_CPO_TIMEOUT");
+		if (NULL == cpoTimeout) {
+			cpoTimeout = "100ms";
+		}
+
+		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
+		if (NULL == cpoBackoff) {
+			cpoBackoff = "10ms";
+		}
+
+		char* argv[] = {"k2_pg", "--cpuset", k2Cores, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
+			"--partition_request_timeout", cpoTimeout, "--cpo", cpoAddress, "--tso_endpoint", tsoAddress,
+			"--cpo_request_timeout", cpoTimeout, "--cpo_request_backoff", cpoBackoff};
 		k2_init_func(sizeof(argv), argv);
     }
 

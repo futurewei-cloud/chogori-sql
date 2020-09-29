@@ -24,7 +24,8 @@ Copyright(c) 2020 Futurewei Cloud
 #include <k2/dto/Collection.h>
 #include "k23si_queue_defs.h"
 
-namespace k2gate {
+namespace k2pg {
+namespace gate {
 using namespace k2;
 
 K23SIGate::K23SIGate() {
@@ -54,4 +55,5 @@ std::future<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& co
     return result;
 }
 
-} // ns k2gate
+} // ns gate
+} // ns k2pg

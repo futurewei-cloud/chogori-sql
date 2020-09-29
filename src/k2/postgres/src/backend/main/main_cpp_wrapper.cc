@@ -13,7 +13,7 @@ void startK2App(int argc, char** argv) {
     std::thread k2thread([argc, argv] {
         k2::App app("PG");
         app.addApplet<k2::TSO_ClientLib>(0s);
-        app.addApplet<k2gate::PGK2Client>();
+        app.addApplet<k2pg::gate::PGK2Client>();
         app.addOptions()
         // config for dependencies
         ("partition_request_timeout", bpo::value<k2::ParseableDuration>(), "Timeout of K23SI operations, as chrono literals")
