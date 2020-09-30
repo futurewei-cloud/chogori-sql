@@ -4230,7 +4230,7 @@ BackendInitialize(Port *port)
 			proc_exit(1);
 		}
 
-
+///comment
 
 
 		/* example "rrdma+k2rpc://fffffff" */
