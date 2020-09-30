@@ -4230,6 +4230,9 @@ BackendInitialize(Port *port)
 			proc_exit(1);
 		}
 
+
+
+
 		/* example "rrdma+k2rpc://fffffff" */
 		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
 		if (NULL == cpoAddress) {
