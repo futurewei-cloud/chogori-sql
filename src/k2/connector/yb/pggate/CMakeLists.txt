@@ -3,7 +3,7 @@ file(GLOB SOURCES "*.cc")
 
 add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wno-char-subscripts -Wno-ignored-qualifiers -Wno-strict-aliasing -Wall)
 
-add_library(ybpggate SHARED ${HEADERS} ${SOURCES})
+add_library(ybpggate STATIC ${HEADERS} ${SOURCES})
 
 set_target_properties(ybpggate PROPERTIES
         VERSION ${PROJECT_VERSION}
