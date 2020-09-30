@@ -205,7 +205,7 @@ char	   *Unix_socket_directories;
 char	   *ListenAddresses;
 
 /* Keeps track of the current forked backend. Used to load-balance K2-Seastar core usage */
-int 		forkedBackends;
+unsigned long int 		forkedBackends;
 
 /* we support 10^ this number of cores */
 #define MAX_K2_CORE_DIGITS 4
@@ -4223,35 +4223,39 @@ BackendInitialize(Port *port)
 	pq_init();					/* initialize libpq to talk to client */
 	/* initialize k2 */
 	if (k2_init_func) {
+		/* example "rrdma+k2rpc://fffffff" */
 		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
 		if (NULL == rdmaDevice) {
 			ereport(LOG, (errmsg("missing env variable K2_RDMA_DEVICE")));
 			proc_exit(1);
 		}
 
+		/* example "rrdma+k2rpc://fffffff" */
 		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
 		if (NULL == cpoAddress) {
 			ereport(LOG, (errmsg("missing env variable K2_CPO_ADDRESS")));
 			proc_exit(1);
 		}
 
+		/* example "rrdma+k2rpc://fffffff" */
 		const char* tsoAddress = getenv("K2_TSO_ADDRESS");
 		if (NULL == tsoAddress) {
 			ereport(LOG, (errmsg("missing env variable K2_TSO_ADDRESS")));
 			proc_exit(1);
 		}
 
+		/* example "0 1 2 5 10 12 14 40" */
 		const char* k2Cores = getenv("K2_PG_CORES");
 		const char* coreToUse = "0";
 		if (NULL != k2Cores) {
 			/* see how many cores are given in the space-delimited list (count spaces) */
 			char coreStr[MAX_K2_CORE_DIGITS+1] = {'\0'};
-			int nCores = 1;
+			unsigned long int nCores = 1;
 			for(char*p = k2Cores; *p != '\0'; ++p) {
 				if (*p == ' ') ++nCores;
 			}
 
-			int coreID = forkedBackends % nCores; /* RR the next core from the list */
+			unsigned long int coreID = forkedBackends % nCores; /* RR the next core from the list */
 
 			/* find the string for the chosen core */
 			char* ptr= k2Cores;
@@ -4276,16 +4280,19 @@ BackendInitialize(Port *port)
 			coreToUse = coreStr;
 		}
 
+		/* example: "200m" */
 		const char* memToUse = getenv("K2_PG_MEM");
 		if (NULL == memToUse) {
 			memToUse="200m";
 		}
 
+		/* example: "10ms" */
 		const char* cpoTimeout = getenv("K2_CPO_TIMEOUT");
 		if (NULL == cpoTimeout) {
 			cpoTimeout = "100ms";
 		}
 
+		/* example: "10ms" */
 		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
 		if (NULL == cpoBackoff) {
 			cpoBackoff = "10ms";
