@@ -22,7 +22,7 @@
 
 #include "yb/common/concurrent/async_util.h"
 #include "yb/entities/schema.h"
-#include "yb/pggate/k23si.h"
+#include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/common/status.h"
@@ -31,7 +31,6 @@ namespace k2pg {
 namespace gate {
 
 using namespace yb;
-using k2pggate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {

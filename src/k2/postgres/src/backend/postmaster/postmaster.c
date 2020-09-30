@@ -4213,9 +4213,47 @@ BackendInitialize(Port *port)
 	pq_init();					/* initialize libpq to talk to client */
 	/* initialize k2 */
 	if (k2_init_func) {
-		// TODO K2 setup command line args for the seastar thread
+		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
+		if (NULL == rdmaDevice) {
+			ereport(LOG, (errmsg("missing env variable K2_RDMA_DEVICE")));
+			proc_exit(1);
+		}
 
-		const char* const argv[] = {"k2_pg", "-c1" , "-m200M", "--partition_request_timeout=10ms", "--cpo=rdma+k2rpc://ffff:123456", "--tso_endpoint=rdma+k2rpc://ffff:123456", "--cpo_request_timeout=100ms", "--cpo_request_backoff=10ms"};
+		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
+		if (NULL == cpoAddress) {
+			ereport(LOG, (errmsg("missing env variable K2_CPO_ADDRESS")));
+			proc_exit(1);
+		}
+
+		const char* tsoAddress = getenv("K2_TSO_ADDRESS");
+		if (NULL == tsoAddress) {
+			ereport(LOG, (errmsg("missing env variable K2_TSO_ADDRESS")));
+			proc_exit(1);
+		}
+
+		const char* k2Cores = getenv("K2_PG_CORES");
+		if (NULL == k2Cores) {
+			k2Cores= "0";
+		}
+
+		const char* memToUse = getenv("K2_PG_MEM");
+		if (NULL == memToUse) {
+			memToUse="200m";
+		}
+
+		const char* cpoTimeout = getenv("K2_CPO_TIMEOUT");
+		if (NULL == cpoTimeout) {
+			cpoTimeout = "100ms";
+		}
+
+		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
+		if (NULL == cpoBackoff) {
+			cpoBackoff = "10ms";
+		}
+
+		char* argv[] = {"k2_pg", "--cpuset", k2Cores, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
+			"--partition_request_timeout", cpoTimeout, "--cpo", cpoAddress, "--tso_endpoint", tsoAddress,
+			"--cpo_request_timeout", cpoTimeout, "--cpo_request_backoff", cpoBackoff};
 		k2_init_func(sizeof(argv), argv);
     }
 

@@ -53,14 +53,13 @@
 
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/result.h"
-#include "yb/pggate/k23si.h"
+#include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
-using namespace k2pggate;
 
 // These should match XACT_READ_UNCOMMITED, XACT_READ_COMMITED, XACT_REPEATABLE_READ,
 // XACT_SERIALIZABLE from xact.h.

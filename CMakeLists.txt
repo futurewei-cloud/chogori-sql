@@ -8,7 +8,7 @@ add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused
 
 # K2_DEBUG_LOGGING enables some verbose logging for debug purposes.
 if(DEFINED ENV{K2_DEBUG_LOGGING})
-	set(K2_DEBUG_LOGGING $ENV{K2_DEBUG_LOGGING})
+    set(K2_DEBUG_LOGGING $ENV{K2_DEBUG_LOGGING})
 else()
     set(K2_DEBUG_LOGGING 0)
 endif()
