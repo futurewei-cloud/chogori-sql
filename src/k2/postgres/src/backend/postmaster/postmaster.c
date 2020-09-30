@@ -204,6 +204,12 @@ char	   *Unix_socket_directories;
 /* The TCP listen address(es) */
 char	   *ListenAddresses;
 
+/* Keeps track of the current forked backend. Used to load-balance K2-Seastar core usage */
+int 		forkedBackends;
+
+/* we support 10^ this number of cores */
+#define MAX_K2_CORE_DIGITS 4
+
 /*
  * ReservedBackends is the number of backends reserved for superuser use.
  * This number is taken out of the pool size given by MaxConnections so
@@ -583,6 +589,8 @@ PostmasterMain(int argc, char *argv[])
 	bool		listen_addr_saved = false;
 	int			i;
 	char	   *output_config_variable = NULL;
+
+	forkedBackends = 0;
 
 	MyProcPid = PostmasterPid = getpid();
 
@@ -1735,6 +1743,8 @@ ServerLoop(void)
 					port = ConnCreate(ListenSocket[i]);
 					if (port)
 					{
+						/* one more backend was started */
+						forkedBackends++;
 						BackendStartup(port);
 
 						/*
@@ -4232,8 +4242,38 @@ BackendInitialize(Port *port)
 		}
 
 		const char* k2Cores = getenv("K2_PG_CORES");
-		if (NULL == k2Cores) {
-			k2Cores= "0";
+		const char* coreToUse = "0";
+		if (NULL != k2Cores) {
+			/* see how many cores are given in the space-delimited list (count spaces) */
+			char coreStr[MAX_K2_CORE_DIGITS+1] = {'\0'};
+			int nCores = 1;
+			for(char*p = k2Cores; *p != '\0'; ++p) {
+				if (*p == ' ') ++nCores;
+			}
+
+			int coreID = forkedBackends % nCores; /* RR the next core from the list */
+
+			/* find the string for the chosen core */
+			char* ptr= k2Cores;
+			while(*ptr != '\0' && coreID > 0) {
+				if (*ptr == ' ') --coreID;
+				++ptr;
+			}
+			for(int i = 0; i < MAX_K2_CORE_DIGITS; ++i) {
+				if (*ptr == '\0' || *ptr == ' ') break;
+				coreStr[i] = *ptr;
+				++ptr;
+			}
+			if (*ptr != ' ' && *ptr != '\0') {
+				ereport(LOG, (errmsg("Only up-to 4-digit core identifiers are supported")));
+				proc_exit(1);
+			}
+			if (coreStr[0] == '\0') {
+				ereport(LOG, (errmsg("Invalid string given for K2_CORE")));
+				proc_exit(1);
+			}
+
+			coreToUse = coreStr;
 		}
 
 		const char* memToUse = getenv("K2_PG_MEM");
@@ -4251,7 +4291,7 @@ BackendInitialize(Port *port)
 			cpoBackoff = "10ms";
 		}
 
-		char* argv[] = {"k2_pg", "--cpuset", k2Cores, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
+		char* argv[] = {"k2_pg", "--cpuset", coreToUse, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
 			"--partition_request_timeout", cpoTimeout, "--cpo", cpoAddress, "--tso_endpoint", tsoAddress,
 			"--cpo_request_timeout", cpoTimeout, "--cpo_request_backoff", cpoBackoff};
 		k2_init_func(sizeof(argv), argv);
