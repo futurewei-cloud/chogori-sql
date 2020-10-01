@@ -197,7 +197,9 @@ Status PgCreateTable::Exec() {
 
   std::vector<std::string> split_rows = VERIFY_RESULT(BuildSplitRows(schema));
 
-  // TODO: For index, set indexed (base) table id.
+  if (indexed_table_id()) {
+   // TODO: For index, set indexed (base) table id.
+  }
 
   // Create table.
   const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema, range_columns_, split_rows_,
@@ -244,6 +246,106 @@ Status PgDropTable::Exec() {
   return s;
 }
 
+//--------------------------------------------------------------------------------------------------
+// PgCreateIndex
+//--------------------------------------------------------------------------------------------------
+
+PgCreateIndex::PgCreateIndex(PgSession::ScopedRefPtr pg_session,
+                             const char *database_name,
+                             const char *schema_name,
+                             const char *index_name,
+                             const PgObjectId& index_id,
+                             const PgObjectId& base_table_id,
+                             bool is_shared_index,
+                             bool is_unique_index,
+                             const bool skip_index_backfill,
+                             bool if_not_exist)
+    : PgCreateTable(pg_session, database_name, schema_name, index_name, index_id,
+                    is_shared_index, if_not_exist, false /* add_primary_key */),
+      base_table_id_(base_table_id),
+      is_unique_index_(is_unique_index),
+      skip_index_backfill_(skip_index_backfill) {
+}
+
+size_t PgCreateIndex::PrimaryKeyRangeColumnCount() const {
+  return ybbasectid_added_ ? primary_key_range_column_count_
+                           : PgCreateTable::PrimaryKeyRangeColumnCount();
+}
+
+Status PgCreateIndex::AddYBbasectidColumn() {
+  primary_key_range_column_count_ = PgCreateTable::PrimaryKeyRangeColumnCount();
+  // Add YBUniqueIdxKeySuffix column to store key suffix for handling multiple NULL values in column
+  // with unique index.
+  // Value of this column is set to ybctid (same as ybbasectid) for index row in case index
+  // is unique and at least one of its key column is NULL.
+  // In all other case value of this column is NULL.
+  if (is_unique_index_) {
+    RETURN_NOT_OK(
+        PgCreateTable::AddColumnImpl("ybuniqueidxkeysuffix",
+                                     to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
+                                     YB_YQL_DATA_TYPE_BINARY,
+                                     false /* is_hash */,
+                                     true /* is_range */));
+  }
+
+  // Add ybbasectid column to store the ybctid of the rows in the indexed table. It should be added
+  // at the end of the primary key of the index, i.e. either before any non-primary-key column if
+  // any or before exec() below.
+  RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",
+                                             to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
+                                             YB_YQL_DATA_TYPE_BINARY,
+                                             false /* is_hash */,
+                                             !is_unique_index_ /* is_range */));
+  ybbasectid_added_ = true;
+  return Status::OK();
+}
+
+Status PgCreateIndex::AddColumnImpl(const char *attr_name,
+                                    int attr_num,
+                                    int attr_ybtype,
+                                    bool is_hash,
+                                    bool is_range,
+                                    ColumnSchema::SortingType sorting_type) {
+  if (!is_hash && !is_range && !ybbasectid_added_) {
+    RETURN_NOT_OK(AddYBbasectidColumn());
+  }
+
+  return PgCreateTable::AddColumnImpl(attr_name, attr_num, attr_ybtype,
+      is_hash, is_range, sorting_type);
+}
+
+Status PgCreateIndex::Exec() {
+  if (!ybbasectid_added_) {
+    RETURN_NOT_OK(AddYBbasectidColumn());
+  }
+  Status s = PgCreateTable::Exec();
+  pg_session_->InvalidateTableCache(base_table_id_);
+  return s;
+}
+
+//--------------------------------------------------------------------------------------------------
+// PgDropIndex
+//--------------------------------------------------------------------------------------------------
+
+PgDropIndex::PgDropIndex(PgSession::ScopedRefPtr pg_session,
+                         const PgObjectId& index_id,
+                         bool if_exist)
+    : PgDropTable(pg_session, index_id, if_exist) {
+}
+
+PgDropIndex::~PgDropIndex() {
+}
+
+Status PgDropIndex::Exec() {
+  Status s = pg_session_->DropIndex(table_id_);
+
+  // TODO: should we invalidate table cache for the indexed table as well?
+  pg_session_->InvalidateTableCache(table_id_);
+  if (s.ok() || (s.IsNotFound() && if_exist_)) {
+    return Status::OK();
+  }
+  return s;
+}
 
 }  // namespace gate
 }  // namespace k2pg

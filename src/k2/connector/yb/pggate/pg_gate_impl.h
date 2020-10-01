@@ -56,6 +56,7 @@
 #include "yb/common/metrics/metrics.h"
 #include "yb/common/sys/mem_tracker.h"
 #include "yb/entities/expr.h"
+#include "yb/entities/index.h"
 #include "yb/pggate/pg_gate_typedefs.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_memctx.h"
@@ -195,7 +196,43 @@ class PgGateApiImpl {
 
   CHECKED_STATUS SetCatalogCacheVersion(PgStatement *handle, uint64_t catalog_cache_version);
 
-// Sequence Operations -----------------------------------------------------------------------------
+  // Index --------------------------------------------------------------------------------------------
+
+  // Create and drop index.
+  CHECKED_STATUS NewCreateIndex(const char *database_name,
+                                const char *schema_name,
+                                const char *index_name,
+                                const PgObjectId& index_id,
+                                const PgObjectId& table_id,
+                                bool is_shared_index,
+                                bool is_unique_index,
+                                const bool skip_index_backfill,
+                                bool if_not_exist,
+                                PgStatement **handle);
+
+  CHECKED_STATUS CreateIndexAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
+                                      const YBCPgTypeEntity *attr_type, bool is_hash,
+                                      bool is_range, bool is_desc, bool is_nulls_first);
+
+  CHECKED_STATUS CreateIndexAddSplitRow(PgStatement *handle, int num_cols,
+                                        YBCPgTypeEntity **types, uint64_t *data);
+
+  CHECKED_STATUS ExecCreateIndex(PgStatement *handle);
+
+  CHECKED_STATUS NewDropIndex(const PgObjectId& index_id,
+                              bool if_exist,
+                              PgStatement **handle);
+
+  CHECKED_STATUS ExecDropIndex(PgStatement *handle);
+
+  Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
+      const PgObjectId& table_id,
+      const PgObjectId& index_id,
+      const IndexPermissions& target_index_permissions);
+
+  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id);
+
+  // Sequence Operations -----------------------------------------------------------------------------
 
   // Setup the table to store sequences data.
   CHECKED_STATUS CreateSequencesDataTable();

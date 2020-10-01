@@ -56,6 +56,7 @@
 #include "yb/common/oid_generator.h"
 #include "yb/common/sys/monotime.h"
 #include "yb/entities/entity_ids.h"
+#include "yb/entities/index.h"
 #include "yb/entities/schema.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_tabledesc.h"
@@ -153,6 +154,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
   CHECKED_STATUS DropTable(const PgObjectId& table_id);
+
+  CHECKED_STATUS DropIndex(const PgObjectId& index_id, bool wait = true);
 
   CHECKED_STATUS ReserveOids(PgOid database_oid,
                              PgOid nexte_oid,
@@ -304,6 +307,13 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // Returns the appropriate session to use, in most cases the one used by the current transaction.
   // read_only - whether this is being done in the context of a read-only operation.
   std::shared_ptr<K23SITxn> GetTxnHandler(bool transactional, bool read_onl);
+
+  Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
+      const PgObjectId& table_id,
+      const PgObjectId& index_id,
+      const IndexPermissions& target_index_permissions);
+
+  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id);
 
   private:
   CHECKED_STATUS FlushBufferedOperationsImpl();

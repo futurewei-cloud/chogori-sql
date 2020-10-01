@@ -411,6 +411,84 @@ Status PgGateApiImpl::SetCatalogCacheVersion(PgStatement *handle, uint64_t catal
 
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
+  
+// Index --------------------------------------------------------------------------------------------
+
+Status PgGateApiImpl::NewCreateIndex(const char *database_name,
+                                 const char *schema_name,
+                                 const char *index_name,
+                                 const PgObjectId& index_id,
+                                 const PgObjectId& base_table_id,
+                                 bool is_shared_index,
+                                 bool is_unique_index,
+                                 const bool skip_index_backfill,
+                                 bool if_not_exist,
+                                 PgStatement **handle) {
+  auto stmt = make_scoped_refptr<PgCreateIndex>(
+      pg_session_, database_name, schema_name, index_name, index_id, base_table_id,
+      is_shared_index, is_unique_index, skip_index_backfill, if_not_exist);
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::CreateIndexAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
+                                       const YBCPgTypeEntity *attr_type,
+                                       bool is_hash, bool is_range,
+                                       bool is_desc, bool is_nulls_first) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+
+  return AddColumn(down_cast<PgCreateIndex*>(handle), attr_name, attr_num, attr_type,
+      is_hash, is_range, is_desc, is_nulls_first);
+}
+
+Status PgGateApiImpl::CreateIndexAddSplitRow(PgStatement *handle, int num_cols,
+                                         YBCPgTypeEntity **types, uint64_t *data) {
+  SCHECK(PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX),
+      InvalidArgument,
+      "Invalid statement handle");
+  return down_cast<PgCreateIndex*>(handle)->AddSplitRow(num_cols, types, data);
+}
+
+Status PgGateApiImpl::ExecCreateIndex(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgCreateIndex*>(handle)->Exec();
+}
+
+Status PgGateApiImpl::NewDropIndex(const PgObjectId& index_id,
+                               bool if_exist,
+                               PgStatement **handle) {
+  auto stmt = make_scoped_refptr<PgDropIndex>(pg_session_, index_id, if_exist);
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::ExecDropIndex(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_DROP_INDEX)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgDropIndex*>(handle)->Exec();
+}
+
+Result<IndexPermissions> PgGateApiImpl::WaitUntilIndexPermissionsAtLeast(
+    const PgObjectId& table_id,
+    const PgObjectId& index_id,
+    const IndexPermissions& target_index_permissions) {
+  return pg_session_->WaitUntilIndexPermissionsAtLeast(
+      table_id,
+      index_id,
+      target_index_permissions);
+}
+
+Status PgGateApiImpl::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id) {
+  return pg_session_->AsyncUpdateIndexPermissions(indexed_table_id);
+}
 
 // Sequence -----------------------------------------------------------------------------------------
 

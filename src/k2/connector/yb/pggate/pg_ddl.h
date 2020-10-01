@@ -156,8 +156,8 @@ class PgCreateTable : public PgDdl {
 
   StmtOp stmt_op() const override { return StmtOp::STMT_CREATE_TABLE; }
 
-  // For K2CreateIndex: the indexed (base) table id and if this is a unique index.
-  virtual std::optional<PgObjectId> indexed_table_id() const { return std::nullopt; }
+  // For PgCreateIndex: the indexed (base) table id and if this is a unique index.
+  virtual std::optional<const PgObjectId> indexed_table_id() const { return std::nullopt; }
   virtual bool is_unique_index() const { return false; }
   virtual const bool skip_index_backfill() const { return false; }
 
@@ -197,7 +197,7 @@ class PgCreateTable : public PgDdl {
 
   virtual size_t PrimaryKeyRangeColumnCount() const;
 
- private:
+ protected:
   Result<std::vector<std::string>> BuildSplitRows(const PgSchema& schema);
 
   NamespaceId namespace_id_;
@@ -207,7 +207,7 @@ class PgCreateTable : public PgDdl {
   bool is_pg_catalog_table_;
   bool is_shared_table_;
   bool if_not_exist_;
-  // XXX: we don't support PG hash schema since we manage hash internally inside k2 storage
+  // TODO: add hash schema
   //boost::optional<YBHashSchema> hash_schema_;
   std::vector<std::string> range_columns_;
   std::vector<std::vector<SqlValue>> split_rows_; // Split rows for range tables
@@ -235,6 +235,83 @@ class PgDropTable: public PgDdl {
  protected:
   const PgObjectId table_id_;
   bool if_exist_;
+};
+
+class PgCreateIndex : public PgCreateTable {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgCreateIndex> ScopedRefPtr;
+  typedef scoped_refptr<const PgCreateIndex> ScopedRefPtrConst;
+
+  typedef std::unique_ptr<PgCreateIndex> UniPtr;
+  typedef std::unique_ptr<const PgCreateIndex> UniPtrConst;
+
+  // Constructors.
+  PgCreateIndex(PgSession::ScopedRefPtr pg_session,
+                const char *database_name,
+                const char *schema_name,
+                const char *index_name,
+                const PgObjectId& index_id,
+                const PgObjectId& base_table_id,
+                bool is_shared_index,
+                bool is_unique_index,
+                const bool skip_index_backfill,
+                bool if_not_exist);
+
+  StmtOp stmt_op() const override { return StmtOp::STMT_CREATE_INDEX; }
+
+  std::optional<const PgObjectId> indexed_table_id() const override {
+    return base_table_id_;
+  }
+
+  bool is_unique_index() const override {
+    return is_unique_index_;
+  }
+
+  const bool skip_index_backfill() const override {
+    return skip_index_backfill_;
+  }
+
+  // Execute.
+  CHECKED_STATUS Exec() override;
+
+ protected:
+  CHECKED_STATUS AddColumnImpl(const char *attr_name,
+                               int attr_num,
+                               int attr_ybtype,
+                               bool is_hash,
+                               bool is_range,
+                               ColumnSchema::SortingType sorting_type) override;
+
+ private:
+  size_t PrimaryKeyRangeColumnCount() const override;
+
+  CHECKED_STATUS AddYBbasectidColumn();
+
+  const PgObjectId base_table_id_;
+  bool is_unique_index_ = false;
+  bool skip_index_backfill_ = false;
+  bool ybbasectid_added_ = false;
+  size_t primary_key_range_column_count_ = 0;
+};
+
+class PgDropIndex : public PgDropTable {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgDropIndex> ScopedRefPtr;
+  typedef scoped_refptr<const PgDropIndex> ScopedRefPtrConst;
+
+  typedef std::unique_ptr<PgDropIndex> UniPtr;
+  typedef std::unique_ptr<const PgDropIndex> UniPtrConst;
+
+  // Constructors.
+  PgDropIndex(PgSession::ScopedRefPtr pg_session, const PgObjectId& index_id, bool if_exist);
+  virtual ~PgDropIndex();
+
+  StmtOp stmt_op() const override { return StmtOp::STMT_DROP_INDEX; }
+
+  // Execute.
+  CHECKED_STATUS Exec();
 };
 
 }  // namespace gate

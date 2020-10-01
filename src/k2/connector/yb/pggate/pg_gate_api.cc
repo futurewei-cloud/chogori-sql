@@ -384,14 +384,20 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
                               const bool skip_index_backfill,
                               bool if_not_exist,
                               YBCPgStatement *handle){
-                                  return YBCStatusOK();
-                              }
+  const PgObjectId index_id(database_oid, index_oid);
+  const PgObjectId table_id(database_oid, table_oid);
+  return ToYBCStatus(api_impl->NewCreateIndex(database_name, schema_name, index_name, index_id,
+                                           table_id, is_shared_index, is_unique_index,
+                                           skip_index_backfill, if_not_exist,
+                                           handle));
+}
 
 YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first){
-                                        return YBCStatusOK();
-                                    }
+  return ToYBCStatus(api_impl->CreateIndexAddColumn(handle, attr_name, attr_num, attr_type,
+                                                 is_hash, is_range, is_desc, is_nulls_first));
+}
 
 YBCStatus YBCPgCreateIndexSetNumTablets(YBCPgStatement handle, int32_t num_tablets){
     return YBCStatusOK();
@@ -399,22 +405,23 @@ YBCStatus YBCPgCreateIndexSetNumTablets(YBCPgStatement handle, int32_t num_table
 
 YBCStatus YBCPgCreateIndexAddSplitRow(YBCPgStatement handle, int num_cols,
                                       YBCPgTypeEntity **types, uint64_t *data){
-                                          return YBCStatusOK();
-                                      }
+  return ToYBCStatus(api_impl->CreateIndexAddSplitRow(handle, num_cols, types, data));
+}
 
 YBCStatus YBCPgExecCreateIndex(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecCreateIndex(handle));
 }
 
 YBCStatus YBCPgNewDropIndex(YBCPgOid database_oid,
                             YBCPgOid index_oid,
                             bool if_exist,
                             YBCPgStatement *handle){
-                                return YBCStatusOK();
-                            }
+  const PgObjectId index_id(database_oid, index_oid);
+  return ToYBCStatus(api_impl->NewDropIndex(index_id, if_exist, handle));
+}
 
 YBCStatus YBCPgExecDropIndex(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecDropIndex(handle));
 }
 
 YBCStatus YBCPgWaitUntilIndexPermissionsAtLeast(
@@ -422,15 +429,29 @@ YBCStatus YBCPgWaitUntilIndexPermissionsAtLeast(
     const YBCPgOid table_oid,
     const YBCPgOid index_oid,
     const uint32_t target_index_permissions,
-    uint32_t *actual_index_permissions){
-        return YBCStatusOK();
-    }
+    uint32_t *actual_index_permissions) {
+  const PgObjectId table_id(database_oid, table_oid);
+  const PgObjectId index_id(database_oid, index_oid);
+  IndexPermissions returned_index_permissions = IndexPermissions::INDEX_PERM_DELETE_ONLY;
+  YBCStatus s = ExtractValueFromResult(api_impl->WaitUntilIndexPermissionsAtLeast(
+        table_id,
+        index_id,
+        static_cast<IndexPermissions>(target_index_permissions)),
+      &returned_index_permissions);
+  if (s) {
+    // Bad status.
+    return s;
+  }
+  *actual_index_permissions = static_cast<uint32_t>(returned_index_permissions);
+  return YBCStatusOK();    
+}
 
 YBCStatus YBCPgAsyncUpdateIndexPermissions(
     const YBCPgOid database_oid,
     const YBCPgOid indexed_table_oid){
-        return YBCStatusOK();
-    }
+  const PgObjectId indexed_table_id(database_oid, indexed_table_oid);
+  return ToYBCStatus(api_impl->AsyncUpdateIndexPermissions(indexed_table_id));
+}
 
 //--------------------------------------------------------------------------------------------------
 // DML statements (select, insert, update, delete, truncate)

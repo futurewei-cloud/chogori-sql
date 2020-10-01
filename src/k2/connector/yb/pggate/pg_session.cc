@@ -155,6 +155,11 @@ Status PgSession::DropTable(const PgObjectId& table_id) {
   return k2_adapter_->DeleteTable(table_id.GetYBTableId());
 }
 
+Status DropIndex(const PgObjectId& index_id, bool wait = true) {
+  // TODO: add implementation
+  return Status::OK(); 
+}
+
 Status PgSession::ReserveOids(const PgOid database_oid,
                               const PgOid next_oid,
                               const uint32_t count,
@@ -574,6 +579,19 @@ Status PgSession::DeleteForeignKeyReference(uint32_t table_id, std::string&& ybc
 
 std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool transactional, bool read_only) {
   return pg_txn_handler_->GetNewTransactionIfNecessary(read_only);
+}
+
+Result<IndexPermissions> PgSession::WaitUntilIndexPermissionsAtLeast(
+    const PgObjectId& table_id,
+    const PgObjectId& index_id,
+    const IndexPermissions& target_index_permissions) {
+  // TODO: add implementation
+  return IndexPermissions::INDEX_PERM_NOT_USED;
+}
+
+Status PgSession::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id) {
+  // TODO: add implementation
+  return Status::OK();
 }
 
 }  // namespace gate
