@@ -267,6 +267,49 @@ Status PgDropTable::Exec() {
 }
 
 //--------------------------------------------------------------------------------------------------
+// PgAlterTable
+//--------------------------------------------------------------------------------------------------
+
+PgAlterTable::PgAlterTable(PgSession::ScopedRefPtr pg_session,
+                           const PgObjectId& table_id)
+    : PgDdl(pg_session),
+      table_id_(table_id) {
+}
+
+PgAlterTable::~PgAlterTable() {
+}
+
+Status PgAlterTable::AddColumn(const char *name,
+                               const YBCPgTypeEntity *attr_type,
+                               int order,
+                               bool is_not_null) {
+  ColumnSchema colSchema(name, static_cast<DataType>(attr_type->yb_type), is_not_null, false, false, order, ColumnSchema::SortingType::kNotSpecified);
+  // TODO: add implementation
+  return Status::OK();
+}
+
+Status PgAlterTable::RenameColumn(const char *old_name, const char *new_name) {
+   // TODO: add implementation
+ return Status::OK();
+}
+
+Status PgAlterTable::DropColumn(const char *name) {
+  // TODO: add implementation
+  return Status::OK();
+}
+
+Status PgAlterTable::RenameTable(const char *db_name, const char *new_name) {
+  // TODO: add implementation
+  return Status::OK();
+}
+
+Status PgAlterTable::Exec() {
+  pg_session_->InvalidateTableCache(table_id_);
+  // TODO: add implementation
+  return Status::OK();
+}
+
+//--------------------------------------------------------------------------------------------------
 // PgCreateIndex
 //--------------------------------------------------------------------------------------------------
 

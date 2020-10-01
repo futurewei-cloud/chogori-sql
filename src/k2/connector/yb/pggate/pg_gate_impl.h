@@ -148,7 +148,7 @@ class PgGateApiImpl {
   CHECKED_STATUS AlterDatabaseRenameDatabase(PgStatement *handle, const char *new_name);
 
   CHECKED_STATUS ExecAlterDatabase(PgStatement *handle);
-  
+
   // Reserve oids.
   CHECKED_STATUS ReserveOids(PgOid database_oid,
                              PgOid next_oid,
@@ -183,6 +183,22 @@ class PgGateApiImpl {
                                         YBCPgTypeEntity **types, uint64_t *data);
 
   CHECKED_STATUS ExecCreateTable(PgStatement *handle);
+  
+  CHECKED_STATUS NewAlterTable(const PgObjectId& table_id,
+                               PgStatement **handle);
+
+  CHECKED_STATUS AlterTableAddColumn(PgStatement *handle, const char *name,
+                                     int order, const YBCPgTypeEntity *attr_type, bool is_not_null);
+
+  CHECKED_STATUS AlterTableRenameColumn(PgStatement *handle, const char *oldname,
+                                        const char *newname);
+
+  CHECKED_STATUS AlterTableDropColumn(PgStatement *handle, const char *name);
+
+  CHECKED_STATUS AlterTableRenameTable(PgStatement *handle, const char *db_name,
+                                       const char *newname);
+
+  CHECKED_STATUS ExecAlterTable(PgStatement *handle);
 
   CHECKED_STATUS NewDropTable(const PgObjectId& table_id,
                               bool if_exist,

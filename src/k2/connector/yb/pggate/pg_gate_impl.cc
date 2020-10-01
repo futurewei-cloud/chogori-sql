@@ -339,6 +339,66 @@ Status PgGateApiImpl::ExecCreateTable(PgStatement *handle) {
   return down_cast<PgCreateTable*>(handle)->Exec();
 }
 
+Status PgGateApiImpl::NewAlterTable(const PgObjectId& table_id,
+                                PgStatement **handle) {
+  auto stmt = make_scoped_refptr<PgAlterTable>(pg_session_, table_id);
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::AlterTableAddColumn(PgStatement *handle, const char *name,
+                                      int order, const YBCPgTypeEntity *attr_type,
+                                      bool is_not_null) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+
+  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  return pg_stmt->AddColumn(name, attr_type, order, is_not_null);
+}
+
+Status PgGateApiImpl::AlterTableRenameColumn(PgStatement *handle, const char *oldname,
+                                         const char *newname) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+
+  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  return pg_stmt->RenameColumn(oldname, newname);
+}
+
+Status PgGateApiImpl::AlterTableDropColumn(PgStatement *handle, const char *name) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+
+  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  return pg_stmt->DropColumn(name);
+}
+
+Status PgGateApiImpl::AlterTableRenameTable(PgStatement *handle, const char *db_name,
+                                        const char *newname) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+
+  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  return pg_stmt->RenameTable(db_name, newname);
+}
+
+Status PgGateApiImpl::ExecAlterTable(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  return pg_stmt->Exec();
+}
+
 Status PgGateApiImpl::NewDropTable(const PgObjectId& table_id,
                                bool if_exist,
                                PgStatement **handle) {

@@ -236,7 +236,6 @@ class PgCreateTable : public PgDdl {
   bool is_shared_table_;
   bool if_not_exist_;
   // TODO: add hash schema
-  //boost::optional<YBHashSchema> hash_schema_;
   std::vector<std::string> range_columns_;
   std::vector<std::vector<SqlValue>> split_rows_; // Split rows for range tables
   SchemaBuilder schema_builder_;
@@ -263,6 +262,43 @@ class PgDropTable: public PgDdl {
  protected:
   const PgObjectId table_id_;
   bool if_exist_;
+};
+
+//--------------------------------------------------------------------------------------------------
+// ALTER TABLE
+//--------------------------------------------------------------------------------------------------
+
+class PgAlterTable : public PgDdl {
+ public:
+  typedef scoped_refptr<PgAlterTable> ScopedRefPtr;
+  typedef scoped_refptr<const PgAlterTable> ScopedRefPtrConst;
+
+  typedef std::unique_ptr<PgAlterTable> UniPtr;
+  typedef std::unique_ptr<const PgAlterTable> UniPtrConst;
+
+  // Constructors.
+  PgAlterTable(PgSession::ScopedRefPtr pg_session,
+               const PgObjectId& table_id);
+
+  CHECKED_STATUS AddColumn(const char *name,
+                           const YBCPgTypeEntity *attr_type,
+                           int order,
+                           bool is_not_null);
+
+  CHECKED_STATUS RenameColumn(const char *old_name, const char *new_name);
+
+  CHECKED_STATUS DropColumn(const char *name);
+
+  CHECKED_STATUS RenameTable(const char *db_name, const char *new_name);
+
+  CHECKED_STATUS Exec();
+
+  virtual ~PgAlterTable();
+
+  StmtOp stmt_op() const override { return StmtOp::STMT_ALTER_TABLE; }
+
+  private:
+  const PgObjectId table_id_;
 };
 
 class PgCreateIndex : public PgCreateTable {

@@ -279,30 +279,31 @@ YBCStatus YBCPgExecCreateTable(YBCPgStatement handle) {
 YBCStatus YBCPgNewAlterTable(YBCPgOid database_oid,
                              YBCPgOid table_oid,
                              YBCPgStatement *handle){
-                                 return YBCStatusOK();
-                             }
+  const PgObjectId table_id(database_oid, table_oid);                             
+  return ToYBCStatus(api_impl->NewAlterTable(table_id, handle));
+}
 
 YBCStatus YBCPgAlterTableAddColumn(YBCPgStatement handle, const char *name, int order,
                                    const YBCPgTypeEntity *attr_type, bool is_not_null){
-                                       return YBCStatusOK();
-                                   }
+  return ToYBCStatus(api_impl->AlterTableAddColumn(handle, name, order, attr_type, is_not_null));
+}
 
 YBCStatus YBCPgAlterTableRenameColumn(YBCPgStatement handle, const char *oldname,
                                       const char *newname){
-                                          return YBCStatusOK();
-                                      }
+  return ToYBCStatus(api_impl->AlterTableRenameColumn(handle, oldname, newname));
+}
 
 YBCStatus YBCPgAlterTableDropColumn(YBCPgStatement handle, const char *name){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->AlterTableDropColumn(handle, name));
 }
 
 YBCStatus YBCPgAlterTableRenameTable(YBCPgStatement handle, const char *db_name,
                                      const char *newname){
-                                         return YBCStatusOK();
-                                     }
+  return ToYBCStatus(api_impl->AlterTableRenameTable(handle, db_name, newname));
+}
 
 YBCStatus YBCPgExecAlterTable(YBCPgStatement handle){
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecAlterTable(handle));
 }
 
 YBCStatus YBCPgNewDropTable(YBCPgOid database_oid,
