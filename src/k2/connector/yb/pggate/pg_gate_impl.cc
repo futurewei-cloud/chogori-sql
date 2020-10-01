@@ -249,6 +249,30 @@ Status PgGateApiImpl::ExecDropDatabase(PgStatement *handle) {
   return down_cast<PgDropDatabase*>(handle)->Exec();
 }
 
+Status PgGateApiImpl::NewAlterDatabase(const char *database_name,
+                                  PgOid database_oid,
+                                  PgStatement **handle) {
+  auto stmt = make_scoped_refptr<PgAlterDatabase>(pg_session_, database_name, database_oid);
+  RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
+  return Status::OK();
+}
+
+Status PgGateApiImpl::AlterDatabaseRenameDatabase(PgStatement *handle, const char *new_name) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_DATABASE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgAlterDatabase*>(handle)->RenameDatabase(new_name);
+}
+
+Status PgGateApiImpl::ExecAlterDatabase(PgStatement *handle) {
+  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_DATABASE)) {
+    // Invalid handle.
+    return STATUS(InvalidArgument, "Invalid statement handle");
+  }
+  return down_cast<PgAlterDatabase*>(handle)->Exec();
+}
+
 Status PgGateApiImpl::ReserveOids(const PgOid database_oid,
                               const PgOid next_oid,
                               const uint32_t count,

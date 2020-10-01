@@ -120,7 +120,7 @@ YBCStatus YBCPgExecDropDatabase(YBCPgStatement handle);
 YBCStatus YBCPgNewAlterDatabase(const char *database_name,
                                YBCPgOid database_oid,
                                YBCPgStatement *handle);
-YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *newname);
+YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *new_name);
 YBCStatus YBCPgExecAlterDatabase(YBCPgStatement handle);
 
 // Reserve oids.

@@ -144,6 +144,11 @@ Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) 
   return Status::OK();
 }
 
+Status PgSession::RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to) {
+  // TODO: add implementation
+  return Status::OK(); 
+}
+
 Status PgSession::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
     PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {

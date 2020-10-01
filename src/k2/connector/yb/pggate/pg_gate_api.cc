@@ -146,15 +146,15 @@ YBCStatus YBCPgExecDropDatabase(YBCPgStatement handle) {
 YBCStatus YBCPgNewAlterDatabase(const char *database_name,
                                YBCPgOid database_oid,
                                YBCPgStatement *handle) {
-  return YBCStatusOK();
+  return ToYBCStatus(api_impl->NewAlterDatabase(database_name, database_oid, handle));
 }
 
-YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *newname) {
-    return YBCStatusOK();
+YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *new_name) {
+  return ToYBCStatus(api_impl->AlterDatabaseRenameDatabase(handle, new_name));
 }
 
 YBCStatus YBCPgExecAlterDatabase(YBCPgStatement handle) {
-    return YBCStatusOK();
+  return ToYBCStatus(api_impl->ExecAlterDatabase(handle));
 }
 
 // Reserve oids.

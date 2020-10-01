@@ -97,6 +97,26 @@ Status PgDropDatabase::Exec() {
   return pg_session_->DropDatabase(database_name_, database_oid_);
 }
 
+PgAlterDatabase::PgAlterDatabase(PgSession::ScopedRefPtr pg_session,
+                               const char *database_name,
+                               PgOid database_oid)
+    : PgDdl(pg_session),
+      database_name_(database_name),
+      database_oid_(database_oid) {
+}
+
+PgAlterDatabase::~PgAlterDatabase() {
+}
+
+Status PgAlterDatabase::Exec() {
+  return pg_session_->RenameDatabase(database_name_, database_oid_, rename_to_);
+}
+
+Status PgAlterDatabase::RenameDatabase(const char *new_name) {
+  rename_to_ = new_name;  
+  return Status::OK();
+}
+
 //--------------------------------------------------------------------------------------------------
 // PgCreateTable
 //--------------------------------------------------------------------------------------------------
