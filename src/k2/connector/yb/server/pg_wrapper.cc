@@ -349,7 +349,7 @@ Status PgWrapper::InitDbLocalOnlyIfNeeded() {
     return Status::OK();
   }
   // Do not communicate with the YugaByte cluster at all. This function is only concerned with
-  // setting up the local PostgreSQL data directory on this tablet server.
+  // setting up the local PostgreSQL data directory on this storage server.
   return InitDb(/* yb_enabled */ false);
 }
 

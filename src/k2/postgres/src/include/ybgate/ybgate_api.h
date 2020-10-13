@@ -23,7 +23,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include "yb/pggate/ybc_pg_typedefs.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 #ifdef __cplusplus
 extern "C" {

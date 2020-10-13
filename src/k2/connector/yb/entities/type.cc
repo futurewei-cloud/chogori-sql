@@ -49,7 +49,7 @@
 #include "yb/entities/type.h"
 #include "yb/common/macros.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     using std::shared_ptr;
@@ -250,4 +250,4 @@ namespace sql {
         }
     }
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

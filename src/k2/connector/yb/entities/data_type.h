@@ -24,10 +24,10 @@ Copyright(c) 2020 Futurewei Cloud
 #ifndef CHOGORI_SQL_DATA_TYPE_H
 #define CHOGORI_SQL_DATA_TYPE_H
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
-    // this type definition is synced with the PgDataType in ybc_pg_typedefs.h. We might not support all of them
+    // this type definition is synced with the PgDataType in pg_gate_typedefs.h. We might not support all of them
     typedef enum PgSqlDataType {
         NOT_SUPPORTED = -1,
         UNKNOWN_DATA = 999,
@@ -60,6 +60,6 @@ namespace sql {
     } DataType;
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_DATA_TYPE_H

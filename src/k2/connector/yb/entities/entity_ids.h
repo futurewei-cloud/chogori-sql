@@ -52,7 +52,7 @@
 #include <string>
 #include <set>
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     using NamespaceName = std::string;
@@ -74,6 +74,6 @@ namespace sql {
     extern const TableId kPgProcTableId;
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_ENTITY_IDS_H

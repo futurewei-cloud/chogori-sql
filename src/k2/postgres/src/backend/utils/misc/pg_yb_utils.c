@@ -42,7 +42,7 @@
 #include "catalog/ybctype.h"
 
 #include "yb/common/ybc_util.h"
-#include "yb/pggate/ybc_pggate.h"
+#include "yb/pggate/pg_gate_api.h"
 #include "common/pg_yb_common.h"
 
 #include "utils/resowner_private.h"

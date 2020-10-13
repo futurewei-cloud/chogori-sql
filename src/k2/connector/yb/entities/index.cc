@@ -52,7 +52,7 @@
 using std::vector;
 using std::unordered_map;
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     vector<ColumnId> IndexInfo::index_key_column_ids() const {
@@ -121,4 +121,4 @@ namespace sql {
     }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
