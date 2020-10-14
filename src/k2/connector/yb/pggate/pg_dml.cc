@@ -442,7 +442,7 @@ SqlOpCondition *PgDmlRead::AllocColumnBindConditionExprDoc(PgColumn *col) {
   return col->AllocBindConditionExpr(read_req_);
 }
 
-// Allocate protobuf for target.
+// Allocate doc for target.
 SqlOpExpr *PgDmlRead::AllocTargetDoc() {
   SqlOpExpr* target = new SqlOpExpr();
   read_req_->targets.push_back(target);

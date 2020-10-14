@@ -4,6 +4,7 @@
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/pg_gate_defaults.h"
 #include "yb/pggate/pg_gate_thread_local_vars.h"
 #include "yb/pggate/pg_gate_impl.h"
 
@@ -14,7 +15,6 @@ namespace {
 // Using a raw pointer here to fully control object initialization and destruction.
 k2pg::gate::PgGateApiImpl* api_impl;
 std::atomic<bool> api_impl_shutdown_done;
-int default_client_read_write_timeout_ms = 60000;
 
 template<class T>
 YBCStatus ExtractValueFromResult(const Result<T>& result, T* value) {
@@ -794,17 +794,17 @@ void YBCInitFlags() {
 
 // Retrieves value of ysql_max_read_restart_attempts gflag
 int32_t YBCGetMaxReadRestartAttempts() {
-    return 0;
+    return default_max_read_restart_attempts;
 }
 
 // Retrieves value of ysql_output_buffer_size gflag
 int32_t YBCGetOutputBufferSize() {
-    return 0;
+    return default_output_buffer_size;
 }
 
 // Retrieve value of ysql_disable_index_backfill gflag.
 bool YBCGetDisableIndexBackfill() {
-    return false;
+    return default_disable_index_backfill;
 }
 
 bool YBCPgIsYugaByteEnabled() {
@@ -876,12 +876,6 @@ bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {
     return type_entity->allow_for_primary_key;
   }
   return false;
-}
-
-YBCStatus YBCInit(const char* argv0,
-                  YBCPAllocFn palloc_fn,
-                  YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
-    return YBCStatusOK();
 }
 
 void YBCAssignTransactionPriorityLowerBound(double newval, void* extra) {
