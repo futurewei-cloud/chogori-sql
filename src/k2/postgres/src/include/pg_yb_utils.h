@@ -30,7 +30,7 @@
 
 #include "common/pg_yb_common.h"
 #include "yb/common/ybc_util.h"
-#include "yb/pggate/ybc_pggate.h"
+#include "yb/pggate/pg_gate_api.h"
 #include "access/reloptions.h"
 
 #include "utils/resowner.h"

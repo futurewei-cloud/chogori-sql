@@ -61,7 +61,7 @@
 using std::string;
 using yb::Slice;
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 // The size of the in-memory format of the largest
@@ -583,6 +583,6 @@ class Variant {
 };
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif  // CHOGORI_SQL_TYPES_H

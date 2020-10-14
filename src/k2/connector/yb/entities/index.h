@@ -59,7 +59,7 @@
 #include "yb/entities/expr.h"
 
 
-namespace k2 {
+namespace k2pg {
     namespace sql {
 
         enum IndexPermissions {
@@ -212,6 +212,6 @@ namespace k2 {
         };
 
     }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_INDEX_H

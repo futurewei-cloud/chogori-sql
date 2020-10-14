@@ -25,7 +25,7 @@
 #include "yb/entities/value.h"
 #include "yb/common/type/slice.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 using yb::Slice;
@@ -64,4 +64,4 @@ SQLValue* SQLValue::CopySlice(Slice s) {
 
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

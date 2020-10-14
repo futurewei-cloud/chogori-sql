@@ -57,7 +57,7 @@
 #include "yb/entities/data_type.h"
 #include "yb/entities/types.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
     class SQLType {
         public:
@@ -297,6 +297,6 @@ namespace sql {
     };
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_TYPE_H

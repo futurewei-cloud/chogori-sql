@@ -1,4 +1,4 @@
-#include "ybc_pggate.h"
+#include "pg_gate_api.h"
 
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"

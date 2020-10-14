@@ -40,7 +40,7 @@
 using std::shared_ptr;
 using std::unordered_map;
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
 template<typename TypeTraitsClass>
@@ -111,4 +111,4 @@ const TypeInfo* GetTypeInfo(DataType type) {
 }
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg

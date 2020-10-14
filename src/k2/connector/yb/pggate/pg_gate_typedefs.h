@@ -29,31 +29,51 @@
     } \
     typedef class yb::pggate::name *YBC##name;
 
+#define K2_DEFINE_HANDLE_TYPE(name, target) \
+    namespace k2pg { \
+    namespace gate { \
+    class name; \
+    } \
+    } \
+    typedef class k2pg::gate::name *YBC##target;
+
+#define K2SQL_DEFINE_HANDLE_TYPE(name, target) \
+    namespace k2pg { \
+    namespace sql { \
+    class name; \
+    } \
+    } \
+    typedef class k2pg::sql::name *YBC##target;
+
 #else
 #define YB_DEFINE_HANDLE_TYPE(name) typedef struct name *YBC##name;
+#define K2_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
+#define K2SQL_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
 #endif  // __cplusplus
 
 #ifdef __cplusplus
 extern "C" {
 #endif  // __cplusplus
 
+// TODO: need to fix the YBC handle definition here since we use different classes for k2
+
 // TODO(neil) Handle to Env. Each Postgres process might need just one ENV, maybe more.
-YB_DEFINE_HANDLE_TYPE(PgEnv)
+K2_DEFINE_HANDLE_TYPE(PgEnv, PgEnv)
 
 // Handle to a session. Postgres should create one YBCPgSession per client connection.
-YB_DEFINE_HANDLE_TYPE(PgSession)
+K2_DEFINE_HANDLE_TYPE(PgSession, PgSession)
 
 // Handle to a statement.
-YB_DEFINE_HANDLE_TYPE(PgStatement)
+K2_DEFINE_HANDLE_TYPE(PgStatement, PgStatement)
 
 // Handle to an expression.
-YB_DEFINE_HANDLE_TYPE(PgExpr);
+K2SQL_DEFINE_HANDLE_TYPE(PgExpr, PgExpr);
 
 // Handle to a table description
-YB_DEFINE_HANDLE_TYPE(PgTableDesc);
+K2_DEFINE_HANDLE_TYPE(PgTableDesc, PgTableDesc)
 
 // Handle to a memory context.
-YB_DEFINE_HANDLE_TYPE(PgMemctx);
+K2_DEFINE_HANDLE_TYPE(PgMemctx, PgMemctx)
 
 //--------------------------------------------------------------------------------------------------
 // Other definitions are the same between C++ and C.

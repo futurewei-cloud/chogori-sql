@@ -28,6 +28,8 @@
 #ifndef PALLOC_H
 #define PALLOC_H
 
+#include "yb/pggate/pg_gate_typedefs.h"
+
 /*
  * Type MemoryContextData is declared in nodes/memnodes.h.  Most users
  * of memory allocation should just treat it as an abstract type, so we
@@ -90,7 +92,7 @@ extern void PrepareThreadLocalCurrentMemoryContext();
 
 extern void ResetThreadLocalCurrentMemoryContext();
 
-struct PgMemctx *GetCurrentYbMemctx();
+YBCPgMemctx GetCurrentYbMemctx();
 
 /*
  * Flags for MemoryContextAllocExtended.

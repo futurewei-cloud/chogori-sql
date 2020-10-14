@@ -86,7 +86,7 @@
   void operator=(const TypeName&)
 #endif
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
     using yb::Result;
     using yb::Status;
@@ -667,6 +667,6 @@ namespace sql {
         DISALLOW_COPY_AND_ASSIGN(SchemaBuilder);
     };
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_SCHEMA_H

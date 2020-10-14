@@ -51,7 +51,7 @@
 
 #include "yb/entities/value.h"
 
-namespace k2 {
+namespace k2pg {
 namespace sql {
 
     enum Opcode {
@@ -101,6 +101,6 @@ namespace sql {
     };
 
 }  // namespace sql
-}  // namespace k2
+}  // namespace k2pg
 
 #endif //CHOGORI_SQL_EXPR_H

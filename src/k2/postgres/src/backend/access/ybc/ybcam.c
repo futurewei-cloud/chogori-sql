@@ -47,7 +47,7 @@
 #include "utils/selfuncs.h"
 #include "utils/snapmgr.h"
 
-#include "yb/pggate/ybc_pggate.h"
+#include "yb/pggate/pg_gate_api.h"
 #include "pg_yb_utils.h"
 #include "access/nbtree.h"
 
