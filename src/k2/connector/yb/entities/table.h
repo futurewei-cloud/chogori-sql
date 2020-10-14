@@ -84,8 +84,6 @@ namespace sql {
             return schema_.num_range_key_columns();
         }
 
-        // CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
-
         Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
 
         private: 
@@ -93,10 +91,6 @@ namespace sql {
         TableIdentifier table_id_;
         Schema schema_;
         IndexMap index_map_;
-        // TODO: add partition information if necessary for PG
-
-        // Attr number to column index map.
-        // std::unordered_map<int, size_t> attr_num_map_; 
     };
 
 }  // namespace sql

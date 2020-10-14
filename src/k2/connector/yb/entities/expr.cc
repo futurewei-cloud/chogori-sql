@@ -57,7 +57,7 @@ using std::string;
 using std::make_shared;
 
 //--------------------------------------------------------------------------------------------------
-// Mapping Postgres operator names to YugaByte opcodes.
+// Mapping Postgres operator names to K2 PG gate opcodes.
 // When constructing expresions, Postgres layer will pass the operator name.
 const std::unordered_map<string, PgExpr::Opcode> kOperatorNames = {
   { "!", PgExpr::Opcode::PG_EXPR_NOT },

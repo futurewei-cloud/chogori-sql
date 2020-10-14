@@ -346,7 +346,6 @@ namespace sql {
                 int key_columns,
                 const TableProperties& table_properties = TableProperties())
             : name_to_index_bytes_(0),
-            // TODO: C++11 provides a single-arg constructor
             name_to_index_(10,
                 NameToIndexMap::hasher(),
                 NameToIndexMap::key_equal(),
