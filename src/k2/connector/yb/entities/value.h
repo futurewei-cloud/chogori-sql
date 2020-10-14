@@ -25,6 +25,7 @@
 
 #include "yb/common/macros.h"
 #include "yb/common/type/slice.h"
+#include "yb/pggate/pg_gate_typedefs.h"
 
 namespace k2pg {
 namespace sql {
@@ -41,7 +42,7 @@ struct Data {
     Slice slice_val_;
 };  
 
-class SQLValue {
+class SqlValue {
 public:
   enum ValueType {
       BOOL,  
@@ -51,52 +52,81 @@ public:
       SLICE
   };
 
-  SQLValue(ValueType type, Data* data) {
+  SqlValue(ValueType type, Data* data) {
       type_ = type;
       data_ = data;
+      null_value_ = data_ != nullptr;
   }
 
-  SQLValue(bool b) {
+  SqlValue(bool b) {
       type_ = ValueType::BOOL;
       data_ = new Data();
       data_->bool_val_ = b;
+      null_value_ = false;
   }
 
-  SQLValue(int64_t v) {
+  SqlValue(int64_t v) {
       type_ = ValueType::INT;
       data_ = new Data();
       data_->int_val_ = v;
+      null_value_ = false;
   }
 
-  SQLValue(float f) {
+  SqlValue(float f) {
       type_ = ValueType::FLOAT;
       data_ = new Data();
       data_->float_val_ = f;
+      null_value_ = false;
   }
 
-  SQLValue(double d) {
+  SqlValue(double d) {
       type_ = ValueType::DOUBLE;
       data_ = new Data();
       data_->double_val_ = d;
+      null_value_ = false;
   }
 
-  SQLValue(Slice s) {
+  SqlValue(Slice s) {
       type_ = ValueType::SLICE;
       data_ = new Data();
       data_->slice_val_ = s;
+      null_value_ = false;
   }
 
+  SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
+
   // Return a new identical SQLValue object.
-  SQLValue* Clone() const;
+  SqlValue* Clone() const;
 
   // Construct a SQLValue by copying the value of the given Slice.
-  static SQLValue* CopySlice(Slice s);
+  static SqlValue* CopySlice(Slice s);
 
-  ~SQLValue();
+  bool IsNull() {
+      return null_value_;
+  }
+
+  bool isBinaryValue() {
+      return type_ == ValueType::SLICE;
+  }
+
+  void set_bool_value(bool value, bool is_null); 
+  void set_int8_value(int8_t value, bool is_null);
+  void set_int16_value(int16_t value, bool is_null);
+  void set_int32_value(int32_t value, bool is_null);
+  void set_int64_value(int64_t value, bool is_null);
+  void set_float_value(float value, bool is_null);
+  void set_double_value(double value, bool is_null);
+  void set_string_value(const char *value, bool is_null);
+  void set_binary_value(const char *value, size_t bytes, bool is_null);
+
+  ~SqlValue();
 
   private: 
+  void Clear();
+
   ValueType type_;
   Data* data_;
+  bool null_value_ = true;
 };
 
 

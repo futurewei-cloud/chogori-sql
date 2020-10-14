@@ -80,7 +80,7 @@ namespace sql {
         return strings::Substitute("$0 $1 $2",
                                    type_info()->name(),
                                    is_nullable_ ? "NULLABLE" : "NOT NULL",
-                                   is_key_ ? "PARTITION KEY" : "NOT A PARTITION KEY");
+                                   is_partition_ ? "PARTITION KEY" : "NOT A PARTITION KEY");
     }
 
     void TableProperties::Reset() {
