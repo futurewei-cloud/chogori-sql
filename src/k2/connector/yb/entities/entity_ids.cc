@@ -102,6 +102,7 @@ bool IsPgsqlId(const string& id) {
 
   } catch(const std::invalid_argument&) {
   } catch(const std::out_of_range&) {
+    // TODO: log the actual exceptions
   }
 
   return false;
@@ -117,6 +118,7 @@ Result<uint32_t> GetPgsqlDatabaseOid(const NamespaceId& namespace_id) {
     }
   } catch(const std::invalid_argument&) {
   } catch(const std::out_of_range&) {
+    // TODO: log the actual exceptions
   }
 
   return STATUS(InvalidArgument, "Invalid PostgreSQL namespace id", namespace_id);
@@ -132,6 +134,7 @@ Result<uint32_t> GetPgsqlTableOid(const TableId& table_id) {
     }
   } catch(const std::invalid_argument&) {
   } catch(const std::out_of_range&) {
+    // TODO: log the actual exceptions
   }
 
   return STATUS(InvalidArgument, "Invalid PostgreSQL table id", table_id);
@@ -147,6 +150,7 @@ Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id) {
     }
   } catch(const std::invalid_argument&) {
   } catch(const std::out_of_range&) {
+      // TODO: log the actual exceptions
   }
 
   return STATUS(InvalidArgument, "Invalid PostgreSQL table id", table_id);
