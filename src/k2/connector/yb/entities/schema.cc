@@ -80,7 +80,7 @@ namespace sql {
         return strings::Substitute("$0 $1 $2",
                                    type_info()->name(),
                                    is_nullable_ ? "NULLABLE" : "NOT NULL",
-                                   is_key_ ? "PARTITION KEY" : "NOT A PARTITION KEY");
+                                   is_partition_ ? "PARTITION KEY" : "NOT A PARTITION KEY");
     }
 
     void TableProperties::Reset() {
@@ -97,7 +97,6 @@ namespace sql {
 
     Schema::Schema(const Schema& other)
             : name_to_index_bytes_(0),
-            // TODO: C++11 provides a single-arg constructor
               name_to_index_(10,
                              NameToIndexMap::hasher(),
                              NameToIndexMap::key_equal(),

@@ -49,12 +49,21 @@
 #ifndef CHOGORI_SQL_EXPR_H
 #define CHOGORI_SQL_EXPR_H
 
+#include <memory>
+#include <vector>
+
+#include "yb/common/status.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/entities/value.h"
 
 namespace k2pg {
 namespace sql {
 
-    enum Opcode {
+using namespace yb;
+
+class PgExpr {
+    public:
+    enum class Opcode {
         PG_EXPR_CONSTANT,
         PG_EXPR_COLREF,
         PG_EXPR_VARIABLE,
@@ -68,37 +77,146 @@ namespace sql {
         PG_EXPR_LE,
         PG_EXPR_LT,
 
+        // exists
+        PG_EXPR_EXISTS,
+        
+        // Logic operators that take two or more operands.
+        PG_EXPR_AND,
+        PG_EXPR_OR,
+        PG_EXPR_IN,
+        PG_EXPR_BETWEEN,
+
         // Aggregate functions.
         PG_EXPR_AVG,
         PG_EXPR_SUM,
         PG_EXPR_COUNT,
         PG_EXPR_MAX,
         PG_EXPR_MIN,
+
+        // Serialized YSQL/PG Expr node.
+        PG_EXPR_EVAL_EXPR_CALL,
+
+        PG_EXPR_GENERATE_ROWID,
     };
+    
+    typedef std::shared_ptr<PgExpr> SharedPtr;
 
-    class SqlExpr {
-        public:
-        explicit SqlExpr(Opcode op, SQLValue value) : value_(std::move(value)) {
-            op_ = op;
-        }
+    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity);
 
-        ~SqlExpr() {
-        }
+    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs);
 
-        Opcode op() {
-            return op_;
-        }
+    explicit PgExpr(const char *opname, const YBCPgTypeEntity *type_entity);
 
-        SQLValue value() {
-            return value_;
-        }
+    virtual ~PgExpr();
 
-        const std::string ToString() const;   
+    Opcode opcode() const {
+        return opcode_;
+    }
 
-        private:
-        Opcode op_;
-        SQLValue value_;
-    };
+    bool is_constant() const {
+        return opcode_ == Opcode::PG_EXPR_CONSTANT;
+    }
+
+    bool is_colref() const {
+        return opcode_ == Opcode::PG_EXPR_COLREF;
+    }
+
+    bool is_aggregate() const {
+        // Only return true for pushdown supported aggregates.
+        return (opcode_ == Opcode::PG_EXPR_SUM ||
+                opcode_ == Opcode::PG_EXPR_COUNT ||
+                opcode_ == Opcode::PG_EXPR_MAX ||
+                opcode_ == Opcode::PG_EXPR_MIN);
+    }
+
+    virtual bool is_ybbasetid() const {
+        return false;
+    }
+
+    const PgTypeEntity *type_entity() const {
+        return type_entity_;
+    }
+
+    const PgTypeAttrs& type_attrs() const {
+        return type_attrs_;
+    }
+
+    // Find opcode.
+    static CHECKED_STATUS CheckOperatorName(const char *name);
+    static Opcode NameToOpcode(const char *name);
+
+    protected:
+    Opcode opcode_;
+    const PgTypeEntity *type_entity_;
+    const PgTypeAttrs type_attrs_;
+};
+
+class PgConstant : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgConstant> SharedPtr;
+  // Constructor.
+  explicit PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool is_null,
+      PgExpr::Opcode opcode = PgExpr::Opcode::PG_EXPR_CONSTANT);
+
+  // Destructor.
+  virtual ~PgConstant();
+
+  // Update numeric.
+  void UpdateConstant(int8_t value, bool is_null);
+  void UpdateConstant(int16_t value, bool is_null);
+  void UpdateConstant(int32_t value, bool is_null);
+  void UpdateConstant(int64_t value, bool is_null);
+  void UpdateConstant(float value, bool is_null);
+  void UpdateConstant(double value, bool is_null);
+
+  // Update text.
+  void UpdateConstant(const char *value, bool is_null);
+  void UpdateConstant(const char *value, size_t bytes, bool is_null);
+
+  SqlValue* getValue() {
+      return &value_;
+  }
+
+  private:
+  SqlValue value_;
+};
+
+class PgColumnRef : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgColumnRef> SharedPtr;
+  explicit PgColumnRef(int attr_num,
+                       const PgTypeEntity *type_entity,
+                       const PgTypeAttrs *type_attrs);
+  virtual ~PgColumnRef();
+
+  int attr_num() const {
+    return attr_num_;
+  }
+
+  bool is_ybbasetid() const override;
+
+ private:
+  int attr_num_;
+};
+
+class PgOperator : public PgExpr {
+ public:
+  // Public types.
+  typedef std::shared_ptr<PgOperator> SharedPtr;
+
+  // Constructor.
+  explicit PgOperator(const char *name, const YBCPgTypeEntity *type_entity);
+  virtual ~PgOperator();
+
+  // Append arguments.
+  void AppendArg(PgExpr *arg);
+
+  private:
+  const string opname_;
+  std::vector<PgExpr*> args_;
+};
 
 }  // namespace sql
 }  // namespace k2pg

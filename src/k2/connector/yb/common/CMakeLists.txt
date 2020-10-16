@@ -1,8 +1,6 @@
 file(GLOB HEADERS "*.h" "*/*.h")
 file(GLOB SOURCES "*.cc" "*.c" "*/*.cc" "*/*.c")
 
-add_compile_options(${CMAKE_CXX_FLAGS} -Wno-strict-aliasing)
-
 add_library(ybcommon SHARED ${HEADERS} ${SOURCES})
 
 set_target_properties(ybcommon PROPERTIES

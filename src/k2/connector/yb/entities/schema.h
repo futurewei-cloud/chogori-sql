@@ -119,13 +119,15 @@ namespace sql {
         ColumnSchema(string name,
                 const std::shared_ptr<SQLType>& type,
                 bool is_nullable = false,
-                bool is_key = false,
+                bool is_primary = false,
+                bool is_partition = false,
                 int32_t order = 0,
                 SortingType sorting_type = SortingType::kNotSpecified)
             : name_(std::move(name)),
             type_(type),
             is_nullable_(is_nullable),
-            is_key_(is_key),
+            is_primary_(is_primary),
+            is_partition_(is_partition),
             order_(order),
             sorting_type_(sorting_type) {
         }
@@ -134,10 +136,11 @@ namespace sql {
         ColumnSchema(string name,
                 DataType type,
                 bool is_nullable = false,
-                bool is_key = false,
+                bool is_primary = false,
+                bool is_partition = false,
                 int32_t order = 0,
                 SortingType sorting_type = SortingType::kNotSpecified)
-            : ColumnSchema(name, SQLType::Create(type), is_nullable, is_key, order, sorting_type) {
+            : ColumnSchema(name, SQLType::Create(type), is_nullable, is_primary, is_partition, order, sorting_type) {
         }
 
         const std::shared_ptr<SQLType>& type() const {
@@ -153,7 +156,15 @@ namespace sql {
         }
 
         bool is_key() const {
-            return is_key_;
+            return is_partition_ || is_primary_;
+        }
+
+        bool is_partition() const {
+            return is_partition_;
+        }
+
+        bool is_primary() const {
+            return is_primary_;
         }
 
         int32_t order() const {
@@ -202,7 +213,8 @@ namespace sql {
 
         bool EqualsType(const ColumnSchema &other) const {
             return is_nullable_ == other.is_nullable_ &&
-                   is_key_ == other.is_key_ &&
+                   is_primary_ == other.is_primary_ &&
+                   is_partition_ == other.is_partition_ &&
                    sorting_type_ == other.sorting_type_ &&
                    type_info()->type() == other.type_info()->type();
         }
@@ -225,7 +237,8 @@ namespace sql {
         std::string name_;
         std::shared_ptr<SQLType> type_;
         bool is_nullable_;
-        bool is_key_;
+        bool is_primary_;
+        bool is_partition_;
         int32_t order_;
         SortingType sorting_type_;
     };
@@ -252,12 +265,21 @@ namespace sql {
             return default_time_to_live_;
         }
 
+        bool is_transactional() const {
+            return is_transactional_;
+        }
+
+        void SetTransactional(bool is_transactional) {
+            is_transactional_ = is_transactional;
+        }
+
         void Reset();
 
         std::string ToString() const;
 
         private:
         static const int kNoDefaultTtl = -1;
+        bool is_transactional_ = false;
         int64_t default_time_to_live_ = kNoDefaultTtl;
     };
 
@@ -271,7 +293,7 @@ namespace sql {
     // passing by pointer or reference, and functions that create new
     // Schemas should generally prefer taking a Schema pointer and using
     // Schema::swap() or Schema::Reset() rather than returning by value.
-    class Schema{
+    class Schema {
         public:
 
         static const int kColumnNotFound = -1;
@@ -324,7 +346,6 @@ namespace sql {
                 int key_columns,
                 const TableProperties& table_properties = TableProperties())
             : name_to_index_bytes_(0),
-            // TODO: C++11 provides a single-arg constructor
             name_to_index_(10,
                 NameToIndexMap::hasher(),
                 NameToIndexMap::key_equal(),
@@ -528,6 +549,14 @@ namespace sql {
 
         static ColumnId first_column_id();
 
+        uint64_t version() const {
+            return version_;
+        }
+
+        void set_version(uint64_t version) {
+            version_ = version;
+        }
+
         private:
         friend class SchemaBuilder;
 
@@ -560,6 +589,8 @@ namespace sql {
         bool has_nullables_;
 
         TableProperties table_properties_;
+
+        uint64_t version_;
     };
 
     // Helper used for schema creation/editing.
@@ -595,6 +626,10 @@ namespace sql {
             return next_id_;
         }
 
+        void SetTableProperties(TableProperties& table_properties) {
+            table_properties_ = table_properties;
+        }
+        
         Schema Build() const {
             return Schema(cols_, col_ids_, num_key_columns_, table_properties_);
         }
@@ -668,5 +703,7 @@ namespace sql {
     };
 }  // namespace sql
 }  // namespace k2pg
+
+typedef class k2pg::sql::Schema PgSchema;
 
 #endif //CHOGORI_SQL_SCHEMA_H
