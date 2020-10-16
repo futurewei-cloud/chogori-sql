@@ -70,6 +70,11 @@ const std::unordered_map<string, PgExpr::Opcode> kOperatorNames = {
   { "<", PgExpr::Opcode::PG_EXPR_LT },
   { "<=", PgExpr::Opcode::PG_EXPR_LE },
 
+  { "and", PgExpr::Opcode::PG_EXPR_AND },
+  { "or", PgExpr::Opcode::PG_EXPR_OR },
+  { "in", PgExpr::Opcode::PG_EXPR_IN },
+  { "between", PgExpr::Opcode::PG_EXPR_BETWEEN },
+
   { "avg", PgExpr::Opcode::PG_EXPR_AVG },
   { "sum", PgExpr::Opcode::PG_EXPR_SUM },
   { "count", PgExpr::Opcode::PG_EXPR_COUNT },
