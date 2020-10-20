@@ -46,83 +46,59 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TXN_HANDLER_H
-#define CHOGORI_GATE_PG_TXN_HANDLER_H
-
-#include <atomic>
-
-#include "yb/common/concurrent/ref_counted.h"
-#include "yb/common/result.h"
-#include "yb/pggate/k23si_txn.h"
-#include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/sql_catalog_client.h"
 
 namespace k2pg {
-namespace gate {
+namespace sql {
 
-using yb::RefCountedThreadSafe;
+Status SqlCatalogClient::IsInitDbDone(bool* isDone) {                                  
+  return catalog_manager_->IsInitDbDone(isDone);
+}
 
-// These should match XACT_READ_UNCOMMITED, XACT_READ_COMMITED, XACT_REPEATABLE_READ,
-// XACT_SERIALIZABLE from xact.h.
-enum class PgIsolationLevel {
-  READ_UNCOMMITED = 0,
-  READ_COMMITED = 1,
-  REPEATABLE_READ = 2,
-  SERIALIZABLE = 3,
-};
+Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
+                                 const std::string& creator_role_name,
+                                 const std::string& namespace_id,
+                                 const std::string& source_namespace_id,
+                                 const std::optional<uint32_t>& next_pg_oid) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
 
-class PgTxnHandler : public RefCountedThreadSafe<PgTxnHandler> {
-  public:
-  PgTxnHandler(scoped_refptr<K2Adapter> adapter);
+Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
+                                 const std::string& namespace_id) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
 
-  virtual ~PgTxnHandler();
+Status SqlCatalogClient::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
 
-  CHECKED_STATUS BeginTransaction();
+  // TODO: add implementation                                   
+  return Status::OK();
+}
 
-  CHECKED_STATUS RestartTransaction();
+Status SqlCatalogClient::DeleteTable(const string& table_id, bool wait) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
+    
+Status OpenTable(const TableId& table_id, std::shared_ptr<TableInfo>* table) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
 
-  CHECKED_STATUS CommitTransaction();
+Status SqlCatalogClient::ReservePgsqlOids(const std::string& namespace_id,
+                                  const uint32_t next_oid, const uint32_t count,
+                                  uint32_t* begin_oid, uint32_t* end_oid) {
+  // TODO: add implementation                                   
+  return Status::OK();
+}
 
-  CHECKED_STATUS AbortTransaction();
-
-  CHECKED_STATUS SetIsolationLevel(int isolation);
-
-  CHECKED_STATUS SetReadOnly(bool read_only);
-
-  CHECKED_STATUS SetDeferrable(bool deferrable);
-
-  CHECKED_STATUS EnterSeparateDdlTxnMode();
-
-  CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
-
-  std::shared_ptr<K23SITxn> getTxnHandler() {
-    return txn_;
-  }
-
-  std::shared_ptr<K23SITxn> GetNewTransactionIfNecessary(bool read_only);
-
-  private:  
-
-  void ResetTransaction();
-
-  void StartNewTransaction();
-
-  std::shared_ptr<K23SITxn> txn_ = nullptr;
-
-  bool txn_in_progress_ = false;
-
-  // Postgres transaction characteristics.
-  PgIsolationLevel isolation_level_ = PgIsolationLevel::REPEATABLE_READ;
-
-  bool read_only_ = false;
-
-  bool deferrable_ = false;
-
-  std::atomic<bool> can_restart_{true};
-
-  scoped_refptr<K2Adapter> adapter_;
-};
-
-}  // namespace gate
+Status SqlCatalogClient::GetCatalogVersion(uint64_t *catalog_version) {
+  *catalog_version = catalog_manager_->GetCatalogVersion();
+  return Status::OK();
+}    
+ 
+}  // namespace sql
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_TXN_HANDLER_H    

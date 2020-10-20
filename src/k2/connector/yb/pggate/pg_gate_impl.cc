@@ -64,6 +64,8 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
       metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(), "k2.pggate")),
       mem_tracker_(MemTracker::CreateTracker("PostgreSQL")),
       k2_adapter_(CreateK2Adapter()),
+      catalog_manager_(CreateCatalogManager()),
+      catalog_client_(CreateCatalogClient()),
       pg_callbacks_(callbacks), 
       pg_txn_handler_(new PgTxnHandler(k2_adapter_)) {
   // Setup type mapping.
@@ -71,16 +73,30 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
     const YBCPgTypeEntity *type_entity = &YBCDataTypeArray[idx];
     type_map_[type_entity->type_oid] = type_entity;
   }
+  catalog_manager_->Start();
   k2_adapter_->Init();
 }
 
-K2Adapter* PgGateApiImpl::CreateK2Adapter() {
+scoped_refptr<K2Adapter> PgGateApiImpl::CreateK2Adapter() {
   // TODO: add more complex logic to create k2 client, for example, from a pool  
-  K2Adapter* adapter = new K2Adapter();
+  scoped_refptr<K2Adapter> adapter = make_scoped_refptr<K2Adapter>();
   return adapter;
 }
 
+// create SqlCatalogManager here for now
+// TODO: create catalog manager cross all PG gate connections
+std::shared_ptr<SqlCatalogManager> PgGateApiImpl::CreateCatalogManager() {
+  std::shared_ptr<SqlCatalogManager> catalog_manager = std::make_shared<SqlCatalogManager>(k2_adapter_);
+  return catalog_manager;
+}
+
+scoped_refptr<SqlCatalogClient> PgGateApiImpl::CreateCatalogClient() {
+  scoped_refptr<SqlCatalogClient> catalog_client = make_scoped_refptr<SqlCatalogClient>(catalog_manager_);
+  return catalog_client;
+}
+
 PgGateApiImpl::~PgGateApiImpl() {
+  catalog_manager_->Shutdown();
   k2_adapter_->Shutdown();
 }
 
@@ -126,7 +142,8 @@ Status PgGateApiImpl::DestroyEnv(PgEnv *pg_env) {
 Status PgGateApiImpl::InitSession(const PgEnv *pg_env,
                               const string& database_name) {
   CHECK(!pg_session_);
-  auto session = make_scoped_refptr<PgSession>(k2_adapter_,
+  auto session = make_scoped_refptr<PgSession>(catalog_client_,
+                                               k2_adapter_,
                                                database_name,
                                                pg_txn_handler_,
                                                pg_callbacks_);

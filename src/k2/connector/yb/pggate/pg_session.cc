@@ -74,7 +74,7 @@ static constexpr const size_t kPgSequenceLastValueColIdx = 2;
 static constexpr const char* const kPgSequenceIsCalledColName = "is_called";
 static constexpr const size_t kPgSequenceIsCalledColIdx = 3;
 
-RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter) :
+RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, scoped_refptr<K2Adapter> k2_adapter) :
   table_id_(&op.request().table_name) {
   auto& request = op.request();
   if (request.ybctid_column_value) {
@@ -106,11 +106,13 @@ size_t hash_value(const RowIdentifier& key) {
 }
 
 PgSession::PgSession(
-    K2Adapter* k2_adapter,
+    scoped_refptr<SqlCatalogClient> catalog_client,        
+    scoped_refptr<K2Adapter> k2_adapter,
     const string& database_name,
     scoped_refptr<PgTxnHandler> pg_txn_handler,
     const YBCPgCallbacks& pg_callbacks)
-    : k2_adapter_(k2_adapter),
+    : catalog_client_(catalog_client),
+      k2_adapter_(k2_adapter),
       pg_txn_handler_(pg_txn_handler),
       pg_callbacks_(pg_callbacks),
       client_id_("K2PG") {
@@ -129,7 +131,7 @@ Status PgSession::CreateDatabase(const string& database_name,
                                  const PgOid database_oid,
                                  const PgOid source_database_oid,
                                  const PgOid next_oid) {
-  return k2_adapter_->CreateNamespace(database_name,
+  return catalog_client_->CreateNamespace(database_name,
                                   "" /* creator_role_name */,
                                   GetPgsqlNamespaceId(database_oid),
                                   source_database_oid != kPgInvalidOid
@@ -138,7 +140,7 @@ Status PgSession::CreateDatabase(const string& database_name,
 }
 
 Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) {
-  RETURN_NOT_OK(k2_adapter_->DeleteNamespace(database_name,
+  RETURN_NOT_OK(catalog_client_->DeleteNamespace(database_name,
                                          GetPgsqlNamespaceId(database_oid)));
   RETURN_NOT_OK(DeleteDBSequences(database_oid));
   return Status::OK();
@@ -152,15 +154,15 @@ Status PgSession::RenameDatabase(const std::string& database_name, PgOid databas
 Status PgSession::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
     PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
-   return k2_adapter_->CreateTable(namespace_id, namespace_name, table_name, table_id, schema, range_columns, split_rows, 
+   return catalog_client_->CreateTable(namespace_id, namespace_name, table_name, table_id, schema, range_columns, split_rows, 
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
 Status PgSession::DropTable(const PgObjectId& table_id) {
-  return k2_adapter_->DeleteTable(table_id.GetYBTableId());
+  return catalog_client_->DeleteTable(table_id.GetYBTableId());
 }
 
-Status DropIndex(const PgObjectId& index_id, bool wait = true) {
+Status PgSession::DropIndex(const PgObjectId& index_id, bool wait) {
   // TODO: add implementation
   return Status::OK(); 
 }
@@ -170,12 +172,12 @@ Status PgSession::ReserveOids(const PgOid database_oid,
                               const uint32_t count,
                               PgOid *begin_oid,
                               PgOid *end_oid) {
-  return k2_adapter_->ReservePgsqlOids(GetPgsqlNamespaceId(database_oid), next_oid, count,
+  return catalog_client_->ReservePgsqlOids(GetPgsqlNamespaceId(database_oid), next_oid, count,
                                    begin_oid, end_oid);
 }
 
-Status PgSession::GetCatalogMasterVersion(uint64_t *version) {
-  return k2_adapter_->GetYsqlCatalogMasterVersion(version);
+Status PgSession::GetCatalogMasterVersion(uint64_t *catalog_version) {
+  return catalog_client_->GetCatalogVersion(catalog_version);
 }
 
 // Sequence -----------------------------------------------------------------------------------------
@@ -467,7 +469,7 @@ bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
 }
 
 PgSessionAsyncRunResult::PgSessionAsyncRunResult(std::future<Status> future_status,
-                                                 K2Adapter* client)
+                                                 scoped_refptr<K2Adapter> client)
     :  future_status_(std::move(future_status)),
        client_(client) {
 }
@@ -484,14 +486,14 @@ bool PgSessionAsyncRunResult::InProgress() const {
   return future_status_.valid();
 }
 
-PgSession::RunHelper::RunHelper(PgSession* pg_session, K2Adapter *client, bool transactional)
-    :  pg_session_(*pg_session),
+PgSession::RunHelper::RunHelper(scoped_refptr<PgSession> pg_session, scoped_refptr<K2Adapter> client, bool transactional)
+    :  pg_session_(pg_session),
        client_(client),
        transactional_(transactional),
-       buffered_ops_(transactional_ ? pg_session_.buffered_txn_ops_
-                                    : pg_session_.buffered_ops_) {
+       buffered_ops_(transactional_ ? pg_session_->buffered_txn_ops_
+                                    : pg_session_->buffered_ops_) {
   if (!transactional_) {
-    pg_session_.InvalidateForeignKeyReferenceCache();
+    pg_session_->InvalidateForeignKeyReferenceCache();
   }
 }
 
@@ -499,8 +501,8 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
                                    const PgObjectId& relation_id,
                                    uint64_t* read_time,
                                    bool force_non_bufferable) {
-  auto& buffered_keys = pg_session_.buffered_keys_;
-  if (pg_session_.buffering_enabled_ && !force_non_bufferable &&
+  auto& buffered_keys = pg_session_->buffered_keys_;
+  if (pg_session_->buffering_enabled_ && !force_non_bufferable &&
       op->type() == PgOpTemplate::Type::WRITE) {
     const auto& wop = *down_cast<PgWriteOpTemplate*>(op.get());
     // Check for buffered operation related to same row.
@@ -509,25 +511,25 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
     // Multiple operations on same row must be performed in context of different RPC.
     // Flush is required in this case.
     if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(wop, client_)).second)) {
-      RETURN_NOT_OK(pg_session_.FlushBufferedOperationsImpl());
+      RETURN_NOT_OK(pg_session_->FlushBufferedOperationsImpl());
       buffered_keys.insert(RowIdentifier(wop, client_));
     }
     buffered_ops_.push_back({std::move(op), relation_id});
     // Flush buffers in case limit of operations in single RPC exceeded.
     return PREDICT_TRUE(buffered_keys.size() < default_session_max_batch_size)
         ? Status::OK()
-        : pg_session_.FlushBufferedOperationsImpl();
+        : pg_session_->FlushBufferedOperationsImpl();
   }
 
   // Flush all buffered operations (if any) before performing non-bufferable operation
   if (!buffered_keys.empty()) {
-    RETURN_NOT_OK(pg_session_.FlushBufferedOperationsImpl());
+    RETURN_NOT_OK(pg_session_->FlushBufferedOperationsImpl());
   }
 
   // TODO: ybc has the logic to check if needs_pessimistic_locking here by looking at row_mark_type
   // in the request, but K2 SKV does not support pessimistic locking, should we simply skip that logic?
 
-  std::shared_ptr<K23SITxn> k23SITxn = pg_session_.GetTxnHandler(transactional_, op->read_only());
+  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, op->read_only());
   return client_->Apply(std::move(op), k23SITxn);
 }
 
@@ -539,18 +541,40 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 }
 
 Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
-  // TODO: add implementation                                   
-  return nullptr;
+ VLOG(3) << "Loading table descriptor for " << table_id;
+  const TableId yb_table_id = table_id.GetYBTableId();
+  shared_ptr<TableInfo> table;
+
+  auto cached_table = table_cache_.find(yb_table_id);
+  if (cached_table == table_cache_.end()) {
+    VLOG(4) << "Table cache MISS: " << table_id;
+    Status s = catalog_client_->OpenTable(yb_table_id, &table);
+    if (!s.ok()) {
+      VLOG(3) << "LoadTable: Server returns an error: " << s;
+      // TODO: NotFound might not always be the right status here.
+      return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
+                           table_id.object_oid, table_id.database_oid, s.ToUserMessage());
+    }
+    table_cache_[yb_table_id] = table;
+  } else {
+    VLOG(4) << "Table cache HIT: " << table_id;
+    table = cached_table->second;
+  }
+
+  return make_scoped_refptr<PgTableDesc>(table);
 }
 
 Result<bool> PgSession::IsInitDbDone() {
-  // TODO: add implementation                                   
-  return false;
+  bool isDone = false;
+  RETURN_NOT_OK(catalog_client_->IsInitDbDone(&isDone));
+  return isDone;
 }
 
 Result<uint64_t> PgSession::GetSharedCatalogVersion() {
-  // TODO: add implementation
-  return 0;
+  // It is the same as YBCPgGetCatalogMasterVersion() for now since we use local catalog manager for the timebeing
+  uint64_t catalog_version;
+  RETURN_NOT_OK(catalog_client_->GetCatalogVersion(&catalog_version));
+  return catalog_version;
 }
 
 bool operator==(const PgForeignKeyReference& k1, const PgForeignKeyReference& k2) {

@@ -65,6 +65,8 @@
 #include "yb/pggate/pg_statement.h"
 #include "yb/pggate/pg_txn_handler.h"
 #include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/sql_catalog_client.h"
+#include "yb/pggate/sql_catalog_manager.h"
 
 namespace k2pg {
 namespace gate {
@@ -467,8 +469,11 @@ class PgGateApiImpl {
   CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
 
   private:
+  scoped_refptr<K2Adapter> CreateK2Adapter();
 
-  K2Adapter* CreateK2Adapter();
+  std::shared_ptr<SqlCatalogManager> CreateCatalogManager();
+
+  scoped_refptr<SqlCatalogClient> CreateCatalogClient();
 
   // Metrics.
   gscoped_ptr<MetricRegistry> metric_registry_;
@@ -484,7 +489,11 @@ class PgGateApiImpl {
   // Mapping table of YugaByte and PostgreSQL datatypes.
   std::unordered_map<int, const YBCPgTypeEntity *> type_map_;
 
-  K2Adapter* k2_adapter_;
+  scoped_refptr<K2Adapter> k2_adapter_;
+
+  SqlCatalogManager::SharedPtr catalog_manager_;
+
+  SqlCatalogClient::ScopedRefPtr catalog_client_;
 
   scoped_refptr<PgSession> pg_session_;
 

@@ -64,6 +64,7 @@
 #include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/pg_gate_api.h"
 #include "yb/pggate/pg_txn_handler.h"
+#include "yb/pggate/sql_catalog_client.h"
 
 namespace k2pg {
 namespace gate {
@@ -90,13 +91,13 @@ class PgSessionAsyncRunResult {
  public:
   PgSessionAsyncRunResult() = default;
   PgSessionAsyncRunResult(std::future<Status> future_status,
-                          K2Adapter *client);
+                          scoped_refptr<K2Adapter> client);
   CHECKED_STATUS GetStatus();
   bool InProgress() const;
 
  private:
   std::future<Status> future_status_;
-  K2Adapter* client_;
+  scoped_refptr<K2Adapter> client_;
 };
 
 struct PgForeignKeyReference {
@@ -115,7 +116,7 @@ struct PgForeignKeyReference {
 
 class RowIdentifier {
  public:
-  explicit RowIdentifier(const PgWriteOpTemplate& op, K2Adapter* k2_adapter);
+  explicit RowIdentifier(const PgWriteOpTemplate& op, scoped_refptr<K2Adapter> k2_adapter);
   inline const string& ybctid() const;
   inline const string& table_id() const;
 
@@ -133,7 +134,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   typedef scoped_refptr<PgSession> ScopedRefPtr;
 
   // Constructors.
-  PgSession(K2Adapter* k2_adapter,
+  PgSession(scoped_refptr<SqlCatalogClient> catalog_client,
+            scoped_refptr<K2Adapter> k2_adapter,
             const string& database_name,
             scoped_refptr<PgTxnHandler> pg_txn_handler,
             const YBCPgCallbacks& pg_callbacks);
@@ -327,7 +329,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // without moving its implementation details into header file.
   class RunHelper {
    public:
-    RunHelper(PgSession* pg_session, K2Adapter *client, bool transactional);
+    RunHelper(scoped_refptr<PgSession> pg_session, scoped_refptr<K2Adapter> client, bool transactional);
     CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
@@ -335,8 +337,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     Result<PgSessionAsyncRunResult> Flush();
 
    private:
-    PgSession& pg_session_;
-    K2Adapter *client_;
+    scoped_refptr<PgSession> pg_session_;
+    scoped_refptr<K2Adapter> client_;
     bool transactional_;
     PgsqlOpBuffer& buffered_ops_;
   };
@@ -357,7 +359,9 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     // Rowid generator.
   ObjectIdGenerator rowid_generator_;
 
-  K2Adapter* const k2_adapter_;
+  scoped_refptr<SqlCatalogClient> catalog_client_;
+
+  scoped_refptr<K2Adapter> k2_adapter_;
 
   // A transaction handler allowing to begin/abort/commit transactions.
   scoped_refptr<PgTxnHandler> pg_txn_handler_;

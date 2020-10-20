@@ -21,84 +21,40 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "sql_executor.h"
+#include "yb/pggate/sql_catalog_manager.h"
+
 #include <algorithm>
 #include <list>
 #include <thread>
 #include <vector>
 
 #include <glog/logging.h>
-#include <gflags/gflags.h>
 
 #include "yb/common/status.h"
-#include "yb/common/flag_tags.h"
 #include "yb/common/env.h"
 
 using namespace yb;
 
-DEFINE_int32(sql_executor_svc_num_threads, -1,
-"Number of threads for the SqlExecutor service. If -1, it is auto configured.");
-TAG_FLAG(sql_executor_svc_num_threads, advanced);
-
 namespace k2pg {
-
 namespace sql {
     static yb::Env* default_env;
 
-    SqlExecutor::~SqlExecutor() {
-        Shutdown();
+    SqlCatalogManager::SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
     }
 
-    Status SqlExecutor::Init() {
-        CHECK(!initted_.load(std::memory_order_acquire));
-        log_prefix_ = Format("P $0: ", cluster_uuid());
+    SqlCatalogManager::~SqlCatalogManager() {
+    }
 
+    Status SqlCatalogManager::Start() {
+        CHECK(!initted_.load(std::memory_order_acquire));
         // TODO: initialization steps
 
         initted_.store(true, std::memory_order_release);
         return Status::OK();
     }
 
-    Status SqlExecutor::WaitInited() {
-        //TODO: WaitForAllBootstrapsToFinish();
-        return Status::OK();
-    }
-
-    void SqlExecutor::AutoInitServiceFlags() {
-        const int32 num_cores = base::NumCPUs();
-
-        if (FLAGS_sql_executor_svc_num_threads == -1) {
-            // Auto select number of threads for the SQL Executor service based on number of cores.
-            // But bound it between 64 & 512.
-            const int32 num_threads = std::min(512, num_cores * 32);
-            FLAGS_sql_executor_svc_num_threads = std::max(64, num_threads);
-            LOG(INFO) << "Auto setting FLAGS_sql_executor_svc_num_threads to "
-                      << FLAGS_sql_executor_svc_num_threads;
-        }
-    }
-
-    Status SqlExecutor::RegisterServices() {
-        // TODO: wire service components
-
-        return Status::OK();
-    }
-
-    Status SqlExecutor::Start() {
-        CHECK(initted_.load(std::memory_order_acquire));
-
-        AutoInitServiceFlags();
-
-        RETURN_NOT_OK(RegisterServices());
-
-        // TODO: start up steps
-
-        google::FlushLogFiles(google::INFO); // Flush the startup messages.
-
-        return Status::OK();
-    }
-
-    void SqlExecutor::Shutdown() {
-        LOG(INFO) << "SqlExecutor shutting down...";
+    void SqlCatalogManager::Shutdown() {
+        LOG(INFO) << "SQL CatalogManager shutting down...";
 
         bool expected = true;
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
@@ -106,24 +62,19 @@ namespace sql {
 
         }
 
-        LOG(INFO) << "SqlExecutor shut down complete. Bye!";
+        LOG(INFO) << "SQL CatalogManager shut down complete. Bye!";
     }
 
-    void SqlExecutor::set_cluster_uuid(const std::string& cluster_uuid) {
-        std::lock_guard<simple_spinlock> l(lock_);
-        cluster_uuid_ = cluster_uuid;
-    }
-
-    std::string SqlExecutor::cluster_uuid() const {
-        std::lock_guard<simple_spinlock> l(lock_);
-        return cluster_uuid_;
-    }
-
-    Env* SqlExecutor::GetEnv() {
+    Env* SqlCatalogManager::GetEnv() {
         return default_env;
     }
+        
+    Status SqlCatalogManager::IsInitDbDone(bool* isDone) {
+        *isDone = init_db_done_;
+        return Status::OK();
+    }
 
-    void SqlExecutor::SetCatalogVersion(uint64_t new_version) {
+    void SqlCatalogManager::SetCatalogVersion(uint64_t new_version) {
         std::lock_guard<simple_spinlock> l(lock_);
         uint64_t ysql_catalog_version_ = catalog_version_.load(std::memory_order_acquire);
         if (new_version > ysql_catalog_version_) {
@@ -133,8 +84,13 @@ namespace sql {
                         << "New: " << new_version << ", Old: " << ysql_catalog_version_;
         }
     }
-}
-}
+    
+    uint64_t SqlCatalogManager::GetCatalogVersion() const {
+        return catalog_version_;
+    }
+
+}  // namespace sql
+}  // namespace k2pg
 
 
 

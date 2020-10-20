@@ -21,27 +21,28 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#ifndef CHOGORI_SQL_SQL_EXECUTOR_H
-#define CHOGORI_SQL_SQL_EXECUTOR_H
+#ifndef CHOGORI_SQL_CATALOG_MANAGER_H
+#define CHOGORI_SQL_CATALOG_MANAGER_H
 
 #include "yb/common/env.h"
 #include "yb/common/status.h"
 #include "yb/common/concurrent/locks.h"
+#include "yb/pggate/k2_adapter.h"
 
 using namespace yb;
 
 namespace k2pg {
 namespace sql {
-    class SqlExecutor {
+    using namespace yb;
+    using namespace k2pg::gate;
+
+    class SqlCatalogManager : public std::enable_shared_from_this<SqlCatalogManager>{
 
     public:
-        SqlExecutor() = default;
-        ~SqlExecutor();
+        typedef std::shared_ptr<SqlCatalogManager> SharedPtr;
 
-        CHECKED_STATUS Init();
-
-        // Waits for the sub-components to complete the initialization.
-        CHECKED_STATUS WaitInited();
+        SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter);
+        ~SqlCatalogManager();
 
         CHECKED_STATUS Start();
 
@@ -49,34 +50,26 @@ namespace sql {
 
         virtual Env* GetEnv();
 
-        const std::string& LogPrefix() const {
-            return log_prefix_;
-        }
+        CHECKED_STATUS IsInitDbDone(bool* isDone);
 
-        void set_cluster_uuid(const std::string& cluster_uuid);
+        void SetCatalogVersion(uint64_t new_version);
 
-        std::string cluster_uuid() const;
-
-        void SetCatalogVersion(uint64_t new_version) ;
+        uint64_t GetCatalogVersion() const;
 
     protected:
-        virtual CHECKED_STATUS RegisterServices();
-
         std::atomic<bool> initted_{false};
 
         mutable simple_spinlock lock_;
 
-        std::string cluster_uuid_;
-
     private:
-        // Auto initialize some of the service flags that are defaulted to -1.
-        void AutoInitServiceFlags();
+        scoped_refptr<K2Adapter> k2_adapter_;
 
-        std::string log_prefix_;
+        std::atomic<bool> init_db_done_{false};
 
         std::atomic<uint64_t> catalog_version_{0};
+
     };
-    
+
 } // namespace sql
 } // namespace k2pg
-#endif //CHOGORI_SQL_SQL_EXECUTOR_H
+#endif //CHOGORI_SQL_CATALOG_MANAGER_H

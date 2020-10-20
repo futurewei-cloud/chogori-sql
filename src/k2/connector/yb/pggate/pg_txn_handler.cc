@@ -53,7 +53,7 @@ namespace gate {
 
 using yb::Status;
 
-PgTxnHandler::PgTxnHandler(K2Adapter *adapter) : adapter_(adapter) {
+PgTxnHandler::PgTxnHandler(scoped_refptr<K2Adapter> adapter) : adapter_(adapter) {
 }
 
 PgTxnHandler::~PgTxnHandler() {
