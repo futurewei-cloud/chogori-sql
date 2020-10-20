@@ -42,12 +42,8 @@ namespace gate {
 
     class SqlOpCondition; 
 
-    // An expression in a WHERE condition.
-    // - Bind values would be given by client and grouped into a repeated field that can be accessed
-    //   by their indexes.
-    // - Alias values would be computed by server and grouped into repeated field that can be accessed
-    //   by their indexes.
-    // - Code generator write indexes as ref. Executor deref indexes to get actual values.
+    // A SQL expression in a WHERE condition.
+    // TODO: change to use the Expression defined in K2 SKV
     class SqlOpExpr {
         public:
         enum class ExprType {
@@ -166,16 +162,6 @@ namespace gate {
         std::vector<int32_t> ids;
     };
 
-    // pass the information so that the under hood SKV client could generate the actual doc key from it
-    struct DocKey { 
-        NamespaceName namespace_name;
-        TableName table_name;
-        std::vector<SqlValue> key_cols;
-        DocKey(NamespaceName& nid, TableName& tid, std::vector<SqlValue>& keys) : 
-            namespace_name(nid), table_name(tid), key_cols(std::move(keys)) {
-        }
-    };
-
     struct ColumnValue {
         ColumnValue() {
         };
@@ -234,7 +220,6 @@ namespace gate {
         uint32_t max_hash_code;
         uint64_t catalog_version;
         RowMarkType row_mark_type;
-        string* max_partition_key;
 
         std::unique_ptr<SqlOpReadRequest> clone();
     };
@@ -391,7 +376,7 @@ namespace gate {
             is_single_row_txn_ = is_single_row_txn;
         }
 
-        // Create a deep copy of this call, copying all fields and request PB content.
+        // Create a deep copy of this call, copying all fields
         // Does NOT, however, copy response and rows data.
         std::unique_ptr<PgWriteOpTemplate> DeepCopy();
 
@@ -418,7 +403,7 @@ namespace gate {
 
         virtual Type type() const { return READ; }
 
-        // Create a deep copy of this call, copying all fields and request PB content.
+        // Create a deep copy of this call, copying all fields
         // Does NOT, however, copy response and rows data.
         std::unique_ptr<PgReadOpTemplate> DeepCopy();
 

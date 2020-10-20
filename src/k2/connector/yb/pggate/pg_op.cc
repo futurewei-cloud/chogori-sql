@@ -48,11 +48,13 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "yb/common/type/decimal.h"
 #include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_env.h"
 
 namespace k2pg {
 namespace gate {
+    using yb::util::Decimal;
 
     PgOpResult::PgOpResult(string&& data) : data_(move(data)) {
         LoadCache(data_, &row_count_, &row_iterator_);
@@ -83,6 +85,9 @@ namespace gate {
 
     // This is not called ReadBool but ReadNumber because it is invoked from the TranslateNumber
     // template function similarly to the rest of numeric types.
+    // 
+    // TODO: the logic could be changed if we read SKV column values directly from SKV client
+    //
     size_t PgOpResult::ReadNumber(Slice *cursor, bool *value) {
         *value = !!*reinterpret_cast<const bool*>(cursor->data());
         return sizeof(bool);
@@ -155,12 +160,14 @@ namespace gate {
                             "Unexpected expression, only column refs or aggregates supported here");
             }
             if (target->opcode() == PgColumnRef::Opcode::PG_EXPR_COLREF) {
-                attr_num = static_cast<const PgColumnRef *>(target)->attr_num();
-            } else {
+                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
+                attr_num = col_ref->attr_num();
+                TranslateColumnRef(col_ref, &row_iterator_, attr_num - 1, pg_tuple);
+           } else {
                 attr_num++;
-            }
+                TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
+           }
 
-            TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
         }
 
         if (row_orders_.size()) {
@@ -170,6 +177,186 @@ namespace gate {
             *row_order = -1;
         }
         return Status::OK();
+    }
+        
+    void PgOpResult::TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
+        TranslateRegularCol(yb_cursor, index, target->type_entity(), target->type_attrs(), pg_tuple);
+    }    
+
+    void PgOpResult::TranslateColumnRef(const PgColumnRef *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
+        int attr_num = target->attr_num();
+        if (attr_num < 0) {
+            // Setup system columns.
+            switch (attr_num) {
+                case static_cast<int>(PgSystemAttrNum::kSelfItemPointer):
+                    TranslateSysCol<uint64_t>(yb_cursor, &pg_tuple->syscols()->ctid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kObjectId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->oid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMinTransactionId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->xmin);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMinCommandId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->cmin);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMaxTransactionId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->xmax);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMaxCommandId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->cmax);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kTableOid):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->tableoid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kYBTupleId):
+                    TranslateSysCol(yb_cursor, pg_tuple, &pg_tuple->syscols()->ybctid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId):
+                    TranslateSysCol(yb_cursor, pg_tuple, &pg_tuple->syscols()->ybbasectid);
+                    break;
+            }          
+        } else {
+            TranslateRegularCol(yb_cursor, index, target->type_entity(), target->type_attrs(), pg_tuple);
+        }
+    }
+    
+    void PgOpResult::TranslateRegularCol(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple) {
+        switch (type_entity->yb_type) {
+            case YB_YQL_DATA_TYPE_INT8:
+                TranslateNumber<int8_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT16:
+                TranslateNumber<int16_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT32:
+                TranslateNumber<int32_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT64:
+                TranslateNumber<int64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_UINT32:
+                TranslateNumber<uint32_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_UINT64:
+                TranslateNumber<uint64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_STRING:
+                TranslateText(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_BOOL:
+                TranslateNumber<bool>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_FLOAT:
+                TranslateNumber<float>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_DOUBLE:
+                TranslateNumber<double>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_BINARY:
+                TranslateBinary(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_TIMESTAMP:
+                TranslateNumber<int64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_DECIMAL:
+                TranslateDecimal(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_VARINT:
+            case YB_YQL_DATA_TYPE_INET:
+            case YB_YQL_DATA_TYPE_LIST:
+            case YB_YQL_DATA_TYPE_MAP:
+            case YB_YQL_DATA_TYPE_SET:
+            case YB_YQL_DATA_TYPE_UUID:
+            case YB_YQL_DATA_TYPE_TIMEUUID:
+            case YB_YQL_DATA_TYPE_TUPLE:
+            case YB_YQL_DATA_TYPE_TYPEARGS:
+            case YB_YQL_DATA_TYPE_USER_DEFINED_TYPE:
+            case YB_YQL_DATA_TYPE_FROZEN:
+            case YB_YQL_DATA_TYPE_DATE: // Not used for PG storage
+            case YB_YQL_DATA_TYPE_TIME: // Not used for PG storage
+            case YB_YQL_DATA_TYPE_JSONB:
+            case YB_YQL_DATA_TYPE_UINT8:
+            case YB_YQL_DATA_TYPE_UINT16:
+            default:
+                LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+        }
+   }
+
+    template<typename data_type>    
+    void PgOpResult::TranslateSysCol(Slice *yb_cursor, data_type *value) {
+        *value = 0;
+
+        // TODO: add logic to pass flag and handle the null value
+        size_t read_size = ReadNumber(yb_cursor, value);
+        yb_cursor->remove_prefix(read_size);      
+    }
+
+    void PgOpResult::TranslateSysCol(Slice *yb_cursor, PgTuple *pg_tuple, uint8_t **pgbuf) {
+        *pgbuf = nullptr;
+        // TODO: add logic to pass flag and handle the null value
+
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        pg_tuple->Write(pgbuf, yb_cursor->data(), data_size);
+        yb_cursor->remove_prefix(data_size);
+    }
+
+    void PgOpResult::TranslateText(Slice *yb_cursor, int index,
+                            const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                            PgTuple *pg_tuple) {
+
+        // Get data from buffer.
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        // Find strlen() of STRING by right-trimming all '\0' characters.
+        const char* text = yb_cursor->cdata();
+        int64_t text_len = data_size - 1;
+
+        DCHECK(text_len >= 0 && text[text_len] == '\0' && (text_len == 0 || text[text_len - 1] != '\0'))
+            << "Data received from DocDB does not have expected format";
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(text, text_len, type_attrs));
+        yb_cursor->remove_prefix(data_size);
+    }
+
+    void PgOpResult::TranslateBinary(Slice *yb_cursor, int index,
+                                const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                PgTuple *pg_tuple) {
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(yb_cursor->data(), data_size, type_attrs));
+        yb_cursor->remove_prefix(data_size);
+    }
+
+
+    // Expects a serialized string representation of Decimal.
+    void PgOpResult::TranslateDecimal(Slice *yb_cursor, int index,
+                                const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                    PgTuple *pg_tuple) {
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        std::string serialized_decimal = yb_cursor->ToBuffer();
+        yb_cursor->remove_prefix(data_size);
+
+        Decimal yb_decimal;
+        if (!yb_decimal.DecodeFromComparable(serialized_decimal).ok()) {
+            LOG(FATAL) << "Failed to deserialize DECIMAL from " << serialized_decimal;
+            return;
+        }
+        auto plaintext = yb_decimal.ToString();
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(plaintext.c_str(), data_size, type_attrs));
     }
 
     Status PgOpResult::ProcessSystemColumns() {
@@ -216,14 +403,7 @@ namespace gate {
     }
 
     Result<RequestSent> PgOp::Execute(bool force_non_bufferable) {
-        // TODO:: This logic is cloned from ybc and modify this based on K2 Doc storage
-        // As of 09/25/2018, DocDB doesn't cache or keep any execution state for a statement, so we
-        // have to call query execution every time.
-        // - Normal SQL convention: Exec, Fetch, Fetch, ...
-        // - Our SQL convention: Exec & Fetch, Exec & Fetch, ...
-        // This refers to the sequence of operations between this layer and the underlying storage layer
-        // server / DocDB layer, not to the sequence of operations between the PostgreSQL layer and this
-        // layer.
+        // SKV is stateless and we have to call query execution every time, i.e., Exec & Fetch, Exec & Fetch
         exec_status_ = SendRequest(force_non_bufferable);
         RETURN_NOT_OK(exec_status_);
         return RequestSent(response_.InProgress());
@@ -263,7 +443,6 @@ namespace gate {
     }
 
     Status PgOp::ClonePgsqlOps(int op_count) {
-        // Allocate batch operator, one per partition.
         SCHECK(op_count > 0, InternalError, "Table must have at least one partition");
         if (pgsql_ops_.size() < op_count) {
             pgsql_ops_.resize(op_count);
@@ -317,15 +496,8 @@ namespace gate {
     }
 
     Status PgOp::SendRequestImpl(bool force_non_bufferable) {
-        // Populate collected information into protobuf requests before sending to DocDB.
+        // Populate collected information into requests before sending to SKV.
         RETURN_NOT_OK(CreateRequests());
-
-        // Currently, send and receive individual request of a batch is not yet supported
-        // - Among statements, only queries by BASE-YBCTIDs need to be sent and received in batches
-        //   to honor the order of how the BASE-YBCTIDs are kept in the database.
-        // - For other type of statements, it could be more efficient to send them individually.
-        SCHECK(wait_for_batch_completion_, InternalError,
-                "Only send and receive the whole batch is supported");
 
         // Send at most "parallelism_level_" number of requests at one time.
         int32_t send_count = std::min(parallelism_level_, active_op_count_);
@@ -395,7 +567,6 @@ namespace gate {
         SetRequestPrefetchLimit();
         SetRowMark();
         SetReadTime();
-        SetPartitionKey();
     }
     
     void PgReadOp::SetReadTime() {
@@ -416,100 +587,12 @@ namespace gate {
             return Status::OK();
         }
 
-        // All information from the SQL request has been collected and setup. This code populate
-        // Protobuf requests before sending them to DocDB. For performance reasons, requests are
-        // constructed differently for different statement.
-        if (template_op_->request().is_aggregate) {
-            // Optimization for COUNT() operator.
-            // - SELECT count(*) FROM sql_table;
-            // - Multiple requests are created to run sequential COUNT() in parallel.
-            return PopulateParallelSelectCountOps();
-
-        } else if (template_op_->request().partition_column_values.size()> 0) {
-            // Optimization for multiple hash keys.
-            // - SELECT * FROM sql_table WHERE hash_c1 IN (1, 2, 3) AND hash_c2 IN (4, 5, 6);
-            // - Multiple requests for differrent hash permutations / keys.
-            return PopulateNextHashPermutationOps();
-
-        } else {
-            // No optimization.
-            pgsql_ops_.push_back(template_op_);
-            template_op_->set_active(true);
-            active_op_count_ = 1;
-            request_population_completed_ = true;
-            return Status::OK();
-        }
-    }
-
-    Status PgReadOp::PopulateDmlByYbctidOps(const vector<Slice> *ybctids) {
-        // This function is called only when ybctids were returned from INDEX.
-        //
-        // NOTE on a typical process.
-        // 1- Statement:
-        //    SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX);
-        //
-        // 2- Select 1024 ybctids (prefetch limit) from INDEX.
-        //
-        // 3- ONLY ONE TIME: Create a batch of operators, one per partition.
-        //    * Each operator has a clone requests from template_op_.
-        //    * We will reuse the created operators & requests for the future batches of 1024 ybctids.
-        //    * Certain fields in the protobuf requests MUST BE RESET for each batches.
-        //
-        // 4- Assign the selected 1024 ybctids to the batch of operators.
-        //
-        // 5- Send requests to storage servers to read data from <tab> associated with ybctid values.
-        //
-        // 6- Repeat step 2 thru 5 for the next batch of 1024 ybctids till done.
-        RETURN_NOT_OK(InitializeYbctidOperators());
-
-        // Begin a batch of ybctids.
-        end_of_data_ = false;
-
-        // Assign ybctid values.
-
-        // TODO: need to see how to find K2 doc partitions and assign them by partitions
-        // TODO: update batch operations for different partitions
- 
-        // Done creating request, but not all partition or operator has arguments (inactive).
-        MoveInactiveOpsOutside();
+        // No optimization.
+        // TODO: create separate requests for different partitions once SKV partition information is available
+        pgsql_ops_.push_back(template_op_);
+        template_op_->set_active(true);
+        active_op_count_ = 1;
         request_population_completed_ = true;
-
-        return Status::OK();
-    }
-
-    Status PgReadOp::InitializeYbctidOperators() {
-        int op_count = table_desc_->GetPartitionCount();
-
-        if (batch_row_orders_.size() == 0) {
-            // First batch:
-            // - Create operators.
-            // - Allocate row orders for each storage server.
-            // - Protobuf fields in requests are not yet set so not needed to be cleared.
-            RETURN_NOT_OK(ClonePgsqlOps(op_count));
-            batch_row_orders_.resize(op_count);
-
-            // To honor the indexing order of ybctid values, for each batch of ybctid-binds, select all rows
-            // in the batch and then order them before returning result to Postgres layer.
-            wait_for_batch_completion_ = true;
-
-        } else {
-            // Second and later batches: Reuse all state variables.
-            // - Clear row orders for this batch to be set later.
-            // - Clear protobuf fields ybctids and others before reusing them in this batch.
-            RETURN_NOT_OK(ResetInactivePgsqlOps());
-        }
-        return Status::OK();
-    }
-
-    Status PgReadOp::PopulateNextHashPermutationOps() {
-        // TODO: do we need logic to build operations based on partition hash?
-
-        return Status::OK();
-    }
-
-    Status PgReadOp::PopulateParallelSelectCountOps() {
-        // TODO:: check how do we create operation requests based on k2 partitions
-
         return Status::OK();
     }
 
@@ -531,7 +614,6 @@ namespace gate {
                 // A query request can be nested, and paging state belong to the innermost query which is
                 // the read operator that is operated first and feeds data to other queries.
                 SqlOpReadRequest *innermost_req = &req;
-                // TODO:: enable the logic for index once we add secondary index support
                 while (innermost_req->index_request != nullptr) {
                      innermost_req = innermost_req->index_request;
                 }
@@ -543,13 +625,6 @@ namespace gate {
             } else {
                 read_op->set_active(false);
             }
-        }
-
-        // If partition key of storage server to scan is specified, then we should be done.  This is because,
-        // curently, only `BACKFILL INDEX ... PARTITION ...` statements set `partition_key`, and they scan
-        // a single storage server.
-        if (partition_key_) {
-            has_more_data = false;
         }
 
         if (has_more_data || send_count < active_op_count_) {
@@ -566,7 +641,7 @@ namespace gate {
     }
 
     void PgReadOp::SetRequestPrefetchLimit() {
-        // Predict the maximum prefetch-limit using the associated gflags.
+        // Predict the maximum prefetch-limit
         SqlOpReadRequest& req = template_op_->request();
         int predicted_limit = default_ysql_prefetch_limit;
         if (!req.is_forward_scan) {
@@ -600,15 +675,8 @@ namespace gate {
         }
     }
 
-    void PgReadOp::SetPartitionKey() {
-        if (exec_params_.partition_key != NULL) {
-            partition_key_ = std::string(exec_params_.partition_key);
-            // TODO: add logic for k2 partitions
-        }
-    }
-
     Status PgReadOp::ResetInactivePgsqlOps() {
-        // Clear the existing ybctids.
+        // Clear the existing requests.
         for (int op_index = active_op_count_; op_index < pgsql_ops_.size(); op_index++) {
             SqlOpReadRequest& read_req = GetReadOp(op_index)->request();
             read_req.ybctid_column_value = nullptr;
@@ -651,6 +719,7 @@ namespace gate {
         }
 
         // Setup a singular operator.
+        // TODO: create multiple requests for multiple partitions if the information is available
         pgsql_ops_.push_back(write_op_);
         write_op_->set_active(true);
         active_op_count_ = 1;

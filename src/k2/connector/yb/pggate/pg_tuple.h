@@ -56,12 +56,6 @@ namespace gate {
 
 using namespace yb;
 
-// PgTuple.
-// TODO(neil) This code needs to be optimize. We might be able to use DocDB buffer directly for
-// most datatype except numeric. A simpler optimization would be allocate one buffer for each
-// tuple and write the value there.
-//
-// Currently we allocate one individual buffer per column and write result there.
 class PgTuple {
  public:
   PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);

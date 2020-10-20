@@ -59,7 +59,7 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table)
     // Find the column descriptor.
     const auto& col = schema.column(idx);
 
-    // TODO(neil) Considering index columns by attr_num instead of ID.
+    // create map by attr_num instead of the default id
     ColumnDesc *desc = columns_[idx].desc();
     desc->Init(idx,
                schema.column_id(idx),
@@ -109,7 +109,7 @@ bool PgTableDesc::IsTransactional() const {
 }
 
 int PgTableDesc::GetPartitionCount() const {
-  // TODO: add logic for k2 storage partition count calculation
+  // TODO:  Assume 1 partition for now until we add logic to expose k2 storage partition counts
   return 1;
 }
 

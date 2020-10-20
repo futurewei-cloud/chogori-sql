@@ -47,7 +47,6 @@ namespace gate {
        newRequest->max_hash_code = max_hash_code;
        newRequest->catalog_version = catalog_version;
        newRequest->row_mark_type = row_mark_type;
-       newRequest->max_partition_key = max_partition_key;  
        return newRequest;   
     }
 

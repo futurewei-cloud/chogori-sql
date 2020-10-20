@@ -151,12 +151,52 @@ namespace gate {
         //   correctly during the compilation of a statement.
         // - For each postgres data type, to_datum() function pointer must be setup properly during
         //   the compilation of a statement.
-        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
-            // TODO: implementation
-        }      
+        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple);
+
+        void TranslateColumnRef(const PgColumnRef *target, Slice *yb_cursor, int index, PgTuple *pg_tuple); 
 
         private:
+        // Translate system column.
+        template<typename data_type>
+        static void TranslateSysCol(Slice *yb_cursor, data_type *value);
+
+        static void TranslateSysCol(Slice *yb_cursor, PgTuple *pg_tuple, uint8_t **pgbuf);
+
+        // translate regular column
+        static void TranslateRegularCol(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple);
+
+        template<typename data_type>
+        static void TranslateNumber(Slice *yb_cursor, int index,
+                                    const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                    PgTuple *pg_tuple) {
+            DCHECK(type_entity) << "Type entity not provided";
+            DCHECK(type_entity->yb_to_datum) << "Type entity converter not provided";
+
+            data_type result = 0;
+            size_t read_size = ReadNumber(yb_cursor, &result);
+            yb_cursor->remove_prefix(read_size);
+            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&result, read_size, type_attrs));
+        };
+
+        // Translates char-based datatypes.
+        static void TranslateText(Slice *yb_cursor, int index,
+                            const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                            PgTuple *pg_tuple);
+
+        // Translates binary-based datatypes.
+        static void TranslateBinary(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple);
+
+        // Translate decimal datatype.
+        static void TranslateDecimal(Slice *yb_cursor, int index,
+                               const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                               PgTuple *pg_tuple);
+
         // Data selected from k2 storage.
+        // TODO: refactor this based on SKV payload
         string data_;
 
         // Iterator on "data_" from row to row.
@@ -203,14 +243,6 @@ namespace gate {
         CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
         Result<int32_t> GetRowsAffectedCount() const;
 
-        // This operation is requested internally within PgGate, and that request does not go through
-        // all the steps as other operation from Postgres thru PgOp. This is used to create requests
-        // for the following select.
-        //   SELECT ... FROM <table> WHERE ybctid IN (SELECT base_ybctids from INDEX)
-        // After ybctids are queried from INDEX, PgGate will call "PopulateDmlByYbctidOps" to create
-        // operators to fetch rows whose rowids equal queried ybctids.
-        virtual CHECKED_STATUS PopulateDmlByYbctidOps(const vector<Slice> *ybctids) = 0;
-
         protected:
         // Populate Protobuf requests using the collected informtion for this DocDB operator.
         virtual CHECKED_STATUS CreateRequests() = 0;
@@ -219,15 +251,6 @@ namespace gate {
         // - Each operator is used for one request.
         // - When parallelism by partition is applied, each operator is associated with one partition,
         //   and each operator has a batch of arguments that belong to that partition.
-        //   * The higher the number of partition_count, the higher the parallelism level.
-        //   * If (partition_count == 1), only one operator is needed for the entire partition range.
-        //   * If (partition_count > 1), each operator is used for a specific partition range.
-        //   * This optimization is used by
-        //       PopulateDmlByYbctidOps()
-        //       PopulateParallelSelectCountOps()
-        // - When parallelism by arguments is applied, each operator has only one argument.
-        //   When storage layer will run the requests in parallel as it assigned one thread per request.
-        //       PopulateNextHashPermutationOps()
         CHECKED_STATUS ClonePgsqlOps(int op_count);
 
         // Only active operators are kept in the active range [0, active_op_count_)
@@ -279,14 +302,6 @@ namespace gate {
         // Indicator for completing all request populations.
         bool request_population_completed_ = false;
 
-        // If true, all data for each batch must be collected before PgGate gets the reply.
-        // NOTE:
-        // - Currently, PgSession's default behavior is to get all responses in a batch together.
-        // - We set this flag only to prevent future optimization where requests & their responses to
-        //   and from different storage servers are sent and received independently. That optimization
-        //   should only be done when "wait_for_batch_completion_ == false"
-        bool wait_for_batch_completion_ = true;
-
         // Future object to fetch a response from storage after sending a request.
         // Object's valid() method returns false in case no request is sent
         // or sent request was buffered by the session.
@@ -300,34 +315,7 @@ namespace gate {
         bool end_of_data_ = false;
 
         // The order number of each request when batching arguments.
-        // Currently, this is used for query by YBCTID.
-        // - Each pgsql_op has a batch of ybctids selected from INDEX.
-        // - The order of resulting rows should match with the order of queried ybctids.
-        // - Example:
-        //   Suppose we got from INDEX table
-        //     { ybctid_1, ybctid_2, ybctid_3, ybctid_4, ybctid_5, ybctid_6, ybctid_7 }
-        //
-        //   Now pgsql_op are constructed as the following, one op per partition.
-        //     pgsql_op <partition 1> (ybctid_1, ybctid_3, ybctid_4)
-        //     pgsql_op <partition 2> (ybctid_2, ybctid_6)
-        //     pgsql_op <partition 2> (ybctid_5, ybctid_7)
-        //
-        //   After getting the rows of data from pgsql, the rows must be then ordered from 1 thru 7.
-        //   To do so, for each pgsql_op we kept an array of orders, batch_row_orders_.
-        //   For the above pgsql_ops_, the orders would be cached as the following.
-        //     vector orders { partition 1: list ( 1, 3, 4 ),
-        //                     partition 2: list ( 2, 6 ),
-        //                     partition 3: list ( 5, 7 ) }
-        //
-        //   When the "pgsql_ops_" elements are sorted and swapped order, the "batch_row_orders_"
-        //   must be swaped also.
-        //     std::swap ( pgsql_ops_[1], pgsql_ops_[3])
-        //     std::swap ( batch_row_orders_[1], batch_row_orders_[3] )
         std::vector<std::list<int64_t>> batch_row_orders_;
-
-        // This counter is used to maintain the row order when the operator sends requests in parallel
-        // by partition. Currently only query by YBCTID uses this variable.
-        int64_t batch_row_ordering_counter_ = 0;
 
         // Parallelism level.
         // - This is the maximum number of read/write requests being sent to servers at one time.
@@ -358,33 +346,10 @@ namespace gate {
         // Create protobuf requests using template_op_.
         CHECKED_STATUS CreateRequests() override;
 
-        // Create operators by partition.
-        // - Optimization for statement
-        //     SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX)
-        // - After being queried from inner select, ybctids are used for populate request for outer query.
-        CHECKED_STATUS PopulateDmlByYbctidOps(const vector<Slice> *ybctids) override;
-        CHECKED_STATUS InitializeYbctidOperators();
-
-        // Create operators by partition arguments.
-        // - Optimization for statement:
-        //     SELECT ... WHERE <hash-columns> IN <value-lists>
-        // - If partition column binds are defined, partition_column_values field of each operation
-        //   is set to be the next permutation.
-        // - When an operator is assigned a hash permutation, it is marked as active to be executed.
-        // - When an operator completes the execution, it is marked as inactive and available for the
-        //   exection of the next hash permutation.
-        CHECKED_STATUS PopulateNextHashPermutationOps();
-        // CHECKED_STATUS InitializeHashPermutationStates();
-
-        // Create operators by partitions.
-        // - Optimization for statement:
-        //     Create parallel request for SELECT COUNT().
-        CHECKED_STATUS PopulateParallelSelectCountOps();
-
-        // Process response from DocDB.
+        // Process response from SKV
         Result<std::list<PgOpResult>> ProcessResponseImpl() override;
 
-        // Process response paging state from DocDB.
+        // Process response paging state from SKV
         CHECKED_STATUS ProcessResponsePagingState();
 
         // Reset pgsql operators before reusing them with new arguments / inputs from Postgres.
@@ -398,9 +363,6 @@ namespace gate {
 
         // Set the read_time for our read request based on our exec control parameter.
         void SetReadTime();
-
-        // Set the partition key for our read request based on our exec control paramater.
-        void SetPartitionKey();
 
         // Clone the template into actual requests to be sent to server.
         std::unique_ptr<PgOpTemplate> CloneFromTemplate() override {
@@ -417,18 +379,7 @@ namespace gate {
         // Template operation, used to fill in pgsql_ops_ by either assigning or cloning.
         std::shared_ptr<PgReadOpTemplate> template_op_;
 
-        // Used internally for PopulateNextHashPermutationOps to keep track of which permutation should
-        // be used to construct the next read_op.
-        // Is valid as long as request_population_completed_ is false.
-        //
-        // Example:
-        // For a query clause "h1 = 1 AND h2 IN (2,3) AND h3 IN (4,5,6) AND h4 = 7",
-        // there are 1*2*3*1 = 6 possible permutation.
-        // As such, this field will take on values 0 through 5.
-        int total_permutation_count_ = 0;
-        int next_permutation_idx_ = 0;
-
-        // Used internally for PopulateNextHashPermutationOps to holds all partition expressions.
+        // Used internally to holds all partition expressions.
         // Elements correspond to a hash columns, in the same order as they were defined
         // in CREATE TABLE statement.
         // This is somewhat similar to what hash_values_options_ in CQL is used for.
@@ -437,9 +388,6 @@ namespace gate {
         // For a query clause "h1 = 1 AND h2 IN (2,3) AND h3 IN (4,5,6) AND h4 = 7",
         // this will be initialized to [[1], [2, 3], [4, 5, 6], [7]]
         std::vector<std::vector<PgExpr *>> partition_exprs_;
-
-        // The partition key identifying the sole storage server to read from.
-        boost::optional<std::string> partition_key_;
     };
 
     //--------------------------------------------------------------------------------------------------
@@ -462,23 +410,15 @@ namespace gate {
         // Process response implementation.
         Result<std::list<PgOpResult>> ProcessResponseImpl() override;
 
-        // Create protobuf requests using template_op (write_op).
+        // Create requests using template_op (write_op).
         CHECKED_STATUS CreateRequests() override;
-
-        // For write ops, we are not yet batching ybctid from index query.
-        // TODO(neil) This function will be implemented when we push down sub-query inside WRITE ops to
-        // the proxy layer. There's many scenarios where this optimization can be done.
-        CHECKED_STATUS PopulateDmlByYbctidOps(const vector<Slice> *ybctids) override {
-            LOG(FATAL) << "Not yet implemented";
-            return Status::OK();
-        }
 
         // Get WRITE operator for a specific operator index in pgsql_ops_.
         PgWriteOpTemplate *GetWriteOp(int op_index) {
             return static_cast<PgWriteOpTemplate *>(pgsql_ops_[op_index].get());
         }
 
-        // Clone user data from template to actual protobuf requests.
+        // Clone user data from template to actual requests.
         std::unique_ptr<PgOpTemplate> CloneFromTemplate() override {
             return write_op_->DeepCopy();
         }
