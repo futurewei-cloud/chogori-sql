@@ -48,11 +48,13 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "yb/common/type/decimal.h"
 #include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_env.h"
 
 namespace k2pg {
 namespace gate {
+    using yb::util::Decimal;
 
     PgOpResult::PgOpResult(string&& data) : data_(move(data)) {
         LoadCache(data_, &row_count_, &row_iterator_);
@@ -83,6 +85,9 @@ namespace gate {
 
     // This is not called ReadBool but ReadNumber because it is invoked from the TranslateNumber
     // template function similarly to the rest of numeric types.
+    // 
+    // TODO: the logic could be changed if we read SKV column values directly from SKV client
+    //
     size_t PgOpResult::ReadNumber(Slice *cursor, bool *value) {
         *value = !!*reinterpret_cast<const bool*>(cursor->data());
         return sizeof(bool);
@@ -155,12 +160,14 @@ namespace gate {
                             "Unexpected expression, only column refs or aggregates supported here");
             }
             if (target->opcode() == PgColumnRef::Opcode::PG_EXPR_COLREF) {
-                attr_num = static_cast<const PgColumnRef *>(target)->attr_num();
-            } else {
+                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
+                attr_num = col_ref->attr_num();
+                TranslateColumnRef(col_ref, &row_iterator_, attr_num - 1, pg_tuple);
+           } else {
                 attr_num++;
-            }
+                TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
+           }
 
-            TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
         }
 
         if (row_orders_.size()) {
@@ -170,6 +177,186 @@ namespace gate {
             *row_order = -1;
         }
         return Status::OK();
+    }
+        
+    void PgOpResult::TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
+        TranslateRegularCol(yb_cursor, index, target->type_entity(), target->type_attrs(), pg_tuple);
+    }    
+
+    void PgOpResult::TranslateColumnRef(const PgColumnRef *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
+        int attr_num = target->attr_num();
+        if (attr_num < 0) {
+            // Setup system columns.
+            switch (attr_num) {
+                case static_cast<int>(PgSystemAttrNum::kSelfItemPointer):
+                    TranslateSysCol<uint64_t>(yb_cursor, &pg_tuple->syscols()->ctid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kObjectId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->oid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMinTransactionId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->xmin);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMinCommandId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->cmin);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMaxTransactionId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->xmax);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kMaxCommandId):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->cmax);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kTableOid):
+                    TranslateSysCol<uint32_t>(yb_cursor, &pg_tuple->syscols()->tableoid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kYBTupleId):
+                    TranslateSysCol(yb_cursor, pg_tuple, &pg_tuple->syscols()->ybctid);
+                    break;
+                case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId):
+                    TranslateSysCol(yb_cursor, pg_tuple, &pg_tuple->syscols()->ybbasectid);
+                    break;
+            }          
+        } else {
+            TranslateRegularCol(yb_cursor, index, target->type_entity(), target->type_attrs(), pg_tuple);
+        }
+    }
+    
+    void PgOpResult::TranslateRegularCol(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple) {
+        switch (type_entity->yb_type) {
+            case YB_YQL_DATA_TYPE_INT8:
+                TranslateNumber<int8_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT16:
+                TranslateNumber<int16_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT32:
+                TranslateNumber<int32_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_INT64:
+                TranslateNumber<int64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_UINT32:
+                TranslateNumber<uint32_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_UINT64:
+                TranslateNumber<uint64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_STRING:
+                TranslateText(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_BOOL:
+                TranslateNumber<bool>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_FLOAT:
+                TranslateNumber<float>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_DOUBLE:
+                TranslateNumber<double>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_BINARY:
+                TranslateBinary(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_TIMESTAMP:
+                TranslateNumber<int64_t>(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_DECIMAL:
+                TranslateDecimal(yb_cursor, index, type_entity, type_attrs, pg_tuple);
+                break;
+            case YB_YQL_DATA_TYPE_VARINT:
+            case YB_YQL_DATA_TYPE_INET:
+            case YB_YQL_DATA_TYPE_LIST:
+            case YB_YQL_DATA_TYPE_MAP:
+            case YB_YQL_DATA_TYPE_SET:
+            case YB_YQL_DATA_TYPE_UUID:
+            case YB_YQL_DATA_TYPE_TIMEUUID:
+            case YB_YQL_DATA_TYPE_TUPLE:
+            case YB_YQL_DATA_TYPE_TYPEARGS:
+            case YB_YQL_DATA_TYPE_USER_DEFINED_TYPE:
+            case YB_YQL_DATA_TYPE_FROZEN:
+            case YB_YQL_DATA_TYPE_DATE: // Not used for PG storage
+            case YB_YQL_DATA_TYPE_TIME: // Not used for PG storage
+            case YB_YQL_DATA_TYPE_JSONB:
+            case YB_YQL_DATA_TYPE_UINT8:
+            case YB_YQL_DATA_TYPE_UINT16:
+            default:
+                LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+        }
+   }
+
+    template<typename data_type>    
+    void PgOpResult::TranslateSysCol(Slice *yb_cursor, data_type *value) {
+        *value = 0;
+
+        // TODO: add logic to pass flag and handle the null value
+        size_t read_size = ReadNumber(yb_cursor, value);
+        yb_cursor->remove_prefix(read_size);      
+    }
+
+    void PgOpResult::TranslateSysCol(Slice *yb_cursor, PgTuple *pg_tuple, uint8_t **pgbuf) {
+        *pgbuf = nullptr;
+        // TODO: add logic to pass flag and handle the null value
+
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        pg_tuple->Write(pgbuf, yb_cursor->data(), data_size);
+        yb_cursor->remove_prefix(data_size);
+    }
+
+    void PgOpResult::TranslateText(Slice *yb_cursor, int index,
+                            const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                            PgTuple *pg_tuple) {
+
+        // Get data from buffer.
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        // Find strlen() of STRING by right-trimming all '\0' characters.
+        const char* text = yb_cursor->cdata();
+        int64_t text_len = data_size - 1;
+
+        DCHECK(text_len >= 0 && text[text_len] == '\0' && (text_len == 0 || text[text_len - 1] != '\0'))
+            << "Data received from DocDB does not have expected format";
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(text, text_len, type_attrs));
+        yb_cursor->remove_prefix(data_size);
+    }
+
+    void PgOpResult::TranslateBinary(Slice *yb_cursor, int index,
+                                const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                PgTuple *pg_tuple) {
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(yb_cursor->data(), data_size, type_attrs));
+        yb_cursor->remove_prefix(data_size);
+    }
+
+
+    // Expects a serialized string representation of Decimal.
+    void PgOpResult::TranslateDecimal(Slice *yb_cursor, int index,
+                                const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                    PgTuple *pg_tuple) {
+        int64_t data_size;
+        size_t read_size = ReadNumber(yb_cursor, &data_size);
+        yb_cursor->remove_prefix(read_size);
+
+        std::string serialized_decimal = yb_cursor->ToBuffer();
+        yb_cursor->remove_prefix(data_size);
+
+        Decimal yb_decimal;
+        if (!yb_decimal.DecodeFromComparable(serialized_decimal).ok()) {
+            LOG(FATAL) << "Failed to deserialize DECIMAL from " << serialized_decimal;
+            return;
+        }
+        auto plaintext = yb_decimal.ToString();
+
+        pg_tuple->WriteDatum(index, type_entity->yb_to_datum(plaintext.c_str(), data_size, type_attrs));
     }
 
     Status PgOpResult::ProcessSystemColumns() {
@@ -301,7 +488,7 @@ namespace gate {
                 std::swap(batch_row_orders_[left_iter], batch_row_orders_[right_iter]);
             }
             } else {
-            break;
+                break;
             }
         }
 
@@ -317,7 +504,7 @@ namespace gate {
     }
 
     Status PgOp::SendRequestImpl(bool force_non_bufferable) {
-        // Populate collected information into protobuf requests before sending to DocDB.
+        // Populate collected information into requests before sending to SKV.
         RETURN_NOT_OK(CreateRequests());
 
         // Currently, send and receive individual request of a batch is not yet supported
@@ -566,7 +753,7 @@ namespace gate {
     }
 
     void PgReadOp::SetRequestPrefetchLimit() {
-        // Predict the maximum prefetch-limit using the associated gflags.
+        // Predict the maximum prefetch-limit
         SqlOpReadRequest& req = template_op_->request();
         int predicted_limit = default_ysql_prefetch_limit;
         if (!req.is_forward_scan) {

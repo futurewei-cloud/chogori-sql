@@ -62,6 +62,7 @@
 #include "yb/entities/expr.h"
 #include "yb/entities/table.h"
 
+#include "yb/pggate/pg_gate_defaults.h"
 #include "yb/pggate/pg_tuple.h"
 #include "yb/pggate/pg_session.h"
 #include "yb/pggate/pg_tabledesc.h"
@@ -76,11 +77,6 @@ namespace gate {
 
     using namespace yb;
     using namespace k2pg::sql;
-
-    const uint64_t default_ysql_prefetch_limit = 4;
-    const uint64_t default_ysql_request_limit = 1;
-    const uint64_t default_ysql_select_parallelism = 1;
-    const double default_ysql_backward_prefetch_scale_factor = 0.25;
 
     YB_STRONGLY_TYPED_BOOL(RequestSent);
    
@@ -155,12 +151,52 @@ namespace gate {
         //   correctly during the compilation of a statement.
         // - For each postgres data type, to_datum() function pointer must be setup properly during
         //   the compilation of a statement.
-        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple) {
-            // TODO: implementation
-        }      
+        void TranslateData(const PgExpr *target, Slice *yb_cursor, int index, PgTuple *pg_tuple);
+
+        void TranslateColumnRef(const PgColumnRef *target, Slice *yb_cursor, int index, PgTuple *pg_tuple); 
 
         private:
+        // Translate system column.
+        template<typename data_type>
+        static void TranslateSysCol(Slice *yb_cursor, data_type *value);
+
+        static void TranslateSysCol(Slice *yb_cursor, PgTuple *pg_tuple, uint8_t **pgbuf);
+
+        // translate regular column
+        static void TranslateRegularCol(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple);
+
+        template<typename data_type>
+        static void TranslateNumber(Slice *yb_cursor, int index,
+                                    const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                                    PgTuple *pg_tuple) {
+            DCHECK(type_entity) << "Type entity not provided";
+            DCHECK(type_entity->yb_to_datum) << "Type entity converter not provided";
+
+            data_type result = 0;
+            size_t read_size = ReadNumber(yb_cursor, &result);
+            yb_cursor->remove_prefix(read_size);
+            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&result, read_size, type_attrs));
+        };
+
+        // Translates char-based datatypes.
+        static void TranslateText(Slice *yb_cursor, int index,
+                            const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                            PgTuple *pg_tuple);
+
+        // Translates binary-based datatypes.
+        static void TranslateBinary(Slice *yb_cursor, int index,
+                              const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                              PgTuple *pg_tuple);
+
+        // Translate decimal datatype.
+        static void TranslateDecimal(Slice *yb_cursor, int index,
+                               const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs,
+                               PgTuple *pg_tuple);
+
         // Data selected from k2 storage.
+        // TODO: refactor this based on SKV payload
         string data_;
 
         // Iterator on "data_" from row to row.
@@ -385,10 +421,10 @@ namespace gate {
         //     Create parallel request for SELECT COUNT().
         CHECKED_STATUS PopulateParallelSelectCountOps();
 
-        // Process response from DocDB.
+        // Process response from SKV
         Result<std::list<PgOpResult>> ProcessResponseImpl() override;
 
-        // Process response paging state from DocDB.
+        // Process response paging state from SKV
         CHECKED_STATUS ProcessResponsePagingState();
 
         // Reset pgsql operators before reusing them with new arguments / inputs from Postgres.
@@ -466,7 +502,7 @@ namespace gate {
         // Process response implementation.
         Result<std::list<PgOpResult>> ProcessResponseImpl() override;
 
-        // Create protobuf requests using template_op (write_op).
+        // Create requests using template_op (write_op).
         CHECKED_STATUS CreateRequests() override;
 
         // For write ops, we are not yet batching ybctid from index query.
@@ -482,7 +518,7 @@ namespace gate {
             return static_cast<PgWriteOpTemplate *>(pgsql_ops_[op_index].get());
         }
 
-        // Clone user data from template to actual protobuf requests.
+        // Clone user data from template to actual requests.
         std::unique_ptr<PgOpTemplate> CloneFromTemplate() override {
             return write_op_->DeepCopy();
         }

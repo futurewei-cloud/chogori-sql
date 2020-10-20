@@ -32,15 +32,15 @@ using namespace yb;
 
 namespace k2pg {
 namespace sql {
-    class SQLCatalogManager {
+    class SqlExecutor {
 
     public:
-        SQLCatalogManager() = default;
-        ~SQLCatalogManager();
+        SqlExecutor() = default;
+        ~SqlExecutor();
 
         CHECKED_STATUS Init();
 
-        // Waits for the storage server to complete the initialization.
+        // Waits for the tablet server to complete the initialization.
         CHECKED_STATUS WaitInited();
 
         CHECKED_STATUS Start();
