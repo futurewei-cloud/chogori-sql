@@ -1,0 +1,22 @@
+//
+// THE SOFTWARE IS PROVIDED "AS IS",
+// WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+//        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+//        DAMAGES OR OTHER LIABILITY,
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+//
+
+#include "yb/pggate/k2_adapter.h"
+
+namespace k2pg {
+namespace gate {
+
+std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
+  // TODO: add options to the method signature and call SKV client to get back the K2SITxn handle
+  return nullptr;
+}
+
+}  // namespace gate
+}  // namespace k2pg

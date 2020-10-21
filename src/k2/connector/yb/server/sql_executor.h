@@ -40,7 +40,7 @@ namespace sql {
 
         CHECKED_STATUS Init();
 
-        // Waits for the tablet server to complete the initialization.
+        // Waits for the sub-components to complete the initialization.
         CHECKED_STATUS WaitInited();
 
         CHECKED_STATUS Start();
@@ -76,6 +76,7 @@ namespace sql {
 
         std::atomic<uint64_t> catalog_version_{0};
     };
-}
-}
+    
+} // namespace sql
+} // namespace k2pg
 #endif //CHOGORI_SQL_SQL_EXECUTOR_H
