@@ -391,6 +391,7 @@ namespace gate {
         // Wait for result in case request was sent.
         // Operation can be part of transaction it is necessary to complete it before transaction commit.
         if (response_.InProgress()) {
+            VLOG(1) << "Waiting for in progress response ";
             __attribute__((unused)) auto status = response_.GetStatus();
         }
     }
@@ -615,7 +616,7 @@ namespace gate {
                 // the read operator that is operated first and feeds data to other queries.
                 SqlOpReadRequest *innermost_req = &req;
                 while (innermost_req->index_request != nullptr) {
-                     innermost_req = innermost_req->index_request;
+                     innermost_req = innermost_req->index_request.get();
                 }
                 *innermost_req->paging_state = std::move(*res.paging_state);
             }

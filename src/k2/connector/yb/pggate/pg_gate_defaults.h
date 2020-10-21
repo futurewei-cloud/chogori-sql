@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace gate {
     // Timeout for read, write request from pggate to K2 SKV
-    constexpr int default_client_read_write_timeout_ms = 60000;
+    constexpr int default_client_read_write_timeout_ms = 5000;
 
     // How many read restarts can we try transparently before giving up
     constexpr int32_t default_max_read_restart_attempts = 20;
@@ -38,13 +38,13 @@ namespace gate {
     // should disable index backfill or not
     static bool const default_disable_index_backfill = true; 
 
-    const uint64_t default_ysql_prefetch_limit = 4;
+    static const uint64_t default_ysql_prefetch_limit = 4;
 
-    const uint64_t default_ysql_request_limit = 1;
+    static const uint64_t default_ysql_request_limit = 1;
 
-    const uint64_t default_ysql_select_parallelism = 1;
+    static const uint64_t default_ysql_select_parallelism = 1;
     
-    const double default_ysql_backward_prefetch_scale_factor = 0.25;
+    static const double default_ysql_backward_prefetch_scale_factor = 0.25;
 
 }  // namespace gate
 }  // namespace k2pg

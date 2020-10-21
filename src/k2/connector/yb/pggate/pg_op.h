@@ -206,7 +206,8 @@ namespace gate {
         int64_t row_count_ = 0;
 
         // The indexing order of the row in this batch.
-        // These order values help to identify the row order across all batches.
+        // These order values help to identify the row order across all batches
+        // the size is based on the returning data and thus a list instead of an array is used
         std::list<int64_t> row_orders_;
 
         // System columns.
@@ -378,16 +379,6 @@ namespace gate {
 
         // Template operation, used to fill in pgsql_ops_ by either assigning or cloning.
         std::shared_ptr<PgReadOpTemplate> template_op_;
-
-        // Used internally to holds all partition expressions.
-        // Elements correspond to a hash columns, in the same order as they were defined
-        // in CREATE TABLE statement.
-        // This is somewhat similar to what hash_values_options_ in CQL is used for.
-        //
-        // Example:
-        // For a query clause "h1 = 1 AND h2 IN (2,3) AND h3 IN (4,5,6) AND h4 = 7",
-        // this will be initialized to [[1], [2, 3], [4, 5, 6], [7]]
-        std::vector<std::vector<PgExpr *>> partition_exprs_;
     };
 
     //--------------------------------------------------------------------------------------------------

@@ -28,23 +28,17 @@ namespace gate {
        newRequest->namespace_name = namespace_name;
        newRequest->table_name = table_name;
        newRequest->schema_version = schema_version;
-       newRequest->hash_code = hash_code;
-       // TODO: double check if we need to deep clone vector fields
-       newRequest->partition_column_values = partition_column_values;
-       newRequest->range_column_values = range_column_values;
+       newRequest->key_column_values = key_column_values;
        newRequest->ybctid_column_value = ybctid_column_value;
-       newRequest->rsrow_desc.rscol_descs = rsrow_desc.rscol_descs;
        newRequest->targets = targets;
        newRequest->where_expr = where_expr;
        newRequest->condition_expr = condition_expr;
-       newRequest->column_refs = column_refs;
        newRequest->is_forward_scan = is_forward_scan;
        newRequest->distinct = distinct;
        newRequest->is_aggregate = is_aggregate;
        newRequest->limit = limit;
-       newRequest->paging_state = paging_state;
+       newRequest->paging_state = std::move(paging_state);
        newRequest->return_paging_state = return_paging_state;
-       newRequest->max_hash_code = max_hash_code;
        newRequest->catalog_version = catalog_version;
        newRequest->row_mark_type = row_mark_type;
        return newRequest;   
@@ -58,18 +52,13 @@ namespace gate {
        newRequest->namespace_name = namespace_name;
        newRequest->table_name = table_name;
        newRequest->schema_version = schema_version;
-       newRequest->hash_code = hash_code;
-       // TODO: double check if we need to deep clone vector fields
-       newRequest->partition_column_values = partition_column_values;
-       newRequest->range_column_values = range_column_values;
+       newRequest->key_column_values = key_column_values;
        newRequest->ybctid_column_value = ybctid_column_value;
        newRequest->column_values = column_values;
        newRequest->column_new_values = column_new_values;
-       newRequest->rsrow_desc.rscol_descs = rsrow_desc.rscol_descs;
        newRequest->targets = targets;
        newRequest->where_expr = where_expr;
        newRequest->condition_expr = condition_expr;
-       newRequest->column_refs = column_refs;
        newRequest->catalog_version = catalog_version; 
        return newRequest;        
     }
