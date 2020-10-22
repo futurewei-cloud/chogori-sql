@@ -137,8 +137,8 @@ class PgExpr {
         return type_entity_;
     }
 
-    const PgTypeAttrs& type_attrs() const {
-        return type_attrs_;
+    const PgTypeAttrs *type_attrs() const {
+        return &type_attrs_;
     }
 
     // Find opcode.
