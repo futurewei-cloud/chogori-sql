@@ -100,6 +100,10 @@ namespace gate {
             values_.push_back(value);
         }
 
+        void setType(ExprType type) {
+            type_ = type;
+        }
+
         ExprType getType() {
             return type_;
         }
@@ -158,10 +162,6 @@ namespace gate {
         std::vector<std::shared_ptr<SqlOpExpr>> operands_;
     };
 
-    struct SqlOpColumnRefs {
-        std::vector<int32_t> ids;
-    };
-
     struct ColumnValue {
         ColumnValue() {
         };
@@ -193,7 +193,7 @@ namespace gate {
         std::shared_ptr<SqlOpExpr> ybctid_column_value;
         // For select using local secondary index: this request selects the ybbasectids to fetch the rows
         // in place of the primary key above.
-        std::unique_ptr<SqlOpReadRequest> index_request;
+        std::shared_ptr<SqlOpReadRequest> index_request;
 
         std::vector<std::shared_ptr<SqlOpExpr>> targets;
         std::shared_ptr<SqlOpExpr> where_expr;
@@ -207,7 +207,7 @@ namespace gate {
         uint64_t catalog_version;
         RowMarkType row_mark_type;
 
-        std::unique_ptr<SqlOpReadRequest> clone();
+        std::shared_ptr<SqlOpReadRequest> clone();
     };
 
     struct SqlOpWriteRequest {
@@ -244,7 +244,7 @@ namespace gate {
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;
 
-        std::unique_ptr<SqlOpWriteRequest> clone();
+        std::shared_ptr<SqlOpWriteRequest> clone();
     };
 
     // Response from K2 storage for both read and write.
@@ -345,7 +345,7 @@ namespace gate {
             return WRITE; 
         }
 
-        SqlOpWriteRequest& request() const { return *write_request_; }
+        std::shared_ptr<SqlOpWriteRequest> request() const { return write_request_; }
 
         std::string ToString() const;
 
@@ -365,7 +365,7 @@ namespace gate {
         std::unique_ptr<PgWriteOpTemplate> DeepCopy();
 
         private: 
-        std::unique_ptr<SqlOpWriteRequest> write_request_;
+        std::shared_ptr<SqlOpWriteRequest> write_request_;
         // Whether this operation should be run as a single row txn.
         // Else could be distributed transaction (or non-transactional) depending on target table type.
         bool is_single_row_txn_ = false;
@@ -377,7 +377,7 @@ namespace gate {
 
         ~PgReadOpTemplate() {};
 
-        SqlOpReadRequest& request() const { return *read_request_; }
+        std::shared_ptr<SqlOpReadRequest> request() const { return read_request_; }
   
         std::string ToString() const;
 
@@ -396,7 +396,7 @@ namespace gate {
         }
 
         private:
-        std::unique_ptr<SqlOpReadRequest> read_request_;
+        std::shared_ptr<SqlOpReadRequest> read_request_;
     };
 }  // namespace gate
 }  // namespace k2pg

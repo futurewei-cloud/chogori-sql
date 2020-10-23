@@ -46,42 +46,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/common/port.h"
-#include "yb/pggate/pg_session.h"
+#include "pg_statement.h"
 
 namespace k2pg {
 namespace gate {
+//--------------------------------------------------------------------------------------------------
+// Class PgStatement
+//--------------------------------------------------------------------------------------------------
 
-PgSession::PgSession(const string& database_name, const YBCPgCallbacks& pg_callbacks)
-    : connected_database_(database_name),
-      pg_callbacks_(pg_callbacks) {
+PgStatement::PgStatement(PgSession::ScopedRefPtr pg_session) : 
+  pg_session_(std::move(pg_session)),
+  client_id_(pg_session_->GetClientId()),
+  stmt_id_(pg_session_->GetNextStmtId()) {
 }
 
-PgSession::~PgSession() {
+PgStatement::~PgStatement() {
 }
 
-Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
-  if (op.succeeded()) {
-    return Status::OK();
-  }
-
-  const auto& response = op.response();
-  if (response.pg_error_code != 0) {
-    // TODO: handle pg error code 
-  }
-
-  if (response.txn_error_code != 0) {
-    // TODO: handle txn error code
-  }
-
-  Status s;
-  // TODO: add errors to s
-  return s; 
-}
-
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
-  // TODO: add implementation
-  return nullptr;
+void PgStatement::AddExpr(PgExpr::SharedPtr expr) {
+  exprs_.push_back(expr);
 }
 
 }  // namespace gate

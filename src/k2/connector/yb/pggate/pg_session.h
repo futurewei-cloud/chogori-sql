@@ -62,6 +62,7 @@
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_gate_api.h"
+#include "yb/pggate/pg_tabledesc.h"
 
 namespace k2pg {
 namespace gate {
@@ -134,11 +135,26 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   CHECKED_STATUS HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id);
 
+  Result<PgTableDesc::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+
+  const string& GetClientId() const {
+    return client_id_;
+  }
+
+  int64_t GetNextStmtId() {
+    // TODO: add more complext stmt id generation logic if necessary
+    return stmt_id_++;
+  }
+
   private:  
   // Connected database.
   std::string connected_database_;
   
   const YBCPgCallbacks& pg_callbacks_;
+
+  string client_id_;
+
+  int64_t stmt_id_ = 1;
 };
 
 }  // namespace gate

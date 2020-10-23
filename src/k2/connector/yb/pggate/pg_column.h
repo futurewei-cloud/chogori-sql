@@ -147,18 +147,18 @@ class PgColumn {
   void Init(PgSystemAttrNum attr_num);
 
   // Bindings for write requests.
-  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::unique_ptr<SqlOpWriteRequest> write_req);
-  std::shared_ptr<SqlOpExpr> AllocBind(std::unique_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   // Bindings for read requests.
-  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::unique_ptr<SqlOpReadRequest> write_req);
-  std::shared_ptr<SqlOpExpr> AllocBind(std::unique_ptr<SqlOpReadRequest> read_req);
+  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpReadRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // Bindings for read requests.
-  std::shared_ptr<SqlOpCondition> AllocBindConditionExpr(std::unique_ptr<SqlOpReadRequest> read_req);
+  std::shared_ptr<SqlOpCondition> AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // Assign values for write requests.
-  std::shared_ptr<SqlOpExpr> AllocAssign(std::unique_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   ColumnDesc *desc() {
     return &desc_;

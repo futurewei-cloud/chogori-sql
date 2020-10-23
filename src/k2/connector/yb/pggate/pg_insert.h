@@ -46,43 +46,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/common/port.h"
-#include "yb/pggate/pg_session.h"
+#ifndef CHOGORI_GATE_DML_INSERT_H
+#define CHOGORI_GATE_DML_INSERT_H
+
+#include "yb/pggate/pg_dml.h"
 
 namespace k2pg {
 namespace gate {
 
-PgSession::PgSession(const string& database_name, const YBCPgCallbacks& pg_callbacks)
-    : connected_database_(database_name),
-      pg_callbacks_(pg_callbacks) {
-}
+class PgInsert : public PgDmlWrite {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgInsert> ScopedRefPtr;
 
-PgSession::~PgSession() {
-}
+  // Constructors.
+  PgInsert(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id, bool is_single_row_txn)
+      : PgDmlWrite(std::move(pg_session), table_id, is_single_row_txn) {}
 
-Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
-  if (op.succeeded()) {
-    return Status::OK();
+  StmtOp stmt_op() const override { return StmtOp::STMT_INSERT; }
+
+  void SetUpsertMode() {
+    write_req_->stmt_type = SqlOpWriteRequest::PGSQL_UPSERT;
   }
 
-  const auto& response = op.response();
-  if (response.pg_error_code != 0) {
-    // TODO: handle pg error code 
+  private:
+  std::unique_ptr<PgWriteOpTemplate> AllocWriteOperation() const override {
+      return target_desc_->NewPgsqlInsert(client_id_, stmt_id_);
   }
-
-  if (response.txn_error_code != 0) {
-    // TODO: handle txn error code
-  }
-
-  Status s;
-  // TODO: add errors to s
-  return s; 
-}
-
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
-  // TODO: add implementation
-  return nullptr;
-}
+};
 
 }  // namespace gate
 }  // namespace k2pg
+
+#endif //CHOGORI_GATE_DML_INSERT_H

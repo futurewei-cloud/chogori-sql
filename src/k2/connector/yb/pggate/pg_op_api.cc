@@ -21,8 +21,8 @@
 namespace k2pg {
 namespace gate {  
 
-    std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
-       std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
+    std::shared_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
+       std::shared_ptr<SqlOpReadRequest> newRequest = std::make_shared<SqlOpReadRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
        newRequest->namespace_name = namespace_name;
@@ -44,8 +44,8 @@ namespace gate {
        return newRequest;   
     }
 
-    std::unique_ptr<SqlOpWriteRequest> SqlOpWriteRequest::clone() {
-       std::unique_ptr<SqlOpWriteRequest> newRequest = std::make_unique<SqlOpWriteRequest>();
+    std::shared_ptr<SqlOpWriteRequest> SqlOpWriteRequest::clone() {
+       std::shared_ptr<SqlOpWriteRequest> newRequest = std::make_shared<SqlOpWriteRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
        newRequest->stmt_type = stmt_type;
