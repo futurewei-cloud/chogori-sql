@@ -22,14 +22,17 @@
 
 #include "yb/common/concurrent/async_util.h"
 #include "yb/common/concurrent/ref_counted.h"
-#include "yb/entities/schema.h"
-#include "yb/pggate/k23si_txn.h"
 #include "yb/common/status.h"
+#include "yb/entities/schema.h"
+#include "yb/pggate/k23si_gate.h"
+#include "yb/pggate/k23si_txn.h"
 
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
+using yb::RefCountedThreadSafe;
+using k2pg::gate::K23SIGate;
+using k2pg::gate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
@@ -41,7 +44,11 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
 
   ~K2Adapter();
 
-  std::shared_ptr<K23SITxn> beginTransaction();
+  std::future<K23SITxn> beginTransaction();
+
+  private: 
+  // TODO: pass in k23si 
+  k2pg::gate::K23SIGate* k23si = nullptr;
 };
 
 }  // namespace gate

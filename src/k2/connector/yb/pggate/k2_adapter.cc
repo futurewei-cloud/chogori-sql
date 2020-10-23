@@ -12,10 +12,10 @@
 
 namespace k2pg {
 namespace gate {
+using k2::K2TxnOptions;
 
-std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
-  // TODO: add options to the method signature and call SKV client to get back the K2SITxn handle
-  return nullptr;
+std::future<K23SITxn> K2Adapter::beginTransaction() {
+  return k23si->beginTxn(k2::K2TxnOptions{});
 }
 
 }  // namespace gate

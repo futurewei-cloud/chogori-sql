@@ -1,50 +1,25 @@
-// Licensed to the Apache Software Foundation (ASF) under one
-// or more contributor license agreements.  See the NOTICE file
-// distributed with this work for additional information
-// regarding copyright ownership.  The ASF licenses this file
-// to you under the Apache License, Version 2.0 (the
-// "License"); you may not use this file except in compliance
-// with the License.  You may obtain a copy of the License at
-//
-//   http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing,
-// software distributed under the License is distributed on an
-// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the
-// specific language governing permissions and limitations
-// under the License.
-//
-// The following only applies to changes made to this file as part of YugaByte development.
-//
-// Portions Copyright (c) YugaByte, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
-// in compliance with the License.  You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software distributed under the License
-// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
-// or implied.  See the License for the specific language governing permissions and limitations
-// under the License.
-//
-// Copyright(c) 2020 Futurewei Cloud
-//
-// Permission is hereby granted,
-//        free of charge, to any person obtaining a copy of this software and associated documentation files(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
-//
-// The above copyright notice and this permission notice shall be included in all copies
-// or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS",
-// WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-//        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-//        DAMAGES OR OTHER LIABILITY,
-// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
+/*
+MIT License
+
+Copyright(c) 2020 Futurewei Cloud
+
+    Permission is hereby granted,
+    free of charge, to any person obtaining a copy of this software and associated documentation files(the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and / or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions :
+
+    The above copyright notice and this permission notice shall be included in all copies
+    or
+    substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS",
+    WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER
+    LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+*/
 
 #include "yb/pggate/pg_txn_handler.h"
 
@@ -60,6 +35,11 @@ PgTxnHandler::~PgTxnHandler() {
   // Abort the transaction before the transaction handler gets destroyed.
   if (txn_ != nullptr) {
     txn_->endTxn(false);
+    std::future<k2::EndResult> result_future = txn_->endTxn(false);
+    k2::EndResult result = result_future.get();
+    if (!result.status.is2xxOK()) {
+      LOG(FATAL) << "In progress transaction abortion failed due to: " << result.status.message;
+    }
   }
   ResetTransaction();
 }
@@ -78,8 +58,12 @@ Status PgTxnHandler::BeginTransaction() {
 Status PgTxnHandler::RestartTransaction() {
   // TODO: how do we decide whether a transaction is restart required?
 
-   if (txn_ != nullptr) {
-    txn_->endTxn(false);
+  if (txn_ != nullptr) {
+    std::future<k2::EndResult> result_future = txn_->endTxn(false);
+    k2::EndResult result = result_future.get();
+    if (!result.status.is2xxOK()) {
+      return STATUS_FORMAT(RuntimeError, "Transaction abort failed with error code $0 and message $1", result.status.code, result.status.message);
+    }
   }
   ResetTransaction();
   txn_in_progress_ = true;
@@ -102,12 +86,15 @@ Status PgTxnHandler::CommitTransaction() {
   }
 
   VLOG(2) << "Committing transaction.";
-  // TODO: add more logic for transaction result handling
-  std::future<k2::EndResult> result = txn_->endTxn(true);
-  result.get();
-  // TODO:: log commit status
-  VLOG(2) << "Transaction commit status: ";
+  // Use synchronous call for now until PG supports additional state check after this call
+  std::future<k2::EndResult> result_future = txn_->endTxn(true);
+  k2::EndResult result = result_future.get();
   ResetTransaction();
+  if (!result.status.is2xxOK()) {
+   VLOG(2) << "Transaction commit failed";
+   return STATUS_FORMAT(RuntimeError, "Transaction commit failed with error code $0 and message $1", result.status.code, result.status.message);
+  }
+  VLOG(2) << "Transaction commit succeeded";
   return Status::OK();
 }
 
@@ -120,9 +107,13 @@ Status PgTxnHandler::AbortTransaction() {
     ResetTransaction();
     return Status::OK();
   }
-  // TODO: how do we report errors if the transaction has already committed?
-  txn_->endTxn(false);
+  // Use synchronous call for now until PG supports additional state check after this call
+  std::future<k2::EndResult> result_future = txn_->endTxn(false);
+  k2::EndResult result = result_future.get();
   ResetTransaction();
+  if (!result.status.is2xxOK()) {
+    return STATUS_FORMAT(RuntimeError, "Transaction abort failed with error code $0 and message $1", result.status.code, result.status.message);
+  }
   return Status::OK();    
 }
 
@@ -168,7 +159,11 @@ void PgTxnHandler::ResetTransaction() {
 }
 
 void PgTxnHandler::StartNewTransaction() {
-    txn_ = adapter_->beginTransaction();
+  // TODO: add error handling for status check if the status is available
+  std::future<K23SITxn> txn_future = adapter_->beginTransaction();
+  K23SITxn k2_txn = txn_future.get(); 
+  std::shared_ptr<K23SITxn> txn_tmp(&k2_txn);
+   txn_ = txn_tmp;
 }
 
 }  // namespace gate
