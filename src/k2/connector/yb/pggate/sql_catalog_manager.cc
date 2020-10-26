@@ -89,6 +89,38 @@ namespace sql {
         return catalog_version_;
     }
 
+    Status SqlCatalogManager::CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse>* response) {
+        return Status::OK();
+    }
+    
+    Status SqlCatalogManager::ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse>* response) {
+        return Status::OK();
+    }
+
+    Status SqlCatalogManager::GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse>* response) {
+        return Status::OK();
+    }
+
+    Status SqlCatalogManager::DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> *response) {
+        return Status::OK();
+    }
+
+    Status SqlCatalogManager::CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse>* response) {
+        return Status::OK();
+    }
+    
+    Status SqlCatalogManager::GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse>* response) {
+        return Status::OK();
+    }
+
+    Status SqlCatalogManager::ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse>* response) {
+        return Status::OK();
+    }
+
+    Status SqlCatalogManager::DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> * response) {
+        return Status::OK();
+    }
+
 }  // namespace sql
 }  // namespace k2pg
 

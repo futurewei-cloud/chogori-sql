@@ -20,40 +20,59 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-#include "k23si_gate.h"
-#include <k2/dto/Collection.h>
-#include "k23si_queue_defs.h"
+
+#ifndef CHOGORI_SQL_CATALOG_PERSISTENCE_H
+#define CHOGORI_SQL_CATALOG_PERSISTENCE_H
+
+#include <string>
 
 namespace k2pg {
-namespace gate {
-using namespace k2;
+namespace sql {
 
-K23SIGate::K23SIGate() {
-}
+using std::string;
 
-std::future<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
-    BeginTxnRequest qr{.opts=txnOpts, .prom={}};
+class ClusterConfig {
+    public: 
+    ClusterConfig() {};
 
-    auto result = qr.prom.get_future();
-    pushQ(beginTxQ, std::move(qr));
-    return result;
-}
+    ~ClusterConfig() {};
 
-std::future<k2::GetSchemaResult> K23SIGate::getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion) {
-    SchemaGetRequest qr{.collectionName = collectionName, .schemaName = schemaName, .schemaVersion = schemaVersion, .prom={}};
+    void SetClusterId(string& cluster_id) {
+        cluster_id_ = std::move(cluster_id);
+    }
 
-    auto result = qr.prom.get_future();
-    pushQ(schemaGetTxQ, std::move(qr));
-    return result;
-}
+    const string& GetClusterId() {
+        return cluster_id_;
+    } 
 
-std::future<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& collectionName, k2::dto::Schema schema) {
-    SchemaCreateRequest qr{.collectionName = collectionName, .schema = schema, .prom = {}};
+    void SetCatalogVersion(uint64_t catalog_version) {
+        catalog_version_ = catalog_version;
+    }
 
-    auto result = qr.prom.get_future();
-    pushQ(schemaCreateTxQ, std::move(qr));
-    return result;
-}
+    uint64_t GetCatalogVersion() {
+        return catalog_version_;
+    }
 
-} // ns gate
-} // ns k2pg
+    void SetInitdbDone(bool initdb_done) {
+        initdb_done_ = initdb_done;
+    }
+
+    bool IsInitdbDone() {
+        return initdb_done_;
+    }
+
+    private: 
+    string cluster_id_;
+
+    uint64_t catalog_version_ = 0;
+
+    bool initdb_done_ = false;
+};
+
+
+} // namespace sql
+} // namespace k2pg
+
+#endif //CHOGORI_SQL_CATALOG_PERSISTENCE_H    
+
+

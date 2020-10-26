@@ -35,8 +35,6 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace gate {
 
-using namespace k2;
-
 // This class is the client library for interacting with K2. Most importantly, it allows the user to start
 // a new K2 transaction
 class K23SIGate {
