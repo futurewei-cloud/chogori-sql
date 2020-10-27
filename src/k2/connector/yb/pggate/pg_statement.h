@@ -60,6 +60,7 @@
 namespace k2pg {
 namespace gate {
 
+using std::string;
 using k2pg::sql::PgExpr;
 using yb::RefCountedThreadSafe;
 using yb::Status;

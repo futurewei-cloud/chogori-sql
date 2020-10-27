@@ -154,7 +154,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   string client_id_;
 
-  int64_t stmt_id_ = 1;
+  std::atomic<int64_t> stmt_id_ = 1;
 };
 
 }  // namespace gate

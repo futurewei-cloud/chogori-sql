@@ -152,19 +152,19 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
 // YBC is using the hidden column ybctid as the row id in a string/binary format
 // we could use the same concept, or we need to calculate the rowid from primary keys 
 // in the same way that we build the SKV doc key
-Result<bool> PgSelectIndex::FetchRowIdBatch(const vector<Slice> **ybctids) {
+Result<bool> PgSelectIndex::FetchRowIdBatch(std::vector<Slice>& ybctids) {
   // Keep reading until we get one batch of ybctids or EOF.
   while (!VERIFY_RESULT(GetNextRowIdBatch())) {
     if (!VERIFY_RESULT(FetchDataFromServer())) {
       // Server returns no more rows.
-      *ybctids = nullptr;
       return false;
     }
   }
 
   // Got the next batch of ybctids.
   DCHECK(!rowsets_.empty());
-  *ybctids = &rowsets_.front().ybctids();
+  const std::vector<Slice>& selected = rowsets_.front().ybctids();
+  ybctids.insert(std::end(ybctids), std::make_move_iterator(selected.begin()), std::make_move_iterator(selected.end()));
   return true;
 }
 

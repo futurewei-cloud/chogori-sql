@@ -54,8 +54,8 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-using namespace k2pg::sql;
+using yb::Status;
+using yb::Slice;
 
 //--------------------------------------------------------------------------------------------------
 // SELECT
@@ -107,7 +107,7 @@ class PgSelectIndex : public PgDmlRead {
   CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // The output parameter "ybctids", where ybctid is the hidden column that is used as row id.
-  Result<bool> FetchRowIdBatch(const vector<Slice> **ybctids);
+  Result<bool> FetchRowIdBatch(std::vector<Slice>& ybctids);
 
   // Get next batch of row ids from either PgGate::cache or server.
   Result<bool> GetNextRowIdBatch();

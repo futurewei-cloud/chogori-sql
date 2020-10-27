@@ -305,8 +305,8 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
 
   // When INDEX has its own sql_op_, execute it to fetch next batch of ybctids which is then used
   // to read data from the main table.
-  const vector<Slice> *ybctids;
-  if (!VERIFY_RESULT(secondary_index_query_->FetchRowIdBatch(&ybctids))) {
+  std::vector<Slice> ybctids;
+  if (!VERIFY_RESULT(secondary_index_query_->FetchRowIdBatch(ybctids))) {
     // No more rows of ybctids.
     return false;
   }
@@ -348,7 +348,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
   // TODO: generate the row id by calling K2 Adapter to use SKV client to 
   // generate the id in string format from the primary keys
-  return nullptr;
+  throw new std::logic_error("Not implemented yet");
 }
 
 bool PgDml::has_aggregate_targets() {
@@ -378,12 +378,13 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
     expr_var->setValue(col_val);
   } else {
     // PgOperator 
-    // we only consider logic expressions and aggregate functions for now
-    if (target->is_aggregate() || target->is_logic_expr()) {
+    // we only consider logic expressions for now
+    // TODO: add aggregation function support once SKV supports that
+    if (target->is_logic_expr()) {
       std::shared_ptr<SqlOpCondition> op_cond = std::make_shared<SqlOpCondition>();
       PgOperator *op_var = static_cast<PgOperator *>(target);
       const std::vector<PgExpr*> & args = op_var->getArgs();
-      for (PgExpr * arg : args) {
+      for (PgExpr *arg : args) {
         std::shared_ptr<SqlOpExpr> arg_expr = std::make_shared<SqlOpExpr>();
         PrepareExpression(arg, arg_expr);
         op_cond->addOperand(arg_expr);

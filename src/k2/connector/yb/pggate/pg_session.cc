@@ -81,7 +81,7 @@ Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relat
 
 Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
   // TODO: add implementation
-  return nullptr;
+  throw new std::logic_error("Not implemented yet");
 }
 
 }  // namespace gate

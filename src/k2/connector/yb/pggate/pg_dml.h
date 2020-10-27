@@ -67,8 +67,8 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-using namespace k2pg::sql;
+using yb::Status;
+using k2pg::sql::PgExpr;
 
 class PgSelectIndex;
 

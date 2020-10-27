@@ -244,7 +244,7 @@ namespace gate {
         CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
         Result<int32_t> GetRowsAffectedCount() const;
 
-        CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice> *ybctids) {
+        CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
             // TODO: implement the logic to create new operations by providing a given list of row ids, i.e., ybctids
             // This is tracked by the following issue:
             //      https://github.com/futurewei-cloud/chogori-sql/issues/31
