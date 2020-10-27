@@ -74,6 +74,11 @@ PgDml::PgDml(PgSession::ScopedRefPtr pg_session,
 }
 
 PgDml::~PgDml() {
+  for(auto&  p : targets_) {
+    if (p != nullptr) {
+      delete p;
+    }
+  }
 }
 
 Status PgDml::AppendTarget(PgExpr *target) {
