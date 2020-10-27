@@ -87,31 +87,41 @@ class SqlCatalogClient : public RefCountedThreadSafe<SqlCatalogClient> {
     CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id = "");
 
-    CHECKED_STATUS CreateTable(NamespaceId& namespace_id, 
-                            NamespaceName& namespace_name, 
+    CHECKED_STATUS CreateTable(NamespaceName& namespace_name, 
                             TableName& table_name, 
                             const PgObjectId& table_id, 
                             PgSchema& schema, 
-                            std::vector<std::string>& range_columns, 
-                            std::vector<std::vector<SqlValue>>& split_rows, 
+                            bool is_pg_catalog_table, 
+                            bool is_shared_table, 
+                            bool if_not_exist);
+
+    CHECKED_STATUS CreateIndexTable(NamespaceName& namespace_name, 
+                            TableName& table_name, 
+                            const PgObjectId& table_id, 
+                            const PgObjectId& base_table_id, 
+                            PgSchema& schema, 
+                            bool is_unique_index, 
+                            bool skip_index_backfill,
                             bool is_pg_catalog_table, 
                             bool is_shared_table, 
                             bool if_not_exist);
 
     // Delete the specified table.
     // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.
-    CHECKED_STATUS DeleteTable(const std::string& table_id, bool wait = true);  
+    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_id, bool wait = true);  
 
-    CHECKED_STATUS OpenTable(const TableId& table_id, std::shared_ptr<TableInfo>* table);
+    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_id, PgOid *base_table_id, bool wait = true);  
 
-    Result<shared_ptr<TableInfo>> OpenTable(const TableId& table_id) {
+    CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table);
+
+    Result<shared_ptr<TableInfo>> OpenTable(const PgOid database_oid, const PgOid table_id) {
         shared_ptr<TableInfo> result;
-        RETURN_NOT_OK(OpenTable(table_id, &result));
+        RETURN_NOT_OK(OpenTable(database_oid, table_id, &result));
         return result;
     }
 
     // For Postgres: reserve oids for a Postgres database.
-     CHECKED_STATUS ReservePgsqlOids(const std::string& namespace_id,
+    CHECKED_STATUS ReservePgOids(const PgOid database_oid,
                                 uint32_t next_oid, uint32_t count,
                                 uint32_t* begin_oid, uint32_t* end_oid);
 

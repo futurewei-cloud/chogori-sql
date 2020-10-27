@@ -40,8 +40,9 @@ namespace sql {
         string namespaceName;
         string namespaceId;
         string sourceNamespaceId;
+        string creatorRoleName;
         // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used
-        uint32_t nextPgOid;
+        std::optional<uint32_t> nextPgOid;
     };
 
     struct CreateNamespaceResponse {
@@ -81,32 +82,36 @@ namespace sql {
 
     struct CreateTableRequest {
         string namespaceName;
+        uint32_t namespaceId;
         string tableName;
-        string tableId;
+        uint32_t tableId;
         Schema schema;
         bool isSysCatalogTable;
         bool isSharedTable;
 
         // for index table
-        IndexInfo indexInfo;
-    };
-
-    struct GetTableSchemaRequest {
-        string namespaceName;
-        string tableName;      
+        std::optional<IndexInfo> indexInfo;
     };
 
     struct CreateTableResponse {
-        string tableId;
+        uint32_t namespaceId;
+        uint32_t tableId;
         string errorMessage;
     };
 
+    struct GetTableSchemaRequest {
+        uint32_t namespaceId;
+        uint32_t tableId;    
+    };
+
     struct GetTableSchemaResponse {
+        uint32_t namespaceId;
         string namespaceName;
+        uint32_t tableId;    
         string tableName;
         Schema schema;
         uint32_t version;
-        IndexInfo indexInfo;
+        std::optional<IndexInfo> indexInfo;
         string errorMessage;
     };
 
@@ -124,27 +129,26 @@ namespace sql {
     };
 
     struct DeleteTableRequest {
-        string namespaceName;
-        string tableName;
-        string tableId;
+        uint32_t namespaceId;
+        uint32_t tableId;
         bool isIndexTable;
     };
 
     struct DeleteTableResponse {
-        string namespaceName;
-        string tableName;
-        string tableId;
+        uint32_t namespaceId;
+        uint32_t tableId;
+        uint32_t indexedTableId;
         string errorMessage;
     };
 
     struct ReservePgOidsRequest {
-        string namespaceName;
+        uint32_t namespaceId;
         uint32_t nextOid;
         uint32_t count;
     };
 
     struct ReservePgOidsResponse {
-        string namespaceName;
+        uint32_t namespaceId;
         // the beginning of the oid reserver, which could be higher than requested
         uint32_t beginOid;
         // the end (exclusive) oid reserved

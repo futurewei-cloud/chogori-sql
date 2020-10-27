@@ -201,7 +201,7 @@ Status PgCreateTable::AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_
 Result<std::vector<std::string>> PgCreateTable::BuildSplitRows(const PgSchema& schema) {
   std::vector<std::string> rows;
   rows.reserve(split_rows_.size());
-  // TODO: add logic to handle split_rows_ and validate them
+  // TODO: should not be used by K2 SQL, remove this
 
   return rows;
 }
@@ -215,14 +215,8 @@ Status PgCreateTable::Exec() {
   // Construct schema.
   PgSchema schema = schema_builder_.Build();
 
-  std::vector<std::string> split_rows = VERIFY_RESULT(BuildSplitRows(schema));
-
-  if (indexed_table_id()) {
-   // TODO: For index, set indexed (base) table id.
-  }
-
   // Create table.
-  const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema, range_columns_, split_rows_,
+  const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema,
     is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
@@ -381,9 +375,35 @@ Status PgCreateIndex::Exec() {
   if (!ybbasectid_added_) {
     RETURN_NOT_OK(AddYBbasectidColumn());
   }
-  Status s = PgCreateTable::Exec();
+   
+  TableProperties table_properties;
+  // always use transaction for create table
+  table_properties.SetTransactional(true);
+  schema_builder_.SetTableProperties(table_properties);
+
+  // Construct schema.
+  PgSchema schema = schema_builder_.Build();
+
+  // Create table.
+  const Status s = pg_session_->CreateIndexTable(namespace_id_, namespace_name_, table_name_, table_id_, base_table_id_, schema,
+    is_unique_index_, skip_index_backfill_, is_pg_catalog_table_, is_shared_table_, if_not_exist_);
+  if (PREDICT_FALSE(!s.ok())) {
+    if (s.IsAlreadyPresent()) {
+      if (if_not_exist_) {
+        return Status::OK();
+      }
+      return STATUS(InvalidArgument, "Duplicate index table");
+    }
+    if (s.IsNotFound()) {
+      return STATUS(InvalidArgument, "Database not found", namespace_name_);
+    }
+    return STATUS_FORMAT(
+        InvalidArgument, "Invalid index table definition: $0",
+        s.ToString(false /* include_file_and_line */, false /* include_code */));
+  }
+
   pg_session_->InvalidateTableCache(base_table_id_);
-  return s;
+  return Status::OK(); 
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -400,10 +420,12 @@ PgDropIndex::~PgDropIndex() {
 }
 
 Status PgDropIndex::Exec() {
-  Status s = pg_session_->DropIndex(table_id_);
+  PgOid *base_table_oid;
+  Status s = pg_session_->DropIndex(table_id_, base_table_oid);
+  PgObjectId base_table_id(table_id_.database_oid, *base_table_oid);
 
-  // TODO: should we invalidate table cache for the indexed table as well?
   pg_session_->InvalidateTableCache(table_id_);
+  pg_session_->InvalidateTableCache(base_table_id);
   if (s.ok() || (s.IsNotFound() && if_exist_)) {
     return Status::OK();
   }

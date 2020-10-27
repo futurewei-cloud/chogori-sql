@@ -167,10 +167,6 @@ class PgCreateTable : public PgDdl {
  public:
   // Public types.
   typedef scoped_refptr<PgCreateTable> ScopedRefPtr;
-  typedef scoped_refptr<const PgCreateTable> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgCreateTable> UniPtr;
-  typedef std::unique_ptr<const PgCreateTable> UniPtrConst;
 
   // Constructors.
   PgCreateTable(PgSession::ScopedRefPtr pg_session,
@@ -245,10 +241,6 @@ class PgDropTable: public PgDdl {
  public:
   // Public types.
   typedef scoped_refptr<PgDropTable> ScopedRefPtr;
-  typedef scoped_refptr<const PgDropTable> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgDropTable> UniPtr;
-  typedef std::unique_ptr<const PgDropTable> UniPtrConst;
 
   // Constructors.
   PgDropTable(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id, bool if_exist);
@@ -271,10 +263,6 @@ class PgDropTable: public PgDdl {
 class PgAlterTable : public PgDdl {
  public:
   typedef scoped_refptr<PgAlterTable> ScopedRefPtr;
-  typedef scoped_refptr<const PgAlterTable> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgAlterTable> UniPtr;
-  typedef std::unique_ptr<const PgAlterTable> UniPtrConst;
 
   // Constructors.
   PgAlterTable(PgSession::ScopedRefPtr pg_session,
@@ -305,10 +293,6 @@ class PgCreateIndex : public PgCreateTable {
  public:
   // Public types.
   typedef scoped_refptr<PgCreateIndex> ScopedRefPtr;
-  typedef scoped_refptr<const PgCreateIndex> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgCreateIndex> UniPtr;
-  typedef std::unique_ptr<const PgCreateIndex> UniPtrConst;
 
   // Constructors.
   PgCreateIndex(PgSession::ScopedRefPtr pg_session,
@@ -363,10 +347,6 @@ class PgDropIndex : public PgDropTable {
  public:
   // Public types.
   typedef scoped_refptr<PgDropIndex> ScopedRefPtr;
-  typedef scoped_refptr<const PgDropIndex> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgDropIndex> UniPtr;
-  typedef std::unique_ptr<const PgDropIndex> UniPtrConst;
 
   // Constructors.
   PgDropIndex(PgSession::ScopedRefPtr pg_session, const PgObjectId& index_id, bool if_exist);

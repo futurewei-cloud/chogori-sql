@@ -154,12 +154,15 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   CHECKED_STATUS RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to);
 
   CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
+    PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
+
+  CHECKED_STATUS CreateIndexTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
   CHECKED_STATUS DropTable(const PgObjectId& table_id);
 
-  CHECKED_STATUS DropIndex(const PgObjectId& index_id, bool wait = true);
+  CHECKED_STATUS DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait = true);
 
   CHECKED_STATUS ReserveOids(PgOid database_oid,
                              PgOid nexte_oid,

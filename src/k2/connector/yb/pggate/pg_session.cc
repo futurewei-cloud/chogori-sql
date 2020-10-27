@@ -151,20 +151,32 @@ Status PgSession::RenameDatabase(const std::string& database_name, PgOid databas
   return Status::OK(); 
 }
 
-Status PgSession::CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    PgSchema& schema, std::vector<std::string>& range_columns, std::vector<std::vector<SqlValue>>& split_rows, 
-    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
-   return catalog_client_->CreateTable(namespace_id, namespace_name, table_name, table_id, schema, range_columns, split_rows, 
+Status PgSession::CreateTable(
+    NamespaceId& namespace_id, 
+    NamespaceName& namespace_name, 
+    TableName& table_name, 
+    const PgObjectId& table_id, 
+    PgSchema& schema, 
+    bool is_pg_catalog_table, 
+    bool is_shared_table, 
+    bool if_not_exist) {
+  return catalog_client_->CreateTable(namespace_name, table_name, table_id, schema,
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
-Status PgSession::DropTable(const PgObjectId& table_id) {
-  return catalog_client_->DeleteTable(table_id.GetYBTableId());
+Status PgSession::CreateIndexTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+    const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
+    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
+  return catalog_client_->CreateIndexTable(namespace_name, table_name, table_id, base_table_id, schema,
+    is_unique_index, skip_index_backfill, is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
-Status PgSession::DropIndex(const PgObjectId& index_id, bool wait) {
-  // TODO: add implementation
-  return Status::OK(); 
+Status PgSession::DropTable(const PgObjectId& table_id) {
+  return catalog_client_->DeleteTable(table_id.database_oid, table_id.object_oid);
+}
+
+Status PgSession::DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait) {
+  return catalog_client_->DeleteIndexTable(index_id.database_oid, index_id.object_oid, base_table_oid); 
 }
 
 Status PgSession::ReserveOids(const PgOid database_oid,
@@ -172,7 +184,7 @@ Status PgSession::ReserveOids(const PgOid database_oid,
                               const uint32_t count,
                               PgOid *begin_oid,
                               PgOid *end_oid) {
-  return catalog_client_->ReservePgsqlOids(GetPgsqlNamespaceId(database_oid), next_oid, count,
+  return catalog_client_->ReservePgOids(database_oid, next_oid, count,
                                    begin_oid, end_oid);
 }
 
@@ -548,7 +560,7 @@ Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_i
   auto cached_table = table_cache_.find(yb_table_id);
   if (cached_table == table_cache_.end()) {
     VLOG(4) << "Table cache MISS: " << table_id;
-    Status s = catalog_client_->OpenTable(yb_table_id, &table);
+    Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
     if (!s.ok()) {
       VLOG(3) << "LoadTable: Server returns an error: " << s;
       // TODO: NotFound might not always be the right status here.
