@@ -46,43 +46,87 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/common/port.h"
-#include "yb/pggate/pg_session.h"
+#ifndef CHOGORI_GATE_DML_SELECT_H
+#define CHOGORI_GATE_DML_SELECT_H
+
+#include "yb/pggate/pg_dml_read.h"
 
 namespace k2pg {
 namespace gate {
 
-PgSession::PgSession(const string& database_name, const YBCPgCallbacks& pg_callbacks)
-    : connected_database_(database_name),
-      pg_callbacks_(pg_callbacks) {
-}
+using yb::Status;
+using yb::Slice;
 
-PgSession::~PgSession() {
-}
+//--------------------------------------------------------------------------------------------------
+// SELECT
+//--------------------------------------------------------------------------------------------------
 
-Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
-  if (op.succeeded()) {
-    return Status::OK();
+class PgSelect : public PgDmlRead {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgSelect> ScopedRefPtr;
+
+  // Constructors.
+  PgSelect(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+           const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
+
+  virtual ~PgSelect();
+
+  // Prepare query before execution.
+  virtual CHECKED_STATUS Prepare();
+
+  // Prepare secondary index if that index is used by this query.
+  CHECKED_STATUS PrepareSecondaryIndex();
+};
+
+//--------------------------------------------------------------------------------------------------
+// SELECT FROM Secondary Index Table
+//--------------------------------------------------------------------------------------------------
+
+class PgSelectIndex : public PgDmlRead {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgSelectIndex> ScopedRefPtr;
+  typedef std::shared_ptr<PgSelectIndex> SharedPtr;
+
+  // Constructors.
+  PgSelectIndex(PgSession::ScopedRefPtr pg_session,
+                const PgObjectId& table_id,
+                const PgObjectId& index_id,
+                const PgPrepareParameters *prepare_params);
+  virtual ~PgSelectIndex();
+
+  // Prepare query for secondary index. This function is called when Postgres layer is accessing
+  // the IndexTable directy (IndexOnlyScan).
+  CHECKED_STATUS Prepare();
+
+  // Prepare NESTED query for secondary index. This function is called when Postgres layer is
+  // accessing the IndexTable via an outer select (Sequential or primary scans)
+  CHECKED_STATUS PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req);
+
+  CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
+
+  // The output parameter "ybctids", where ybctid is the hidden column that is used as row id.
+  Result<bool> FetchRowIdBatch(std::vector<Slice>& ybctids);
+
+  // Get next batch of row ids from either PgGate::cache or server.
+  Result<bool> GetNextRowIdBatch();
+
+  void set_is_executed(bool value) {
+    is_executed_ = value;
   }
 
-  const auto& response = op.response();
-  if (response.pg_error_code != 0) {
-    // TODO: handle pg error code 
+  bool is_executed() {
+    return is_executed_;
   }
 
-  if (response.txn_error_code != 0) {
-    // TODO: handle txn error code
-  }
-
-  Status s;
-  // TODO: add errors to s
-  return s; 
-}
-
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
-  // TODO: add implementation
-  throw new std::logic_error("Not implemented yet");
-}
+ private:
+  // This secondary query should be executed just one time.
+  bool is_executed_ = false;
+};
 
 }  // namespace gate
 }  // namespace k2pg
+
+#endif //CHOGORI_GATE_DML_SELECT_H
+

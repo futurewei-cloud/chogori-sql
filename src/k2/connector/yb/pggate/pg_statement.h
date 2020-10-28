@@ -46,43 +46,95 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "yb/common/port.h"
+#ifndef CHOGORI_GATE_PG_STATEMENT_H
+#define CHOGORI_GATE_PG_STATEMENT_H
+
+#include <memory>
+#include <string>
+#include <list>
+
+#include "yb/entities/expr.h"
+#include "yb/common/status.h"
 #include "yb/pggate/pg_session.h"
 
 namespace k2pg {
 namespace gate {
 
-PgSession::PgSession(const string& database_name, const YBCPgCallbacks& pg_callbacks)
-    : connected_database_(database_name),
-      pg_callbacks_(pg_callbacks) {
-}
+using std::string;
+using k2pg::sql::PgExpr;
+using yb::RefCountedThreadSafe;
+using yb::Status;
 
-PgSession::~PgSession() {
-}
+// Statement types.
+enum StmtOp {
+  STMT_NOOP = 0,
+  STMT_CREATE_DATABASE,
+  STMT_DROP_DATABASE,
+  STMT_CREATE_SCHEMA,
+  STMT_DROP_SCHEMA,
+  STMT_CREATE_TABLE,
+  STMT_DROP_TABLE,
+  STMT_TRUNCATE_TABLE,
+  STMT_CREATE_INDEX,
+  STMT_DROP_INDEX,
+  STMT_ALTER_TABLE,
+  STMT_INSERT,
+  STMT_UPDATE,
+  STMT_DELETE,
+  STMT_TRUNCATE,
+  STMT_SELECT,
+  STMT_ALTER_DATABASE,
+};
 
-Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
-  if (op.succeeded()) {
-    return Status::OK();
+class PgStatement : public RefCountedThreadSafe<PgStatement> {
+ public:
+  // Public types.
+  typedef scoped_refptr<PgStatement> ScopedRefPtr;
+
+  //------------------------------------------------------------------------------------------------
+  // Constructors.
+  // pg_session is the session that this statement belongs to. If PostgreSQL cancels the session
+  // while statement is running, pg_session::sharedptr can still be accessed without crashing.
+  explicit PgStatement(PgSession::ScopedRefPtr pg_session);
+  virtual ~PgStatement();
+
+  const PgSession::ScopedRefPtr& pg_session() {
+    return pg_session_;
   }
 
-  const auto& response = op.response();
-  if (response.pg_error_code != 0) {
-    // TODO: handle pg error code 
+  // Statement type.
+  virtual StmtOp stmt_op() const = 0;
+
+  //------------------------------------------------------------------------------------------------
+  static bool IsValidStmt(PgStatement* stmt, StmtOp op) {
+    return (stmt != nullptr && stmt->stmt_op() == op);
   }
 
-  if (response.txn_error_code != 0) {
-    // TODO: handle txn error code
-  }
+  //------------------------------------------------------------------------------------------------
+  // Add expressions that are belong to this statement.
+  void AddExpr(PgExpr::SharedPtr expr);
 
-  Status s;
-  // TODO: add errors to s
-  return s; 
-}
+  //------------------------------------------------------------------------------------------------
+  // Clear all values and expressions that were bound to the given statement.
+  virtual CHECKED_STATUS ClearBinds() = 0;
 
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
-  // TODO: add implementation
-  throw new std::logic_error("Not implemented yet");
-}
+ protected:
+  // PgSession that this statement belongs to.
+  PgSession::ScopedRefPtr pg_session_;
+
+  // Execution status.
+  Status status_;
+  string errmsg_;
+
+  // Expression list to be destroyed as soon as the statement is removed from the API.
+  std::list<PgExpr::SharedPtr> exprs_;
+
+  string client_id_;
+
+  int64_t stmt_id_;
+};
 
 }  // namespace gate
 }  // namespace k2pg
+
+#endif //CHOGORI_GATE_PG_STATEMENT_H

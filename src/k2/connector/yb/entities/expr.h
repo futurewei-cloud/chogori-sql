@@ -129,6 +129,16 @@ class PgExpr {
                 opcode_ == Opcode::PG_EXPR_MIN);
     }
 
+    bool is_logic_expr() const {
+        return (opcode_ == Opcode::PG_EXPR_NOT ||
+                opcode_ == Opcode::PG_EXPR_EQ ||
+                opcode_ == Opcode::PG_EXPR_NE ||
+                opcode_ == Opcode::PG_EXPR_GE ||
+                opcode_ == Opcode::PG_EXPR_GT ||
+                opcode_ == Opcode::PG_EXPR_LE ||
+                opcode_ == Opcode::PG_EXPR_LT);
+    }
+
     virtual bool is_ybbasetid() const {
         return false;
     }
@@ -213,6 +223,10 @@ class PgOperator : public PgExpr {
   // Append arguments.
   void AppendArg(PgExpr *arg);
 
+  const std::vector<PgExpr*> & getArgs() const {
+      return args_;
+  }
+  
   private:
   const string opname_;
   std::vector<PgExpr*> args_;

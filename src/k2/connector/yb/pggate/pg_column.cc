@@ -92,7 +92,7 @@ namespace k2pg
       return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
     }
 
-    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::unique_ptr<SqlOpWriteRequest> write_req)
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req)
     {
       if (bind_var_ == nullptr)
       {
@@ -106,7 +106,7 @@ namespace k2pg
       return bind_var_;
     }
 
-    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::unique_ptr<SqlOpWriteRequest> write_req)
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req)
     {
       if (bind_var_ == nullptr)
       {
@@ -134,7 +134,7 @@ namespace k2pg
       return bind_var_;
     }
 
-    std::shared_ptr<SqlOpExpr> PgColumn::AllocAssign(std::unique_ptr<SqlOpWriteRequest> write_req)
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req)
     {
       if (assign_var_ == nullptr)
       {
@@ -148,7 +148,7 @@ namespace k2pg
       return assign_var_;
     }
 
-    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::unique_ptr<SqlOpReadRequest> read_req)
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpReadRequest> read_req)
     {
       if (bind_var_ == nullptr)
       {
@@ -164,7 +164,7 @@ namespace k2pg
 
     //--------------------------------------------------------------------------------------------------
 
-    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::unique_ptr<SqlOpReadRequest> read_req)
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::shared_ptr<SqlOpReadRequest> read_req)
     {
       if (bind_var_ == nullptr)
       {
@@ -185,7 +185,7 @@ namespace k2pg
       return bind_var_;
     }
 
-    std::shared_ptr<SqlOpCondition> PgColumn::AllocBindConditionExpr(std::unique_ptr<SqlOpReadRequest> read_req)
+    std::shared_ptr<SqlOpCondition> PgColumn::AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req)
     {
       if (bind_condition_expr_var_ == nullptr)
       {

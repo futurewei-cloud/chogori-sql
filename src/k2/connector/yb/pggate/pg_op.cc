@@ -151,21 +151,21 @@ namespace gate {
         return row_orders_.size() > 0 ? row_orders_.front() : -1;
     }
 
-    Status PgOpResult::WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+    Status PgOpResult::WritePgTuple(const std::vector<std::unique_ptr<PgExpr>>& targets, PgTuple *pg_tuple,
                                     int64_t *row_order) {
         int attr_num = 0;
-        for (const PgExpr *target : targets) {
+        for (auto const& target : targets) {
             if (!target->is_colref() && !target->is_aggregate()) {
                 return STATUS(InternalError,
                             "Unexpected expression, only column refs or aggregates supported here");
             }
             if (target->opcode() == PgColumnRef::Opcode::PG_EXPR_COLREF) {
-                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
+                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target.get());
                 attr_num = col_ref->attr_num();
                 TranslateColumnRef(col_ref, &row_iterator_, attr_num - 1, pg_tuple);
            } else {
                 attr_num++;
-                TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
+                TranslateData(target.get(), &row_iterator_, attr_num - 1, pg_tuple);
            }
 
         }
@@ -609,12 +609,12 @@ namespace gate {
             bool has_more_arg = false;
             if (res.paging_state != nullptr) {
                 has_more_arg = true;
-                auto& req = read_op->request();
+                auto req = read_op->request();
 
                 // Set up paging state for next request.
                 // A query request can be nested, and paging state belong to the innermost query which is
                 // the read operator that is operated first and feeds data to other queries.
-                SqlOpReadRequest *innermost_req = &req;
+                SqlOpReadRequest *innermost_req = req.get();
                 while (innermost_req->index_request != nullptr) {
                      innermost_req = innermost_req->index_request.get();
                 }
@@ -643,9 +643,9 @@ namespace gate {
 
     void PgReadOp::SetRequestPrefetchLimit() {
         // Predict the maximum prefetch-limit
-        SqlOpReadRequest& req = template_op_->request();
+        std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
         int predicted_limit = default_ysql_prefetch_limit;
-        if (!req.is_forward_scan) {
+        if (!req->is_forward_scan) {
             // Backward scan is slower than forward scan, so predicted limit is a smaller number.
             predicted_limit = predicted_limit * default_ysql_backward_prefetch_scale_factor;
         }
@@ -663,25 +663,25 @@ namespace gate {
             limit_count = predicted_limit;
             suppress_next_result_prefetching_ = false;
         }
-        req.limit = limit_count;
+        req->limit = limit_count;
     }
 
     void PgReadOp::SetRowMark() {
-        SqlOpReadRequest& req = template_op_->request();
+        std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
 
         if (exec_params_.rowmark < 0) {
-            req.row_mark_type = RowMarkType::ROW_MARK_ABSENT;
+            req->row_mark_type = RowMarkType::ROW_MARK_ABSENT;
         } else {
-            req.row_mark_type = static_cast<RowMarkType>(exec_params_.rowmark);
+            req->row_mark_type = static_cast<RowMarkType>(exec_params_.rowmark);
         }
     }
 
     Status PgReadOp::ResetInactivePgsqlOps() {
         // Clear the existing requests.
         for (int op_index = active_op_count_; op_index < pgsql_ops_.size(); op_index++) {
-            SqlOpReadRequest& read_req = GetReadOp(op_index)->request();
-            read_req.ybctid_column_value = nullptr;
-            read_req.paging_state = nullptr;
+            std::shared_ptr<SqlOpReadRequest> read_req = GetReadOp(op_index)->request();
+            read_req->ybctid_column_value = nullptr;
+            read_req->paging_state = nullptr;
         }
 
         // Clear row orders.

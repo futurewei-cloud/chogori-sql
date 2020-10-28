@@ -100,7 +100,7 @@ namespace gate {
         }
 
         // Get the postgres tuple from this batch.
-        CHECKED_STATUS WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+        CHECKED_STATUS WritePgTuple(const std::vector<std::unique_ptr<PgExpr>>& targets, PgTuple *pg_tuple,
                                     int64_t *row_order);
 
         // Get system columns' values from this batch.
@@ -227,13 +227,13 @@ namespace gate {
                         const PgObjectId& relation_id = PgObjectId());
         virtual ~PgOp();
 
-        // Initialize doc operator.
+        // Initialize sql operator.
         virtual void ExecuteInit(const PgExecParameters *exec_params);
 
         // Execute the op. Return true if the request has been sent and is awaiting the result.
         virtual Result<RequestSent> Execute(bool force_non_bufferable = false);
 
-        // Instruct this doc_op to abandon execution and querying data by setting end_of_data_ to 'true'.
+        // Instruct this sql_op_ to abandon execution and querying data by setting end_of_data_ to 'true'.
         // - This op will not send request to storage layer.
         // - This op will return empty result-set when being requested for data.
         void AbandonExecution() {
@@ -243,6 +243,13 @@ namespace gate {
         // Get the result of the op. No rows will be added to rowsets in case end of data reached.
         CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
         Result<int32_t> GetRowsAffectedCount() const;
+
+        CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
+            // TODO: implement the logic to create new operations by providing a given list of row ids, i.e., ybctids
+            // This is tracked by the following issue:
+            //      https://github.com/futurewei-cloud/chogori-sql/issues/31
+            return Status::OK();
+        }
 
         protected:
         // Populate Protobuf requests using the collected informtion for this DocDB operator.
@@ -344,7 +351,7 @@ namespace gate {
         void ExecuteInit(const PgExecParameters *exec_params) override;
 
         private:
-        // Create protobuf requests using template_op_.
+        // Create requests using template_op_.
         CHECKED_STATUS CreateRequests() override;
 
         // Process response from SKV
