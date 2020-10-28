@@ -151,21 +151,21 @@ namespace gate {
         return row_orders_.size() > 0 ? row_orders_.front() : -1;
     }
 
-    Status PgOpResult::WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+    Status PgOpResult::WritePgTuple(const std::vector<std::unique_ptr<PgExpr>>& targets, PgTuple *pg_tuple,
                                     int64_t *row_order) {
         int attr_num = 0;
-        for (const PgExpr *target : targets) {
+        for (auto const& target : targets) {
             if (!target->is_colref() && !target->is_aggregate()) {
                 return STATUS(InternalError,
                             "Unexpected expression, only column refs or aggregates supported here");
             }
             if (target->opcode() == PgColumnRef::Opcode::PG_EXPR_COLREF) {
-                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
+                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target.get());
                 attr_num = col_ref->attr_num();
                 TranslateColumnRef(col_ref, &row_iterator_, attr_num - 1, pg_tuple);
            } else {
                 attr_num++;
-                TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
+                TranslateData(target.get(), &row_iterator_, attr_num - 1, pg_tuple);
            }
 
         }

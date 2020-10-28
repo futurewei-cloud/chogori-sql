@@ -100,7 +100,7 @@ namespace gate {
         }
 
         // Get the postgres tuple from this batch.
-        CHECKED_STATUS WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+        CHECKED_STATUS WritePgTuple(const std::vector<std::unique_ptr<PgExpr>>& targets, PgTuple *pg_tuple,
                                     int64_t *row_order);
 
         // Get system columns' values from this batch.

@@ -49,7 +49,7 @@
 #ifndef CHOGORI_GATE_DML_INSERT_H
 #define CHOGORI_GATE_DML_INSERT_H
 
-#include "yb/pggate/pg_dml.h"
+#include "yb/pggate/pg_dml_write.h"
 
 namespace k2pg {
 namespace gate {

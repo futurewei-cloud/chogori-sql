@@ -23,6 +23,8 @@
 #include <vector>
 #include <optional>
 
+#include <boost/scoped_ptr.hpp>
+
 #include "yb/common/type/slice.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
@@ -37,8 +39,17 @@ namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
-    using namespace yb;
-    using namespace k2pg::sql;
+    using yb::Status;
+    using k2pg::sql::NamespaceId;
+    using k2pg::sql::NamespaceName;
+    using k2pg::sql::PgExpr;
+    using k2pg::sql::PgColumnRef;
+    using k2pg::sql::PgConstant;
+    using k2pg::sql::PgOperator;
+    using k2pg::sql::RowMarkType;
+    using k2pg::sql::SqlValue;
+    using k2pg::sql::TableInfo;
+    using k2pg::sql::TableName;
 
     class SqlOpCondition; 
 
@@ -207,7 +218,7 @@ namespace gate {
         uint64_t catalog_version;
         RowMarkType row_mark_type;
 
-        std::shared_ptr<SqlOpReadRequest> clone();
+        std::unique_ptr<SqlOpReadRequest> clone();
     };
 
     struct SqlOpWriteRequest {
@@ -244,7 +255,7 @@ namespace gate {
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;
 
-        std::shared_ptr<SqlOpWriteRequest> clone();
+        std::unique_ptr<SqlOpWriteRequest> clone();
     };
 
     // Response from K2 storage for both read and write.
