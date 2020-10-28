@@ -31,7 +31,9 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
+using yb::RefCountedThreadSafe;
+using k2pg::gate::K23SIGate;
+using k2pg::gate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
@@ -65,6 +67,10 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
   std::string getDocKey(SqlOpWriteRequest& request);
 
   std::shared_ptr<K23SITxn> beginTransaction();
+
+  private: 
+  // TODO: pass in k23si 
+  k2pg::gate::K23SIGate* k23si = nullptr;
 };
 
 }  // namespace gate

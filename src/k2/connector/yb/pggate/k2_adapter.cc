@@ -13,6 +13,9 @@
 namespace k2pg {
 namespace gate {
 
+using k2::K2TxnOptions;
+
+
 yb::Status K2Adapter::Init() {
   // TODO: add implementation                                   
   return yb::Status::OK();
@@ -57,8 +60,7 @@ std::string K2Adapter::getDocKey(SqlOpWriteRequest& request) {
 }
 
 std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
-  // TODO: add options to the method signature
-  return nullptr;
+  return k23si->beginTxn(k2::K2TxnOptions{});
 }
 
 }  // namespace gate
