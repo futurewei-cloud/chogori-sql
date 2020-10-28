@@ -59,7 +59,7 @@ std::string K2Adapter::getDocKey(SqlOpWriteRequest& request) {
   return nullptr;                                
 }
 
-std::shared_ptr<K23SITxn> K2Adapter::beginTransaction() {
+std::future<K23SITxn> K2Adapter::beginTransaction() {
   return k23si->beginTxn(k2::K2TxnOptions{});
 }
 
