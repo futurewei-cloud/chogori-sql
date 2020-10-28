@@ -68,7 +68,7 @@ namespace sql {
         const int32 num_cores = base::NumCPUs();
 
         if (FLAGS_sql_executor_svc_num_threads == -1) {
-            // Auto select number of threads for the TS service based on number of cores.
+            // Auto select number of threads for the SQL Executor service based on number of cores.
             // But bound it between 64 & 512.
             const int32 num_threads = std::min(512, num_cores * 32);
             FLAGS_sql_executor_svc_num_threads = std::max(64, num_threads);
