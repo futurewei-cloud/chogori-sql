@@ -37,17 +37,22 @@ namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
-    using namespace yb;
-    using namespace k2pg::sql;
+    using yb::Status;
+    using k2pg::sql::NamespaceId;
+    using k2pg::sql::NamespaceName;
+    using k2pg::sql::PgExpr;
+    using k2pg::sql::PgColumnRef;
+    using k2pg::sql::PgConstant;
+    using k2pg::sql::PgOperator;
+    using k2pg::sql::RowMarkType;
+    using k2pg::sql::SqlValue;
+    using k2pg::sql::TableInfo;
+    using k2pg::sql::TableName;
 
     class SqlOpCondition; 
 
-    // An expression in a WHERE condition.
-    // - Bind values would be given by client and grouped into a repeated field that can be accessed
-    //   by their indexes.
-    // - Alias values would be computed by server and grouped into repeated field that can be accessed
-    //   by their indexes.
-    // - Code generator write indexes as ref. Executor deref indexes to get actual values.
+    // A SQL expression in a WHERE condition.
+    // TODO: change to use the Expression defined in K2 SKV
     class SqlOpExpr {
         public:
         enum class ExprType {
@@ -59,13 +64,13 @@ namespace gate {
             CONDITION,
         };
 
-        SqlOpExpr(ExprType type, SqlValue* value) : type_(type), value_(value) {
+        SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {
         }
 
         SqlOpExpr(ExprType type, int32_t id) : type_(type), id_(id) {
         }
 
-        SqlOpExpr(SqlOpCondition *condition) : type_(ExprType::CONDITION), condition_(condition) {
+        SqlOpExpr(std::shared_ptr<SqlOpCondition> condition) : type_(ExprType::CONDITION), condition_(condition) {
         }
 
         SqlOpExpr() {       
@@ -74,7 +79,7 @@ namespace gate {
         ~SqlOpExpr() {
         }
 
-        void setValue(SqlValue *value) {
+        void setValue(std::shared_ptr<SqlValue> value) {
             type_ = ExprType::VALUE;
             value_ = value;
         }
@@ -94,14 +99,18 @@ namespace gate {
             id_ = id;
         }
 
-        void setCondition(SqlOpCondition* condition) {
+        void setCondition(std::shared_ptr<SqlOpCondition> condition) {
             type_ = ExprType::CONDITION;
-            condition_ = condition;
+            condition_ = std::move(condition);
         }
 
-        void addListValue(SqlValue* value) {
+        void addListValue(std::shared_ptr<SqlValue> value) {
             type_ = ExprType::LIST_VALUES;
             values_.push_back(value);
+        }
+
+        void setType(ExprType type) {
+            type_ = type;
         }
 
         ExprType getType() {
@@ -112,7 +121,7 @@ namespace gate {
             return type_ == ExprType::VALUE;
         }
 
-        SqlValue* getValue() {
+        std::shared_ptr<SqlValue> getValue() {
             return value_;
         }
 
@@ -120,19 +129,19 @@ namespace gate {
             return id_;
         }
 
-        SqlOpCondition* getCondition() {
+        std::shared_ptr<SqlOpCondition> getCondition() {
             return condition_;
         }
 
-        std::vector<SqlValue*> getListValues() {
+        std::vector<std::shared_ptr<SqlValue>> getListValues() {
             return values_;
         }
 
         private:
         ExprType type_;
-        SqlValue* value_;
-        std::vector<SqlValue*> values_;
-        SqlOpCondition* condition_;
+        std::shared_ptr<SqlValue> value_;
+        std::vector<std::shared_ptr<SqlValue>> values_;
+        std::shared_ptr<SqlOpCondition> condition_;
         int32_t id_;
     };
 
@@ -149,53 +158,28 @@ namespace gate {
             return op_;
         }
 
-        void addOperand(SqlOpExpr* expr) {
+        void addOperand(std::shared_ptr<SqlOpExpr> expr) {
             operands_.push_back(expr);
         }
 
-        std::vector<SqlOpExpr*>& getOperands() {
+        std::vector<std::shared_ptr<SqlOpExpr>>& getOperands() {
             return operands_;
         }
 
         private: 
         PgExpr::Opcode op_;
-        std::vector<SqlOpExpr*> operands_;
-    };
-
-    struct SqlOpColumnRefs {
-        std::vector<int32_t> ids;
-    };
-
-    // pass the information so that the under hood SKV client could generate the actual doc key from it
-    struct DocKey { 
-        NamespaceName namespace_name;
-        TableName table_name;
-        std::vector<SqlValue> key_cols;
-        DocKey(NamespaceName& nid, TableName& tid, std::vector<SqlValue>& keys) : 
-            namespace_name(nid), table_name(tid), key_cols(std::move(keys)) {
-        }
+        std::vector<std::shared_ptr<SqlOpExpr>> operands_;
     };
 
     struct ColumnValue {
         ColumnValue() {
         };
 
-        ColumnValue(int columnId, SqlOpExpr* expression) : column_id(columnId), expr(expression) {
+        ColumnValue(int columnId, std::shared_ptr<SqlOpExpr> expression) : column_id(columnId), expr(expression) {
         };
         
         int column_id;
-        SqlOpExpr* expr;
-    };
-
-    struct RSColDesc {
-        string name;
-        SQLType type;
-    };
-
-    struct RSRowDesc {
-        RSRowDesc() = default;
-
-        std::vector<RSColDesc> rscol_descs;
+        std::shared_ptr<SqlOpExpr> expr;
     };
 
     struct SqlOpPagingState {
@@ -206,41 +190,39 @@ namespace gate {
 
     struct SqlOpReadRequest {
         SqlOpReadRequest() = default;
+        ~SqlOpReadRequest() {
+        };
 
         string client_id;
         int64_t stmt_id;
         NamespaceName namespace_name;
         TableName table_name;
         uint64_t schema_version;
-        uint32_t hash_code;
-        std::vector<SqlOpExpr*> partition_column_values;
-        std::vector<SqlOpExpr*> range_column_values;
-        SqlOpExpr* ybctid_column_value;
+        std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
+        std::shared_ptr<SqlOpExpr> ybctid_column_value;
         // For select using local secondary index: this request selects the ybbasectids to fetch the rows
         // in place of the primary key above.
-        SqlOpReadRequest* index_request;
+        std::shared_ptr<SqlOpReadRequest> index_request;
 
-        RSRowDesc rsrow_desc;
-        std::vector<SqlOpExpr*> targets;
-        SqlOpExpr* where_expr;
-        SqlOpCondition* condition_expr;
-        SqlOpColumnRefs* column_refs;
+        std::vector<std::shared_ptr<SqlOpExpr>> targets;
+        std::shared_ptr<SqlOpExpr> where_expr;
+        std::shared_ptr<SqlOpCondition> condition_expr;
         bool is_forward_scan = true;
         bool distinct = false;
         bool is_aggregate = false;
         uint64_t limit;
-        SqlOpPagingState* paging_state;
+        std::unique_ptr<SqlOpPagingState> paging_state;
         bool return_paging_state = false;
-        uint32_t max_hash_code;
         uint64_t catalog_version;
         RowMarkType row_mark_type;
-        string* max_partition_key;
 
         std::unique_ptr<SqlOpReadRequest> clone();
     };
 
     struct SqlOpWriteRequest {
        SqlOpWriteRequest() = default;
+       ~SqlOpWriteRequest() {
+       };
 
        enum StmtType {
             PGSQL_INSERT = 1,
@@ -257,20 +239,16 @@ namespace gate {
         NamespaceId namespace_name;
         TableName table_name;
         uint64_t schema_version;
-        uint32_t hash_code;
-        std::vector<SqlOpExpr*> partition_column_values;
-        std::vector<SqlOpExpr*> range_column_values;
-        SqlOpExpr* ybctid_column_value;
+        std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
+        std::shared_ptr<SqlOpExpr> ybctid_column_value;
         // Not used with UPDATEs. Use column_new_values to UPDATE a value.
         std::vector<ColumnValue> column_values;
         // Column New Values.
         // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
         std::vector<ColumnValue> column_new_values;
-        RSRowDesc rsrow_desc;
-        std::vector<SqlOpExpr*> targets;
-        SqlOpExpr* where_expr;
-        SqlOpCondition* condition_expr;
-        SqlOpColumnRefs* column_refs;
+        std::vector<std::shared_ptr<SqlOpExpr>> targets;
+        std::shared_ptr<SqlOpExpr> where_expr;
+        std::shared_ptr<SqlOpCondition> condition_expr;
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;
@@ -292,7 +270,7 @@ namespace gate {
         bool skipped;
         string error_message;
         int32_t rows_data_sidecar;
-        SqlOpPagingState* paging_state;
+        std::unique_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
    
         //
@@ -315,8 +293,8 @@ namespace gate {
     class PgOpTemplate {
         public: 
         enum Type {
-            WRITE = 8,
-            READ = 9,
+            WRITE,
+            READ,
         };
 
         explicit PgOpTemplate(const std::shared_ptr<TableInfo>& table);
@@ -376,7 +354,7 @@ namespace gate {
             return WRITE; 
         }
 
-        SqlOpWriteRequest& request() const { return *write_request_; }
+        std::shared_ptr<SqlOpWriteRequest> request() const { return write_request_; }
 
         std::string ToString() const;
 
@@ -391,12 +369,12 @@ namespace gate {
             is_single_row_txn_ = is_single_row_txn;
         }
 
-        // Create a deep copy of this call, copying all fields and request PB content.
+        // Create a deep copy of this call, copying all fields
         // Does NOT, however, copy response and rows data.
         std::unique_ptr<PgWriteOpTemplate> DeepCopy();
 
         private: 
-        std::unique_ptr<SqlOpWriteRequest> write_request_;
+        std::shared_ptr<SqlOpWriteRequest> write_request_;
         // Whether this operation should be run as a single row txn.
         // Else could be distributed transaction (or non-transactional) depending on target table type.
         bool is_single_row_txn_ = false;
@@ -408,7 +386,7 @@ namespace gate {
 
         ~PgReadOpTemplate() {};
 
-        SqlOpReadRequest& request() const { return *read_request_; }
+        std::shared_ptr<SqlOpReadRequest> request() const { return read_request_; }
   
         std::string ToString() const;
 
@@ -418,7 +396,7 @@ namespace gate {
 
         virtual Type type() const { return READ; }
 
-        // Create a deep copy of this call, copying all fields and request PB content.
+        // Create a deep copy of this call, copying all fields
         // Does NOT, however, copy response and rows data.
         std::unique_ptr<PgReadOpTemplate> DeepCopy();
 
@@ -427,7 +405,7 @@ namespace gate {
         }
 
         private:
-        std::unique_ptr<SqlOpReadRequest> read_request_;
+        std::shared_ptr<SqlOpReadRequest> read_request_;
     };
 }  // namespace gate
 }  // namespace k2pg

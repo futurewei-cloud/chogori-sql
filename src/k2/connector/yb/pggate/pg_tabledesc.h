@@ -83,6 +83,7 @@ class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
   const size_t num_key_columns() const;
   const size_t num_columns() const;
 
+  // Methods to initialize the templates for different SQL operations
   std::unique_ptr<PgReadOpTemplate> NewPgsqlSelect(const string& client_id, int64_t stmt_id);
   std::unique_ptr<PgWriteOpTemplate> NewPgsqlInsert(const string& client_id, int64_t stmt_id);
   std::unique_ptr<PgWriteOpTemplate> NewPgsqlUpdate(const string& client_id, int64_t stmt_id);

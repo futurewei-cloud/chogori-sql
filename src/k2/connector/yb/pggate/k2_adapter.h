@@ -24,10 +24,11 @@
 #include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/status.h"
 #include "yb/entities/schema.h"
+#include "yb/pggate/k23si_gate.h"
 #include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
-#include "yb/pggate/k23si_gate.h"
+
 
 namespace k2pg {
 namespace gate {
@@ -63,9 +64,9 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
     return MakeFuture<yb::Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
   }
 
-  std::string getDocKey(SqlOpReadRequest& request);
+  std::string GetRowId(std::shared_ptr<SqlOpReadRequest> request);
         
-  std::string getDocKey(SqlOpWriteRequest& request);
+  std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
 
   std::future<K23SITxn> beginTransaction();
 

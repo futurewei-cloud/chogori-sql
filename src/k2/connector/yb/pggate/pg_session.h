@@ -116,14 +116,13 @@ struct PgForeignKeyReference {
 
 class RowIdentifier {
  public:
-  explicit RowIdentifier(const PgWriteOpTemplate& op, scoped_refptr<K2Adapter> k2_adapter);
-  inline const string& ybctid() const;
-  inline const string& table_id() const;
+  explicit RowIdentifier(const std::string& table_id, const std::string row_id);
+  inline const std::string& table_id() const;
+  inline const std::string& row_id() const;
 
  private:
-  const std::string* table_id_;
-  const std::string* ybctid_;
-  string             ybctid_holder_;
+  std::string table_id_;
+  std::string row_id_;
 };
 
 // This class is not thread-safe as it is mostly used by a single-threaded PostgreSQL backend
@@ -383,7 +382,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // TODO: pass client/user id from pg?
   string client_id_;
 
-  int64_t stmt_id_ = 1;
+  std::atomic<int64_t> stmt_id_ = 1;
 
   MonoDelta timeout_;
 };

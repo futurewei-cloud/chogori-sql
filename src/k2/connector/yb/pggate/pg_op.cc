@@ -151,21 +151,21 @@ namespace gate {
         return row_orders_.size() > 0 ? row_orders_.front() : -1;
     }
 
-    Status PgOpResult::WritePgTuple(const std::vector<PgExpr*>& targets, PgTuple *pg_tuple,
+    Status PgOpResult::WritePgTuple(const std::vector<std::unique_ptr<PgExpr>>& targets, PgTuple *pg_tuple,
                                     int64_t *row_order) {
         int attr_num = 0;
-        for (const PgExpr *target : targets) {
+        for (auto const& target : targets) {
             if (!target->is_colref() && !target->is_aggregate()) {
                 return STATUS(InternalError,
                             "Unexpected expression, only column refs or aggregates supported here");
             }
             if (target->opcode() == PgColumnRef::Opcode::PG_EXPR_COLREF) {
-                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
+                const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target.get());
                 attr_num = col_ref->attr_num();
                 TranslateColumnRef(col_ref, &row_iterator_, attr_num - 1, pg_tuple);
            } else {
                 attr_num++;
-                TranslateData(target, &row_iterator_, attr_num - 1, pg_tuple);
+                TranslateData(target.get(), &row_iterator_, attr_num - 1, pg_tuple);
            }
 
         }
@@ -391,6 +391,7 @@ namespace gate {
         // Wait for result in case request was sent.
         // Operation can be part of transaction it is necessary to complete it before transaction commit.
         if (response_.InProgress()) {
+            VLOG(1) << "Waiting for in progress response ";
             __attribute__((unused)) auto status = response_.GetStatus();
         }
     }
@@ -403,14 +404,7 @@ namespace gate {
     }
 
     Result<RequestSent> PgOp::Execute(bool force_non_bufferable) {
-        // TODO:: This logic is cloned from ybc and modify this based on K2 Doc storage
-        // As of 09/25/2018, DocDB doesn't cache or keep any execution state for a statement, so we
-        // have to call query execution every time.
-        // - Normal SQL convention: Exec, Fetch, Fetch, ...
-        // - Our SQL convention: Exec & Fetch, Exec & Fetch, ...
-        // This refers to the sequence of operations between this layer and the underlying storage layer
-        // server / DocDB layer, not to the sequence of operations between the PostgreSQL layer and this
-        // layer.
+        // SKV is stateless and we have to call query execution every time, i.e., Exec & Fetch, Exec & Fetch
         exec_status_ = SendRequest(force_non_bufferable);
         RETURN_NOT_OK(exec_status_);
         return RequestSent(response_.InProgress());
@@ -450,7 +444,6 @@ namespace gate {
     }
 
     Status PgOp::ClonePgsqlOps(int op_count) {
-        // Allocate batch operator, one per partition.
         SCHECK(op_count > 0, InternalError, "Table must have at least one partition");
         if (pgsql_ops_.size() < op_count) {
             pgsql_ops_.resize(op_count);
@@ -506,13 +499,6 @@ namespace gate {
     Status PgOp::SendRequestImpl(bool force_non_bufferable) {
         // Populate collected information into requests before sending to SKV.
         RETURN_NOT_OK(CreateRequests());
-
-        // Currently, send and receive individual request of a batch is not yet supported
-        // - Among statements, only queries by BASE-YBCTIDs need to be sent and received in batches
-        //   to honor the order of how the BASE-YBCTIDs are kept in the database.
-        // - For other type of statements, it could be more efficient to send them individually.
-        SCHECK(wait_for_batch_completion_, InternalError,
-                "Only send and receive the whole batch is supported");
 
         // Send at most "parallelism_level_" number of requests at one time.
         int32_t send_count = std::min(parallelism_level_, active_op_count_);
@@ -582,7 +568,6 @@ namespace gate {
         SetRequestPrefetchLimit();
         SetRowMark();
         SetReadTime();
-        SetPartitionKey();
     }
     
     void PgReadOp::SetReadTime() {
@@ -603,100 +588,12 @@ namespace gate {
             return Status::OK();
         }
 
-        // All information from the SQL request has been collected and setup. This code populate
-        // Protobuf requests before sending them to DocDB. For performance reasons, requests are
-        // constructed differently for different statement.
-        if (template_op_->request().is_aggregate) {
-            // Optimization for COUNT() operator.
-            // - SELECT count(*) FROM sql_table;
-            // - Multiple requests are created to run sequential COUNT() in parallel.
-            return PopulateParallelSelectCountOps();
-
-        } else if (template_op_->request().partition_column_values.size()> 0) {
-            // Optimization for multiple hash keys.
-            // - SELECT * FROM sql_table WHERE hash_c1 IN (1, 2, 3) AND hash_c2 IN (4, 5, 6);
-            // - Multiple requests for differrent hash permutations / keys.
-            return PopulateNextHashPermutationOps();
-
-        } else {
-            // No optimization.
-            pgsql_ops_.push_back(template_op_);
-            template_op_->set_active(true);
-            active_op_count_ = 1;
-            request_population_completed_ = true;
-            return Status::OK();
-        }
-    }
-
-    Status PgReadOp::PopulateDmlByYbctidOps(const vector<Slice> *ybctids) {
-        // This function is called only when ybctids were returned from INDEX.
-        //
-        // NOTE on a typical process.
-        // 1- Statement:
-        //    SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX);
-        //
-        // 2- Select 1024 ybctids (prefetch limit) from INDEX.
-        //
-        // 3- ONLY ONE TIME: Create a batch of operators, one per partition.
-        //    * Each operator has a clone requests from template_op_.
-        //    * We will reuse the created operators & requests for the future batches of 1024 ybctids.
-        //    * Certain fields in the protobuf requests MUST BE RESET for each batches.
-        //
-        // 4- Assign the selected 1024 ybctids to the batch of operators.
-        //
-        // 5- Send requests to storage servers to read data from <tab> associated with ybctid values.
-        //
-        // 6- Repeat step 2 thru 5 for the next batch of 1024 ybctids till done.
-        RETURN_NOT_OK(InitializeYbctidOperators());
-
-        // Begin a batch of ybctids.
-        end_of_data_ = false;
-
-        // Assign ybctid values.
-
-        // TODO: need to see how to find K2 doc partitions and assign them by partitions
-        // TODO: update batch operations for different partitions
- 
-        // Done creating request, but not all partition or operator has arguments (inactive).
-        MoveInactiveOpsOutside();
+        // No optimization.
+        // TODO: create separate requests for different partitions once SKV partition information is available
+        pgsql_ops_.push_back(template_op_);
+        template_op_->set_active(true);
+        active_op_count_ = 1;
         request_population_completed_ = true;
-
-        return Status::OK();
-    }
-
-    Status PgReadOp::InitializeYbctidOperators() {
-        int op_count = table_desc_->GetPartitionCount();
-
-        if (batch_row_orders_.size() == 0) {
-            // First batch:
-            // - Create operators.
-            // - Allocate row orders for each storage server.
-            // - Protobuf fields in requests are not yet set so not needed to be cleared.
-            RETURN_NOT_OK(ClonePgsqlOps(op_count));
-            batch_row_orders_.resize(op_count);
-
-            // To honor the indexing order of ybctid values, for each batch of ybctid-binds, select all rows
-            // in the batch and then order them before returning result to Postgres layer.
-            wait_for_batch_completion_ = true;
-
-        } else {
-            // Second and later batches: Reuse all state variables.
-            // - Clear row orders for this batch to be set later.
-            // - Clear protobuf fields ybctids and others before reusing them in this batch.
-            RETURN_NOT_OK(ResetInactivePgsqlOps());
-        }
-        return Status::OK();
-    }
-
-    Status PgReadOp::PopulateNextHashPermutationOps() {
-        // TODO: do we need logic to build operations based on partition hash?
-
-        return Status::OK();
-    }
-
-    Status PgReadOp::PopulateParallelSelectCountOps() {
-        // TODO:: check how do we create operation requests based on k2 partitions
-
         return Status::OK();
     }
 
@@ -712,15 +609,14 @@ namespace gate {
             bool has_more_arg = false;
             if (res.paging_state != nullptr) {
                 has_more_arg = true;
-                auto& req = read_op->request();
+                auto req = read_op->request();
 
                 // Set up paging state for next request.
                 // A query request can be nested, and paging state belong to the innermost query which is
                 // the read operator that is operated first and feeds data to other queries.
-                SqlOpReadRequest *innermost_req = &req;
-                // TODO:: enable the logic for index once we add secondary index support
+                SqlOpReadRequest *innermost_req = req.get();
                 while (innermost_req->index_request != nullptr) {
-                     innermost_req = innermost_req->index_request;
+                     innermost_req = innermost_req->index_request.get();
                 }
                 *innermost_req->paging_state = std::move(*res.paging_state);
             }
@@ -730,13 +626,6 @@ namespace gate {
             } else {
                 read_op->set_active(false);
             }
-        }
-
-        // If partition key of storage server to scan is specified, then we should be done.  This is because,
-        // curently, only `BACKFILL INDEX ... PARTITION ...` statements set `partition_key`, and they scan
-        // a single storage server.
-        if (partition_key_) {
-            has_more_data = false;
         }
 
         if (has_more_data || send_count < active_op_count_) {
@@ -754,9 +643,9 @@ namespace gate {
 
     void PgReadOp::SetRequestPrefetchLimit() {
         // Predict the maximum prefetch-limit
-        SqlOpReadRequest& req = template_op_->request();
+        std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
         int predicted_limit = default_ysql_prefetch_limit;
-        if (!req.is_forward_scan) {
+        if (!req->is_forward_scan) {
             // Backward scan is slower than forward scan, so predicted limit is a smaller number.
             predicted_limit = predicted_limit * default_ysql_backward_prefetch_scale_factor;
         }
@@ -774,32 +663,25 @@ namespace gate {
             limit_count = predicted_limit;
             suppress_next_result_prefetching_ = false;
         }
-        req.limit = limit_count;
+        req->limit = limit_count;
     }
 
     void PgReadOp::SetRowMark() {
-        SqlOpReadRequest& req = template_op_->request();
+        std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
 
         if (exec_params_.rowmark < 0) {
-            req.row_mark_type = RowMarkType::ROW_MARK_ABSENT;
+            req->row_mark_type = RowMarkType::ROW_MARK_ABSENT;
         } else {
-            req.row_mark_type = static_cast<RowMarkType>(exec_params_.rowmark);
-        }
-    }
-
-    void PgReadOp::SetPartitionKey() {
-        if (exec_params_.partition_key != NULL) {
-            partition_key_ = std::string(exec_params_.partition_key);
-            // TODO: add logic for k2 partitions
+            req->row_mark_type = static_cast<RowMarkType>(exec_params_.rowmark);
         }
     }
 
     Status PgReadOp::ResetInactivePgsqlOps() {
-        // Clear the existing ybctids.
+        // Clear the existing requests.
         for (int op_index = active_op_count_; op_index < pgsql_ops_.size(); op_index++) {
-            SqlOpReadRequest& read_req = GetReadOp(op_index)->request();
-            read_req.ybctid_column_value = nullptr;
-            read_req.paging_state = nullptr;
+            std::shared_ptr<SqlOpReadRequest> read_req = GetReadOp(op_index)->request();
+            read_req->ybctid_column_value = nullptr;
+            read_req->paging_state = nullptr;
         }
 
         // Clear row orders.
@@ -838,6 +720,7 @@ namespace gate {
         }
 
         // Setup a singular operator.
+        // TODO: create multiple requests for multiple partitions if the information is available
         pgsql_ops_.push_back(write_op_);
         write_op_->set_active(true);
         active_op_count_ = 1;

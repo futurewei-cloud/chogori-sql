@@ -74,34 +74,26 @@ static constexpr const size_t kPgSequenceLastValueColIdx = 2;
 static constexpr const char* const kPgSequenceIsCalledColName = "is_called";
 static constexpr const size_t kPgSequenceIsCalledColIdx = 3;
 
-RowIdentifier::RowIdentifier(const PgWriteOpTemplate& op, scoped_refptr<K2Adapter> k2_adapter) :
-  table_id_(&op.request().table_name) {
-  auto& request = op.request();
-  if (request.ybctid_column_value) {
-    // ybctid_ = &request.ybctid_column_value->binary_value();
-  } else {
-    // calculate the doc key from k2 client
-//    ybctid_holder_ = k2_adapter->getDocKey(request);
-    ybctid_ = nullptr;
-  }
+RowIdentifier::RowIdentifier(const std::string& table_id, const std::string row_id) :
+  table_id_(table_id), row_id_(row_id) {
 }
 
-const string& RowIdentifier::ybctid() const {
-  return ybctid_ ? *ybctid_ : ybctid_holder_;
+const string& RowIdentifier::row_id() const {
+  return row_id_;
 }
 
 const string& RowIdentifier::table_id() const {
-  return *table_id_;
+  return table_id_;
 }
 
 bool operator==(const RowIdentifier& k1, const RowIdentifier& k2) {
-  return k1.table_id() == k2.table_id() && k1.ybctid() == k2.ybctid();
+  return k1.table_id() == k2.table_id() && k1.row_id() == k2.row_id();
 }
 
 size_t hash_value(const RowIdentifier& key) {
   size_t hash = 0;
   boost::hash_combine(hash, key.table_id());
-  boost::hash_combine(hash, key.ybctid());
+  boost::hash_combine(hash, key.row_id());
   return hash;
 }
 
@@ -214,14 +206,14 @@ Status PgSession::InsertSequenceTuple(int64_t db_oid,
   PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(result);
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlInsert(GetClientId(), GetNextStmtId());
-  SqlOpWriteRequest& write_request = psql_write->request();
-  write_request.catalog_version = ysql_catalog_version;
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
-  ColumnValue colVal1(kPgSequenceLastValueColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(last_val)));
-  ColumnValue colVal2(kPgSequenceIsCalledColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(is_called)));
-  write_request.column_values.push_back(colVal1);
-  write_request.column_values.push_back(colVal2);
+  std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
+  write_request->catalog_version = ysql_catalog_version;
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(db_oid)));
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(seq_oid)));
+  ColumnValue colVal1(kPgSequenceLastValueColIdx, std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(last_val)));
+  ColumnValue colVal2(kPgSequenceIsCalledColIdx, std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(is_called)));
+  write_request->column_values.push_back(colVal1);
+  write_request->column_values.push_back(colVal2);
 
   std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
   uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -243,49 +235,45 @@ Status PgSession::UpdateSequenceTuple(int64_t db_oid,
   PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlUpdate(GetClientId(), GetNextStmtId());
-  SqlOpWriteRequest& write_request = psql_write->request();
-  write_request.catalog_version = ysql_catalog_version;
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
-  ColumnValue colVal1(kPgSequenceLastValueColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(last_val)));
-  ColumnValue colVal2(kPgSequenceIsCalledColIdx, new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(is_called)));
-  write_request.column_new_values.push_back(colVal1);
-  write_request.column_new_values.push_back(colVal2);
+  std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
+  write_request->catalog_version = ysql_catalog_version;
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(db_oid)));
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(seq_oid)));
+  ColumnValue colVal1(kPgSequenceLastValueColIdx, std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(last_val)));
+  ColumnValue colVal2(kPgSequenceIsCalledColIdx, std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(is_called)));
+  write_request->column_new_values.push_back(colVal1);
+  write_request->column_new_values.push_back(colVal2);
   
-  SqlOpExpr* where_expr;
+  std::shared_ptr<SqlOpExpr> where_expr;
   if (expected_last_val.has_value() && expected_is_called.has_value()) {
-    SqlOpExpr *colRef1 = new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx);
-    SqlOpExpr *colVal1 = new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(expected_last_val.value()));
-    SqlOpCondition *eq1 = new SqlOpCondition();
+    std::shared_ptr<SqlOpExpr> colRef1 = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx);
+    std::shared_ptr<SqlOpExpr> colVal1 = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(expected_last_val.value()));
+    std::shared_ptr<SqlOpCondition> eq1 = std::make_shared<SqlOpCondition>();
     eq1->setOp(PgExpr::Opcode::PG_EXPR_EQ);
     eq1->addOperand(colRef1);
     eq1->addOperand(colVal1);
-    SqlOpExpr *expr1 = new SqlOpExpr(eq1);
+    std::shared_ptr<SqlOpExpr> expr1 = std::make_shared<SqlOpExpr>(eq1);
 
-    SqlOpExpr *colRef2 = new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx);
-    SqlOpExpr *colVal2 = new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(expected_is_called.value()));
-    SqlOpCondition *eq2 = new SqlOpCondition();
+    std::shared_ptr<SqlOpExpr> colRef2 = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx);
+    std::shared_ptr<SqlOpExpr> colVal2 = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(expected_is_called.value()));
+    std::shared_ptr<SqlOpCondition> eq2 = std::make_shared<SqlOpCondition>();
     eq2->setOp(PgExpr::Opcode::PG_EXPR_EQ);
     eq2->addOperand(colRef2);
     eq2->addOperand(colVal2);
-    SqlOpExpr *expr2 = new SqlOpExpr(eq2);
+    std::shared_ptr<SqlOpExpr> expr2 = std::make_shared<SqlOpExpr>(eq2);
 
-    SqlOpCondition *cond = new SqlOpCondition();
+    std::shared_ptr<SqlOpCondition> cond = std::make_shared<SqlOpCondition>();
     cond->setOp(PgExpr::Opcode::PG_EXPR_AND);
     cond->addOperand(expr1);
     cond->addOperand(expr2);
-    where_expr = new SqlOpExpr(cond);
+    where_expr = std::make_shared<SqlOpExpr>(cond);
   } else {
-    SqlOpCondition *cond = new SqlOpCondition();
+    std::shared_ptr<SqlOpCondition> cond = std::make_shared<SqlOpCondition>();
     cond->setOp(PgExpr::Opcode::PG_EXPR_EXISTS);
-    where_expr = new SqlOpExpr(cond);
+    where_expr = std::make_shared<SqlOpExpr>(cond);
   }
-  write_request.where_expr = where_expr;
+  write_request->where_expr = where_expr;
 
-  SqlOpColumnRefs *colRefs = new SqlOpColumnRefs();
-  colRefs->ids.push_back(kPgSequenceLastValueColIdx);
-  colRefs->ids.push_back(kPgSequenceIsCalledColIdx);
-  write_request.column_refs = colRefs;
   std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
   uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
               (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -307,16 +295,12 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
   PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgReadOpTemplate> psql_read = t->NewPgsqlSelect(GetClientId(), GetNextStmtId());
-  SqlOpReadRequest& read_request = psql_read->request();
-  read_request.catalog_version = ysql_catalog_version;
-  read_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
-  read_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
-  read_request.targets.push_back(new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx));
-  read_request.targets.push_back(new SqlOpExpr(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx));
-  SqlOpColumnRefs *colRefs = new SqlOpColumnRefs();
-  colRefs->ids.push_back(kPgSequenceLastValueColIdx);
-  colRefs->ids.push_back(kPgSequenceIsCalledColIdx);
-  read_request.column_refs = colRefs;
+  std::shared_ptr<SqlOpReadRequest> read_request = psql_read->request();
+  read_request->catalog_version = ysql_catalog_version;
+  read_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(db_oid)));
+  read_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(seq_oid)));
+  read_request->targets.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx));
+  read_request->targets.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx));
   std::shared_ptr<PgReadOpTemplate> read_op = std::move(psql_read);
 
   // TODO: might need to refactor this logic since SKV does not support read-only transactions
@@ -341,9 +325,9 @@ Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
   PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlDelete(GetClientId(), GetNextStmtId());
-  SqlOpWriteRequest& write_request = psql_write->request();
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(seq_oid)));
+  std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(db_oid)));
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(seq_oid)));
   
   std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
   uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
@@ -366,8 +350,8 @@ Status PgSession::DeleteDBSequences(int64_t db_oid) {
   }
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlDelete(GetClientId(), GetNextStmtId());
-  SqlOpWriteRequest& write_request = psql_write->request();
-  write_request.partition_column_values.push_back(new SqlOpExpr(SqlOpExpr::ExprType::VALUE, new SqlValue(db_oid)));
+  std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
+  write_request->key_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(db_oid)));
   std::shared_ptr<PgWriteOpTemplate> write_op = std::move(psql_write);
   uint64_t rt = std::chrono::duration_cast<std::chrono::milliseconds>
               (std::chrono::high_resolution_clock::now().time_since_epoch()).count();
@@ -516,15 +500,17 @@ Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
   auto& buffered_keys = pg_session_->buffered_keys_;
   if (pg_session_->buffering_enabled_ && !force_non_bufferable &&
       op->type() == PgOpTemplate::Type::WRITE) {
-    const auto& wop = *down_cast<PgWriteOpTemplate*>(op.get());
     // Check for buffered operation related to same row.
     // If multiple operations are performed in context of single RPC second operation will not
     // see the results of first operation on DocDB side.
     // Multiple operations on same row must be performed in context of different RPC.
     // Flush is required in this case.
-    if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(wop, client_)).second)) {
+    const auto& wop = down_cast<PgWriteOpTemplate*>(op.get());
+    std::string row_id = client_->GetRowId(wop->request());
+    std::string table_id = wop->request()->table_name;
+    if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(table_id, row_id)).second)) {
       RETURN_NOT_OK(pg_session_->FlushBufferedOperationsImpl());
-      buffered_keys.insert(RowIdentifier(wop, client_));
+      buffered_keys.insert(RowIdentifier(table_id, row_id));
     }
     buffered_ops_.push_back({std::move(op), relation_id});
     // Flush buffers in case limit of operations in single RPC exceeded.

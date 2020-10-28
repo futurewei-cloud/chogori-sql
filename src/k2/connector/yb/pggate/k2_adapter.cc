@@ -49,12 +49,12 @@ void K2Adapter::ReadAsync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K
   FlushAsync(std::move(callback));
 }
 
-std::string K2Adapter::getDocKey(SqlOpReadRequest& request) {
+std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpReadRequest> request) {
   // TODO: add implementation   
   return nullptr;                                
 }
         
-std::string K2Adapter::getDocKey(SqlOpWriteRequest& request) {
+std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
   // TODO: add implementation   
   return nullptr;                                
 }

@@ -74,10 +74,10 @@ Status PgSelect::Prepare() {
       make_scoped_refptr<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
   }
 
-  // Allocate READ requests to send to op api.
+  // Allocate READ requests to send to storage layer.
   auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
-  read_req_ = &read_op->request();
-  auto doc_op = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
+  read_req_ = read_op->request();
+  auto sql_op = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
 
   // Prepare the index selection if this operation is using the index.
   RETURN_NOT_OK(PrepareSecondaryIndex());
@@ -86,7 +86,7 @@ Status PgSelect::Prepare() {
   PrepareBinds();
 
   // Preparation complete.
-  doc_op_ = doc_op;  
+  sql_op_ = sql_op;  
   
   return Status::OK();
 }
@@ -97,26 +97,9 @@ Status PgSelect::PrepareSecondaryIndex() {
     return Status::OK();
   }
 
-  // Prepare the index operation to read ybctids from the index table. There are two different
-  // scenarios on how ybctids are requested.
-  // - Due to an optimization in Doc, for colocated tables (both system and user colocated), index
-  //   request is sent as a part of the actual read request using doc field
-  //   "SqlOpReadRequest::index_request"
-  //
-  //   For this case, "index_request" is allocated here and passed to PgSelectIndex node to
-  //   fill in with bind-values when necessary.
-  //
-  // - For regular tables, the index subquery will send separate request to storage servers collect
-  //   batches of ybctids which is then used by 'this' outer select to query actual data.
-  SqlOpReadRequest *index_req = nullptr;
-  if (prepare_params_.querying_colocated_table) {
-    // Allocate "index_request" and pass to PgSelectIndex.
-    index_req = read_req_->index_request;
-  }
-
   // Prepare subquery. When index_req is not null, it is part of 'this' SELECT request. When it
-  // is nullptr, the subquery will create its own doc_op to run a separate read request.
-  return secondary_index_query_->PrepareSubquery(index_req); 
+  // is nullptr, the subquery will create its own sql_op_ to run a separate read request.
+  return secondary_index_query_->PrepareSubquery(nullptr); 
 }
 
 PgSelectIndex::PgSelectIndex(PgSession::ScopedRefPtr pg_session,
@@ -135,30 +118,30 @@ Status PgSelectIndex::Prepare() {
   return PrepareQuery(nullptr);
 }
 
-Status PgSelectIndex::PrepareSubquery(SqlOpReadRequest *read_req) {
+Status PgSelectIndex::PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req) {
   // We get here if this is an SecondaryIndex scan.
   CHECK(prepare_params_.use_secondary_index && !prepare_params_.index_only_scan)
     << "Unexpected Index scan type";
   return PrepareQuery(read_req);
 }
 
-Status PgSelectIndex::PrepareQuery(SqlOpReadRequest *read_req) {
+Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
   // Setup target and bind descriptor.
   target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(index_id_));
 
-  // Allocate READ requests to send to Doc api.
+  // Allocate READ requests to send to K2 SKV.
   if (read_req) {
     // For (system and user) colocated tables, SelectIndex is a part of Select and being sent
-    // together with the SELECT doc request. A read doc_op and request is not needed in this
+    // together with the SELECT request. A read sql_op_ and request is not needed in this
     // case.
     DSCHECK(prepare_params_.querying_colocated_table, InvalidArgument, "Read request invalid");
     read_req_ = read_req;
     read_req_->table_name = index_id_.GetYBTableId();
-    doc_op_ = nullptr;
+    sql_op_ = nullptr;
   } else {
     auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
-    read_req_ = &read_op->request();
-    doc_op_ = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
+    read_req_ = read_op->request();
+    sql_op_ = make_shared<PgReadOp>(pg_session_, target_desc_, std::move(read_op));
   }
 
   // Prepare index key columns.
@@ -166,23 +149,26 @@ Status PgSelectIndex::PrepareQuery(SqlOpReadRequest *read_req) {
   return Status::OK();
 }
 
-Result<bool> PgSelectIndex::FetchYbctidBatch(const vector<Slice> **ybctids) {
+// YBC is using the hidden column ybctid as the row id in a string/binary format
+// we could use the same concept, or we need to calculate the rowid from primary keys 
+// in the same way that we build the SKV doc key
+Result<bool> PgSelectIndex::FetchRowIdBatch(std::vector<Slice>& ybctids) {
   // Keep reading until we get one batch of ybctids or EOF.
-  while (!VERIFY_RESULT(GetNextYbctidBatch())) {
+  while (!VERIFY_RESULT(GetNextRowIdBatch())) {
     if (!VERIFY_RESULT(FetchDataFromServer())) {
       // Server returns no more rows.
-      *ybctids = nullptr;
       return false;
     }
   }
 
   // Got the next batch of ybctids.
   DCHECK(!rowsets_.empty());
-  *ybctids = &rowsets_.front().ybctids();
+  const std::vector<Slice>& selected = rowsets_.front().ybctids();
+  ybctids.insert(std::end(ybctids), std::make_move_iterator(selected.begin()), std::make_move_iterator(selected.end()));
   return true;
 }
 
-Result<bool> PgSelectIndex::GetNextYbctidBatch() {
+Result<bool> PgSelectIndex::GetNextRowIdBatch() {
   for (auto rowset_iter = rowsets_.begin(); rowset_iter != rowsets_.end();) {
     if (rowset_iter->is_eof()) {
       rowset_iter = rowsets_.erase(rowset_iter);

@@ -59,7 +59,7 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table)
     // Find the column descriptor.
     const auto& col = schema.column(idx);
 
-    // TODO(neil) Considering index columns by attr_num instead of ID.
+    // create map by attr_num instead of the default id
     ColumnDesc *desc = columns_[idx].desc();
     desc->Init(idx,
                schema.column_id(idx),
@@ -109,7 +109,7 @@ bool PgTableDesc::IsTransactional() const {
 }
 
 int PgTableDesc::GetPartitionCount() const {
-  // TODO: add logic for k2 storage partition count calculation
+  // TODO:  Assume 1 partition for now until we add logic to expose k2 storage partition counts
   return 1;
 }
 
@@ -131,25 +131,25 @@ const size_t PgTableDesc::num_columns() const {
 
 std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& client_id, int64_t stmt_id) {
   std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>(table_);
-  SqlOpReadRequest& req = op->request();
-  req.client_id = client_id;
-  req.namespace_name = table_->namespace_name();
-  req.table_name = table_->table_name();
-  req.schema_version = table_->schema().version();
-  req.stmt_id = stmt_id;
+  std::shared_ptr<SqlOpReadRequest> req = op->request();
+  req->client_id = client_id;
+  req->namespace_name = table_->namespace_name();
+  req->table_name = table_->table_name();
+  req->schema_version = table_->schema().version();
+  req->stmt_id = stmt_id;
 
   return op;        
 }
 
 std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id) {
   std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>(table_);
-  SqlOpWriteRequest& req = op->request();
-  req.client_id = client_id;
-  req.namespace_name = table_->namespace_name();
-  req.table_name = table_->table_name();
-  req.schema_version = table_->schema().version();
-  req.stmt_id = stmt_id;
-  req.stmt_type = stmt_type;
+  std::shared_ptr<SqlOpWriteRequest> req = op->request();
+  req->client_id = client_id;
+  req->namespace_name = table_->namespace_name();
+  req->table_name = table_->table_name();
+  req->schema_version = table_->schema().version();
+  req->stmt_id = stmt_id;
+  req->stmt_type = stmt_type;
 
   return op;   
 }

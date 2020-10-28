@@ -48,126 +48,157 @@
 
 #include "yb/pggate/pg_column.h"
 
-namespace k2pg {
-namespace gate {
+namespace k2pg
+{
+  namespace gate
+  {
 
-void PgColumn::Init(PgSystemAttrNum attr_num) {
-  switch (attr_num) {
-    case PgSystemAttrNum::kSelfItemPointer:
-    case PgSystemAttrNum::kObjectId:
-    case PgSystemAttrNum::kMinTransactionId:
-    case PgSystemAttrNum::kMinCommandId:
-    case PgSystemAttrNum::kMaxTransactionId:
-    case PgSystemAttrNum::kMaxCommandId:
-    case PgSystemAttrNum::kTableOid:
-    case PgSystemAttrNum::kYBRowId:
-    case PgSystemAttrNum::kYBIdxBaseTupleId:
-    case PgSystemAttrNum::kYBUniqueIdxKeySuffix:
-      break;
+    void PgColumn::Init(PgSystemAttrNum attr_num)
+    {
+      switch (attr_num)
+      {
+      case PgSystemAttrNum::kSelfItemPointer:
+      case PgSystemAttrNum::kObjectId:
+      case PgSystemAttrNum::kMinTransactionId:
+      case PgSystemAttrNum::kMinCommandId:
+      case PgSystemAttrNum::kMaxTransactionId:
+      case PgSystemAttrNum::kMaxCommandId:
+      case PgSystemAttrNum::kTableOid:
+      case PgSystemAttrNum::kYBRowId:
+      case PgSystemAttrNum::kYBIdxBaseTupleId:
+      case PgSystemAttrNum::kYBUniqueIdxKeySuffix:
+        break;
 
-    case PgSystemAttrNum::kYBTupleId: {
-      int idx = static_cast<int>(PgSystemAttrNum::kYBTupleId);
-      desc_.Init(idx,
-                 idx,
-                 "ybctid",
-                 false,
-                 false,
-                 idx,
-                 SQLType::Create(DataType::BINARY),
-                 ColumnSchema::SortingType::kNotSpecified);
-      return;
-    }
-  }
-  LOG(FATAL) << "Invalid attribute number for hidden column";
-}
-
-bool PgColumn::is_virtual_column() {
-  // Currently only ybctid is a virtual column.
-  return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
-}
-
-SqlOpExpr *PgColumn::AllocPrimaryBind(SqlOpWriteRequest *write_req) {
-  bind_pb_ = new SqlOpExpr();
-  if (desc_.is_partition()) {
-    write_req->partition_column_values.push_back(bind_pb_);
-  } else if (desc_.is_primary()) {
-    write_req->range_column_values.push_back(bind_pb_);
-  }
-  return bind_pb_;
-}
-
-SqlOpExpr *PgColumn::AllocBind(SqlOpWriteRequest *write_req) {
-  if (bind_pb_ == nullptr) {
-    DCHECK(!desc_.is_partition() && !desc_.is_primary())
-      << "Binds for primary columns should have already been allocated by AllocPrimaryBindPB()";
-
-    if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-      bind_pb_ = write_req->ybctid_column_value;
-      if (bind_pb_ == nullptr) {
-        bind_pb_ = new SqlOpExpr();
+      case PgSystemAttrNum::kYBTupleId:
+      {
+        int idx = static_cast<int>(PgSystemAttrNum::kYBTupleId);
+        desc_.Init(idx,
+                   idx,
+                   "ybctid",
+                   false,
+                   false,
+                   idx,
+                   SQLType::Create(DataType::BINARY),
+                   ColumnSchema::SortingType::kNotSpecified);
+        return;
       }
-    } else {        
-      ColumnValue col;
-      col.column_id = id();
-      col.expr = new SqlOpExpr();
-      bind_pb_ = col.expr;
-      write_req->column_values.push_back(col);
-    }
-  }
-  return bind_pb_;
-}
-
-SqlOpExpr *PgColumn::AllocAssign(SqlOpWriteRequest *write_req) {
-  if (assign_pb_ == nullptr) {
-    ColumnValue col;
-    col.column_id = id();
-    col.expr = new SqlOpExpr();
-    assign_pb_ = col.expr;    
-    write_req->column_new_values.push_back(col);
-  }
-  return assign_pb_;
-}
-
-SqlOpExpr *PgColumn::AllocPrimaryBind(SqlOpReadRequest *read_req) {
-  bind_pb_ = new SqlOpExpr();
-   if (desc_.is_partition()) {
-    read_req->partition_column_values.push_back(bind_pb_);
-  } else if (desc_.is_primary()) {
-    read_req->range_column_values.push_back(bind_pb_);  
-  }
-  return bind_pb_; 
-}
-
-//--------------------------------------------------------------------------------------------------
-
-SqlOpExpr *PgColumn::AllocBind(SqlOpReadRequest *read_req) {
-  if (bind_pb_ == nullptr) {
-    DCHECK(!desc_.is_partition() && !desc_.is_primary())
-      << "Binds for primary columns should have already been allocated by AllocPrimaryBindPB()";
-
-    if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-      bind_pb_ = read_req->ybctid_column_value;
-      if (bind_pb_ == nullptr) {
-        bind_pb_ = new SqlOpExpr();
       }
-    } else {
-      DLOG(FATAL) << "Binds for other columns are not allowed";
+      LOG(FATAL) << "Invalid attribute number for hidden column";
     }
-  }
-  return bind_pb_;  
-}
 
-SqlOpCondition *PgColumn::AllocBindConditionExpr(SqlOpReadRequest *read_req) {
-  if (bind_condition_expr_pb_ == nullptr) {
-    bind_condition_expr_pb_ = read_req->condition_expr;
-    if (bind_condition_expr_pb_ == nullptr) {
-      bind_condition_expr_pb_ = new SqlOpCondition();
+    bool PgColumn::is_virtual_column()
+    {
+      // Currently only ybctid is a virtual column.
+      return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
     }
-    bind_condition_expr_pb_->setOp(PgExpr::Opcode::PG_EXPR_AND);
-  }
 
-  return bind_condition_expr_pb_; 
-}
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req)
+    {
+      if (bind_var_ == nullptr)
+      {
+        DCHECK(desc_.is_partition() || desc_.is_primary())
+            << "Only primary columns are allocated by AllocKeyBind()";
 
-}  // namespace gate
-}  // namespace k2pg
+        bind_var_ = std::make_shared<SqlOpExpr>();
+        write_req->key_column_values.push_back(bind_var_);
+      }
+
+      return bind_var_;
+    }
+
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req)
+    {
+      if (bind_var_ == nullptr)
+      {
+        DCHECK(!desc_.is_partition() && !desc_.is_primary())
+            << "Binds for primary columns should have already been allocated by AllocKeyBind()";
+
+        if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
+        {
+          bind_var_ = write_req->ybctid_column_value;
+          if (bind_var_ == nullptr)
+          {
+            bind_var_ = std::make_shared<SqlOpExpr>();
+          }
+        }
+        else
+        {
+          ColumnValue col;
+          col.column_id = id();
+          col.expr = std::make_shared<SqlOpExpr>();
+          bind_var_ = col.expr;
+          write_req->column_values.push_back(col);
+        }
+      }
+
+      return bind_var_;
+    }
+
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req)
+    {
+      if (assign_var_ == nullptr)
+      {
+        ColumnValue col;
+        col.column_id = id();
+        col.expr = std::make_shared<SqlOpExpr>();
+        assign_var_ = col.expr;
+        write_req->column_new_values.push_back(col);
+      }
+
+      return assign_var_;
+    }
+
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpReadRequest> read_req)
+    {
+      if (bind_var_ == nullptr)
+      {
+        DCHECK(desc_.is_partition() || desc_.is_primary())
+            << "Only primary columns are allocated by AllocKeyBind()";
+
+        bind_var_ = std::make_shared<SqlOpExpr>();
+        read_req->key_column_values.push_back(bind_var_);
+      }
+
+      return bind_var_;
+    }
+
+    //--------------------------------------------------------------------------------------------------
+
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::shared_ptr<SqlOpReadRequest> read_req)
+    {
+      if (bind_var_ == nullptr)
+      {
+        DCHECK(!desc_.is_partition() && !desc_.is_primary())
+            << "Binds for primary columns should have already been allocated by AllocKeyBind()";
+
+        if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+          bind_var_ = read_req->ybctid_column_value;
+          if (bind_var_ == nullptr)
+          {
+            bind_var_ = std::make_shared<SqlOpExpr>();
+          }
+        } else {
+          DLOG(FATAL) << "Binds for other columns are not allowed";
+        }
+      }
+
+      return bind_var_;
+    }
+
+    std::shared_ptr<SqlOpCondition> PgColumn::AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req)
+    {
+      if (bind_condition_expr_var_ == nullptr)
+      {
+        bind_condition_expr_var_ = read_req->condition_expr;
+        if (bind_condition_expr_var_ == nullptr)
+        {
+          bind_condition_expr_var_ = std::make_shared<SqlOpCondition>();
+        }
+        bind_condition_expr_var_->setOp(PgExpr::Opcode::PG_EXPR_AND);
+      }
+
+      return bind_condition_expr_var_;
+    }
+
+  } // namespace gate
+} // namespace k2pg

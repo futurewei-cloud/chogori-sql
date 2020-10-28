@@ -49,7 +49,7 @@
 #ifndef CHOGORI_GATE_DML_DELETE_H
 #define CHOGORI_GATE_DML_DELETE_H
 
-#include "yb/pggate/pg_dml.h"
+#include "yb/pggate/pg_dml_write.h"
 
 namespace k2pg {
 namespace gate {
@@ -58,10 +58,6 @@ class PgDelete : public PgDmlWrite {
  public:
   // Public types.
   typedef scoped_refptr<PgDelete> ScopedRefPtr;
-  typedef scoped_refptr<const PgDelete> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgDelete> UniPtr;
-  typedef std::unique_ptr<const PgDelete> UniPtrConst;
 
   // Constructors.
   PgDelete(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id, bool is_single_row_txn)

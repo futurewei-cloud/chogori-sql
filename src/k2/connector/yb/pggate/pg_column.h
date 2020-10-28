@@ -64,8 +64,6 @@ using namespace k2pg::sql;
 // This class can be used to describe any reference of a column.
 class ColumnDesc {
  public:
-  static const int kHiddenColumnCount = 2;
-
   typedef std::shared_ptr<ColumnDesc> SharedPtr;
 
   ColumnDesc() : sql_type_(SQLType::Create(DataType::UNKNOWN_DATA)) {
@@ -149,18 +147,18 @@ class PgColumn {
   void Init(PgSystemAttrNum attr_num);
 
   // Bindings for write requests.
-  SqlOpExpr *AllocPrimaryBind(SqlOpWriteRequest *write_req);
-  SqlOpExpr *AllocBind(SqlOpWriteRequest *write_req);
+  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   // Bindings for read requests.
-  SqlOpExpr *AllocPrimaryBind(SqlOpReadRequest *write_req);
-  SqlOpExpr *AllocBind(SqlOpReadRequest *read_req);
+  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpReadRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // Bindings for read requests.
-  SqlOpCondition *AllocBindConditionExpr(SqlOpReadRequest *read_req);
+  std::shared_ptr<SqlOpCondition> AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // Assign values for write requests.
-  SqlOpExpr *AllocAssign(SqlOpWriteRequest *write_req);
+  std::shared_ptr<SqlOpExpr> AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   ColumnDesc *desc() {
     return &desc_;
@@ -174,12 +172,12 @@ class PgColumn {
     return desc_.name();
   }
 
-  SqlOpExpr *bind_pb() {
-    return bind_pb_;
+  std::shared_ptr<SqlOpExpr> bind_var() {
+    return bind_var_;
   }
 
-  SqlOpExpr *assign_pb() {
-    return assign_pb_;
+  std::shared_ptr<SqlOpExpr> assign_var() {
+    return assign_var_;
   }
 
   int attr_num() const {
@@ -216,17 +214,17 @@ class PgColumn {
   ColumnDesc desc_;
 
   // Input binds. For now these are just literal values of the columns.
-  // - In DocDB API, for primary columns, their associated values in expression list must
+  // - In storage API, for primary columns, their associated values in expression list must
   //   strictly follow the order that was specified by CREATE TABLE statement while Postgres DML
-  //   statements will not follow this order. Therefore, we reserve the spaces in protobuf
+  //   statements will not follow this order. Therefore, we reserve the spaces in request
   //   structures for associated expressions of the primary columns in the specified order.
   // - During DML execution, the reserved expression spaces will be filled with actual values.
   // - The data-member "primary_exprs" is to map column id with the reserved expression spaces.
-  SqlOpExpr *bind_pb_ = nullptr;
-  SqlOpCondition *bind_condition_expr_pb_ = nullptr;
+  std::shared_ptr<SqlOpExpr> bind_var_ = nullptr;
+  std::shared_ptr<SqlOpCondition> bind_condition_expr_var_ = nullptr;
 
   // new-values of a column in the tuple.
-  SqlOpExpr *assign_pb_ = nullptr;
+  std::shared_ptr<SqlOpExpr> assign_var_ = nullptr;
 
   // Wether or not this column must be read from DB for the SQL request.
   bool read_requested_ = false;

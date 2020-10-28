@@ -46,90 +46,91 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_DML_SELECT_H
-#define CHOGORI_GATE_DML_SELECT_H
+#ifndef CHOGORI_GATE_PG_DML_READ_H
+#define CHOGORI_GATE_PG_DML_READ_H
 
-#include "yb/pggate/pg_dml_read.h"
+#include "yb/pggate/pg_dml.h"
 
 namespace k2pg {
 namespace gate {
-
-using yb::Status;
-using yb::Slice;
-
 //--------------------------------------------------------------------------------------------------
-// SELECT
+// DML_READ
 //--------------------------------------------------------------------------------------------------
+// Scan Scenarios:
+//
+// 1. SequentialScan or PrimaryIndexScan (class PgSelect)
+//    - We does not have a separate table for PrimaryIndex.
+//    - The target table descriptor, where data is read and returned, is the main table.
+//    - The binding table descriptor, whose column is bound to values, is also the main table.
+//
+// 2. IndexOnlyScan (Class PgSelectIndex)
+//    - This special case is optimized where data is read from index table.
+//    - The target table descriptor, where data is read and returned, is the index table.
+//    - The binding table descriptor, whose column is bound to values, is also the index table.
+//
+// 3. IndexScan SysTable / UserTable (Class PgSelect and Nested PgSelectIndex)
+//    - We will use the binds to query base-ybctid in the index table, which is then used
+//      to query data from the main table.
+//    - The target table descriptor, where data is read and returned, is the main table.
+//    - The binding table descriptor, whose column is bound to values, is the index table.
 
-class PgSelect : public PgDmlRead {
+class PgDmlRead : public PgDml {
+
  public:
   // Public types.
-  typedef scoped_refptr<PgSelect> ScopedRefPtr;
+  typedef scoped_refptr<PgDmlRead> ScopedRefPtr;
+  typedef std::shared_ptr<PgDmlRead> SharedPtr;
 
   // Constructors.
-  PgSelect(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+  PgDmlRead(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
            const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
+  virtual ~PgDmlRead();
 
-  virtual ~PgSelect();
+  StmtOp stmt_op() const override { return StmtOp::STMT_SELECT; }
 
-  // Prepare query before execution.
-  virtual CHECKED_STATUS Prepare();
+  virtual CHECKED_STATUS Prepare() = 0;
 
-  // Prepare secondary index if that index is used by this query.
-  CHECKED_STATUS PrepareSecondaryIndex();
-};
+  // Allocate binds.
+  virtual void PrepareBinds();
 
-//--------------------------------------------------------------------------------------------------
-// SELECT FROM Secondary Index Table
-//--------------------------------------------------------------------------------------------------
+  // Set forward (or backward) scan.
+  void SetForwardScan(const bool is_forward_scan);
 
-class PgSelectIndex : public PgDmlRead {
- public:
-  // Public types.
-  typedef scoped_refptr<PgSelectIndex> ScopedRefPtr;
-  typedef std::shared_ptr<PgSelectIndex> SharedPtr;
+  // Bind a column with an EQUALS condition.
+  CHECKED_STATUS BindColumnCondEq(int attnum, PgExpr *attr_value);
 
-  // Constructors.
-  PgSelectIndex(PgSession::ScopedRefPtr pg_session,
-                const PgObjectId& table_id,
-                const PgObjectId& index_id,
-                const PgPrepareParameters *prepare_params);
-  virtual ~PgSelectIndex();
+  // Bind a range column with a BETWEEN condition.
+  CHECKED_STATUS BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end);
 
-  // Prepare query for secondary index. This function is called when Postgres layer is accessing
-  // the IndexTable directy (IndexOnlyScan).
-  CHECKED_STATUS Prepare();
+  // Bind a column with an IN condition.
+  CHECKED_STATUS BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_values);
 
-  // Prepare NESTED query for secondary index. This function is called when Postgres layer is
-  // accessing the IndexTable via an outer select (Sequential or primary scans)
-  CHECKED_STATUS PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req);
+  // Execute.
+  virtual CHECKED_STATUS Exec(const PgExecParameters *exec_params);
 
-  CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
-
-  // The output parameter "ybctids", where ybctid is the hidden column that is used as row id.
-  Result<bool> FetchRowIdBatch(std::vector<Slice>& ybctids);
-
-  // Get next batch of row ids from either PgGate::cache or server.
-  Result<bool> GetNextRowIdBatch();
-
-  void set_is_executed(bool value) {
-    is_executed_ = value;
+  void SetCatalogCacheVersion(const uint64_t catalog_cache_version) override {
+    DCHECK_NOTNULL(read_req_)->catalog_version = catalog_cache_version;
   }
 
-  bool is_executed() {
-    return is_executed_;
-  }
+  protected:
+   // Allocate column variable.
+  std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
+  std::shared_ptr<SqlOpCondition> AllocColumnBindConditionExprVar(PgColumn *col);
 
- private:
-  // Collect ybctids from IndexTable.
-  CHECKED_STATUS FetchYbctids();
+  // Allocate variable for target.
+  std::shared_ptr<SqlOpExpr> AllocTargetVar() override;
 
-  // This secondary query should be executed just one time.
-  bool is_executed_ = false;
+  // Allocate column expression.
+  std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;
+
+  // Delete allocated target for columns that have no bind-values.
+  CHECKED_STATUS DeleteEmptyPrimaryBinds();
+
+  // References read request from template operation.
+  std::shared_ptr<SqlOpReadRequest> read_req_ = nullptr;
 };
 
 }  // namespace gate
 }  // namespace k2pg
 
-#endif //CHOGORI_GATE_DML_SELECT_H
-
+#endif //CHOGORI_GATE_PG_DML_READ_H
