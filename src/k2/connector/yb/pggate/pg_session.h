@@ -152,10 +152,10 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   CHECKED_STATUS RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to);
 
-  CHECKED_STATUS CreateTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+  CHECKED_STATUS CreateTable(std::string& namespace_id, std::string& namespace_name, std::string& table_name, const PgObjectId& table_id, 
     PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
-  CHECKED_STATUS CreateIndexTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
+  CHECKED_STATUS CreateIndexTable(std::string& namespace_id, std::string& namespace_name, std::string& table_name, const PgObjectId& table_id, 
     const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 

@@ -181,31 +181,6 @@ size_t PgCreateTable::PrimaryKeyRangeColumnCount() const {
   return range_columns_.size();
 }
 
-Status PgCreateTable::AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_t *data) {
-  const auto key_column_count = PrimaryKeyRangeColumnCount();
-  SCHECK(num_cols && num_cols <= key_column_count,
-      InvalidArgument,
-      "Split points cannot be more than number of primary key columns");
-
-  std::vector<SqlValue> row;
-  row.reserve(key_column_count);
-  for (size_t i = 0; i < key_column_count; ++i) {
-    SqlValue sql_value(types[i], data[i], false);
-    row.push_back(std::move(sql_value));
-  }
-
-  split_rows_.push_back(std::move(row));
-  return Status::OK();
-}
-
-Result<std::vector<std::string>> PgCreateTable::BuildSplitRows(const PgSchema& schema) {
-  std::vector<std::string> rows;
-  rows.reserve(split_rows_.size());
-  // TODO: should not be used by K2 SQL, remove this
-
-  return rows;
-}
-
 Status PgCreateTable::Exec() {
   TableProperties table_properties;
   // always use transaction for create table

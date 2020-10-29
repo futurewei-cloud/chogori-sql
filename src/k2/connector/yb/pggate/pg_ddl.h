@@ -81,7 +81,6 @@ class PgDdl : public PgStatement {
 
 class PgCreateDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateDatabase> ScopedRefPtr;
 
   // Constructors.
@@ -106,7 +105,6 @@ class PgCreateDatabase : public PgDdl {
 
 class PgDropDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
 
   // Constructors.
@@ -125,7 +123,6 @@ class PgDropDatabase : public PgDdl {
 
 class PgAlterDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
 
   // Constructors.
@@ -153,7 +150,6 @@ class PgAlterDatabase : public PgDdl {
 
 class PgCreateTable : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateTable> ScopedRefPtr;
 
   // Constructors.
@@ -193,8 +189,6 @@ class PgCreateTable : public PgDdl {
     return AddColumnImpl(attr_name, attr_num, attr_type->yb_type, is_hash, is_range, sorting_type);
   }
 
-  CHECKED_STATUS AddSplitRow(int num_cols, YBCPgTypeEntity **types, uint64_t *data);
-
   // Execute.
   virtual CHECKED_STATUS Exec();
 
@@ -209,25 +203,21 @@ class PgCreateTable : public PgDdl {
 
   virtual size_t PrimaryKeyRangeColumnCount() const;
 
- protected:
-  Result<std::vector<std::string>> BuildSplitRows(const PgSchema& schema);
-
-  NamespaceId namespace_id_;
-  NamespaceName namespace_name_;
-  TableName table_name_;
+  protected:
+  std::string namespace_id_;
+  std::string namespace_name_;
+  std::string table_name_;
   const PgObjectId table_id_;
   bool is_pg_catalog_table_;
   bool is_shared_table_;
   bool if_not_exist_;
   // TODO: add hash schema
   std::vector<std::string> range_columns_;
-  std::vector<std::vector<SqlValue>> split_rows_; // Split rows for range tables
   SchemaBuilder schema_builder_;
 };
 
 class PgDropTable: public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropTable> ScopedRefPtr;
 
   // Constructors.
@@ -279,7 +269,6 @@ class PgAlterTable : public PgDdl {
 
 class PgCreateIndex : public PgCreateTable {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateIndex> ScopedRefPtr;
 
   // Constructors.
@@ -333,7 +322,6 @@ class PgCreateIndex : public PgCreateTable {
 
 class PgDropIndex : public PgDropTable {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropIndex> ScopedRefPtr;
 
   // Constructors.
