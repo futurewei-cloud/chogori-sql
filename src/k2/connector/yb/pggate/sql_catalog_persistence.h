@@ -25,17 +25,17 @@ Copyright(c) 2020 Futurewei Cloud
 #define CHOGORI_SQL_CATALOG_PERSISTENCE_H
 
 #include <string>
+#include <assert.h>     
 
 namespace k2pg {
 namespace sql {
 
 using std::string;
 
-class ClusterConfig {
+class ClusterInfo {
     public: 
-    ClusterConfig() {};
-
-    ~ClusterConfig() {};
+    ClusterInfo() {};
+    ~ClusterInfo() {};
 
     void SetClusterId(string& cluster_id) {
         cluster_id_ = std::move(cluster_id);
@@ -44,14 +44,6 @@ class ClusterConfig {
     const string& GetClusterId() {
         return cluster_id_;
     } 
-
-    void SetCatalogVersion(uint64_t catalog_version) {
-        catalog_version_ = catalog_version;
-    }
-
-    uint64_t GetCatalogVersion() {
-        return catalog_version_;
-    }
 
     void SetInitdbDone(bool initdb_done) {
         initdb_done_ = initdb_done;
@@ -64,11 +56,71 @@ class ClusterConfig {
     private: 
     string cluster_id_;
 
-    uint64_t catalog_version_ = 0;
-
     bool initdb_done_ = false;
 };
 
+class NamespaceInfo {
+    public:
+    NamespaceInfo() = default;
+    ~NamespaceInfo() = default;
+
+    void SetNamespaceName(string& name) {
+        namespace_name_ = std::move(name);
+    }
+
+    const string& GetNamespaceName() const {
+        return namespace_name_;
+    }
+
+    void SetNamespaceId(string& id) {
+        namespace_id_ = std::move(id);
+    }
+
+    const string& GetNamespaceId() const {
+        return namespace_id_;
+    }
+
+    void SetNamespaceOid(uint32_t pg_oid) {
+        namespace_oid_ = pg_oid;
+    }
+
+    uint32_t GetNamespaceOid() {
+        return namespace_oid_;
+    }
+
+    void SetNextPgOid(uint32_t next_pg_oid) {
+        assert(next_pg_oid > next_pg_oid_);
+        next_pg_oid_ = next_pg_oid;
+    }
+
+    uint32_t GetNextPgOid() {
+        return next_pg_oid_;
+    }
+
+    void SetCatalogVersion(uint64_t catalog_version) {
+        catalog_version_ = catalog_version;
+    }
+
+    uint64_t GetCatalogVersion() {
+        return catalog_version_;
+    }
+
+    private:
+    // name
+    string namespace_name_;
+
+    // encoded id, for example, uuid
+    string namespace_id_;
+
+    // object id assigned by PG
+    uint32_t namespace_oid_;
+
+    // next PG Oid that is available for object id assignment for this namespace
+    uint32_t next_pg_oid_;
+
+    // catalog schema version
+    uint64_t catalog_version_ = 0;
+};
 
 } // namespace sql
 } // namespace k2pg

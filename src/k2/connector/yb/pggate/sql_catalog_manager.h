@@ -30,6 +30,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
 #include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/cluster_info_handler.h"
 
 namespace k2pg {
 namespace sql {
@@ -156,7 +157,7 @@ namespace sql {
         string errorMessage;  
     };
 
-    class SqlCatalogManager : public std::enable_shared_from_this<SqlCatalogManager>{
+    class SqlCatalogManager : public std::enable_shared_from_this<SqlCatalogManager> {
 
     public:
         typedef std::shared_ptr<SqlCatalogManager> SharedPtr;
@@ -206,6 +207,7 @@ namespace sql {
 
         std::atomic<uint64_t> catalog_version_{0};
 
+        std::shared_ptr<ClusterInfoHandler> cluster_info_handler_;
     };
 
 } // namespace sql

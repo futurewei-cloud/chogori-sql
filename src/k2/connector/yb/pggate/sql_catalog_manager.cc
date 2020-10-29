@@ -40,6 +40,7 @@ namespace sql {
     static yb::Env* default_env;
 
     SqlCatalogManager::SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
+        cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
     }
 
     SqlCatalogManager::~SqlCatalogManager() {
