@@ -34,7 +34,6 @@ PgTxnHandler::PgTxnHandler(scoped_refptr<K2Adapter> adapter) : adapter_(adapter)
 PgTxnHandler::~PgTxnHandler() {
   // Abort the transaction before the transaction handler gets destroyed.
   if (txn_ != nullptr) {
-    txn_->endTxn(false);
     std::future<k2::EndResult> result_future = txn_->endTxn(false);
     k2::EndResult result = result_future.get();
     if (!result.status.is2xxOK()) {
@@ -163,7 +162,7 @@ void PgTxnHandler::StartNewTransaction() {
   std::future<K23SITxn> txn_future = adapter_->beginTransaction();
   K23SITxn k2_txn = txn_future.get(); 
   std::shared_ptr<K23SITxn> txn_tmp(&k2_txn);
-   txn_ = txn_tmp;
+  txn_ = txn_tmp;
 }
 
 }  // namespace gate

@@ -23,8 +23,6 @@
 #include <vector>
 #include <optional>
 
-#include <boost/scoped_ptr.hpp>
-
 #include "yb/common/type/slice.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
