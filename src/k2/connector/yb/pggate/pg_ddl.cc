@@ -64,7 +64,7 @@ using namespace k2pg::sql;
 //--------------------------------------------------------------------------------------------------
 
 PgCreateDatabase::PgCreateDatabase(PgSession::ScopedRefPtr pg_session,
-                                   const char *database_name,
+                                   const std::string& database_name,
                                    const PgOid database_oid,
                                    const PgOid source_database_oid,
                                    const PgOid next_oid)
@@ -83,7 +83,7 @@ Status PgCreateDatabase::Exec() {
 }
 
 PgDropDatabase::PgDropDatabase(PgSession::ScopedRefPtr pg_session,
-                               const char *database_name,
+                               const std::string& database_name,
                                PgOid database_oid)
     : PgDdl(pg_session),
       database_name_(database_name),
@@ -98,7 +98,7 @@ Status PgDropDatabase::Exec() {
 }
 
 PgAlterDatabase::PgAlterDatabase(PgSession::ScopedRefPtr pg_session,
-                               const char *database_name,
+                               const std::string& database_name,
                                PgOid database_oid)
     : PgDdl(pg_session),
       database_name_(database_name),
@@ -112,7 +112,7 @@ Status PgAlterDatabase::Exec() {
   return pg_session_->RenameDatabase(database_name_, database_oid_, rename_to_);
 }
 
-Status PgAlterDatabase::RenameDatabase(const char *new_name) {
+Status PgAlterDatabase::RenameDatabase(const std::string& new_name) {
   rename_to_ = new_name;  
   return Status::OK();
 }
@@ -122,9 +122,9 @@ Status PgAlterDatabase::RenameDatabase(const char *new_name) {
 //--------------------------------------------------------------------------------------------------
 
 PgCreateTable::PgCreateTable(PgSession::ScopedRefPtr pg_session,
-                             const char *database_name,
-                             const char *schema_name,
-                             const char *table_name,
+                             const std::string& database_name,
+                             const std::string& schema_name,
+                             const std::string& table_name,
                              const PgObjectId& table_id,
                              bool is_shared_table,
                              bool if_not_exist,
@@ -134,8 +134,8 @@ PgCreateTable::PgCreateTable(PgSession::ScopedRefPtr pg_session,
       namespace_name_(database_name),
       table_name_(table_name),
       table_id_(table_id),
-      is_pg_catalog_table_(strcmp(schema_name, "pg_catalog") == 0 ||
-                           strcmp(schema_name, "information_schema") == 0),
+      is_pg_catalog_table_(schema_name.compare("pg_catalog") == 0 ||
+                           schema_name.compare("information_schema") == 0),
       is_shared_table_(is_shared_table),
       if_not_exist_(if_not_exist) {
   // Add internal primary key column to a Postgres table without a user-specified primary key.
@@ -150,7 +150,7 @@ PgCreateTable::PgCreateTable(PgSession::ScopedRefPtr pg_session,
   }
 }
 
-Status PgCreateTable::AddColumnImpl(const char *attr_name,
+Status PgCreateTable::AddColumnImpl(const std::string& attr_name,
                                     int attr_num,
                                     int attr_ybtype,
                                     bool is_hash,
@@ -248,7 +248,7 @@ PgAlterTable::PgAlterTable(PgSession::ScopedRefPtr pg_session,
 PgAlterTable::~PgAlterTable() {
 }
 
-Status PgAlterTable::AddColumn(const char *name,
+Status PgAlterTable::AddColumn(const std::string& name,
                                const YBCPgTypeEntity *attr_type,
                                int order,
                                bool is_not_null) {
@@ -257,17 +257,17 @@ Status PgAlterTable::AddColumn(const char *name,
   return Status::OK();
 }
 
-Status PgAlterTable::RenameColumn(const char *old_name, const char *new_name) {
+Status PgAlterTable::RenameColumn(const std::string& old_name, const std::string& new_name) {
    // TODO: add implementation
  return Status::OK();
 }
 
-Status PgAlterTable::DropColumn(const char *name) {
+Status PgAlterTable::DropColumn(const std::string& name) {
   // TODO: add implementation
   return Status::OK();
 }
 
-Status PgAlterTable::RenameTable(const char *db_name, const char *new_name) {
+Status PgAlterTable::RenameTable(const std::string& db_name, const std::string& new_name) {
   // TODO: add implementation
   return Status::OK();
 }
@@ -283,9 +283,9 @@ Status PgAlterTable::Exec() {
 //--------------------------------------------------------------------------------------------------
 
 PgCreateIndex::PgCreateIndex(PgSession::ScopedRefPtr pg_session,
-                             const char *database_name,
-                             const char *schema_name,
-                             const char *index_name,
+                             const std::string& database_name,
+                             const std::string& schema_name,
+                             const std::string& index_name,
                              const PgObjectId& index_id,
                              const PgObjectId& base_table_id,
                              bool is_shared_index,
@@ -332,7 +332,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   return Status::OK();
 }
 
-Status PgCreateIndex::AddColumnImpl(const char *attr_name,
+Status PgCreateIndex::AddColumnImpl(const std::string& attr_name,
                                     int attr_num,
                                     int attr_ybtype,
                                     bool is_hash,

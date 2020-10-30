@@ -74,8 +74,14 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
   return Status::OK();
 }
 
-Status SqlCatalogClient::CreateTable(std::string& namespace_name, std::string& table_name, const PgObjectId& table_id, 
-    PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
+Status SqlCatalogClient::CreateTable(
+    const std::string& namespace_name, 
+    const std::string& table_name, 
+    const PgObjectId& table_id, 
+    PgSchema& schema, 
+    bool is_pg_catalog_table, 
+    bool is_shared_table, 
+    bool if_not_exist) {
   std::shared_ptr<CreateTableRequest> request = std::make_shared<CreateTableRequest>();
   request->namespaceName = std::move(namespace_name);
   request->namespaceId = table_id.database_oid;
@@ -93,9 +99,17 @@ Status SqlCatalogClient::CreateTable(std::string& namespace_name, std::string& t
   return Status::OK();
 }
 
-Status SqlCatalogClient::CreateIndexTable(std::string& namespace_name, std::string& table_name, const PgObjectId& table_id, 
-    const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
-    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
+Status SqlCatalogClient::CreateIndexTable(
+    const std::string& namespace_name, 
+    const std::string& table_name, 
+    const PgObjectId& table_id, 
+    const PgObjectId& base_table_id, 
+    PgSchema& schema, 
+    bool is_unique_index, 
+    bool skip_index_backfill,
+    bool is_pg_catalog_table, 
+    bool is_shared_table, 
+    bool if_not_exist) {
 
   // TODO: add implementation                                   
   return Status::OK();

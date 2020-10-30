@@ -26,27 +26,24 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
-Status K2Adapter::Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn) {
+std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
   // TODO: add implementation  
-  // could add the op to a batch and then process the batch in FlushAsync()                                 
-  return Status::OK();
+  // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
+  // 2) call read or write on k23SITxn
+  // 3) create create a runner in a thread pool to check the response of the SKV call
+  // 4) return a promise and return the future as the response for this method
+  // 5) once the response from SKV returns
+  //   a) populate the response object in op
+  //   b) populate the data field in op as result set
+  //   c) set the value for future 
+  throw new std::logic_error("Not implemented yet");   
 }
 
-void K2Adapter::FlushAsync(StatusFunctor callback) {
+std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
+  // same as the above except that send multiple requests and need to handle multiple futures from SKV
+  // but only return a single future to this method caller 
   // TODO: add implementation  
-  // send one or batch of operations asynchronously                                 
-}
-
-Status K2Adapter::ReadSync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn) {
-  Synchronizer s;
-  ReadAsync(std::move(pg_op), k23SITxn, s.AsStatusFunctor());
-  return s.Wait();
-}
-
-void K2Adapter::ReadAsync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn, StatusFunctor callback) {
-  CHECK(pg_op->read_only());
-  CHECK_OK(Apply(std::move(pg_op), k23SITxn));
-  FlushAsync(std::move(callback));
+  throw new std::logic_error("Not implemented yet");   
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {

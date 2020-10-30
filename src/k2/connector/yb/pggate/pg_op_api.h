@@ -277,7 +277,7 @@ namespace gate {
         // External statuses.
         //
         // If you add more of those, make sure they are correctly picked up, e.g.
-        // by PgPgReadOpTemplate::ReceiveResponse and PgPgOpTemplate::HandleResponseStatus
+        // by PgSession::HandleResponse
         //
 
         // PostgreSQL error code encoded as in errcodes.h or yb_pg_errcodes.h.

@@ -63,16 +63,16 @@ class SqlCatalogClient : public RefCountedThreadSafe<SqlCatalogClient> {
     CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id = "");
 
-    CHECKED_STATUS CreateTable(std::string& namespace_name, 
-                            std::string& table_name, 
+    CHECKED_STATUS CreateTable(const std::string& namespace_name, 
+                            const std::string& table_name, 
                             const PgObjectId& table_id, 
                             PgSchema& schema, 
                             bool is_pg_catalog_table, 
                             bool is_shared_table, 
                             bool if_not_exist);
 
-    CHECKED_STATUS CreateIndexTable(std::string& namespace_name, 
-                            std::string& table_name, 
+    CHECKED_STATUS CreateIndexTable(const std::string& namespace_name, 
+                            const std::string& table_name, 
                             const PgObjectId& table_id, 
                             const PgObjectId& base_table_id, 
                             PgSchema& schema, 
