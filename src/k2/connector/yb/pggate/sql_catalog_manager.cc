@@ -33,10 +33,11 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/common/status.h"
 #include "yb/common/env.h"
 
-using namespace yb;
-
 namespace k2pg {
 namespace sql {
+    using yb::Status;
+    using k2pg::gate::K2Adapter;
+
     static yb::Env* default_env;
 
     SqlCatalogManager::SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {

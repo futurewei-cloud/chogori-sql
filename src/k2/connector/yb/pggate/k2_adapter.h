@@ -34,6 +34,7 @@ namespace k2pg {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
+using yb::Status;
 using k2pg::gate::K23SIGate;
 using k2pg::gate::K23SITxn;
 
@@ -43,6 +44,7 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
   typedef scoped_refptr<K2Adapter> ScopedRefPtr;
   
   K2Adapter() {
+    k23si_ = std::make_shared<K23SIGate>();
   };
 
   ~K2Adapter();
@@ -63,16 +65,13 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
   std::future<yb::Status> FlushFuture() {
     return MakeFuture<yb::Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
   }
-
-  std::string GetRowId(std::shared_ptr<SqlOpReadRequest> request);
         
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
 
   std::future<K23SITxn> beginTransaction();
 
   private: 
-  // TODO: pass in k23si 
-  k2pg::gate::K23SIGate* k23si = nullptr;
+  std::shared_ptr<K23SIGate> k23si_;
 };
 
 }  // namespace gate

@@ -58,10 +58,10 @@
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/index.h"
 #include "yb/entities/schema.h"
+#include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_op_api.h"
-#include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/pg_gate_api.h"
 #include "yb/pggate/pg_txn_handler.h"
 #include "yb/pggate/sql_catalog_client.h"
@@ -70,7 +70,7 @@ namespace k2pg {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
-using namespace k2pg::sql;
+using k2pg::sql::SqlCatalogClient;
 using yb::Status;
 
 static const int default_session_max_batch_size = 5;
@@ -356,7 +356,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   // Execution status.
   Status status_;
-  string errmsg_;
+  std::string errmsg_;
 
     // Rowid generator.
   ObjectIdGenerator rowid_generator_;
@@ -379,8 +379,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
 
   const YBCPgCallbacks& pg_callbacks_;
 
-  // TODO: pass client/user id from pg?
-  string client_id_;
+  std::string client_id_;
 
   std::atomic<int64_t> stmt_id_ = 1;
 

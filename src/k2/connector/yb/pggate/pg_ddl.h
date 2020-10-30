@@ -150,7 +150,6 @@ class PgAlterDatabase : public PgDdl {
 
 class PgCreateTable : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateTable> ScopedRefPtr;
 
   // Constructors.
@@ -224,7 +223,6 @@ class PgCreateTable : public PgDdl {
 
 class PgDropTable: public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropTable> ScopedRefPtr;
 
   // Constructors.
@@ -276,7 +274,6 @@ class PgAlterTable : public PgDdl {
 
 class PgCreateIndex : public PgCreateTable {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateIndex> ScopedRefPtr;
 
   // Constructors.
@@ -330,7 +327,6 @@ class PgCreateIndex : public PgCreateTable {
 
 class PgDropIndex : public PgDropTable {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropIndex> ScopedRefPtr;
 
   // Constructors.
