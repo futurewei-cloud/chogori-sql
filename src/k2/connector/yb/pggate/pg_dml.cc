@@ -90,8 +90,7 @@ Status PgDml::AppendTarget(PgExpr *target) {
 
 Status PgDml::AppendTargetVar(PgExpr *target) {
   // Append to targets_.
-  auto up = std::unique_ptr<PgExpr>(target);
-  targets_.push_back(std::move(up));
+  targets_.push_back(target);
 
   // Allocate associated expression.
   std::shared_ptr<SqlOpExpr> expr_var = AllocTargetVar();
