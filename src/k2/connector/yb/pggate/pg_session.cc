@@ -144,9 +144,9 @@ Status PgSession::RenameDatabase(const std::string& database_name, PgOid databas
 }
 
 Status PgSession::CreateTable(
-    NamespaceId& namespace_id, 
-    NamespaceName& namespace_name, 
-    TableName& table_name, 
+    const std::string& namespace_id, 
+    const std::string& namespace_name, 
+    const std::string& table_name, 
     const PgObjectId& table_id, 
     PgSchema& schema, 
     bool is_pg_catalog_table, 
@@ -156,9 +156,18 @@ Status PgSession::CreateTable(
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
-Status PgSession::CreateIndexTable(NamespaceId& namespace_id, NamespaceName& namespace_name, TableName& table_name, const PgObjectId& table_id, 
-    const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
-    bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist) {
+Status PgSession::CreateIndexTable(
+    const std::string& namespace_id, 
+    const std::string& namespace_name, 
+    const std::string& table_name, 
+    const PgObjectId& table_id, 
+    const PgObjectId& base_table_id, 
+    PgSchema& schema, 
+    bool is_unique_index, 
+    bool skip_index_backfill,
+    bool is_pg_catalog_table, 
+    bool is_shared_table, 
+    bool if_not_exist) {
   return catalog_client_->CreateIndexTable(namespace_name, table_name, table_id, base_table_id, schema,
     is_unique_index, skip_index_backfill, is_pg_catalog_table, is_shared_table, if_not_exist);
 }

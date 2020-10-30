@@ -81,16 +81,11 @@ class PgDdl : public PgStatement {
 
 class PgCreateDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgCreateDatabase> ScopedRefPtr;
-  typedef scoped_refptr<const PgCreateDatabase> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgCreateDatabase> UniPtr;
-  typedef std::unique_ptr<const PgCreateDatabase> UniPtrConst;
 
   // Constructors.
   PgCreateDatabase(PgSession::ScopedRefPtr pg_session,
-                   const char *database_name,
+                   const std::string& database_name,
                    PgOid database_oid,
                    PgOid source_database_oid,
                    PgOid next_oid);
@@ -102,7 +97,7 @@ class PgCreateDatabase : public PgDdl {
   CHECKED_STATUS Exec();
 
  private:
-  const char *database_name_;
+  const std::string database_name_;
   const PgOid database_oid_;
   const PgOid source_database_oid_;
   const PgOid next_oid_;
@@ -110,15 +105,10 @@ class PgCreateDatabase : public PgDdl {
 
 class PgDropDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
-  typedef scoped_refptr<const PgDropDatabase> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgDropDatabase> UniPtr;
-  typedef std::unique_ptr<const PgDropDatabase> UniPtrConst;
 
   // Constructors.
-  PgDropDatabase(PgSession::ScopedRefPtr pg_session, const char *database_name, PgOid database_oid);
+  PgDropDatabase(PgSession::ScopedRefPtr pg_session, const std::string& database_name, PgOid database_oid);
   virtual ~PgDropDatabase();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_DATABASE; }
@@ -127,34 +117,29 @@ class PgDropDatabase : public PgDdl {
   CHECKED_STATUS Exec();
 
  private:
-  const char *database_name_;
+  const std::string database_name_;
   const PgOid database_oid_;
 };
 
 class PgAlterDatabase : public PgDdl {
  public:
-  // Public types.
   typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
-  typedef scoped_refptr<const PgDropDatabase> ScopedRefPtrConst;
-
-  typedef std::unique_ptr<PgDropDatabase> UniPtr;
-  typedef std::unique_ptr<const PgDropDatabase> UniPtrConst;
 
   // Constructors.
   PgAlterDatabase(PgSession::ScopedRefPtr pg_session,
-                  const char *database_name,
+                  const std::string& database_name,
                   PgOid database_oid);
   virtual ~PgAlterDatabase();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_ALTER_DATABASE; }
 
-  CHECKED_STATUS RenameDatabase(const char *newname);
+  CHECKED_STATUS RenameDatabase(const std::string& newname);
 
   // Execute.
   CHECKED_STATUS Exec();
 
  private:
-  const char *database_name_;
+  const std::string database_name_;
   const PgOid database_oid_;
   std::optional<std::string> rename_to_;
 };
@@ -170,9 +155,9 @@ class PgCreateTable : public PgDdl {
 
   // Constructors.
   PgCreateTable(PgSession::ScopedRefPtr pg_session,
-                const char *database_name,
-                const char *schema_name,
-                const char *table_name,
+                const std::string& database_name,
+                const std::string& chema_name,
+                const std::string& table_name,
                 const PgObjectId& table_id,
                 bool is_shared_table,
                 bool if_not_exist,
@@ -185,7 +170,7 @@ class PgCreateTable : public PgDdl {
   virtual bool is_unique_index() const { return false; }
   virtual const bool skip_index_backfill() const { return false; }
 
-  CHECKED_STATUS AddColumn(const char *attr_name,
+  CHECKED_STATUS AddColumn(const std::string& attr_name,
                            int attr_num,
                            int attr_ybtype,
                            bool is_hash,
@@ -195,7 +180,7 @@ class PgCreateTable : public PgDdl {
     return AddColumnImpl(attr_name, attr_num, attr_ybtype, is_hash, is_range, sorting_type);
   }
 
-  CHECKED_STATUS AddColumn(const char *attr_name,
+  CHECKED_STATUS AddColumn(const std::string& attr_name,
                            int attr_num,
                            const YBCPgTypeEntity *attr_type,
                            bool is_hash,
@@ -211,7 +196,7 @@ class PgCreateTable : public PgDdl {
   virtual CHECKED_STATUS Exec();
 
  protected:
-  virtual CHECKED_STATUS AddColumnImpl(const char *attr_name,
+  virtual CHECKED_STATUS AddColumnImpl(const std::string& attr_name,
                                        int attr_num,
                                        int attr_ybtype,
                                        bool is_hash,
@@ -224,9 +209,9 @@ class PgCreateTable : public PgDdl {
  protected:
   Result<std::vector<std::string>> BuildSplitRows(const PgSchema& schema);
 
-  NamespaceId namespace_id_;
-  NamespaceName namespace_name_;
-  TableName table_name_;
+  const std::string namespace_id_;
+  const std::string namespace_name_;
+  const std::string table_name_;
   const PgObjectId table_id_;
   bool is_pg_catalog_table_;
   bool is_shared_table_;
@@ -268,16 +253,16 @@ class PgAlterTable : public PgDdl {
   PgAlterTable(PgSession::ScopedRefPtr pg_session,
                const PgObjectId& table_id);
 
-  CHECKED_STATUS AddColumn(const char *name,
+  CHECKED_STATUS AddColumn(const std::string& name,
                            const YBCPgTypeEntity *attr_type,
                            int order,
                            bool is_not_null);
 
-  CHECKED_STATUS RenameColumn(const char *old_name, const char *new_name);
+  CHECKED_STATUS RenameColumn(const std::string& old_name, const std::string& new_name);
 
-  CHECKED_STATUS DropColumn(const char *name);
+  CHECKED_STATUS DropColumn(const std::string& name);
 
-  CHECKED_STATUS RenameTable(const char *db_name, const char *new_name);
+  CHECKED_STATUS RenameTable(const std::string& db_name, const std::string& new_name);
 
   CHECKED_STATUS Exec();
 
@@ -296,9 +281,9 @@ class PgCreateIndex : public PgCreateTable {
 
   // Constructors.
   PgCreateIndex(PgSession::ScopedRefPtr pg_session,
-                const char *database_name,
-                const char *schema_name,
-                const char *index_name,
+                const std::string& database_name,
+                const std::string& schema_name,
+                const std::string& index_name,
                 const PgObjectId& index_id,
                 const PgObjectId& base_table_id,
                 bool is_shared_index,
@@ -324,7 +309,7 @@ class PgCreateIndex : public PgCreateTable {
   CHECKED_STATUS Exec() override;
 
  protected:
-  CHECKED_STATUS AddColumnImpl(const char *attr_name,
+  CHECKED_STATUS AddColumnImpl(const std::string& attr_name,
                                int attr_num,
                                int attr_ybtype,
                                bool is_hash,
