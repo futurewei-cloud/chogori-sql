@@ -53,19 +53,10 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
 
   CHECKED_STATUS Shutdown();
 
-  CHECKED_STATUS Apply(std::shared_ptr<PgOpTemplate> op, std::shared_ptr<K23SITxn> k23SITxn);
+  std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 
-  // for read only operation
-  CHECKED_STATUS ReadSync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn);
+  std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
 
-  void ReadAsync(std::shared_ptr<PgOpTemplate> pg_op, std::shared_ptr<K23SITxn> k23SITxn, StatusFunctor callback);
-
-  void FlushAsync(StatusFunctor callback);
-
-  std::future<yb::Status> FlushFuture() {
-    return MakeFuture<yb::Status>([this](auto callback) { this->FlushAsync(std::move(callback)); });
-  }
-        
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
 
   std::future<K23SITxn> beginTransaction();

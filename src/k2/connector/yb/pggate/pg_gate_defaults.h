@@ -46,6 +46,8 @@ namespace gate {
     
     static const double default_ysql_backward_prefetch_scale_factor = 0.25;
 
+    static const int default_session_max_batch_size = 1;
+
 }  // namespace gate
 }  // namespace k2pg
 

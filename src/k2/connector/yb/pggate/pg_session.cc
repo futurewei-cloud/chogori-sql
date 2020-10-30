@@ -311,11 +311,11 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
   read_request->targets.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceLastValueColIdx));
   read_request->targets.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, kPgSequenceIsCalledColIdx));
   std::shared_ptr<PgReadOpTemplate> read_op = std::move(psql_read);
-
-  // TODO: might need to refactor this logic since SKV does not support read-only transactions
-  std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler(read_op->IsTransactional(), read_op->read_only());
-  RETURN_NOT_OK(k2_adapter_->ReadSync(read_op, k23SITxn));
-
+  uint64_t read_time;
+  PgSessionAsyncRunResult result = VERIFY_RESULT(RunAsync(read_op, oid, &read_time, true));
+  // wait for read to complete
+  result.GetStatus();
+  
   // TODO: make sure the response is populated correctly in K2 Adapter
   Slice cursor;
   int64_t row_count = 0;
@@ -383,7 +383,7 @@ void PgSession::StartOperationsBuffering() {
 Status PgSession::StopOperationsBuffering() {
   DCHECK(buffering_enabled_);
   buffering_enabled_ = false;
-  return FlushBufferedOperationsImpl();
+  return FlushBufferedOperations();
 }
 
 Status PgSession::ResetOperationsBuffering() {
@@ -395,7 +395,12 @@ Status PgSession::ResetOperationsBuffering() {
 }
 
 Status PgSession::FlushBufferedOperations() {
-  return FlushBufferedOperationsImpl();
+  if (buffered_ops_.empty()) {
+    return Status::OK();
+  }
+  RunHelper runner(this, k2_adapter_, true);
+  PgSessionAsyncRunResult result = VERIFY_RESULT(runner.Flush());
+  return result.GetStatus();
 }
 
 void PgSession::DropBufferedOperations() {
@@ -403,51 +408,6 @@ void PgSession::DropBufferedOperations() {
           << "Dropping " << buffered_keys_.size() << " pending operations";
   buffered_keys_.clear();
   buffered_ops_.clear();
-  buffered_txn_ops_.clear();
-}
-
-Status PgSession::FlushBufferedOperationsImpl() {
-  auto ops = std::move(buffered_ops_);
-  auto txn_ops = std::move(buffered_txn_ops_);
-  buffered_keys_.clear();
-  buffered_ops_.clear();
-  buffered_txn_ops_.clear();
-  if (!ops.empty()) {
-    RETURN_NOT_OK(FlushBufferedOperationsImpl(ops, false /* transactional */));
-  }
-  if (!txn_ops.empty()) {
-    // No transactional operations are expected in the initdb mode.
-    DCHECK(!YBCIsInitDbModeEnvVarSet());
-    RETURN_NOT_OK(FlushBufferedOperationsImpl(txn_ops, true /* transactional */));
-  }
-  return Status::OK();
-}
-
-Status PgSession::FlushBufferedOperationsImpl(const PgsqlOpBuffer& ops, bool transactional) {
-  DCHECK(ops.size() > 0 && ops.size() <= default_session_max_batch_size);
-
-  // TODO: add logic to check if the ops belong to the current transaction, if not, might need to set the new transaction time
-
-  for (auto buffered_op : ops) {
-    const auto& op = buffered_op.operation;
-    DCHECK_EQ(ShouldHandleTransactionally(*op), transactional)
-        << "Table name: " << op->getTable()->table_name()
-        << ", table is transactional: "
-        << op->IsTransactional()
-        << ", initdb mode: " << YBCIsInitDbModeEnvVarSet();
-
-    std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler(transactional, op->read_only());    
-    RETURN_NOT_OK(k2_adapter_->Apply(op, k23SITxn));
-  }
-  const auto status = k2_adapter_->FlushFuture().get();
-
-  // TODO: need to combine errors from the batch to the status if they exist
-
-  for (const auto& buffered_op : ops) {
-    RETURN_NOT_OK(HandleResponse(*buffered_op.operation, buffered_op.relation_id));
-  } 
-
-  return Status::OK();
 }
 
 Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
@@ -473,17 +433,14 @@ bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
   return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
 }
 
-PgSessionAsyncRunResult::PgSessionAsyncRunResult(std::future<Status> future_status,
-                                                 scoped_refptr<K2Adapter> client)
-    :  future_status_(std::move(future_status)),
-       client_(client) {
+PgSessionAsyncRunResult::PgSessionAsyncRunResult(std::future<Status> future_status)
+    :  future_status_(std::move(future_status)) {
 }
 
 Status PgSessionAsyncRunResult::GetStatus() {
   DCHECK(InProgress());
   auto status = future_status_.get();
   future_status_ = std::future<Status>();
-  // TODO: populate errors to status if client supports batch operations
   return status;
 }
 
@@ -495,56 +452,103 @@ PgSession::RunHelper::RunHelper(scoped_refptr<PgSession> pg_session, scoped_refp
     :  pg_session_(pg_session),
        client_(client),
        transactional_(transactional),
-       buffered_ops_(transactional_ ? pg_session_->buffered_txn_ops_
-                                    : pg_session_->buffered_ops_) {
+       buffered_ops_(pg_session_->buffered_ops_) {
   if (!transactional_) {
     pg_session_->InvalidateForeignKeyReferenceCache();
   }
 }
 
-Status PgSession::RunHelper::Apply(std::shared_ptr<PgOpTemplate> op,
-                                   const PgObjectId& relation_id,
-                                   uint64_t* read_time,
-                                   bool force_non_bufferable) {
-  auto& buffered_keys = pg_session_->buffered_keys_;
-  if (pg_session_->buffering_enabled_ && !force_non_bufferable &&
-      op->type() == PgOpTemplate::Type::WRITE) {
-    // Check for buffered operation related to same row.
-    // If multiple operations are performed in context of single RPC second operation will not
-    // see the results of first operation on DocDB side.
-    // Multiple operations on same row must be performed in context of different RPC.
-    // Flush is required in this case.
-    const auto& wop = down_cast<PgWriteOpTemplate*>(op.get());
-    std::string row_id = client_->GetRowId(wop->request());
-    std::string table_id = wop->request()->table_name;
-    if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(table_id, row_id)).second)) {
-      RETURN_NOT_OK(pg_session_->FlushBufferedOperationsImpl());
-      buffered_keys.insert(RowIdentifier(table_id, row_id));
+Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
+                         size_t ops_count,
+                         const PgObjectId& relation_id,
+                         uint64_t* read_time,
+                         bool force_non_bufferable) {
+  if (!pg_session_->buffering_enabled_ || force_non_bufferable) {
+    // first flush any previous buffered operations if there is any;
+    // TODO: need to consider the scenario that the flush fails due to some reason
+    Flush();
+
+    // send new operations 
+    if (ops_count < 1) {
+      // invalid, do nothing
+      return PgSessionAsyncRunResult(std::future<Status>());
+    } else if (ops_count == 1) {
+      // run a single operation
+      std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
+      return PgSessionAsyncRunResult(client_->Exec(k23SITxn, *op));
+    } else {
+      // run multiple operations in a batch
+      std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
+      std::vector<std::shared_ptr<PgOpTemplate>> ops;
+      for (auto end = op + ops_count; op != end; ++op) { 
+        ops.push_back(*op);
+      } 
+      return PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));  
     }
-    buffered_ops_.push_back({std::move(op), relation_id});
-    // Flush buffers in case limit of operations in single RPC exceeded.
-    return PREDICT_TRUE(buffered_keys.size() < default_session_max_batch_size)
-        ? Status::OK()
-        : pg_session_->FlushBufferedOperationsImpl();
-  }
-
-  // Flush all buffered operations (if any) before performing non-bufferable operation
-  if (!buffered_keys.empty()) {
-    RETURN_NOT_OK(pg_session_->FlushBufferedOperationsImpl());
-  }
-
-  // TODO: ybc has the logic to check if needs_pessimistic_locking here by looking at row_mark_type
-  // in the request, but K2 SKV does not support pessimistic locking, should we simply skip that logic?
-
-  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, op->read_only());
-  return client_->Apply(std::move(op), k23SITxn);
+  } else {
+    auto& buffered_keys = pg_session_->buffered_keys_;
+    bool read_op_included = false;
+    std::vector<std::shared_ptr<PgOpTemplate>> ops;
+    // first add ops to the buffer
+    for (auto end = op + ops_count; op != end; ++op) {
+       if (buffered_ops_.size() >= default_session_max_batch_size) {
+        // we need to flush the buffer if we honor the batch size for 
+        Flush();  
+      }
+      if ((*op)->type() == PgOpTemplate::Type::WRITE) {
+        const auto& wop = down_cast<PgWriteOpTemplate*>((*op).get());
+        std::string row_id = client_->GetRowId(wop->request());
+        std::string table_id = wop->request()->table_name;
+        // check if we have already have a write op for the same row
+        if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(table_id, row_id)).second)) {
+          // if we have a write op for the same row, then we need to flush the buffer first
+          // so that the two write ops for the same row are not in the same batch
+          Flush();
+          // then try to insert the new write for this row
+          buffered_keys.insert(RowIdentifier(table_id, row_id));
+        }
+      } else {
+        read_op_included = true;
+      }
+      buffered_ops_.push_back({std::move(*op), relation_id});
+    }
+    if (read_op_included || buffered_ops_.size() >= default_session_max_batch_size) {
+      return Flush();
+    } else {
+      // buffer the operations and return
+      return PgSessionAsyncRunResult(std::future<Status>());
+    }
+  }                     
 }
 
 Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
-  auto future_status = MakeFuture<Status>([this](auto callback) {
-      client_->FlushAsync([callback](const Status& status) { callback(status); });
-  });
-  return PgSessionAsyncRunResult(std::move(future_status), client_);  
+  if (buffered_ops_.size() == 0) {
+    return PgSessionAsyncRunResult(std::future<Status>());
+  }
+  
+  bool read_only = true;
+  std::vector<std::shared_ptr<PgOpTemplate>> ops;
+  for (auto buffered_op : buffered_ops_) {
+    const auto& op = buffered_op.operation;
+    if (!op->read_only()) {
+      read_only = false;
+    }
+    ops.push_back(op);
+  }
+  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only); 
+  PgSessionAsyncRunResult result = PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));
+  // wait for the batch to complete
+  result.GetStatus();
+
+  // TODO: add logic to handle any failure in the batch
+  for (const auto& buffered_op : buffered_ops_) {
+    // combine errors if there is any and return them in the final status 
+    pg_session_->HandleResponse(*buffered_op.operation, buffered_op.relation_id);
+  }
+  // clear up buffer
+  buffered_ops_.clear();
+  pg_session_->buffered_keys_.clear();
+  return result;
 }
 
 Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
