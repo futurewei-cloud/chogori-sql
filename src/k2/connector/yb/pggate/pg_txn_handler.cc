@@ -160,8 +160,7 @@ void PgTxnHandler::ResetTransaction() {
 void PgTxnHandler::StartNewTransaction() {
   // TODO: add error handling for status check if the status is available
   std::future<K23SITxn> txn_future = adapter_->beginTransaction();
-  K23SITxn k2_txn = txn_future.get(); 
-  std::shared_ptr<K23SITxn> txn_tmp(&k2_txn);
+  auto txn_tmp = std::make_shared<K23SITxn>(txn_future.get());
   txn_ = txn_tmp;
 }
 

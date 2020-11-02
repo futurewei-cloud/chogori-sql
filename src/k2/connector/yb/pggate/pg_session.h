@@ -74,6 +74,8 @@ using yb::RefCountedThreadSafe;
 using k2pg::sql::SqlCatalogClient;
 using yb::Status;
 
+// a place holder for a operation that it could be buffered in PG session for batch process
+// normally, read operation is called directly, write operation could be buffered in batch
 struct BufferableOperation {
   std::shared_ptr<PgOpTemplate> operation;
   // Postgres's relation id. Required to resolve constraint name in case
