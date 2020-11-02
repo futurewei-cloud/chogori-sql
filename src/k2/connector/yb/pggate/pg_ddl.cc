@@ -142,8 +142,6 @@ PgCreateTable::PgCreateTable(PgSession::ScopedRefPtr pg_session,
   if (add_primary_key) {
     // For regular user table, ybrowid should be a hash key because ybrowid is a random uuid.
     //
-    // TODO: need to double check if we want to support the internal primary key column feature
-    //
     bool is_hash = !(is_pg_catalog_table_);
     CHECK_OK(AddColumn("ybrowid", static_cast<int32_t>(PgSystemAttrNum::kYBRowId),
                        YB_YQL_DATA_TYPE_BINARY, is_hash, true /* is_range */));
