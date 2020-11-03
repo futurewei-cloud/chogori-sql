@@ -53,9 +53,16 @@ struct SchemaCreateRequest {
     std::promise<k2::CreateSchemaResult> prom;
 };
 
+struct ScanReadCreateRequest {
+    k2::String collectionName;
+    k2::String schemaName;
+    std::promise<k2::CreateQueryResult> prom;
+};
+
 struct ScanReadRequest {
     k2::dto::K23SI_MTR mtr;
-    std::promise<void> prom;
+    std::shared_ptr<k2::Query> query;
+    std::promise<k2::QueryResult> prom;
 };
 
 struct ReadRequest {
@@ -94,6 +101,7 @@ extern std::queue<BeginTxnRequest> beginTxQ;
 extern std::queue<EndTxnRequest> endTxQ;
 extern std::queue<SchemaGetRequest> schemaGetTxQ;
 extern std::queue<SchemaCreateRequest> schemaCreateTxQ;
+extern std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 extern std::queue<ScanReadRequest> scanReadTxQ;
 extern std::queue<ReadRequest> readTxQ;
 extern std::queue<WriteRequest> writeTxQ;

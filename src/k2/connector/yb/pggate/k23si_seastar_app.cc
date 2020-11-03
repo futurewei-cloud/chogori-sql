@@ -135,9 +135,27 @@ seastar::future<> PGK2Client::_pollReadQ() {
     });
 }
 
+seastar::future<> PGK2Client::_pollCreateScanReadQ() {
+    return pollQ(scanReadCreateTxQ, [this](auto& req) {
+        return _client.createQuery(req.collectionName, req.schemaName)
+            .then([this, &req](auto&& result) {
+                req.prom.set_value(std::move(result));
+            });
+    });
+}
+
 seastar::future<> PGK2Client::_pollScanReadQ() {
-    //TODO add scan support
-    return seastar::make_ready_future();
+    return pollQ(scanReadTxQ, [this](auto& req) mutable {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
+            req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
+            return seastar::make_ready_future();
+        }
+        return fiter->second.query(*req.query)
+            .then([this, &req](auto&& queryResult) {
+                req.prom.set_value(std::move(queryResult));
+            });
+    });
 }
 
 seastar::future<> PGK2Client::_pollWriteQ() {
@@ -156,7 +174,7 @@ seastar::future<> PGK2Client::_pollWriteQ() {
 
 seastar::future<> PGK2Client::_pollForWork() {
     return seastar::when_all_succeed(
-        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ());
+        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ());
 }
 
 }  // namespace gate
