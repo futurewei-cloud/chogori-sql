@@ -63,8 +63,8 @@ PgStatement::PgStatement(PgSession::ScopedRefPtr pg_session) :
 PgStatement::~PgStatement() {
 }
 
-void PgStatement::AddExpr(PgExpr::SharedPtr expr) {
-  exprs_.push_back(expr);
+void PgStatement::AddExpr(std::unique_ptr<PgExpr> expr) {
+  exprs_.push_back(std::move(expr));
 }
 
 }  // namespace gate
