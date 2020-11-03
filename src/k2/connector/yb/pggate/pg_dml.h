@@ -183,8 +183,14 @@ class PgDml : public PgStatement {
   // - "targets_" are either selected or returned expressions by DML statements.
   PgTableDesc::ScopedRefPtr target_desc_;
   
-  // use unique_ptr here to make sure that we release the memory for PgExprs when we are done with the statement
-  std::vector<std::unique_ptr<PgExpr>> targets_;
+  // reverted this back to still use raw pointer since the all PgExprs have already been 
+  // stored in its parent class PgStatement as follows
+  // 
+  // std::list<PgExpr::SharedPtr> exprs_;
+  //
+  // they would be released once the statement is finished.
+  // As a result, we don't need double effort here
+  std::vector<PgExpr *> targets_;
 
   // bind_desc_ is the descriptor of the table whose key columns' values will be specified by the
   // the DML statement being executed.

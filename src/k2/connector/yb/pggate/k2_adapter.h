@@ -26,11 +26,15 @@
 #include "yb/entities/schema.h"
 #include "yb/pggate/k23si_gate.h"
 #include "yb/pggate/k23si_txn.h"
+#include "yb/pggate/pg_op_api.h"
+#include "yb/pggate/pg_env.h"
+
 
 namespace k2pg {
 namespace gate {
 
 using yb::RefCountedThreadSafe;
+using yb::Status;
 using k2pg::gate::K23SIGate;
 using k2pg::gate::K23SITxn;
 
@@ -40,15 +44,25 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
   typedef scoped_refptr<K2Adapter> ScopedRefPtr;
   
   K2Adapter() {
+    k23si_ = std::make_shared<K23SIGate>();
   };
 
   ~K2Adapter();
 
+  CHECKED_STATUS Init();
+
+  CHECKED_STATUS Shutdown();
+
+  std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
+
+  std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
+
+  std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
+
   std::future<K23SITxn> beginTransaction();
 
   private: 
-  // TODO: pass in k23si 
-  k2pg::gate::K23SIGate* k23si = nullptr;
+  std::shared_ptr<K23SIGate> k23si_;
 };
 
 }  // namespace gate

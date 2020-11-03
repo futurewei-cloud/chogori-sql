@@ -40,8 +40,8 @@ namespace sql {
           
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(NamespaceName namespace_name, TableName table_name, Schema schema, IndexMap index_map) : 
-            table_id_(namespace_name, table_name), schema_(std::move(schema)), index_map_(std::move(index_map)) {
+        TableInfo(NamespaceName namespace_name, TableName table_name, Schema schema) : 
+            table_id_(namespace_name, table_name), schema_(std::move(schema)) {
         }
 
         const NamespaceName& namespace_name() const {
@@ -82,6 +82,10 @@ namespace sql {
         // Number of range key columns.
         size_t num_range_key_columns() const {
             return schema_.num_range_key_columns();
+        }
+
+        void add_secondary_index(const TableId& index_id, const IndexInfo& index_info) {
+            index_map_.emplace(index_id, index_info);
         }
 
         Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
