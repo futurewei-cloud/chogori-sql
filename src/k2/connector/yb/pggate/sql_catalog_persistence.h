@@ -37,7 +37,7 @@ class ClusterInfo {
     ClusterInfo() {};
     ~ClusterInfo() {};
 
-    void SetClusterId(string& cluster_id) {
+    void SetClusterId(string cluster_id) {
         cluster_id_ = std::move(cluster_id);
     }
 

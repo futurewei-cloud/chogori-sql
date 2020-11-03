@@ -26,6 +26,10 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
+std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, k2::dto::Schema schema) {
+  throw new std::logic_error("Not implemented yet");    
+}
+
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
   // TODO: add implementation  
   // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE

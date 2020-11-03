@@ -35,14 +35,29 @@ namespace sql {
 
 using yb::Status;
 using k2pg::gate::K2Adapter;
+using k2pg::gate::K23SITxn;
+
+static const std::string cluster_info_collection_name = "K2_SKV_SQL_COLLECTION";
+static const std::string cluster_info_partition_name = "K2_SKV_SQL_CLUSTER_INFO";
 
 class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandler> {
     public:
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
+    static inline k2::dto::Schema cluster_info_schema {
+        .name = cluster_info_partition_name,
+        .version = 1,
+        .fields = std::vector<k2::dto::SchemaField> {
+                {k2::dto::FieldType::STRING, "ClusterId", false, false},
+                // TODO: change it to k2::dto::FieldType::BOOL
+                {k2::dto::FieldType::INT16T, "InitDbDone", false, false}},
+        .partitionKeyFields = std::vector<uint32_t> { 0 },
+        .rangeKeyFields = std::vector<uint32_t> {}
+    };
+
     ClusterInfoHandler(scoped_refptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
-
+    
     CHECKED_STATUS CreateClusterInfo(ClusterInfo& cluster_info);
 
     CHECKED_STATUS UpdateClusterInfo(ClusterInfo& cluster_info);
@@ -50,7 +65,8 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     CHECKED_STATUS ReadClusterInfo(ClusterInfo& cluster_info);
 
     private:  
-    scoped_refptr<K2Adapter> k2_adapter_;    
+    scoped_refptr<K2Adapter> k2_adapter_;  
+    std::shared_ptr<k2::dto::Schema> cluster_info_schema_ptr;  
 };
 
 } // namespace sql

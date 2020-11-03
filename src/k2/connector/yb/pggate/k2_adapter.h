@@ -53,6 +53,8 @@ class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
 
   CHECKED_STATUS Shutdown();
 
+  std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, k2::dto::Schema schema);
+
   std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 
   std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
