@@ -735,10 +735,10 @@ Status PgGateApiImpl::NewColumnRef(PgStatement *stmt, int attr_num, const PgType
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  PgColumnRef::SharedPtr colref = make_shared<PgColumnRef>(attr_num, type_entity, type_attrs);
-  stmt->AddExpr(colref);
-
+  std::unique_ptr<PgExpr> colref = std::make_unique<PgColumnRef>(attr_num, type_entity, type_attrs);
   *expr_handle = colref.get();
+  stmt->AddExpr(std::move(colref));
+
   return Status::OK();
 }
 
@@ -750,10 +750,10 @@ Status PgGateApiImpl::NewConstant(PgStatement *stmt, const YBCPgTypeEntity *type
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  PgExpr::SharedPtr pg_const = make_shared<PgConstant>(type_entity, datum, is_null);
-  stmt->AddExpr(pg_const);
-
+  std::unique_ptr<PgExpr> pg_const = std::make_unique<PgConstant>(type_entity, datum, is_null);
   *expr_handle = pg_const.get();
+  stmt->AddExpr(std::move(pg_const));
+
   return Status::OK();
 }
 
@@ -763,11 +763,11 @@ Status PgGateApiImpl::NewConstantOp(PgStatement *stmt, const YBCPgTypeEntity *ty
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  PgExpr::SharedPtr pg_const = make_shared<PgConstant>(type_entity, datum, is_null,
+  std::unique_ptr<PgExpr> pg_const = std::make_unique<PgConstant>(type_entity, datum, is_null,
       is_gt ? PgExpr::Opcode::PG_EXPR_GT : PgExpr::Opcode::PG_EXPR_LT);
-  stmt->AddExpr(pg_const);
-
   *expr_handle = pg_const.get();
+  stmt->AddExpr(std::move(pg_const));
+
   return Status::OK();
 }
 
@@ -803,10 +803,10 @@ Status PgGateApiImpl::NewOperator(PgStatement *stmt, const char *opname,
   RETURN_NOT_OK(PgExpr::CheckOperatorName(opname));
 
   // Create operator.
-  PgExpr::SharedPtr pg_op = make_shared<PgOperator>(opname, type_entity);
-  stmt->AddExpr(pg_op);
-
+  std::unique_ptr<PgExpr> pg_op = std::make_unique<PgOperator>(opname, type_entity);
   *op_handle = pg_op.get();
+  stmt->AddExpr(std::move(pg_op));
+
   return Status::OK();
 }
 

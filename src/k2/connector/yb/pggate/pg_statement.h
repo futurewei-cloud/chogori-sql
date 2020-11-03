@@ -112,7 +112,7 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
 
   //------------------------------------------------------------------------------------------------
   // Add expressions that are belong to this statement.
-  void AddExpr(PgExpr::SharedPtr expr);
+  void AddExpr(std::unique_ptr<PgExpr> expr);
 
   //------------------------------------------------------------------------------------------------
   // Clear all values and expressions that were bound to the given statement.
@@ -127,7 +127,7 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
   string errmsg_;
 
   // Expression list to be destroyed as soon as the statement is removed from the API.
-  std::list<PgExpr::SharedPtr> exprs_;
+  std::list<std::unique_ptr<PgExpr>> exprs_;
 
   string client_id_;
 
