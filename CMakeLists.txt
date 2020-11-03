@@ -30,13 +30,13 @@ add_subdirectory(src/k2/connector)
 include(ExternalProject)
 ExternalProject_Add(
     postgres
-    DEPENDS ybcommon ybpggate
+    DEPENDS ybcommon k2entities ybpggate
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     STAMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/stamp
     TMP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/tmp
     LOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/log
     BINARY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/cmakedir/build
-    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh    ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres    "-lybcommon -lybpggate -lgflags -lybutf -std=c++17"     "-L/usr/local/lib/k2/ -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/utf"      "-I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector"     <INSTALL_DIR>
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh    ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres    "-lybcommon -lk2entities -lybpggate -lgflags -lybutf -std=c++17"     "-L/usr/local/lib/k2/ -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/entities -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/pggate -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/yb/utf"      "-I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector"     <INSTALL_DIR>
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     BUILD_ALWAYS 1
     BUILD_COMMAND make -j -f Makefile "PG_CPP_LIBS=-lk23si_client -lcpo_client -ltso_client -ldto -lappbase -ltransport -lcrc32c -lconfig -lseastar -lcommon -lboost_thread -lyaml-cpp -lboost_program_options -lfmt -libverbs -lhwloc -lnuma -lcrypto++ -ldl -lrt -lprotobuf -lgnutls")

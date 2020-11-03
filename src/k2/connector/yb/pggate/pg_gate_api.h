@@ -478,6 +478,7 @@ void YBCPgSetThreadLocalErrMsg(const void* new_msg);
 
 const void* YBCPgGetThreadLocalErrMsg();
 
+// APIs called by pg_dump.c only
 void YBCSetMasterAddresses(const char *hosts);
 
 void YBCShutdownPgGateBackend();

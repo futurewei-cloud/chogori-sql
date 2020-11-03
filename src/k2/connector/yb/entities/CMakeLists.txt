@@ -10,4 +10,4 @@ set_target_properties(k2entities PROPERTIES
 
 target_link_libraries (k2entities PRIVATE glog ybcommon)
 
-set_target_properties(k2entities PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(k2entities PROPERTIES LINKER_LANGUAGE C)
