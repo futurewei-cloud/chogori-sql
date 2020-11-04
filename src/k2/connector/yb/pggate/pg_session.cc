@@ -211,6 +211,16 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
   return Status::OK();
 }
 
+Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
+  // TODO: add implementation
+  return Status::OK();  
+}
+
+Status PgSession::DeleteDBSequences(int64_t db_oid) {
+  // TODO: add implementation
+  return Status::OK();  
+}
+
 void PgSession::InvalidateTableCache(const PgObjectId& table_id) {
   const TableId yb_table_id = table_id.GetYBTableId();
   table_cache_.erase(yb_table_id);
