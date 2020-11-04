@@ -116,6 +116,9 @@ namespace sql {
         return Status::OK();
     }
 
+    Status SqlCatalogManager::ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse>* response) {
+        return Status::OK();
+    }
 }  // namespace sql
 }  // namespace k2pg
 
