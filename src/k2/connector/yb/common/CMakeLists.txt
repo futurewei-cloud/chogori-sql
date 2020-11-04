@@ -1,8 +1,6 @@
 file(GLOB HEADERS "*.h" "*/*.h")
 file(GLOB SOURCES "*.cc" "*.c" "*/*.cc" "*/*.c")
 
-add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wno-char-subscripts -Wno-ignored-qualifiers -Wno-strict-aliasing -Wno-stringop-truncation -Wall)
-
 add_library(ybcommon SHARED ${HEADERS} ${SOURCES})
 
 set_target_properties(ybcommon PROPERTIES

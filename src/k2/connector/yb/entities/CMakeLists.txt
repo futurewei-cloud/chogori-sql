@@ -1,8 +1,6 @@
 file(GLOB HEADERS "*.h")
 file(GLOB SOURCES "*.cc")
 
-add_compile_options(-O3 -g -Werror -Wno-sign-compare -Wno-deprecated -Wno-unused-parameter -Wno-type-limits -Wno-unused-function -Wno-char-subscripts -Wno-ignored-qualifiers -Wno-strict-aliasing -Wall)
-
 add_library(k2entities SHARED ${HEADERS} ${SOURCES})
 
 set_target_properties(k2entities PROPERTIES
@@ -12,4 +10,4 @@ set_target_properties(k2entities PROPERTIES
 
 target_link_libraries (k2entities PRIVATE glog ybcommon)
 
-set_target_properties(k2entities PROPERTIES LINKER_LANGUAGE CXX)
+set_target_properties(k2entities PROPERTIES LINKER_LANGUAGE C)

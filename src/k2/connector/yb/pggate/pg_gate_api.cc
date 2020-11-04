@@ -11,6 +11,9 @@
 using namespace yb;
 using namespace k2pg::gate;
 
+namespace k2pg {
+namespace gate {
+
 namespace {
 // Using a raw pointer here to fully control object initialization and destruction.
 k2pg::gate::PgGateApiImpl* api_impl;
@@ -895,8 +898,12 @@ YBCStatus YBCInitPgGateBackend() {
 void YBCShutdownPgGateBackend() {
 }
 
+} // extern "C"
+
+}  // namespace gate
+}  // namespace k2pg
+
 yb::Env* yb::Env::Default() {
+  // TODO: add implementation
   return nullptr;
 }
-
-} // extern "C"
