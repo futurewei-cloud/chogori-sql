@@ -63,7 +63,7 @@ using namespace k2pg::sql;
 // PgCreateDatabase
 //--------------------------------------------------------------------------------------------------
 
-PgCreateDatabase::PgCreateDatabase(PgSession::ScopedRefPtr pg_session,
+PgCreateDatabase::PgCreateDatabase(std::shared_ptr<PgSession> pg_session,
                                    const std::string& database_name,
                                    const PgOid database_oid,
                                    const PgOid source_database_oid,
@@ -82,7 +82,7 @@ Status PgCreateDatabase::Exec() {
   return pg_session_->CreateDatabase(database_name_, database_oid_, source_database_oid_, next_oid_);
 }
 
-PgDropDatabase::PgDropDatabase(PgSession::ScopedRefPtr pg_session,
+PgDropDatabase::PgDropDatabase(std::shared_ptr<PgSession> pg_session,
                                const std::string& database_name,
                                PgOid database_oid)
     : PgDdl(pg_session),
@@ -97,7 +97,7 @@ Status PgDropDatabase::Exec() {
   return pg_session_->DropDatabase(database_name_, database_oid_);
 }
 
-PgAlterDatabase::PgAlterDatabase(PgSession::ScopedRefPtr pg_session,
+PgAlterDatabase::PgAlterDatabase(std::shared_ptr<PgSession> pg_session,
                                const std::string& database_name,
                                PgOid database_oid)
     : PgDdl(pg_session),
@@ -121,7 +121,7 @@ Status PgAlterDatabase::RenameDatabase(const std::string& new_name) {
 // PgCreateTable
 //--------------------------------------------------------------------------------------------------
 
-PgCreateTable::PgCreateTable(PgSession::ScopedRefPtr pg_session,
+PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
                              const std::string& database_name,
                              const std::string& schema_name,
                              const std::string& table_name,
@@ -238,7 +238,7 @@ Status PgCreateTable::Exec() {
 // PgDropTable
 //--------------------------------------------------------------------------------------------------
 
-PgDropTable::PgDropTable(PgSession::ScopedRefPtr pg_session,
+PgDropTable::PgDropTable(std::shared_ptr<PgSession> pg_session,
                          const PgObjectId& table_id,
                          bool if_exist)
     : PgDdl(pg_session),
@@ -262,7 +262,7 @@ Status PgDropTable::Exec() {
 // PgAlterTable
 //--------------------------------------------------------------------------------------------------
 
-PgAlterTable::PgAlterTable(PgSession::ScopedRefPtr pg_session,
+PgAlterTable::PgAlterTable(std::shared_ptr<PgSession> pg_session,
                            const PgObjectId& table_id)
     : PgDdl(pg_session),
       table_id_(table_id) {
@@ -305,7 +305,7 @@ Status PgAlterTable::Exec() {
 // PgCreateIndex
 //--------------------------------------------------------------------------------------------------
 
-PgCreateIndex::PgCreateIndex(PgSession::ScopedRefPtr pg_session,
+PgCreateIndex::PgCreateIndex(std::shared_ptr<PgSession> pg_session,
                              const std::string& database_name,
                              const std::string& schema_name,
                              const std::string& index_name,
@@ -408,7 +408,7 @@ Status PgCreateIndex::Exec() {
 // PgDropIndex
 //--------------------------------------------------------------------------------------------------
 
-PgDropIndex::PgDropIndex(PgSession::ScopedRefPtr pg_session,
+PgDropIndex::PgDropIndex(std::shared_ptr<PgSession> pg_session,
                          const PgObjectId& index_id,
                          bool if_exist)
     : PgDropTable(pg_session, index_id, if_exist) {
@@ -418,7 +418,7 @@ PgDropIndex::~PgDropIndex() {
 }
 
 Status PgDropIndex::Exec() {
-  PgOid *base_table_oid;
+  PgOid *base_table_oid = nullptr;
   Status s = pg_session_->DropIndex(table_id_, base_table_oid);
   PgObjectId base_table_id(table_id_.database_oid, *base_table_oid);
 

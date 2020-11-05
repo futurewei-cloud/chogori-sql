@@ -55,7 +55,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
         .rangeKeyFields = std::vector<uint32_t> {}
     };
 
-    ClusterInfoHandler(scoped_refptr<K2Adapter> k2_adapter);
+    ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
     
     CHECKED_STATUS CreateClusterInfo(ClusterInfo& cluster_info);
@@ -65,7 +65,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     CHECKED_STATUS ReadClusterInfo(ClusterInfo& cluster_info);
 
     private:  
-    scoped_refptr<K2Adapter> k2_adapter_;  
+    std::shared_ptr<K2Adapter> k2_adapter_;  
     std::shared_ptr<k2::dto::Schema> cluster_info_schema_ptr;  
 };
 

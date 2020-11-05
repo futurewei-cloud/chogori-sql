@@ -51,7 +51,7 @@
 namespace k2pg {
 namespace gate {
 
-PgDmlWrite::PgDmlWrite(PgSession::ScopedRefPtr pg_session,
+PgDmlWrite::PgDmlWrite(std::shared_ptr<PgSession> pg_session,
                        const PgObjectId& table_id,
                        const bool is_single_row_txn)
     : PgDml(std::move(pg_session), table_id), is_single_row_txn_(is_single_row_txn) {

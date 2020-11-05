@@ -49,7 +49,6 @@
 #ifndef CHOGORI_GATE_PG_TABLE_DESC_H
 #define CHOGORI_GATE_PG_TABLE_DESC_H
 
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/pg_column.h"
 #include "yb/pggate/pg_op_api.h"
@@ -61,10 +60,8 @@ using namespace yb;
 using namespace k2pg::sql;
 
 // This class can be used to describe any reference of a column.
-class PgTableDesc : public RefCountedThreadSafe<PgTableDesc> {
+class PgTableDesc {
  public:
-  typedef scoped_refptr<PgTableDesc> ScopedRefPtr;
-
   explicit PgTableDesc(std::shared_ptr<TableInfo> pg_table);
 
   const TableIdentifier& table_name() const;

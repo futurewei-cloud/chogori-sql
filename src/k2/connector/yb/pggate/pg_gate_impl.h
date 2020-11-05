@@ -101,12 +101,12 @@ class PgGateApiImpl {
   static CHECKED_STATUS ResetMemctx(PgMemctx *memctx);
 
   // Cache statements in YB Memctx. When Memctx is destroyed, the statement is destructed.
-  CHECKED_STATUS AddToCurrentMemctx(const PgStatement::ScopedRefPtr &stmt,
+  CHECKED_STATUS AddToCurrentMemctx(const std::shared_ptr<PgStatement> &stmt,
                                       PgStatement **handle);
 
   // Cache table descriptor in YB Memctx. When Memctx is destroyed, the descriptor is destructed.
   CHECKED_STATUS AddToCurrentMemctx(size_t table_desc_id,
-                                      const PgTableDesc::ScopedRefPtr &table_desc);
+                                      const std::shared_ptr<PgTableDesc> &table_desc);
 
   // Read table descriptor that was cached in YB Memctx.
   CHECKED_STATUS GetTabledescFromCurrentMemctx(size_t table_desc_id, PgTableDesc **handle);
@@ -161,7 +161,7 @@ class PgGateApiImpl {
   CHECKED_STATUS GetCatalogMasterVersion(uint64_t *version);
 
   // Load table.
-  Result<PgTableDesc::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_id);
 
   // Invalidate the cache entry corresponding to table_id from the PgSession table cache.
   void InvalidateTableCache(const PgObjectId& table_id);
@@ -469,11 +469,11 @@ class PgGateApiImpl {
   CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
 
   private:
-  scoped_refptr<K2Adapter> CreateK2Adapter();
+  std::shared_ptr<K2Adapter> CreateK2Adapter();
 
   std::shared_ptr<SqlCatalogManager> CreateCatalogManager();
 
-  scoped_refptr<SqlCatalogClient> CreateCatalogClient();
+  std::shared_ptr<SqlCatalogClient> CreateCatalogClient();
 
   // Metrics.
   gscoped_ptr<MetricRegistry> metric_registry_;
@@ -484,22 +484,22 @@ class PgGateApiImpl {
 
   // TODO(neil) Map for environments (we should have just one ENV?). Environments should contain
   // all the custom flags the PostgreSQL sets. We ignore them all for now.
-  PgEnv::SharedPtr pg_env_;
+  std::shared_ptr<PgEnv> pg_env_;
 
   // Mapping table of YugaByte and PostgreSQL datatypes.
   std::unordered_map<int, const YBCPgTypeEntity *> type_map_;
 
-  scoped_refptr<K2Adapter> k2_adapter_;
+  std::shared_ptr<K2Adapter> k2_adapter_;
 
-  SqlCatalogManager::SharedPtr catalog_manager_;
+  std::shared_ptr<SqlCatalogManager> catalog_manager_;
 
-  SqlCatalogClient::ScopedRefPtr catalog_client_;
+  std::shared_ptr<SqlCatalogClient> catalog_client_;
 
-  scoped_refptr<PgSession> pg_session_;
+  std::shared_ptr<PgSession> pg_session_;
 
   YBCPgCallbacks pg_callbacks_;
 
-  scoped_refptr<PgTxnHandler> pg_txn_handler_;
+  std::shared_ptr<PgTxnHandler> pg_txn_handler_;
 };
 
 }  // namespace gate

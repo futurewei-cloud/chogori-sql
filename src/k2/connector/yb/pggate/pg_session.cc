@@ -98,10 +98,10 @@ size_t hash_value(const RowIdentifier& key) {
 }
 
 PgSession::PgSession(
-    scoped_refptr<SqlCatalogClient> catalog_client,        
-    scoped_refptr<K2Adapter> k2_adapter,
+    std::shared_ptr<SqlCatalogClient> catalog_client,        
+    std::shared_ptr<K2Adapter> k2_adapter,
     const string& database_name,
-    scoped_refptr<PgTxnHandler> pg_txn_handler,
+    std::shared_ptr<PgTxnHandler> pg_txn_handler,
     const YBCPgCallbacks& pg_callbacks)
     : catalog_client_(catalog_client),
       k2_adapter_(k2_adapter),
@@ -212,7 +212,7 @@ Status PgSession::InsertSequenceTuple(int64_t db_oid,
     // Try one more time.
     result = LoadTable(oid);
   }
-  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(result);
+  std::shared_ptr<PgTableDesc> t = VERIFY_RESULT(result);
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlInsert(GetClientId(), GetNextStmtId());
   std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
@@ -241,7 +241,7 @@ Status PgSession::UpdateSequenceTuple(int64_t db_oid,
                                       std::optional<bool> expected_is_called,
                                       bool* skipped) {
   PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
-  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+  std::shared_ptr<PgTableDesc> t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlUpdate(GetClientId(), GetNextStmtId());
   std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
@@ -301,7 +301,7 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
                                     int64_t *last_val,
                                     bool *is_called) {
   PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
-  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+  std::shared_ptr<PgTableDesc> t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgReadOpTemplate> psql_read = t->NewPgsqlSelect(GetClientId(), GetNextStmtId());
   std::shared_ptr<SqlOpReadRequest> read_request = psql_read->request();
@@ -331,7 +331,7 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
 
 Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
   PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
-  PgTableDesc::ScopedRefPtr t = VERIFY_RESULT(LoadTable(oid));
+  std::shared_ptr<PgTableDesc> t = VERIFY_RESULT(LoadTable(oid));
 
   std::unique_ptr<PgWriteOpTemplate> psql_write = t->NewPgsqlDelete(GetClientId(), GetNextStmtId());
   std::shared_ptr<SqlOpWriteRequest> write_request = psql_write->request();
@@ -347,13 +347,13 @@ Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
 
 Status PgSession::DeleteDBSequences(int64_t db_oid) {
   PgObjectId oid(kPgSequencesDataDatabaseOid, kPgSequencesDataTableOid);
-  Result<PgTableDesc::ScopedRefPtr> r = LoadTable(oid);
+  Result<std::shared_ptr<PgTableDesc>> r = LoadTable(oid);
   if (!r.ok()) {
     // Sequence table is not yet created.
     return Status::OK();
   }
 
-  PgTableDesc::ScopedRefPtr t = CHECK_RESULT(r);
+  std::shared_ptr<PgTableDesc> t = CHECK_RESULT(r);
   if (t == nullptr) {
     return Status::OK();
   }
@@ -448,7 +448,7 @@ bool PgSessionAsyncRunResult::InProgress() const {
   return future_status_.valid();
 }
 
-PgSession::RunHelper::RunHelper(scoped_refptr<PgSession> pg_session, scoped_refptr<K2Adapter> client, bool transactional)
+PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional)
     :  pg_session_(pg_session),
        client_(client),
        transactional_(transactional),
@@ -551,10 +551,10 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
   return result;
 }
 
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
+Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
  VLOG(3) << "Loading table descriptor for " << table_id;
   const TableId yb_table_id = table_id.GetYBTableId();
-  shared_ptr<TableInfo> table;
+  std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(yb_table_id);
   if (cached_table == table_cache_.end()) {
@@ -572,7 +572,7 @@ Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_i
     table = cached_table->second;
   }
 
-  return make_scoped_refptr<PgTableDesc>(table);
+  return std::make_shared<PgTableDesc>(table);
 }
 
 Result<bool> PgSession::IsInitDbDone() {

@@ -26,7 +26,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 
-ClusterInfoHandler::ClusterInfoHandler(scoped_refptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
+ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
     cluster_info_schema_ptr = std::make_shared<k2::dto::Schema>();
     *(cluster_info_schema_ptr.get()) = cluster_info_schema;
 }

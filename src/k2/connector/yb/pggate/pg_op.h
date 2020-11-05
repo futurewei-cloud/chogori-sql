@@ -222,8 +222,8 @@ namespace gate {
         typedef std::shared_ptr<PgOp> SharedPtr;
 
         // Constructors & Destructors.
-        explicit PgOp(const PgSession::ScopedRefPtr& pg_session,
-                        const PgTableDesc::ScopedRefPtr& table_desc,
+        explicit PgOp(const std::shared_ptr<PgSession>& pg_session,
+                        const std::shared_ptr<PgTableDesc>& table_desc,
                         const PgObjectId& relation_id = PgObjectId());
         virtual ~PgOp();
 
@@ -284,14 +284,14 @@ namespace gate {
         //----------------------------------- Data Members -----------------------------------------------
         protected:
         // Session control.
-        PgSession::ScopedRefPtr pg_session_;
+        std::shared_ptr<PgSession> pg_session_;
 
         // Operation time. This time is set at the start and must stay the same for the lifetime of the
         // operation to ensure that it is operating on one snapshot.
         uint64_t read_time_ = 0;
 
         // Target table.
-        PgTableDesc::ScopedRefPtr table_desc_;
+        std::shared_ptr<PgTableDesc> table_desc_;
         PgObjectId relation_id_;
 
         // Exec control parameters.
@@ -344,8 +344,8 @@ namespace gate {
         typedef std::shared_ptr<PgReadOp> SharedPtr;
  
         // Constructors & Destructors.
-        PgReadOp(const PgSession::ScopedRefPtr& pg_session,
-                    const PgTableDesc::ScopedRefPtr& table_desc,
+        PgReadOp(const std::shared_ptr<PgSession>& pg_session,
+                    const std::shared_ptr<PgTableDesc>& table_desc,
                     std::unique_ptr<PgReadOpTemplate> read_op);
 
         void ExecuteInit(const PgExecParameters *exec_params) override;
@@ -396,8 +396,8 @@ namespace gate {
         typedef std::shared_ptr<PgWriteOp> SharedPtr;
 
         // Constructors & Destructors.
-        PgWriteOp(const PgSession::ScopedRefPtr& pg_session,
-                    const PgTableDesc::ScopedRefPtr& table_desc,
+        PgWriteOp(const std::shared_ptr<PgSession>& pg_session,
+                    const std::shared_ptr<PgTableDesc>& table_desc,
                     const PgObjectId& relation_id,
                     std::unique_ptr<PgWriteOpTemplate> write_op);
 

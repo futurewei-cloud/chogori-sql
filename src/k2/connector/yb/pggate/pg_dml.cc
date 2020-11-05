@@ -54,11 +54,11 @@ namespace gate {
 using namespace yb;
 using namespace k2pg::sql;
 
-PgDml::PgDml(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id)
+PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id)
     : PgStatement(std::move(pg_session)), table_id_(table_id) {
 }
 
-PgDml::PgDml(PgSession::ScopedRefPtr pg_session,
+PgDml::PgDml(std::shared_ptr<PgSession> pg_session,
              const PgObjectId& table_id,
              const PgObjectId& index_id,
              const PgPrepareParameters *prepare_params)

@@ -67,7 +67,7 @@ using namespace k2pg::sql;
 
 class PgDdl : public PgStatement {
  public:
-  explicit PgDdl(PgSession::ScopedRefPtr pg_session) : PgStatement(pg_session) {
+  explicit PgDdl(std::shared_ptr<PgSession> pg_session) : PgStatement(pg_session) {
   }
 
   virtual CHECKED_STATUS ClearBinds() {
@@ -81,10 +81,8 @@ class PgDdl : public PgStatement {
 
 class PgCreateDatabase : public PgDdl {
  public:
-  typedef scoped_refptr<PgCreateDatabase> ScopedRefPtr;
-
   // Constructors.
-  PgCreateDatabase(PgSession::ScopedRefPtr pg_session,
+  PgCreateDatabase(std::shared_ptr<PgSession> pg_session,
                    const std::string& database_name,
                    PgOid database_oid,
                    PgOid source_database_oid,
@@ -105,10 +103,8 @@ class PgCreateDatabase : public PgDdl {
 
 class PgDropDatabase : public PgDdl {
  public:
-  typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
-
   // Constructors.
-  PgDropDatabase(PgSession::ScopedRefPtr pg_session, const std::string& database_name, PgOid database_oid);
+  PgDropDatabase(std::shared_ptr<PgSession> pg_session, const std::string& database_name, PgOid database_oid);
   virtual ~PgDropDatabase();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_DATABASE; }
@@ -123,10 +119,8 @@ class PgDropDatabase : public PgDdl {
 
 class PgAlterDatabase : public PgDdl {
  public:
-  typedef scoped_refptr<PgDropDatabase> ScopedRefPtr;
-
   // Constructors.
-  PgAlterDatabase(PgSession::ScopedRefPtr pg_session,
+  PgAlterDatabase(std::shared_ptr<PgSession> pg_session,
                   const std::string& database_name,
                   PgOid database_oid);
   virtual ~PgAlterDatabase();
@@ -150,10 +144,8 @@ class PgAlterDatabase : public PgDdl {
 
 class PgCreateTable : public PgDdl {
  public:
-  typedef scoped_refptr<PgCreateTable> ScopedRefPtr;
-
   // Constructors.
-  PgCreateTable(PgSession::ScopedRefPtr pg_session,
+  PgCreateTable(std::shared_ptr<PgSession> pg_session,
                 const std::string& database_name,
                 const std::string& chema_name,
                 const std::string& table_name,
@@ -223,10 +215,8 @@ class PgCreateTable : public PgDdl {
 
 class PgDropTable: public PgDdl {
  public:
-  typedef scoped_refptr<PgDropTable> ScopedRefPtr;
-
   // Constructors.
-  PgDropTable(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id, bool if_exist);
+  PgDropTable(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id, bool if_exist);
   virtual ~PgDropTable();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_TABLE; }
@@ -245,10 +235,8 @@ class PgDropTable: public PgDdl {
 
 class PgAlterTable : public PgDdl {
  public:
-  typedef scoped_refptr<PgAlterTable> ScopedRefPtr;
-
   // Constructors.
-  PgAlterTable(PgSession::ScopedRefPtr pg_session,
+  PgAlterTable(std::shared_ptr<PgSession> pg_session,
                const PgObjectId& table_id);
 
   CHECKED_STATUS AddColumn(const std::string& name,
@@ -274,10 +262,8 @@ class PgAlterTable : public PgDdl {
 
 class PgCreateIndex : public PgCreateTable {
  public:
-  typedef scoped_refptr<PgCreateIndex> ScopedRefPtr;
-
   // Constructors.
-  PgCreateIndex(PgSession::ScopedRefPtr pg_session,
+  PgCreateIndex(std::shared_ptr<PgSession> pg_session,
                 const std::string& database_name,
                 const std::string& schema_name,
                 const std::string& index_name,
@@ -327,10 +313,8 @@ class PgCreateIndex : public PgCreateTable {
 
 class PgDropIndex : public PgDropTable {
  public:
-  typedef scoped_refptr<PgDropIndex> ScopedRefPtr;
-
   // Constructors.
-  PgDropIndex(PgSession::ScopedRefPtr pg_session, const PgObjectId& index_id, bool if_exist);
+  PgDropIndex(std::shared_ptr<PgSession> pg_session, const PgObjectId& index_id, bool if_exist);
   virtual ~PgDropIndex();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_INDEX; }

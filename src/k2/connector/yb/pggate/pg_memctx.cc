@@ -105,12 +105,12 @@ void PgMemctx::Clear() {
   stmts_.clear();
 }
 
-void PgMemctx::Cache(const PgStatement::ScopedRefPtr &stmt) {
+void PgMemctx::Cache(const std::shared_ptr<PgStatement> &stmt) {
   // Hold the stmt until the context is released.
   stmts_.push_back(stmt);
 }
 
-void PgMemctx::Cache(size_t hash_id, const PgTableDesc::ScopedRefPtr &table_desc) {
+void PgMemctx::Cache(size_t hash_id, const std::shared_ptr<PgTableDesc> &table_desc) {
   // Add table descriptor to table.
   tabledesc_map_[hash_id] = table_desc;
 }
