@@ -53,10 +53,15 @@ struct SchemaCreateRequest {
     std::promise<k2::CreateSchemaResult> prom;
 };
 
+struct CreateScanReadResult {
+    k2::Status status;
+    std::shared_ptr<k2::Query> query;
+};
+
 struct ScanReadCreateRequest {
     k2::String collectionName;
     k2::String schemaName;
-    std::promise<k2::CreateQueryResult> prom;
+    std::promise<CreateScanReadResult> prom;
 };
 
 struct ScanReadRequest {

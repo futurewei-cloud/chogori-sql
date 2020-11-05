@@ -139,7 +139,11 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
     return pollQ(scanReadCreateTxQ, [this](auto& req) {
         return _client.createQuery(req.collectionName, req.schemaName)
             .then([this, &req](auto&& result) {
-                req.prom.set_value(std::move(result));
+                CreateScanReadResult response {
+                    .status = std::move(result.status), 
+                    .query = std::make_shared<k2::Query>(std::move(result.query))
+                };
+                req.prom.set_value(std::move(response));
             });
     });
 }
