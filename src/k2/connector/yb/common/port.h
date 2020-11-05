@@ -793,9 +793,6 @@ struct AlignType { typedef char result[Size]; };
 #define HUGE_VALF (static_cast<float>(HUGE_VAL))
 #endif
 
-namespace std {}  // Avoid error if we didn't see std.
-using namespace std; // NOLINT
-
 // VC++ doesn't understand "uint"
 #ifndef HAVE_UINT
 #define HAVE_UINT 1
