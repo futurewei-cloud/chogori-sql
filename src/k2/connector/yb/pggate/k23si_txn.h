@@ -43,6 +43,11 @@ public:
     // Ctor: creates a new transaction with the given mtr.
     K23SITxn(k2::dto::K23SI_MTR mtr);
 
+    // Scans records from K2.
+    // The result future is eventually satisfied with the resulting SKVRecords of the scan.
+    // Uncaught exceptions may also be propagated and show up as exceptional futures here.
+    std::future<k2::QueryResult> scanRead(std::shared_ptr<k2::Query> query);
+
     // Reads a record from K2.
     // The result future is eventually satisfied with the result of the read.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
