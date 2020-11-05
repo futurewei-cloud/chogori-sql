@@ -71,8 +71,12 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-using namespace k2pg::sql;
+using yb::MemTracker;
+using yb::MetricEntity;
+using yb::MetricRegistry;
+using yb::Status;
+using k2pg::sql::PgExpr;
+using k2pg::sql::SqlCatalogManager;
 
 //--------------------------------------------------------------------------------------------------
 // Implements support for CAPI.

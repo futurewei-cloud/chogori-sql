@@ -54,6 +54,7 @@ namespace k2pg {
 namespace gate {
 
 using namespace std::chrono;
+using namespace k2pg::sql;
 
 //--------------------------------------------------------------------------------------------------
 // Constants used for the sequences data table.

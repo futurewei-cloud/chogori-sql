@@ -8,11 +8,10 @@
 #include "yb/pggate/pg_gate_thread_local_vars.h"
 #include "yb/pggate/pg_gate_impl.h"
 
-using namespace yb;
-using namespace k2pg::gate;
-
 namespace k2pg {
 namespace gate {
+
+using k2pg::sql::SqlCatalogManager;
 
 namespace {
 // Using a raw pointer here to fully control object initialization and destruction.

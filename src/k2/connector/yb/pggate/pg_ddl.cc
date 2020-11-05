@@ -56,7 +56,6 @@ using std::make_shared;
 using std::shared_ptr;
 using std::string;
 using namespace std::literals;  // NOLINT
-using namespace yb;
 using namespace k2pg::sql;
 
 //--------------------------------------------------------------------------------------------------
@@ -337,7 +336,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   if (is_unique_index_) {
     RETURN_NOT_OK(
         PgCreateTable::AddColumnImpl("ybuniqueidxkeysuffix",
-                                     to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
+                                     yb::to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
                                      YB_YQL_DATA_TYPE_BINARY,
                                      false /* is_hash */,
                                      true /* is_range */));
@@ -347,7 +346,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   // at the end of the primary key of the index, i.e. either before any non-primary-key column if
   // any or before exec() below.
   RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",
-                                             to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
+                                             yb::to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
                                              YB_YQL_DATA_TYPE_BINARY,
                                              false /* is_hash */,
                                              !is_unique_index_ /* is_range */));

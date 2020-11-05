@@ -58,8 +58,10 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-using namespace k2pg::sql;
+using k2pg::sql::DataType;
+using k2pg::sql::SQLType;
+using k2pg::sql::ColumnSchema;
+using k2pg::sql::PgSystemAttrNum;
 
 // This class can be used to describe any reference of a column.
 class ColumnDesc {

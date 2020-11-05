@@ -51,7 +51,6 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
 using namespace k2pg::sql;
 
 PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id)
