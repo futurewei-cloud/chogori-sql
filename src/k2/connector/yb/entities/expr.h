@@ -59,8 +59,6 @@
 namespace k2pg {
 namespace sql {
 
-using namespace yb;
-
 class PgExpr {
     public:
     enum class Opcode {

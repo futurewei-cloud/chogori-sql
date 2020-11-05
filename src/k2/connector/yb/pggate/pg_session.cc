@@ -54,6 +54,7 @@ namespace k2pg {
 namespace gate {
 
 using namespace std::chrono;
+using namespace k2pg::sql;
 
 RowIdentifier::RowIdentifier(const std::string& table_id, const std::string row_id) :
   table_id_(table_id), row_id_(row_id) {

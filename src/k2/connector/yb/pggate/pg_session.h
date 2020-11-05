@@ -69,7 +69,10 @@
 namespace k2pg {
 namespace gate {
 
+using k2pg::sql::IndexPermissions;
 using k2pg::sql::SqlCatalogClient;
+using yb::ObjectIdGenerator;
+using yb::MonoDelta;
 using yb::Status;
 
 // a place holder for a operation that it could be buffered in PG session for batch process

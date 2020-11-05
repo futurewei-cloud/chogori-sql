@@ -18,12 +18,10 @@
 #include "yb/common/strings/escaping.h"
 #include "yb/common/cast.h"
 
-using boost::uuids::uuid;
-
 namespace k2pg {
 namespace sql {
-
-using namespace yb;   
+using boost::uuids::uuid;
+using yb::Status;
 
 static constexpr int kUuidVersion = 3; // Repurpose old name-based UUID v3 to embed Postgres oids.
 
@@ -70,7 +68,7 @@ std::string UuidToString(uuid* id) {
   id->data[6] &= 0x0F;
   id->data[6] |= (kUuidVersion << 4);
 
-  return b2a_hex(util::to_char_ptr(id->data), sizeof(id->data));
+  return b2a_hex(yb::util::to_char_ptr(id->data), sizeof(id->data));
 }
 
 } // namespace

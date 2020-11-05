@@ -54,8 +54,6 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-
 class PgTuple {
  public:
   PgTuple(uint64_t *datums, bool *isnulls, PgSysColumns *syscols);
