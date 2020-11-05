@@ -26,7 +26,6 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/status.h"
 #include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
@@ -41,11 +40,9 @@ using yb::Status;
 using k2pg::gate::PgObjectId;
 using k2pg::gate::PgOid;
 
-class SqlCatalogClient : public RefCountedThreadSafe<SqlCatalogClient> {
+class SqlCatalogClient {
     public:
-    typedef scoped_refptr<SqlCatalogClient> ScopedRefPtr;
-
-    SqlCatalogClient(SqlCatalogManager::SharedPtr catalog_manager) : catalog_manager_(catalog_manager) {
+    SqlCatalogClient(std::shared_ptr<SqlCatalogManager> catalog_manager) : catalog_manager_(catalog_manager) {
     };
 
     ~SqlCatalogClient() {};
@@ -104,7 +101,7 @@ class SqlCatalogClient : public RefCountedThreadSafe<SqlCatalogClient> {
     CHECKED_STATUS GetCatalogVersion(uint64_t *ysql_catalog_version);
 
     private:  
-    SqlCatalogManager::SharedPtr catalog_manager_;
+    std::shared_ptr<SqlCatalogManager> catalog_manager_;
 };
 
 }  // namespace sql

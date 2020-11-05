@@ -79,10 +79,10 @@ size_t hash_value(const RowIdentifier& key) {
 }
 
 PgSession::PgSession(
-    scoped_refptr<SqlCatalogClient> catalog_client,        
-    scoped_refptr<K2Adapter> k2_adapter,
+    std::shared_ptr<SqlCatalogClient> catalog_client,        
+    std::shared_ptr<K2Adapter> k2_adapter,
     const string& database_name,
-    scoped_refptr<PgTxnHandler> pg_txn_handler,
+    std::shared_ptr<PgTxnHandler> pg_txn_handler,
     const YBCPgCallbacks& pg_callbacks)
     : catalog_client_(catalog_client),
       k2_adapter_(k2_adapter),
@@ -300,7 +300,7 @@ bool PgSessionAsyncRunResult::InProgress() const {
   return future_status_.valid();
 }
 
-PgSession::RunHelper::RunHelper(scoped_refptr<PgSession> pg_session, scoped_refptr<K2Adapter> client, bool transactional)
+PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional)
     :  pg_session_(pg_session),
        client_(client),
        transactional_(transactional),
@@ -403,10 +403,10 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
   return result;
 }
 
-Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_id) {
+Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
  VLOG(3) << "Loading table descriptor for " << table_id;
   const TableId yb_table_id = table_id.GetYBTableId();
-  shared_ptr<TableInfo> table;
+  std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(yb_table_id);
   if (cached_table == table_cache_.end()) {
@@ -423,7 +423,7 @@ Result<PgTableDesc::ScopedRefPtr> PgSession::LoadTable(const PgObjectId& table_i
     table = cached_table->second;
   }
 
-  return make_scoped_refptr<PgTableDesc>(table);
+  return std::make_shared<PgTableDesc>(table);
 }
 
 Result<bool> PgSession::IsInitDbDone() {

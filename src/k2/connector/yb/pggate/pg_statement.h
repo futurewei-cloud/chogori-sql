@@ -62,7 +62,6 @@ namespace gate {
 
 using std::string;
 using k2pg::sql::PgExpr;
-using yb::RefCountedThreadSafe;
 using yb::Status;
 
 // Statement types.
@@ -86,19 +85,17 @@ enum StmtOp {
   STMT_ALTER_DATABASE,
 };
 
-class PgStatement : public RefCountedThreadSafe<PgStatement> {
+class PgStatement {
  public:
-  // Public types.
-  typedef scoped_refptr<PgStatement> ScopedRefPtr;
 
   //------------------------------------------------------------------------------------------------
   // Constructors.
   // pg_session is the session that this statement belongs to. If PostgreSQL cancels the session
   // while statement is running, pg_session::sharedptr can still be accessed without crashing.
-  explicit PgStatement(PgSession::ScopedRefPtr pg_session);
+  explicit PgStatement(std::shared_ptr<PgSession> pg_session);
   virtual ~PgStatement();
 
-  const PgSession::ScopedRefPtr& pg_session() {
+  const std::shared_ptr<PgSession>& pg_session() {
     return pg_session_;
   }
 
@@ -120,7 +117,7 @@ class PgStatement : public RefCountedThreadSafe<PgStatement> {
 
  protected:
   // PgSession that this statement belongs to.
-  PgSession::ScopedRefPtr pg_session_;
+  std::shared_ptr<PgSession> pg_session_;
 
   // Execution status.
   Status status_;

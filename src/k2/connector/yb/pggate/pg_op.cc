@@ -378,8 +378,8 @@ namespace gate {
 
     //--------------------------------------------------------------------------------------------------
 
-    PgOp::PgOp(const PgSession::ScopedRefPtr& pg_session,
-                    const PgTableDesc::ScopedRefPtr& table_desc,
+    PgOp::PgOp(const std::shared_ptr<PgSession>& pg_session,
+                    const std::shared_ptr<PgTableDesc>& table_desc,
                     const PgObjectId& relation_id)
         : pg_session_(pg_session),  table_desc_(table_desc), relation_id_(relation_id) {
        exec_params_.limit_count = default_ysql_prefetch_limit;
@@ -555,8 +555,8 @@ namespace gate {
 
     //-------------------------------------------------------------------------------------------------
 
-    PgReadOp::PgReadOp(const PgSession::ScopedRefPtr& pg_session,
-                            const PgTableDesc::ScopedRefPtr& table_desc,
+    PgReadOp::PgReadOp(const std::shared_ptr<PgSession>& pg_session,
+                            const std::shared_ptr<PgTableDesc>& table_desc,
                             std::unique_ptr<PgReadOpTemplate> read_op)
         : PgOp(pg_session, table_desc), template_op_(std::move(read_op)) {
     }
@@ -696,8 +696,8 @@ namespace gate {
 
     //--------------------------------------------------------------------------------------------------
 
-    PgWriteOp::PgWriteOp(const PgSession::ScopedRefPtr& pg_session,
-                            const PgTableDesc::ScopedRefPtr& table_desc,
+    PgWriteOp::PgWriteOp(const std::shared_ptr<PgSession>& pg_session,
+                            const std::shared_ptr<PgTableDesc>& table_desc,
                             const PgObjectId& relation_id,
                             std::unique_ptr<PgWriteOpTemplate> write_op)
         : PgOp(pg_session, table_desc, relation_id),

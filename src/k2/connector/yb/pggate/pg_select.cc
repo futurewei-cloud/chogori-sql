@@ -53,7 +53,7 @@ namespace gate {
 
 using std::make_shared;
 
-PgSelect::PgSelect(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+PgSelect::PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
                    const PgObjectId& index_id, const PgPrepareParameters *prepare_params)
     : PgDmlRead(pg_session, table_id, index_id, prepare_params) {
 }
@@ -71,7 +71,7 @@ Status PgSelect::Prepare() {
 
     // Create secondary index query.
     secondary_index_query_ =
-      make_scoped_refptr<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
+      std::make_shared<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
   }
 
   // Allocate READ requests to send to storage layer.
@@ -102,7 +102,7 @@ Status PgSelect::PrepareSecondaryIndex() {
   return secondary_index_query_->PrepareSubquery(nullptr); 
 }
 
-PgSelectIndex::PgSelectIndex(PgSession::ScopedRefPtr pg_session,
+PgSelectIndex::PgSelectIndex(std::shared_ptr<PgSession> pg_session,
                              const PgObjectId& table_id,
                              const PgObjectId& index_id,
                              const PgPrepareParameters *prepare_params)

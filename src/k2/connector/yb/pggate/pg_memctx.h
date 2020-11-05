@@ -97,10 +97,10 @@ class PgMemctx {
   static CHECKED_STATUS Reset(PgMemctx *handle);
 
   // Cache the statement in the memory context to be destroyed later on.
-  void Cache(const PgStatement::ScopedRefPtr &stmt);
+  void Cache(const std::shared_ptr<PgStatement> &stmt);
 
   // Cache the table descriptor in the memory context to be destroyed later on.
-  void Cache(size_t hash_id, const PgTableDesc::ScopedRefPtr &table_desc);
+  void Cache(size_t hash_id, const std::shared_ptr<PgTableDesc> &table_desc);
 
   // Read the table descriptor from cache.
   void GetCache(size_t hash_id, PgTableDesc **handle);
@@ -116,10 +116,10 @@ class PgMemctx {
   void Clear();
 
   // All statements that are allocated with this memory context.
-  std::vector<PgStatement::ScopedRefPtr> stmts_;
+  std::vector<std::shared_ptr<PgStatement>> stmts_;
 
   // All table descriptors that are allocated with this memory context.
-  std::unordered_map<size_t, PgTableDesc::ScopedRefPtr> tabledesc_map_;
+  std::unordered_map<size_t, std::shared_ptr<PgTableDesc>> tabledesc_map_;
 };
 
 }  // namespace gate

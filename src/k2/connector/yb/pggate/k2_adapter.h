@@ -21,7 +21,6 @@
 #include <boost/function.hpp>
 
 #include "yb/common/concurrent/async_util.h"
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/status.h"
 #include "yb/entities/schema.h"
 #include "yb/pggate/k23si_gate.h"
@@ -39,10 +38,8 @@ using k2pg::gate::K23SIGate;
 using k2pg::gate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
-class K2Adapter : public RefCountedThreadSafe<K2Adapter> {
- public:
-  typedef scoped_refptr<K2Adapter> ScopedRefPtr;
-  
+class K2Adapter {
+ public:  
   K2Adapter() {
     k23si_ = std::make_shared<K23SIGate>();
   };

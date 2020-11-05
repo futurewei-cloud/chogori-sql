@@ -52,7 +52,7 @@
 namespace k2pg {
 namespace gate {
 
-PgDmlRead::PgDmlRead(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+PgDmlRead::PgDmlRead(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
                      const PgObjectId& index_id, const PgPrepareParameters *prepare_params)
     : PgDml(std::move(pg_session), table_id, index_id, prepare_params) {
 }
