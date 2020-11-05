@@ -52,7 +52,6 @@
 #include <optional>
 #include <unordered_set>
 
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/oid_generator.h"
 #include "yb/common/sys/monotime.h"
 #include "yb/entities/entity_ids.h"
@@ -70,7 +69,6 @@
 namespace k2pg {
 namespace gate {
 
-using yb::RefCountedThreadSafe;
 using k2pg::sql::SqlCatalogClient;
 using yb::Status;
 
@@ -126,15 +124,13 @@ class RowIdentifier {
 
 // This class is not thread-safe as it is mostly used by a single-threaded PostgreSQL backend
 // process.
-class PgSession : public RefCountedThreadSafe<PgSession> {
+class PgSession {
  public:
-  typedef scoped_refptr<PgSession> ScopedRefPtr;
-
   // Constructors.
-  PgSession(scoped_refptr<SqlCatalogClient> catalog_client,
-            scoped_refptr<K2Adapter> k2_adapter,
+  PgSession(std::shared_ptr<SqlCatalogClient> catalog_client,
+            std::shared_ptr<K2Adapter> k2_adapter,
             const string& database_name,
-            scoped_refptr<PgTxnHandler> pg_txn_handler,
+            std::shared_ptr<PgTxnHandler> pg_txn_handler,
             const YBCPgCallbacks& pg_callbacks);
 
   virtual ~PgSession();
@@ -220,7 +216,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     fk_reference_cache_.clear();
   }
 
-  Result<PgTableDesc::ScopedRefPtr> LoadTable(const PgObjectId& table_id);
+  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_id);
 
   void InvalidateTableCache(const PgObjectId& table_id);
       
@@ -321,7 +317,7 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
   // without moving its implementation details into header file.
   class RunHelper {
    public:
-    RunHelper(scoped_refptr<PgSession> pg_session, scoped_refptr<K2Adapter> client, bool transactional);
+    RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional);
     Result<PgSessionAsyncRunResult> Flush();
 
     Result<PgSessionAsyncRunResult> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
@@ -330,8 +326,8 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
                          uint64_t* read_time,
                          bool force_non_bufferable);
    private:
-    scoped_refptr<PgSession> pg_session_;
-    scoped_refptr<K2Adapter> client_;
+    PgSession *pg_session_;
+    std::shared_ptr<K2Adapter> client_;
     bool transactional_;
     PgsqlOpBuffer& buffered_ops_;
   };
@@ -352,12 +348,12 @@ class PgSession : public RefCountedThreadSafe<PgSession> {
     // Rowid generator.
   ObjectIdGenerator rowid_generator_;
 
-  scoped_refptr<SqlCatalogClient> catalog_client_;
+  std::shared_ptr<SqlCatalogClient> catalog_client_;
 
-  scoped_refptr<K2Adapter> k2_adapter_;
+  std::shared_ptr<K2Adapter> k2_adapter_;
 
   // A transaction handler allowing to begin/abort/commit transactions.
-  scoped_refptr<PgTxnHandler> pg_txn_handler_;
+  std::shared_ptr<PgTxnHandler> pg_txn_handler_;
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;

@@ -38,7 +38,7 @@ namespace sql {
     using yb::Status;
     using k2pg::gate::K2Adapter;
 
-    SqlCatalogManager::SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
+    SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
     }
 
     SqlCatalogManager::~SqlCatalogManager() {

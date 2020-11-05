@@ -77,12 +77,10 @@ namespace gate {
 class PgDmlRead : public PgDml {
 
  public:
-  // Public types.
-  typedef scoped_refptr<PgDmlRead> ScopedRefPtr;
   typedef std::shared_ptr<PgDmlRead> SharedPtr;
 
   // Constructors.
-  PgDmlRead(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id,
+  PgDmlRead(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
            const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
   virtual ~PgDmlRead();
 

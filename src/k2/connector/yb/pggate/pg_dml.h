@@ -132,8 +132,8 @@ class PgDml : public PgStatement {
   protected:
   // Method members.
   // Constructor.
-  PgDml(PgSession::ScopedRefPtr pg_session, const PgObjectId& table_id);
-  PgDml(PgSession::ScopedRefPtr pg_session,
+  PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id);
+  PgDml(std::shared_ptr<PgSession> pg_session,
         const PgObjectId& table_id,
         const PgObjectId& index_id,
         const PgPrepareParameters *prepare_params);
@@ -181,7 +181,7 @@ class PgDml : public PgStatement {
   // Targets of statements (Output parameter).
   // - "target_desc_" is the table descriptor where data will be read from.
   // - "targets_" are either selected or returned expressions by DML statements.
-  PgTableDesc::ScopedRefPtr target_desc_;
+  std::shared_ptr<PgTableDesc> target_desc_;
   
   // reverted this back to still use raw pointer since the all PgExprs have already been 
   // stored in its parent class PgStatement as follows
@@ -199,7 +199,7 @@ class PgDml : public PgStatement {
   // - For secondary key binding, "bind_desc_" is the descriptor of teh secondary index table.
   //   The bound values will be used to read base_ybctid which is then used to read actual data
   //   from the main table.
-  PgTableDesc::ScopedRefPtr bind_desc_;
+  std::shared_ptr<PgTableDesc> bind_desc_;
 
   // Prepare control parameters.
   PgPrepareParameters prepare_params_ = { kInvalidOid /* index_oid */,
@@ -245,7 +245,7 @@ class PgDml : public PgStatement {
   // - In most cases, the Postgres layer processes the subquery "SELECT ybctid from INDEX".
   // - Under certain conditions, to optimize the performance, the PgGate layer might operate on
   //   the INDEX subquery itself.
-  scoped_refptr<PgSelectIndex> secondary_index_query_;
+  std::shared_ptr<PgSelectIndex> secondary_index_query_;
 
   //------------------------------------------------------------------------------------------------
   // Hashed and range values/components used to compute the tuple id.

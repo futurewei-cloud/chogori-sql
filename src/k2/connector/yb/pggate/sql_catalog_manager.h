@@ -161,7 +161,7 @@ namespace sql {
     public:
         typedef std::shared_ptr<SqlCatalogManager> SharedPtr;
 
-        SqlCatalogManager(scoped_refptr<K2Adapter> k2_adapter);
+        SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter);
         ~SqlCatalogManager();
 
         CHECKED_STATUS Start();
@@ -198,7 +198,7 @@ namespace sql {
         mutable simple_spinlock lock_;
 
     private:
-        scoped_refptr<K2Adapter> k2_adapter_;
+        std::shared_ptr<K2Adapter> k2_adapter_;
 
         std::atomic<bool> init_db_done_{false};
 

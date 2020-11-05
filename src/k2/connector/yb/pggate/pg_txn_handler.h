@@ -26,15 +26,12 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <atomic>
 
-#include "yb/common/concurrent/ref_counted.h"
 #include "yb/common/result.h"
 #include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
 namespace gate {
-
-using yb::RefCountedThreadSafe;
 
 // These should match XACT_READ_UNCOMMITED, XACT_READ_COMMITED, XACT_REPEATABLE_READ,
 // XACT_SERIALIZABLE from xact.h.
@@ -45,9 +42,9 @@ enum class PgIsolationLevel {
   SERIALIZABLE = 3,
 };
 
-class PgTxnHandler : public RefCountedThreadSafe<PgTxnHandler> {
+class PgTxnHandler {
   public:
-  PgTxnHandler(scoped_refptr<K2Adapter> adapter);
+  PgTxnHandler(std::shared_ptr<K2Adapter> adapter);
 
   virtual ~PgTxnHandler();
 
@@ -94,7 +91,7 @@ class PgTxnHandler : public RefCountedThreadSafe<PgTxnHandler> {
 
   std::atomic<bool> can_restart_{true};
 
-  scoped_refptr<K2Adapter> adapter_;
+  std::shared_ptr<K2Adapter> adapter_;
 };
 
 }  // namespace gate

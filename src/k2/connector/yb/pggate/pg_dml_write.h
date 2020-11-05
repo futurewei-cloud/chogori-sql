@@ -88,7 +88,7 @@ class PgDmlWrite : public PgDml {
 
  protected:
   // Constructor.
-  PgDmlWrite(PgSession::ScopedRefPtr pg_session,
+  PgDmlWrite(std::shared_ptr<PgSession> pg_session,
              const PgObjectId& table_id,
              bool is_single_row_txn = false);
  
