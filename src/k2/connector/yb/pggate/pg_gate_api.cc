@@ -12,6 +12,8 @@ namespace k2pg {
 namespace gate {
 using yb::Status;
 
+using k2pg::sql::SqlCatalogManager;
+
 namespace {
 // Using a raw pointer here to fully control object initialization and destruction.
 k2pg::gate::PgGateApiImpl* api_impl;

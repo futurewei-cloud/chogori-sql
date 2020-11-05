@@ -56,8 +56,10 @@
 namespace k2pg {
 namespace gate {
 
-using namespace yb;
-using namespace k2pg::sql;
+using yb::Result;
+using yb::Status;
+using k2pg::sql::TableIdentifier;
+using k2pg::sql::TableInfo;
 
 // This class can be used to describe any reference of a column.
 class PgTableDesc {

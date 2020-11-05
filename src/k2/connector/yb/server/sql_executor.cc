@@ -34,15 +34,14 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/common/flag_tags.h"
 #include "yb/common/env.h"
 
-using namespace yb;
-
 DEFINE_int32(sql_executor_svc_num_threads, -1,
 "Number of threads for the SqlExecutor service. If -1, it is auto configured.");
 TAG_FLAG(sql_executor_svc_num_threads, advanced);
 
 namespace k2pg {
-
 namespace sql {
+    using yb::Status;
+    
     static yb::Env* default_env;
 
     SqlExecutor::~SqlExecutor() {

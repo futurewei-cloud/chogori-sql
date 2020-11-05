@@ -33,7 +33,9 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+    using yb::Env;
     using yb::Status;
+    using yb::simple_spinlock;
     using k2pg::gate::K2Adapter;
 
     struct CreateNamespaceRequest {

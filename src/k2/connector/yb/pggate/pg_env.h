@@ -30,8 +30,12 @@
 
 namespace k2pg {
 namespace gate {
+using yb::Format;
 
-using namespace k2pg::sql;
+using k2pg::sql::GetPgsqlDatabaseOidByTableId;
+using k2pg::sql::GetPgsqlTableOid;
+using k2pg::sql::GetPgsqlTableId;
+using k2pg::sql::TableId;
 
 // Postgres object identifier (OID).
 typedef uint32_t PgOid;

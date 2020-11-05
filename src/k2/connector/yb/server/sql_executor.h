@@ -28,10 +28,13 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/common/status.h"
 #include "yb/common/concurrent/locks.h"
 
-using namespace yb;
-
 namespace k2pg {
 namespace sql {
+    using yb::Env;
+    using yb::Format;
+    using yb::Status;
+    using yb::simple_spinlock;
+
     class SqlExecutor {
 
     public:
