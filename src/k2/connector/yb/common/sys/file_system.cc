@@ -11,7 +11,7 @@
 // under the License.
 //
 
-#include "file_system.h"
+#include "yb/common/sys/file_system.h"
 
 namespace yb {
 
