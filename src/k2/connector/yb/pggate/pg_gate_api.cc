@@ -901,8 +901,3 @@ void YBCShutdownPgGateBackend() {
 
 }  // namespace gate
 }  // namespace k2pg
-
-yb::Env* yb::Env::Default() {
-  // TODO: add implementation
-  return nullptr;
-}
