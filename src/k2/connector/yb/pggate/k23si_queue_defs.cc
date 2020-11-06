@@ -31,6 +31,7 @@ std::queue<SchemaGetRequest> schemaGetTxQ;
 std::queue<SchemaCreateRequest> schemaCreateTxQ;
 std::queue<EndTxnRequest> endTxQ;
 std::queue<ReadRequest> readTxQ;
+std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 std::queue<ScanReadRequest> scanReadTxQ;
 std::queue<WriteRequest> writeTxQ;
 

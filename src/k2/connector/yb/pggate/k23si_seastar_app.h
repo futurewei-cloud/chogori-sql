@@ -46,6 +46,7 @@ private:
     seastar::future<> _pollSchemaGetQ();
     seastar::future<> _pollSchemaCreateQ();
     seastar::future<> _pollReadQ();
+    seastar::future<> _pollCreateScanReadQ();
     seastar::future<> _pollScanReadQ();
     seastar::future<> _pollWriteQ();
 };
