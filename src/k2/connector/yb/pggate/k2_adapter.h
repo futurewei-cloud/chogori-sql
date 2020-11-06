@@ -32,7 +32,6 @@
 namespace k2pg {
 namespace gate {
 
-using yb::RefCountedThreadSafe;
 using yb::Status;
 using k2pg::gate::K23SIGate;
 using k2pg::gate::K23SITxn;

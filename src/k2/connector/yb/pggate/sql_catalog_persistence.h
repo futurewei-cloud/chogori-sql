@@ -35,6 +35,10 @@ using std::string;
 class ClusterInfo {
     public: 
     ClusterInfo() {};
+    
+    ClusterInfo(string cluster_id, bool initdb_done) : cluster_id_(cluster_id), initdb_done_(initdb_done) {
+    };
+
     ~ClusterInfo() {};
 
     void SetClusterId(string cluster_id) {

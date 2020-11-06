@@ -49,7 +49,25 @@ namespace sql {
 
     Status SqlCatalogManager::Start() {
         CHECK(!initted_.load(std::memory_order_acquire));
-        // TODO: initialization steps
+        
+        ReadClusterInfoResponse response = cluster_info_handler_->ReadClusterInfo();
+        if (response.succeeded) {
+            if (response.exist) {
+                init_db_done_.store(response.clusterInfo.IsInitdbDone(),std::memory_order_relaxed);  
+                LOG(INFO) << "Loaded cluster info record succeeded";  
+            } else {
+                ClusterInfo cluster_info("test", init_db_done_.load(std::memory_order_relaxed));
+                CreateClusterInfoResponse clresp = cluster_info_handler_->CreateClusterInfo(cluster_info);
+                if (clresp.succeeded) {
+                    LOG(INFO) << "Created cluster info record succeeded";
+                } else {
+                    // TODO: what to do if the creation fails?
+                    LOG(FATAL) << "Failed to create cluster info record";
+                }
+            }
+        } else {
+            LOG(FATAL) << "Failed to read cluster info record";
+        }
 
         initted_.store(true, std::memory_order_release);
         return Status::OK();

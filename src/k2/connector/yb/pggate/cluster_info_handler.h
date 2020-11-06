@@ -26,7 +26,6 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 
-#include "yb/common/status.h"
 #include "yb/pggate/sql_catalog_persistence.h"
 #include "yb/pggate/k2_adapter.h"
 
@@ -39,6 +38,26 @@ using k2pg::gate::K23SITxn;
 
 static const std::string cluster_info_collection_name = "K2_SKV_SQL_COLLECTION";
 static const std::string cluster_info_partition_name = "K2_SKV_SQL_CLUSTER_INFO";
+
+struct CreateClusterInfoResponse {
+    bool succeeded;
+    int errorCode;
+    std::string errorMessage;
+};
+
+struct UpdateClusterInfoResponse {
+    bool succeeded;
+    int errorCode;
+    std::string errorMessage;
+};
+
+struct ReadClusterInfoResponse {
+    bool exist;
+    bool succeeded;
+    ClusterInfo clusterInfo;
+    int errorCode;
+    std::string errorMessage;
+};
 
 class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandler> {
     public:
@@ -58,11 +77,11 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
     
-    CHECKED_STATUS CreateClusterInfo(ClusterInfo& cluster_info);
+    CreateClusterInfoResponse CreateClusterInfo(ClusterInfo& cluster_info);
 
-    CHECKED_STATUS UpdateClusterInfo(ClusterInfo& cluster_info);
+    UpdateClusterInfoResponse UpdateClusterInfo(ClusterInfo& cluster_info);
 
-    CHECKED_STATUS ReadClusterInfo(ClusterInfo& cluster_info);
+    ReadClusterInfoResponse ReadClusterInfo();
 
     private:  
     std::shared_ptr<K2Adapter> k2_adapter_;  
