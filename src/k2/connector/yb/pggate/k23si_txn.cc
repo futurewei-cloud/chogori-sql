@@ -38,6 +38,15 @@ std::future<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     return result;
 }
 
+
+std::future<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query) {
+    ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
+
+    auto result = sr.prom.get_future();
+    pushQ(scanReadTxQ, std::move(sr));
+    return result;
+}
+
 std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .prom={}};
 
