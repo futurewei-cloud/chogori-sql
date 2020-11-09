@@ -18,10 +18,10 @@
 
 #include <boost/function.hpp>
 
-#include "yb/common/type/coding_consts.h"
+#include "yb/common/coding/coding_consts.h"
 #include "yb/common/type/slice.h"
-#include "result.h"
-#include "status.h"
+#include "yb/common/result.h"
+#include "yb/common/status.h"
 
 namespace yb {
 

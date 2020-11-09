@@ -33,7 +33,7 @@
 #include <vector>
 
 #include "yb/common/concurrent/callback_forward.h"
-#include "file_system.h"
+#include "yb/common/sys/file_system.h"
 #include "result.h"
 #include "status.h"
 #include "yb/common/type/strongly_typed_bool.h"
