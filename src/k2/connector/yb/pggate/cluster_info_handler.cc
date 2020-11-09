@@ -54,7 +54,7 @@ CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clu
 
     k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
-    record.serializeNext<int16_t>(cluster_info.IsInitdbDone() ? 1 : 0);
+    record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
@@ -87,7 +87,7 @@ UpdateClusterInfoResponse ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clu
 
     k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
-    record.serializeNext<int16_t>(cluster_info.IsInitdbDone() ? 1 : 0);
+    record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), true);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
@@ -138,7 +138,7 @@ ReadClusterInfoResponse ClusterInfoHandler::ReadClusterInfo() {
         return response;     
     }
     response.clusterInfo.SetClusterId(read_result.value.deserializeNext<k2::String>().value());
-    response.clusterInfo.SetInitdbDone(read_result.value.deserializeNext<int16_t>().value() == 1 ? true : false);
+    response.clusterInfo.SetInitdbDone(read_result.value.deserializeNext<bool>().value());
     response.exist = true;
 
     // TODO: double check if we need to commit the transaction for read only call
