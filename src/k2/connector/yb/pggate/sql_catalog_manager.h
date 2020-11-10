@@ -174,10 +174,12 @@ namespace sql {
         virtual Env* GetEnv();
 
         CHECKED_STATUS IsInitDbDone(bool* isDone);
+        
+        // TODO: double check, we might not need this API to change the catalog version since the version should be
+        // managed by the catalog manager internally
+        CHECKED_STATUS SetCatalogVersion(uint64_t new_version);
 
-        void SetCatalogVersion(uint64_t new_version);
-
-        uint64_t GetCatalogVersion() const;
+        CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
         CHECKED_STATUS CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse>* response);  
 
@@ -202,11 +204,16 @@ namespace sql {
 
         mutable simple_spinlock lock_;
 
+        CHECKED_STATUS ReadLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version);
+
     private:
+        std::string cluster_id_;
+
         std::shared_ptr<K2Adapter> k2_adapter_;
 
         std::atomic<bool> init_db_done_{false};
 
+        // catalog version 0 stands for uninitialized 
         std::atomic<uint64_t> catalog_version_{0};
 
         std::shared_ptr<ClusterInfoHandler> cluster_info_handler_;

@@ -185,8 +185,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
 }
 
 Status SqlCatalogClient::GetCatalogVersion(uint64_t *catalog_version) {
-  *catalog_version = catalog_manager_->GetCatalogVersion();
-  return Status::OK();
+  return catalog_manager_->GetCatalogVersion(catalog_version);
 }    
  
 }  // namespace sql

@@ -54,6 +54,8 @@ CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clu
 
     k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
+    // TODO: change uint64 to int64 since SKV does not support unsigned integers
+    record.serializeNext<uint64_t>(cluster_info.GetCatalogVersion());  
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
@@ -87,6 +89,7 @@ UpdateClusterInfoResponse ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clu
 
     k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
+    record.serializeNext<uint64_t>(cluster_info.GetCatalogVersion());     
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), true);
     k2::WriteResult write_result = write_result_future.get();
@@ -138,6 +141,7 @@ ReadClusterInfoResponse ClusterInfoHandler::ReadClusterInfo() {
         return response;     
     }
     response.clusterInfo.SetClusterId(read_result.value.deserializeNext<k2::String>().value());
+    response.clusterInfo.SetCatalogVersion(read_result.value.deserializeNext<uint64_t>().value());
     response.clusterInfo.SetInitdbDone(read_result.value.deserializeNext<bool>().value());
     response.exist = true;
 

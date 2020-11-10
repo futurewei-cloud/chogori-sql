@@ -68,6 +68,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "ClusterId", false, false},
+                {k2::dto::FieldType::INT64T, "CatalogVersion", false, false},
                 {k2::dto::FieldType::BOOL, "InitDbDone", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0 },
         .rangeKeyFields = std::vector<uint32_t> {}
