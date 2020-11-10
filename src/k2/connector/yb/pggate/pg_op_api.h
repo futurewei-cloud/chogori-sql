@@ -269,7 +269,6 @@ namespace gate {
         RequestStatus status = RequestStatus::PGSQL_STATUS_OK;
         bool skipped;
         string error_message;
-        int32_t rows_data_sidecar;
         std::unique_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
    

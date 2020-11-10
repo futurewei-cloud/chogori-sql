@@ -21,20 +21,13 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/sql_catalog_persistence.h"
+#include "yb/pggate/catalog/cluster_info_handler.h"
+
+#include <glog/logging.h>
 
 namespace k2pg {
 namespace sql {
 
-ClusterInfo::ClusterInfo() {
-};
-
-ClusterInfo::ClusterInfo(string cluster_id, uint64_t catalog_version, bool initdb_done) : 
-    cluster_id_(cluster_id), catalog_version_(catalog_version), initdb_done_(initdb_done) {
-};
-
-ClusterInfo::~ClusterInfo() {
-};
 
 } // namespace sql
 } // namespace k2pg

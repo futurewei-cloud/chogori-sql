@@ -31,7 +31,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/schema.h"
 #include "yb/entities/value.h"
 #include "yb/pggate/pg_env.h"
-#include "yb/pggate/sql_catalog_manager.h"
+#include "yb/pggate/catalog/sql_catalog_manager.h"
 
 namespace k2pg {
 namespace sql {
@@ -98,7 +98,7 @@ class SqlCatalogClient {
                                 uint32_t next_oid, uint32_t count,
                                 uint32_t* begin_oid, uint32_t* end_oid);
 
-    CHECKED_STATUS GetCatalogVersion(uint64_t *ysql_catalog_version);
+    CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
     private:  
     std::shared_ptr<SqlCatalogManager> catalog_manager_;

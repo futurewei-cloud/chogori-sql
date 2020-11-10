@@ -126,14 +126,6 @@ class NamespaceInfo {
         return next_pg_oid_;
     }
 
-    void SetCatalogVersion(uint64_t catalog_version) {
-        catalog_version_ = catalog_version;
-    }
-
-    uint64_t GetCatalogVersion() {
-        return catalog_version_;
-    }
-
     private:
     // name
     string namespace_name_;
@@ -146,9 +138,6 @@ class NamespaceInfo {
 
     // next PG Oid that is available for object id assignment for this namespace
     uint32_t next_pg_oid_;
-
-    // catalog schema version
-    uint64_t catalog_version_ = 0;
 };
 
 } // namespace sql

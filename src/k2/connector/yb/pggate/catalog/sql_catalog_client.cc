@@ -21,7 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/sql_catalog_client.h"
+#include "yb/pggate/catalog/sql_catalog_client.h"
 
 namespace k2pg {
 namespace sql {
@@ -184,8 +184,8 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
   return Status::OK();
 }
 
-Status SqlCatalogClient::GetCatalogVersion(uint64_t *catalog_version) {
-  return catalog_manager_->GetCatalogVersion(catalog_version);
+Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
+  return catalog_manager_->GetCatalogVersion(pg_catalog_version);
 }    
  
 }  // namespace sql

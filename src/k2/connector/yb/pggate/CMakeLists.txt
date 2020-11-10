@@ -1,5 +1,5 @@
-file(GLOB HEADERS "*.h")
-file(GLOB SOURCES "*.cc")
+file(GLOB HEADERS "*.h" "*/*.h")
+file(GLOB SOURCES "*.cc" "*/*.cc")
 
 add_library(ybpggate STATIC ${HEADERS} ${SOURCES})
 

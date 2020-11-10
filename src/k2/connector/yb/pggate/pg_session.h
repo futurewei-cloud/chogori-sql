@@ -64,7 +64,7 @@
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_gate_api.h"
 #include "yb/pggate/pg_txn_handler.h"
-#include "yb/pggate/sql_catalog_client.h"
+#include "yb/pggate/catalog/sql_catalog_client.h"
 
 namespace k2pg {
 namespace gate {

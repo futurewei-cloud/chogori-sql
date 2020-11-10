@@ -21,23 +21,26 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/cluster_info_handler.h"
+#include "yb/pggate/catalog/cluster_info_handler.h"
 
 #include <glog/logging.h>
 
 namespace k2pg {
 namespace sql {
 
-ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) : k2_adapter_(k2_adapter) {
-    cluster_info_schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(cluster_info_schema_ptr.get()) = cluster_info_schema;
+ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
+    : collection_name_(sql_primary_collection_name), 
+      partition_name_(cluster_info_partition_name), 
+      k2_adapter_(k2_adapter) {
+    schema_ptr = std::make_shared<k2::dto::Schema>();
+    *(schema_ptr.get()) = schema;
 }
 
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
 CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& cluster_info) {
-    std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(cluster_info_collection_name, cluster_info_schema);
+    std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema);
     k2::CreateSchemaResult schema_result = schema_result_future.get();
     CreateClusterInfoResponse response;
     if (!schema_result.status.is2xxOK()) {
@@ -52,10 +55,10 @@ CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clu
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
 
-    k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
-    // TODO: change uint64 to int64 since SKV does not support unsigned integers
-    record.serializeNext<uint64_t>(cluster_info.GetCatalogVersion());  
+    // use signed integers for unsigned integers since SKV does not support them
+    record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());  
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
@@ -87,9 +90,10 @@ UpdateClusterInfoResponse ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clu
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
 
-    k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
-    record.serializeNext<uint64_t>(cluster_info.GetCatalogVersion());     
+    // use signed integers for unsigned integers since SKV does not support them
+    record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());     
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), true);
     k2::WriteResult write_result = write_result_future.get();
@@ -121,8 +125,8 @@ ReadClusterInfoResponse ClusterInfoHandler::ReadClusterInfo() {
     K23SITxn txn = txn_future.get();
     ReadClusterInfoResponse response;
 
-    k2::dto::SKVRecord record(cluster_info_collection_name, cluster_info_schema_ptr);
-    record.serializeNext<k2::String>(cluster_info_partition_name);
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    record.serializeNext<k2::String>(partition_name_);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = txn.read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
@@ -141,7 +145,8 @@ ReadClusterInfoResponse ClusterInfoHandler::ReadClusterInfo() {
         return response;     
     }
     response.clusterInfo.SetClusterId(read_result.value.deserializeNext<k2::String>().value());
-    response.clusterInfo.SetCatalogVersion(read_result.value.deserializeNext<uint64_t>().value());
+    // use signed integers for unsigned integers since SKV does not support them
+    response.clusterInfo.SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
     response.clusterInfo.SetInitdbDone(read_result.value.deserializeNext<bool>().value());
     response.exist = true;
 

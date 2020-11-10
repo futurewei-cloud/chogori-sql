@@ -21,7 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/sql_catalog_manager.h"
+#include "yb/pggate/catalog/sql_catalog_manager.h"
 
 #include <algorithm>
 #include <list>

@@ -26,7 +26,8 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 
-#include "yb/pggate/sql_catalog_persistence.h"
+#include "yb/pggate/catalog/sql_catalog_defaults.h"
+#include "yb/pggate/catalog/sql_catalog_persistence.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
@@ -35,9 +36,6 @@ namespace sql {
 using yb::Status;
 using k2pg::gate::K2Adapter;
 using k2pg::gate::K23SITxn;
-
-static const std::string cluster_info_collection_name = "K2_SKV_SQL_COLLECTION";
-static const std::string cluster_info_partition_name = "K2_SKV_SQL_CLUSTER_INFO";
 
 struct CreateClusterInfoResponse {
     bool succeeded;
@@ -63,7 +61,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     public:
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
-    static inline k2::dto::Schema cluster_info_schema {
+    static inline k2::dto::Schema schema {
         .name = cluster_info_partition_name,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -84,8 +82,10 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     ReadClusterInfoResponse ReadClusterInfo();
 
     private:  
+    std::string collection_name_;
+    std::string partition_name_;
     std::shared_ptr<K2Adapter> k2_adapter_;  
-    std::shared_ptr<k2::dto::Schema> cluster_info_schema_ptr;  
+    std::shared_ptr<k2::dto::Schema> schema_ptr;  
 };
 
 } // namespace sql

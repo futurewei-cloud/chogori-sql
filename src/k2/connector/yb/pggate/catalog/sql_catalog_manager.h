@@ -30,7 +30,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
 #include "yb/pggate/k2_adapter.h"
-#include "yb/pggate/cluster_info_handler.h"
+#include "yb/pggate/catalog/cluster_info_handler.h"
 
 namespace k2pg {
 namespace sql {
