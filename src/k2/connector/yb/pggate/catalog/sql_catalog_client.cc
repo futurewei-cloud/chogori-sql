@@ -50,7 +50,7 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
     request->nextPgOid = next_pg_oid;  
   }
   std::shared_ptr<CreateNamespaceResponse> response;
-  catalog_manager_->CreateNamespace(request, &response);
+  catalog_manager_->CreateNamespace(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to create namespace $0 due to error: $1", namespace_name, response->errorMessage);
@@ -66,7 +66,7 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
     request->namespaceId = std::move(namespace_id);
   }     
   std::shared_ptr<DeleteNamespaceResponse> response = std::make_shared<DeleteNamespaceResponse>();
-  catalog_manager_->DeleteNamespace(request, &response);
+  catalog_manager_->DeleteNamespace(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to delete namespace $0 due to error: $1", namespace_name, response->errorMessage);
@@ -91,7 +91,7 @@ Status SqlCatalogClient::CreateTable(
   request->isSysCatalogTable = is_pg_catalog_table;
   request->isSharedTable = is_shared_table;
   std::shared_ptr<CreateTableResponse> response = std::make_shared<CreateTableResponse>();   
-  catalog_manager_->CreateTable(request, &response);                                 
+  catalog_manager_->CreateTable(request, response);                                 
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->errorMessage);
@@ -121,7 +121,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
   request->tableId = table_id;
   request->isIndexTable = false;
   std::shared_ptr<DeleteTableResponse> response = std::make_shared<DeleteTableResponse>();
-  catalog_manager_->DeleteTable(request, &response);
+  catalog_manager_->DeleteTable(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to delete table $0 due to error: $1", table_id, response->errorMessage);
@@ -135,7 +135,7 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
   request->tableId = table_id;
   request->isIndexTable = true;
   std::shared_ptr<DeleteTableResponse> response = std::make_shared<DeleteTableResponse>();
-  catalog_manager_->DeleteTable(request, &response);
+  catalog_manager_->DeleteTable(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to delete index table $0 due to error: $1", table_id, response->errorMessage);
@@ -149,7 +149,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_i
   request->namespaceId = database_oid;
   request->tableId = table_id;
   std::shared_ptr<GetTableSchemaResponse> response = std::make_shared<GetTableSchemaResponse>();
-  catalog_manager_->GetTableSchema(request, &response);
+  catalog_manager_->GetTableSchema(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to get schema for table $0 due to error: $1", table_id, response->errorMessage);
@@ -170,11 +170,11 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
                                   uint32_t* begin_oid, 
                                   uint32_t* end_oid) {
   std::shared_ptr<ReservePgOidsRequest> request =  std::make_shared<ReservePgOidsRequest>();   
-  request->namespaceId = database_oid;
+  request->namespaceId = GetPgsqlNamespaceId(database_oid);
   request->nextOid = next_oid;
   request->count = count;
   std::shared_ptr<ReservePgOidsResponse> response = std::make_shared<ReservePgOidsResponse>();
-  catalog_manager_->ReservePgOid(request, &response);
+  catalog_manager_->ReservePgOid(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to reserve PG Oids for database $0 due to error: $1", database_oid, response->errorMessage);

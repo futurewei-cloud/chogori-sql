@@ -86,9 +86,9 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
 
     CreateNamespaceTableResult CreateNamespaceTableIfNecessary();
 
-    AddOrUpdateNamespaceResult AddOrUpdateNamespace(NamespaceInfo namespace_info);
+    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<NamespaceInfo> namespace_info);
 
-    GetNamespaceResult GetNamespace(std::string namespace_id);
+    GetNamespaceResult GetNamespace(const std::string& namespace_id);
 
     ListNamespacesResult ListNamespaces();
 

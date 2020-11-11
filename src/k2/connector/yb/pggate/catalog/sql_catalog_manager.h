@@ -146,13 +146,13 @@ namespace sql {
     };
 
     struct ReservePgOidsRequest {
-        uint32_t namespaceId;
+        std::string namespaceId;
         uint32_t nextOid;
         uint32_t count;
     };
 
     struct ReservePgOidsResponse {
-        uint32_t namespaceId;
+        std::string namespaceId;
         // the beginning of the oid reserver, which could be higher than requested
         uint32_t beginOid;
         // the end (exclusive) oid reserved
@@ -182,23 +182,23 @@ namespace sql {
 
         CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
-        CHECKED_STATUS CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse>* response);  
+        CHECKED_STATUS CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse> response);  
 
-        CHECKED_STATUS ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse>* response);
+        CHECKED_STATUS ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse> response);
 
-        CHECKED_STATUS GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse>* response);
+        CHECKED_STATUS GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse> response);
 
-        CHECKED_STATUS DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> *response);
+        CHECKED_STATUS DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> response);
 
-        CHECKED_STATUS CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse>* response);
+        CHECKED_STATUS CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response);
         
-        CHECKED_STATUS GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse>* response);
+        CHECKED_STATUS GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response);
 
-        CHECKED_STATUS ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse>* response);
+        CHECKED_STATUS ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse> response);
 
-        CHECKED_STATUS DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> * response);
+        CHECKED_STATUS DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> response);
 
-        CHECKED_STATUS ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse>* response);
+        CHECKED_STATUS ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse> response);
 
     protected:
         std::atomic<bool> initted_{false};

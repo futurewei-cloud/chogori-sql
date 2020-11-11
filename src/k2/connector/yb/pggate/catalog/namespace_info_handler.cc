@@ -63,17 +63,17 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
     return response;
 }
 
-AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(NamespaceInfo namespace_info) {
+AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::shared_ptr<NamespaceInfo> namespace_info) {
     AddOrUpdateNamespaceResult response;
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();   
        
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
-    record.serializeNext<k2::String>(namespace_info.GetNamespaceId());  
-    record.serializeNext<k2::String>(namespace_info.GetNamespaceName());  
+    record.serializeNext<k2::String>(namespace_info->GetNamespaceId());  
+    record.serializeNext<k2::String>(namespace_info->GetNamespaceName());  
     // use signed integers for unsigned integers since SKV does not support them
-    record.serializeNext<int32_t>(namespace_info.GetNamespaceOid());  
-    record.serializeNext<int32_t>(namespace_info.GetNextPgOid());
+    record.serializeNext<int32_t>(namespace_info->GetNamespaceOid());  
+    record.serializeNext<int32_t>(namespace_info->GetNextPgOid());
     std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
@@ -99,7 +99,7 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(NamespaceI
     return response;
 }
 
-GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::string namespace_id) {
+GetNamespaceResult NamespaceInfoHandler::GetNamespace(const std::string& namespace_id) {
     GetNamespaceResult response;
 
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();

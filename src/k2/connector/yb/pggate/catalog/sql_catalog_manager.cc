@@ -213,39 +213,81 @@ namespace sql {
        return Status::OK();
     }
 
-    Status SqlCatalogManager::CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse>* response) {
+    Status SqlCatalogManager::CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse> response) {
         return Status::OK();
     }
     
-    Status SqlCatalogManager::ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse>* response) {
+    Status SqlCatalogManager::ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse>* response) {
+    Status SqlCatalogManager::GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> *response) {
+    Status SqlCatalogManager::DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse>* response) {
+    Status SqlCatalogManager::CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response) {
         return Status::OK();
     }
     
-    Status SqlCatalogManager::GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse>* response) {
+    Status SqlCatalogManager::GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse>* response) {
+    Status SqlCatalogManager::ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> * response) {
+    Status SqlCatalogManager::DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> response) {
         return Status::OK();
     }
 
-    Status SqlCatalogManager::ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse>* response) {
+    Status SqlCatalogManager::ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse> response) {
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(request->namespaceId);
+        if (result.succeeded) {
+            if (result.exist) {
+                uint32_t begin_oid = result.namespaceInfo->GetNextPgOid();
+                if (begin_oid < request->nextOid) {
+                    begin_oid = request->nextOid;
+                }
+                if (begin_oid == std::numeric_limits<uint32_t>::max()) {
+                    LOG(WARNING) << "No more object identifier is available for Postgres database " << request->namespaceId;
+                    return STATUS_FORMAT(InvalidArgument, "No more object identifier is available for $0", request->namespaceId);
+                }
+
+                uint32_t end_oid = begin_oid + request->count;
+                if (end_oid < begin_oid) {
+                    end_oid = std::numeric_limits<uint32_t>::max(); // Handle wraparound.
+                }
+                response->namespaceId = request->namespaceId;
+                response->beginOid = begin_oid;
+                response->endOid = end_oid; 
+
+                // update the namespace record on SKV
+                // TODO: how can we guarantee that concurrent SKV records on SKV won't override each other
+                // and lose the correctness of PgNextOid updates?
+                std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
+                updated_ns->SetNextPgOid(end_oid);
+                AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(updated_ns);
+                if (!update_result.succeeded) {
+                    return STATUS_FORMAT(IOError, "Failed to update namespace $0 due to error code $1 and message $2",
+                    request->namespaceId, update_result.errorCode, update_result.errorMessage);                   
+                }
+
+                // update namespace caches
+                namespace_id_map_[updated_ns->GetNamespaceId()] = updated_ns;
+                namespace_name_map_[updated_ns->GetNamespaceName()] = updated_ns;              
+            } else {
+                return STATUS_FORMAT(NotFound, "Cannot find namespace $0", request->namespaceId);
+            }
+        } else {
+            return STATUS_FORMAT(IOError, "Failed to read namespace $0 due to error code $1 and message $2",
+                request->namespaceId, result.errorCode, result.errorMessage);
+        }
+
         return Status::OK();
     }
 }  // namespace sql
