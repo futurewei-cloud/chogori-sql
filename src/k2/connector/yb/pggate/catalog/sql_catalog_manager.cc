@@ -43,6 +43,7 @@ namespace sql {
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) : 
         cluster_id_("test_cluster"), k2_adapter_(k2_adapter) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
+        namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
     }
 
     SqlCatalogManager::~SqlCatalogManager() {
@@ -51,7 +52,8 @@ namespace sql {
     Status SqlCatalogManager::Start() {
         CHECK(!initted_.load(std::memory_order_acquire));
         
-        ReadClusterInfoResponse response = cluster_info_handler_->ReadClusterInfo();
+        // load cluster info
+        GetClusterInfoResult response = cluster_info_handler_->ReadClusterInfo(cluster_id_);
         if (response.succeeded) {
             if (response.exist) {
                 init_db_done_.store(response.clusterInfo.IsInitdbDone(), std::memory_order_relaxed); 
@@ -59,24 +61,49 @@ namespace sql {
                 LOG(INFO) << "Loaded cluster info record succeeded";  
             } else {
                 ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
-                CreateClusterInfoResponse clresp = cluster_info_handler_->CreateClusterInfo(cluster_info);
+                CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(cluster_info);
                 if (clresp.succeeded) {
                     LOG(INFO) << "Created cluster info record succeeded";
                 } else {
                     // TODO: what to do if the creation fails?
-                    LOG(FATAL) << "Failed to create cluster info record";
+                    LOG(FATAL) << "Failed to create cluster info record due to " << clresp.errorMessage;
                 }
             }
         } else {
             LOG(FATAL) << "Failed to read cluster info record";
         }
 
+        // load namespaces
+        CreateNamespaceTableResult cnresp = namespace_info_handler_->CreateNamespaceTableIfNecessary();
+        if (cnresp.succeeded) {
+            ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces();
+            if (nsresp.succeeded) {
+                if (!nsresp.namespaceInfos.empty()) {
+                    for (auto ns_ptr : nsresp.namespaceInfos) {
+                        // caching namespaces by namespace id and namespace name
+                        namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
+                        namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
+                    }
+                } else {
+                    LOG(INFO) << "namespaces are empty";
+                }
+            } else {
+                LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.errorMessage;
+                return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
+                    nsresp.errorCode, nsresp.errorMessage);
+            }
+        } else {
+            LOG(FATAL) << "Failed to create or check namespace table due to " <<  cnresp.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to create or check namespace table due to error code $0 and message $1",
+                cnresp.errorCode, cnresp.errorMessage);  
+        }
+
         initted_.store(true, std::memory_order_release);
         return Status::OK();
     }
     
-    Status SqlCatalogManager::ReadLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version) {
-        ReadClusterInfoResponse response = cluster_info_handler_->ReadClusterInfo();
+    Status SqlCatalogManager::GetLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version) {
+        GetClusterInfoResult response = cluster_info_handler_->ReadClusterInfo(cluster_id_);
         if (response.succeeded) {
             if (response.exist) {
                 *initdb_done = response.clusterInfo.IsInitdbDone(); 
@@ -114,7 +141,7 @@ namespace sql {
             // only need to check SKV if initdb flag is false locally
             bool initdb_done = false;
             uint64_t catalog_version;
-            RETURN_NOT_OK(ReadLatestClusterInfo(&initdb_done, &catalog_version));
+            RETURN_NOT_OK(GetLatestClusterInfo(&initdb_done, &catalog_version));
 
             if (initdb_done) {
                 init_db_done_.store(true, std::memory_order_relaxed);                             
@@ -140,7 +167,7 @@ namespace sql {
        // then, read the latest catalog version from SKV and do comparision
         bool initdb_done = false;
         uint64_t catalog_version;
-        RETURN_NOT_OK(ReadLatestClusterInfo(&initdb_done, &catalog_version));
+        RETURN_NOT_OK(GetLatestClusterInfo(&initdb_done, &catalog_version));
         
         if (initdb_done && !init_db_done_) {
            // update initdb flag if it has been updated to true in SKV
@@ -166,7 +193,7 @@ namespace sql {
         // such that the check would be performance in-memory
         bool initdb_done = false;
         uint64_t catalog_version;
-        RETURN_NOT_OK(ReadLatestClusterInfo(&initdb_done, &catalog_version));
+        RETURN_NOT_OK(GetLatestClusterInfo(&initdb_done, &catalog_version));
         if (initdb_done && !init_db_done_) {
            // update initdb flag if it has been updated to true in SKV
            init_db_done_.store(true, std::memory_order_relaxed);                             

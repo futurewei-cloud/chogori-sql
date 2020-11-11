@@ -26,7 +26,16 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
+std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
+  throw new std::logic_error("Not implemented yet");     
+}
+
 std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, k2::dto::Schema schema) {
+  throw new std::logic_error("Not implemented yet");    
+}
+
+std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName, 
+                                                     const std::string& schemaName) {
   throw new std::logic_error("Not implemented yet");    
 }
 

@@ -26,7 +26,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
-#include "yb/pggate/catalog/sql_catalog_persistence.h"
+#include "yb/pggate/catalog/sql_catalog_entity.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
@@ -35,7 +35,71 @@ namespace sql {
 using yb::Status;
 using k2pg::gate::K2Adapter;
 using k2pg::gate::K23SITxn;
+using k2pg::gate::CreateScanReadResult;
 
+struct CreateNamespaceTableResult {
+    bool succeeded;
+    int errorCode;
+    std::string errorMessage;    
+};
+
+struct AddOrUpdateNamespaceResult {
+    bool succeeded;
+    int errorCode;
+    std::string errorMessage;    
+};
+
+struct GetNamespaceResult {
+    bool succeeded;
+    bool exist;
+    std::shared_ptr<NamespaceInfo> namespaceInfo;
+    int errorCode;
+    std::string errorMessage;    
+};
+
+struct ListNamespacesResult {
+    bool succeeded;
+    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;
+    int errorCode;
+    std::string errorMessage;    
+};
+
+class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHandler> {
+    public:
+    typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
+    
+    static inline k2::dto::Schema schema {
+        .name = namespace_info_schema_name,
+        .version = 1,
+        .fields = std::vector<k2::dto::SchemaField> {
+                {k2::dto::FieldType::STRING, "NamespaceId", false, false},
+                {k2::dto::FieldType::STRING, "NamespaceName", false, false},
+                {k2::dto::FieldType::INT32T, "NamespaceOid", false, false},
+                {k2::dto::FieldType::INT32T, "NextPgOid", false, false}},
+        .partitionKeyFields = std::vector<uint32_t> { 0 },
+        .rangeKeyFields = std::vector<uint32_t> {}
+    };
+
+    NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
+
+    ~NamespaceInfoHandler();
+
+    CreateNamespaceTableResult CreateNamespaceTableIfNecessary();
+
+    AddOrUpdateNamespaceResult AddOrUpdateNamespace(NamespaceInfo namespace_info);
+
+    GetNamespaceResult GetNamespace(std::string namespace_id);
+
+    ListNamespacesResult ListNamespaces();
+
+    // TODO: add partial update for next_pg_oid once SKV supports partial update
+
+    private:  
+    std::string collection_name_;
+    std::string schema_name_;
+    std::shared_ptr<K2Adapter> k2_adapter_;  
+    std::shared_ptr<k2::dto::Schema> schema_ptr;  
+};
 
 } // namespace sql
 } // namespace k2pg

@@ -20,20 +20,23 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_DEFAULTS_H
-#define CHOGORI_SQL_DEFAULTS_H
+#ifndef CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
+#define CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
 
 #include <string>
+
+#include "yb/pggate/sql_catalog_entity.h"
+#include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
 namespace sql {
 
-static const std::string sql_primary_collection_name = "K2_SKV_SQL_PRIMARY_COLLECTION";
-static const std::string cluster_info_schema_name = "K2_SKV_SQL_CLUSTER_INFO";
-static const std::string namespace_info_schema_name = "K2_SKV_SQL_NAMESPACE_INFO";
+using yb::Status;
+using k2pg::gate::K2Adapter;
+using k2pg::gate::K23SITxn;
 
-}  // namespace sql
-}  // namespace k2pg
 
-#endif //CHOGORI_SQL_DEFAULTS_H     
+} // namespace sql
+} // namespace k2pg
+
+#endif //CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H

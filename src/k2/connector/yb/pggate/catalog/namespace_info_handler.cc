@@ -21,13 +21,186 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/catalog/cluster_info_handler.h"
+#include "yb/pggate/catalog/namespace_info_handler.h"
 
 #include <glog/logging.h>
 
 namespace k2pg {
 namespace sql {
 
+NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
+    : collection_name_(sql_primary_collection_name), 
+      schema_name_(namespace_info_schema_name), 
+      k2_adapter_(k2_adapter) {
+    schema_ptr = std::make_shared<k2::dto::Schema>();
+    *(schema_ptr.get()) = schema;
+}
+
+NamespaceInfoHandler::~NamespaceInfoHandler() {
+}
+
+CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary() {
+    // check if the schema already exists or not, which is an indication of whether if we have created the table or not
+    std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name_, schema_name_, 1);
+    k2::GetSchemaResult schema_result = schema_result_future.get();
+    CreateNamespaceTableResult response;
+    // TODO: double check if this check is valid for schema
+    if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
+        LOG(INFO) << "Namespace info table does not exist"; 
+        // create the table schema since it does not exist
+        std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name_, schema);
+        k2::CreateSchemaResult result = result_future.get();
+        if (!result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to create SKV schema for namespaces due to error code " << result.status.code
+                << " and message: " << result.status.message;
+            response.succeeded = false;
+            response.errorCode = result.status.code;
+            response.errorMessage = std::move(result.status.message);
+            return response;            
+        }
+    }
+    response.succeeded = true;
+    return response;
+}
+
+AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(NamespaceInfo namespace_info) {
+    AddOrUpdateNamespaceResult response;
+    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
+    K23SITxn txn = txn_future.get();   
+       
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    record.serializeNext<k2::String>(namespace_info.GetNamespaceId());  
+    record.serializeNext<k2::String>(namespace_info.GetNamespaceName());  
+    // use signed integers for unsigned integers since SKV does not support them
+    record.serializeNext<int32_t>(namespace_info.GetNamespaceOid());  
+    record.serializeNext<int32_t>(namespace_info.GetNextPgOid());
+    std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
+    k2::WriteResult write_result = write_result_future.get();
+    if (!write_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
+            << " and message: " << write_result.status.message;
+        response.succeeded = false;
+        response.errorCode = write_result.status.code;
+        response.errorMessage = std::move(write_result.status.message);
+        return response;  
+    }
+
+    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
+    k2::EndResult txn_result = txn_result_future.get();
+    if (!txn_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
+            << " and message: " << txn_result.status.message;
+        response.succeeded = false;
+        response.errorCode = txn_result.status.code;
+        response.errorMessage = std::move(txn_result.status.message);
+        return response;             
+    }
+    response.succeeded = true;
+    return response;
+}
+
+GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::string namespace_id) {
+    GetNamespaceResult response;
+
+    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
+    K23SITxn txn = txn_future.get();
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    record.serializeNext<k2::String>(namespace_id);
+    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = txn.read(std::move(record));
+    k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
+    if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
+        LOG(INFO) << "SKV record does not exist for namespace " << namespace_id; 
+        response.exist = false;
+        response.succeeded = true;
+        return response;
+    }
+
+    if (!read_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to read SKV record due to error code " << read_result.status.code
+            << " and message: " << read_result.status.message;
+        response.succeeded = false;
+        response.errorCode = read_result.status.code;
+        response.errorMessage = read_result.status.message; 
+        return response;     
+    }
+    std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
+    namespace_ptr->SetNamespaceId(read_result.value.deserializeNext<k2::String>().value());
+    namespace_ptr->SetNamespaceName(read_result.value.deserializeNext<k2::String>().value());
+    // use signed integers for unsigned integers since SKV does not support them
+    namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int32_t>().value());
+    namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int32_t>().value());
+    response.namespaceInfo = namespace_ptr;
+    response.exist = true;
+
+    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
+    k2::EndResult txn_result = txn_result_future.get();
+    if (!txn_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
+            << " and message: " << txn_result.status.message;
+        response.succeeded = false;
+        response.errorCode = txn_result.status.code;
+        response.errorMessage = std::move(txn_result.status.message);
+        return response;                                    
+    }
+    response.succeeded = true;
+    return response;
+}
+
+ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
+    ListNamespacesResult response;
+    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name_, schema_name_);
+    CreateScanReadResult create_result = create_result_future.get();
+    if (!create_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message;
+        response.succeeded = false;
+        response.errorCode = create_result.status.code;
+        response.errorMessage = std::move(create_result.status.message);
+        return response;                                           
+    }
+
+    std::shared_ptr<k2::Query> query = create_result.query;
+    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
+    K23SITxn txn = txn_future.get();
+    std::future<k2::QueryResult> query_result_future = txn.scanRead(query);
+    k2::QueryResult query_result = query_result_future.get();
+    // TODO: how to handle query pagination token and do pagination here?
+    if (!query_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+            << " and message: " << query_result.status.message;
+        response.succeeded = false;
+        response.errorCode = query_result.status.code;
+        response.errorMessage = std::move(query_result.status.message);
+        return response;                                                  
+    }
+
+    if (!query_result.records.empty()) {
+        for (k2::dto::SKVRecord& record : query_result.records) {
+            std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
+            namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
+            namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
+            // use signed integers for unsigned integers since SKV does not support them
+            namespace_ptr->SetNamespaceOid(record.deserializeNext<int32_t>().value());
+            namespace_ptr->SetNextPgOid(record.deserializeNext<int32_t>().value()); 
+            response.namespaceInfos.push_back(namespace_ptr);
+        } 
+    }
+    
+    // TODO: double check if we need to commit transaction for scan, what if this fails?
+    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
+    k2::EndResult txn_result = txn_result_future.get();
+    if (!txn_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
+            << " and message: " << txn_result.status.message;
+        response.succeeded = false;
+        response.errorCode = txn_result.status.code;
+        response.errorMessage = std::move(txn_result.status.message);
+        return response;             
+    }
+
+    response.succeeded = true;
+    return response;
+}
 
 } // namespace sql
 } // namespace k2pg

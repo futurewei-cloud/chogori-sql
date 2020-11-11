@@ -31,6 +31,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/index.h"
 #include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
+#include "yb/pggate/catalog/namespace_info_handler.h"
 
 namespace k2pg {
 namespace sql {
@@ -204,7 +205,7 @@ namespace sql {
 
         mutable simple_spinlock lock_;
 
-        CHECKED_STATUS ReadLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version);
+        CHECKED_STATUS GetLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version);
 
     private:
         std::string cluster_id_;
@@ -217,6 +218,12 @@ namespace sql {
         std::atomic<uint64_t> catalog_version_{0};
 
         std::shared_ptr<ClusterInfoHandler> cluster_info_handler_;
+
+        std::shared_ptr<NamespaceInfoHandler> namespace_info_handler_;
+
+        std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_id_map_;
+
+        std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
     };
 
 } // namespace sql

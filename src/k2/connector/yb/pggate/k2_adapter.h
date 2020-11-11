@@ -49,7 +49,12 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
+  std::future<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
+
   std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, k2::dto::Schema schema);
+  
+  std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName, 
+                                                     const std::string& schemaName);
 
   std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 

@@ -21,7 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "yb/pggate/catalog/sql_catalog_persistence.h"
+#include "yb/pggate/catalog/sql_catalog_entity.h"
 
 namespace k2pg {
 namespace sql {

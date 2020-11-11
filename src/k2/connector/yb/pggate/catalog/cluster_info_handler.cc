@@ -30,7 +30,7 @@ namespace sql {
 
 ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : collection_name_(sql_primary_collection_name), 
-      partition_name_(cluster_info_partition_name), 
+      schema_name_(cluster_info_schema_name), 
       k2_adapter_(k2_adapter) {
     schema_ptr = std::make_shared<k2::dto::Schema>();
     *(schema_ptr.get()) = schema;
@@ -39,10 +39,10 @@ ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
-CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& cluster_info) {
+CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& cluster_info) {
     std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema);
     k2::CreateSchemaResult schema_result = schema_result_future.get();
-    CreateClusterInfoResponse response;
+    CreateClusterInfoResult response;
     if (!schema_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create schema due to error code " << schema_result.status.code
             << " and message: " << schema_result.status.message;
@@ -85,8 +85,8 @@ CreateClusterInfoResponse ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clu
     return response;
 }
 
-UpdateClusterInfoResponse ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& cluster_info) {
-    UpdateClusterInfoResponse response;
+UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& cluster_info) {
+    UpdateClusterInfoResult response;
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
 
@@ -120,13 +120,13 @@ UpdateClusterInfoResponse ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clu
     return response;
 }
 
-ReadClusterInfoResponse ClusterInfoHandler::ReadClusterInfo() {
+GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::string& cluster_id) {
+    GetClusterInfoResult response;
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
-    ReadClusterInfoResponse response;
 
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
-    record.serializeNext<k2::String>(partition_name_);
+    record.serializeNext<k2::String>(cluster_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = txn.read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {

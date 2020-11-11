@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
-#include "yb/pggate/catalog/sql_catalog_persistence.h"
+#include "yb/pggate/catalog/sql_catalog_entity.h"
 #include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
@@ -37,19 +37,19 @@ using yb::Status;
 using k2pg::gate::K2Adapter;
 using k2pg::gate::K23SITxn;
 
-struct CreateClusterInfoResponse {
+struct CreateClusterInfoResult {
     bool succeeded;
     int errorCode;
     std::string errorMessage;
 };
 
-struct UpdateClusterInfoResponse {
+struct UpdateClusterInfoResult {
     bool succeeded;
     int errorCode;
     std::string errorMessage;
 };
 
-struct ReadClusterInfoResponse {
+struct GetClusterInfoResult {
     bool exist;
     bool succeeded;
     ClusterInfo clusterInfo;
@@ -62,7 +62,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
     static inline k2::dto::Schema schema {
-        .name = cluster_info_partition_name,
+        .name = cluster_info_schema_name,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "ClusterId", false, false},
@@ -75,15 +75,15 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
     
-    CreateClusterInfoResponse CreateClusterInfo(ClusterInfo& cluster_info);
+    CreateClusterInfoResult CreateClusterInfo(ClusterInfo& cluster_info);
 
-    UpdateClusterInfoResponse UpdateClusterInfo(ClusterInfo& cluster_info);
+    UpdateClusterInfoResult UpdateClusterInfo(ClusterInfo& cluster_info);
 
-    ReadClusterInfoResponse ReadClusterInfo();
+    GetClusterInfoResult ReadClusterInfo(std::string& cluster_id);
 
     private:  
     std::string collection_name_;
-    std::string partition_name_;
+    std::string schema_name_;
     std::shared_ptr<K2Adapter> k2_adapter_;  
     std::shared_ptr<k2::dto::Schema> schema_ptr;  
 };

@@ -93,20 +93,20 @@ class NamespaceInfo {
     NamespaceInfo() = default;
     ~NamespaceInfo() = default;
 
-    void SetNamespaceName(string& name) {
-        namespace_name_ = std::move(name);
-    }
-
-    const string& GetNamespaceName() const {
-        return namespace_name_;
-    }
-
-    void SetNamespaceId(string& id) {
+    void SetNamespaceId(string id) {
         namespace_id_ = std::move(id);
     }
 
     const string& GetNamespaceId() const {
         return namespace_id_;
+    }
+
+    void SetNamespaceName(string name) {
+        namespace_name_ = std::move(name);
+    }
+
+    const string& GetNamespaceName() const {
+        return namespace_name_;
     }
 
     void SetNamespaceOid(uint32_t pg_oid) {
@@ -127,11 +127,11 @@ class NamespaceInfo {
     }
 
     private:
-    // name
-    string namespace_name_;
-
     // encoded id, for example, uuid
     string namespace_id_;
+
+    // name
+    string namespace_name_;
 
     // object id assigned by PG
     uint32_t namespace_oid_;
