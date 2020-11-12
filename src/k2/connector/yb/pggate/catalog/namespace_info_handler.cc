@@ -53,13 +53,13 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
         if (!result.status.is2xxOK()) {
             LOG(FATAL) << "Failed to create SKV schema for namespaces due to error code " << result.status.code
                 << " and message: " << result.status.message;
-            response.succeeded = false;
-            response.errorCode = result.status.code;
-            response.errorMessage = std::move(result.status.message);
+            response.status.succeeded = false;
+            response.status.errorCode = result.status.code;
+            response.status.errorMessage = std::move(result.status.message);
             return response;            
         }
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 
@@ -79,9 +79,9 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
             << " and message: " << write_result.status.message;
-        response.succeeded = false;
-        response.errorCode = write_result.status.code;
-        response.errorMessage = std::move(write_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = write_result.status.code;
+        response.status.errorMessage = std::move(write_result.status.message);
         return response;  
     }
 
@@ -90,12 +90,12 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;             
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 
@@ -110,17 +110,17 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(const std::string& namespa
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "SKV record does not exist for namespace " << namespace_id; 
-        response.exist = false;
-        response.succeeded = true;
+        response.namespaceInfo = nullptr;
+        response.status.succeeded = true;
         return response;
     }
 
     if (!read_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to read SKV record due to error code " << read_result.status.code
             << " and message: " << read_result.status.message;
-        response.succeeded = false;
-        response.errorCode = read_result.status.code;
-        response.errorMessage = read_result.status.message; 
+        response.status.succeeded = false;
+        response.status.errorCode = read_result.status.code;
+        response.status.errorMessage = read_result.status.message; 
         return response;     
     }
     std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
@@ -130,19 +130,18 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(const std::string& namespa
     namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int32_t>().value());
     namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int32_t>().value());
     response.namespaceInfo = namespace_ptr;
-    response.exist = true;
 
     std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
     k2::EndResult txn_result = txn_result_future.get();
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;                                    
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 
@@ -153,9 +152,9 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
     if (!create_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
             << " and message: " << create_result.status.message;
-        response.succeeded = false;
-        response.errorCode = create_result.status.code;
-        response.errorMessage = std::move(create_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = create_result.status.code;
+        response.status.errorMessage = std::move(create_result.status.message);
         return response;                                           
     }
 
@@ -168,9 +167,9 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
     if (!query_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
             << " and message: " << query_result.status.message;
-        response.succeeded = false;
-        response.errorCode = query_result.status.code;
-        response.errorMessage = std::move(query_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = query_result.status.code;
+        response.status.errorMessage = std::move(query_result.status.message);
         return response;                                                  
     }
 
@@ -192,13 +191,13 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;             
     }
 
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 

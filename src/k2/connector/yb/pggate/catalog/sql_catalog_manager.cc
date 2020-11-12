@@ -53,20 +53,20 @@ namespace sql {
         CHECK(!initted_.load(std::memory_order_acquire));
         
         // load cluster info
-        GetClusterInfoResult response = cluster_info_handler_->ReadClusterInfo(cluster_id_);
-        if (response.succeeded) {
-            if (response.exist) {
-                init_db_done_.store(response.clusterInfo.IsInitdbDone(), std::memory_order_relaxed); 
-                catalog_version_.store(response.clusterInfo.GetCatalogVersion(), std::memory_order_relaxed); 
+        GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(cluster_id_);
+        if (ciresp.status.succeeded) {
+            if (ciresp.clusterInfo != nullptr) {
+                init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed); 
+                catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed); 
                 LOG(INFO) << "Loaded cluster info record succeeded";  
             } else {
                 ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
                 CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(cluster_info);
-                if (clresp.succeeded) {
+                if (clresp.status.succeeded) {
                     LOG(INFO) << "Created cluster info record succeeded";
                 } else {
                     // TODO: what to do if the creation fails?
-                    LOG(FATAL) << "Failed to create cluster info record due to " << clresp.errorMessage;
+                    LOG(FATAL) << "Failed to create cluster info record due to " << clresp.status.errorMessage;
                 }
             }
         } else {
@@ -75,9 +75,9 @@ namespace sql {
 
         // load namespaces
         CreateNamespaceTableResult cnresp = namespace_info_handler_->CreateNamespaceTableIfNecessary();
-        if (cnresp.succeeded) {
+        if (cnresp.status.succeeded) {
             ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces();
-            if (nsresp.succeeded) {
+            if (nsresp.status.succeeded) {
                 if (!nsresp.namespaceInfos.empty()) {
                     for (auto ns_ptr : nsresp.namespaceInfos) {
                         // caching namespaces by namespace id and namespace name
@@ -88,14 +88,14 @@ namespace sql {
                     LOG(INFO) << "namespaces are empty";
                 }
             } else {
-                LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.errorMessage;
+                LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.status.errorMessage;
                 return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
-                    nsresp.errorCode, nsresp.errorMessage);
+                    nsresp.status.errorCode, nsresp.status.errorMessage);
             }
         } else {
-            LOG(FATAL) << "Failed to create or check namespace table due to " <<  cnresp.errorMessage;
+            LOG(FATAL) << "Failed to create or check namespace table due to " <<  cnresp.status.errorMessage;
             return STATUS_FORMAT(IOError, "Failed to create or check namespace table due to error code $0 and message $1",
-                cnresp.errorCode, cnresp.errorMessage);  
+                cnresp.status.errorCode, cnresp.status.errorMessage);  
         }
 
         initted_.store(true, std::memory_order_release);
@@ -103,18 +103,18 @@ namespace sql {
     }
     
     Status SqlCatalogManager::GetLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version) {
-        GetClusterInfoResult response = cluster_info_handler_->ReadClusterInfo(cluster_id_);
-        if (response.succeeded) {
-            if (response.exist) {
-                *initdb_done = response.clusterInfo.IsInitdbDone(); 
-                *catalog_version = response.clusterInfo.GetCatalogVersion(); 
+        GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(cluster_id_);
+        if (result.status.succeeded) {
+            if (result.clusterInfo != nullptr) {
+                *initdb_done = result.clusterInfo->IsInitdbDone(); 
+                *catalog_version = result.clusterInfo->GetCatalogVersion(); 
                 LOG(INFO) << "Loaded cluster info record succeeded";  
              } else {
                return STATUS(NotFound, "Cluster info record does not exist");            
             }
         } else {
             return STATUS_FORMAT(IOError, "Failed to read cluster info due to error code $0 and message $1",
-                response.errorCode, response.errorMessage);
+                result.status.errorCode, result.status.errorMessage);
         }
 
         return Status::OK();      
@@ -216,12 +216,56 @@ namespace sql {
     Status SqlCatalogManager::CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse> response) {
         return Status::OK();
     }
-    
-    Status SqlCatalogManager::ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse> response) {
+  
+    Status SqlCatalogManager::ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespacesResponse> response) {
+        ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+        if (result.status.succeeded) {
+            response->status.succeeded = true;             
+            if (!result.namespaceInfos.empty()) {
+                UpdateNamespaceCache(result.namespaceInfos);
+                for (auto ns_ptr : result.namespaceInfos) {
+                    response->namespace_infos.push_back(ns_ptr);
+                }
+            } else {
+                LOG(WARNING) << "No namespaces are found";    
+            }
+        } else {
+            response->status.succeeded = false;
+            response->status.errorCode = result.status.errorCode;
+            response->status.errorMessage = result.status.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to list namespaces due to error code $0 and message $1",
+                result.status.errorCode, result.status.errorMessage);
+        }
+
         return Status::OK();
     }
 
     Status SqlCatalogManager::GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse> response) {
+        // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(request->namespaceId);
+        if (result.status.succeeded) {
+            if (result.namespaceInfo != nullptr) {
+                response->namespace_info = std::move(result.namespaceInfo);
+
+                // update namespace caches
+                namespace_id_map_[response->namespace_info->GetNamespaceId()] = response->namespace_info ;
+                namespace_name_map_[response->namespace_info->GetNamespaceName()] = response->namespace_info; 
+                response->status.succeeded = true;             
+            } else {
+                response->status.succeeded = false;
+                // 1 stands for NOT_FOUND in ybc PG logic, details see status.h
+                response->status.errorCode = 1;
+                response->status.errorMessage = "Cannot find namespace " + request->namespaceId;
+                return STATUS_FORMAT(NotFound, "Cannot find namespace $0", request->namespaceId);
+            }
+        } else {
+            response->status.succeeded = false;
+            response->status.errorCode = result.status.errorCode;
+            response->status.errorMessage = result.status.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to read namespace $0 due to error code $1 and message $2",
+                request->namespaceId, result.status.errorCode, result.status.errorMessage);
+        }
+
         return Status::OK();
     }
 
@@ -247,8 +291,8 @@ namespace sql {
 
     Status SqlCatalogManager::ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse> response) {
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(request->namespaceId);
-        if (result.succeeded) {
-            if (result.exist) {
+        if (result.status.succeeded) {
+            if (result.namespaceInfo != nullptr) {
                 uint32_t begin_oid = result.namespaceInfo->GetNextPgOid();
                 if (begin_oid < request->nextOid) {
                     begin_oid = request->nextOid;
@@ -272,9 +316,9 @@ namespace sql {
                 std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
                 updated_ns->SetNextPgOid(end_oid);
                 AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(updated_ns);
-                if (!update_result.succeeded) {
+                if (!update_result.status.succeeded) {
                     return STATUS_FORMAT(IOError, "Failed to update namespace $0 due to error code $1 and message $2",
-                    request->namespaceId, update_result.errorCode, update_result.errorMessage);                   
+                    request->namespaceId, update_result.status.errorCode, update_result.status.errorMessage);                   
                 }
 
                 // update namespace caches
@@ -285,11 +329,22 @@ namespace sql {
             }
         } else {
             return STATUS_FORMAT(IOError, "Failed to read namespace $0 due to error code $1 and message $2",
-                request->namespaceId, result.errorCode, result.errorMessage);
+                request->namespaceId, result.status.errorCode, result.status.errorMessage);
         }
 
         return Status::OK();
     }
+    
+    // update namespace caches
+    void SqlCatalogManager::UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos) {
+        std::lock_guard<simple_spinlock> l(lock_);
+        namespace_id_map_.clear();
+        namespace_name_map_.clear();
+        for (auto ns_ptr : namespace_infos) {
+            namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
+            namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr; 
+        }
+    }    
 }  // namespace sql
 }  // namespace k2pg
 

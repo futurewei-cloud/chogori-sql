@@ -140,6 +140,13 @@ class NamespaceInfo {
     uint32_t next_pg_oid_;
 };
 
+// response status
+struct RStatus {
+    bool succeeded;
+    int errorCode;
+    std::string errorMessage;   
+};
+
 } // namespace sql
 } // namespace k2pg
 

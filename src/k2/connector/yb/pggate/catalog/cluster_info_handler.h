@@ -38,23 +38,16 @@ using k2pg::gate::K2Adapter;
 using k2pg::gate::K23SITxn;
 
 struct CreateClusterInfoResult {
-    bool succeeded;
-    int errorCode;
-    std::string errorMessage;
+    RStatus status;
 };
 
 struct UpdateClusterInfoResult {
-    bool succeeded;
-    int errorCode;
-    std::string errorMessage;
+    RStatus status;
 };
 
 struct GetClusterInfoResult {
-    bool exist;
-    bool succeeded;
-    ClusterInfo clusterInfo;
-    int errorCode;
-    std::string errorMessage;
+    RStatus status;
+    std::shared_ptr<ClusterInfo> clusterInfo;
 };
 
 class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandler> {
@@ -79,7 +72,7 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
 
     UpdateClusterInfoResult UpdateClusterInfo(ClusterInfo& cluster_info);
 
-    GetClusterInfoResult ReadClusterInfo(std::string& cluster_id);
+    GetClusterInfoResult ReadClusterInfo(const std::string& cluster_id);
 
     private:  
     std::string collection_name_;

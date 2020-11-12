@@ -38,30 +38,21 @@ using k2pg::gate::K23SITxn;
 using k2pg::gate::CreateScanReadResult;
 
 struct CreateNamespaceTableResult {
-    bool succeeded;
-    int errorCode;
-    std::string errorMessage;    
+    RStatus status;    
 };
 
 struct AddOrUpdateNamespaceResult {
-    bool succeeded;
-    int errorCode;
-    std::string errorMessage;    
+    RStatus status;   
 };
 
 struct GetNamespaceResult {
-    bool succeeded;
-    bool exist;
-    std::shared_ptr<NamespaceInfo> namespaceInfo;
-    int errorCode;
-    std::string errorMessage;    
+    RStatus status;
+    std::shared_ptr<NamespaceInfo> namespaceInfo;  
 };
 
 struct ListNamespacesResult {
-    bool succeeded;
-    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;
-    int errorCode;
-    std::string errorMessage;    
+    RStatus status;
+    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;  
 };
 
 class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHandler> {

@@ -46,9 +46,9 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!schema_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create schema due to error code " << schema_result.status.code
             << " and message: " << schema_result.status.message;
-        response.succeeded = false;
-        response.errorCode = schema_result.status.code;
-        response.errorMessage = std::move(schema_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = schema_result.status.code;
+        response.status.errorMessage = std::move(schema_result.status.message);
         return response;
     }
 
@@ -65,9 +65,9 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
             << " and message: " << write_result.status.message;
-        response.succeeded = false;
-        response.errorCode = write_result.status.code;
-        response.errorMessage = std::move(write_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = write_result.status.code;
+        response.status.errorMessage = std::move(write_result.status.message);
         return response;  
     }
 
@@ -76,12 +76,12 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;             
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 
@@ -100,9 +100,9 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clust
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
             << " and message: " << write_result.status.message;
-        response.succeeded = false;
-        response.errorCode = write_result.status.code;
-        response.errorMessage = std::move(write_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = write_result.status.code;
+        response.status.errorMessage = std::move(write_result.status.message);
         return response;    
     }
 
@@ -111,16 +111,16 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clust
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;                        
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 
-GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::string& cluster_id) {
+GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(const std::string& cluster_id) {
     GetClusterInfoResult response;
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
@@ -131,24 +131,25 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::string& cluster_id
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Cluster info record does not exist"; 
-        response.exist = false;
-        response.succeeded = true;
+        response.clusterInfo = nullptr;
+        response.status.succeeded = true;
         return response;
     }
 
     if (!read_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to read SKV record due to error code " << read_result.status.code
             << " and message: " << read_result.status.message;
-        response.succeeded = false;
-        response.errorCode = read_result.status.code;
-        response.errorMessage = read_result.status.message; 
+        response.status.succeeded = false;
+        response.status.errorCode = read_result.status.code;
+        response.status.errorMessage = read_result.status.message; 
         return response;     
     }
-    response.clusterInfo.SetClusterId(read_result.value.deserializeNext<k2::String>().value());
+    std::shared_ptr<ClusterInfo> cluster_info = std::make_shared<ClusterInfo>();
+    cluster_info->SetClusterId(read_result.value.deserializeNext<k2::String>().value());
     // use signed integers for unsigned integers since SKV does not support them
-    response.clusterInfo.SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
-    response.clusterInfo.SetInitdbDone(read_result.value.deserializeNext<bool>().value());
-    response.exist = true;
+    cluster_info->SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
+    cluster_info->SetInitdbDone(read_result.value.deserializeNext<bool>().value());
+    response.clusterInfo = cluster_info;
 
     // TODO: double check if we need to commit the transaction for read only call
     std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
@@ -156,12 +157,12 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::string& cluster_id
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.succeeded = false;
-        response.errorCode = txn_result.status.code;
-        response.errorMessage = std::move(txn_result.status.message);
+        response.status.succeeded = false;
+        response.status.errorCode = txn_result.status.code;
+        response.status.errorMessage = std::move(txn_result.status.message);
         return response;                                    
     }
-    response.succeeded = true;
+    response.status.succeeded = true;
     return response;
 }
 

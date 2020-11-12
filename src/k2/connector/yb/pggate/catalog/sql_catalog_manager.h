@@ -57,9 +57,9 @@ namespace sql {
     struct ListNamespacesRequest {
     };
 
-    struct ListNamespaceResponse {
-        std::vector<string> namespaceNames;
-        string errorMessage;  
+    struct ListNamespacesResponse {
+        RStatus status;  
+        std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos;
     };
 
     struct GetNamespaceRequest {
@@ -68,9 +68,8 @@ namespace sql {
     };
 
     struct GetNamespaceResponse {
-        string namespaceName;
-        string namespaceId;     
-        string errorMessage;  
+        RStatus status;  
+        std::shared_ptr<NamespaceInfo> namespace_info;
     };
 
     struct DeleteNamespaceRequest {
@@ -176,6 +175,8 @@ namespace sql {
 
         CHECKED_STATUS IsInitDbDone(bool* isDone);
         
+        // TODO: change APIs to not use STATUS but pass RStatus in response object
+
         // TODO: double check, we might not need this API to change the catalog version since the version should be
         // managed by the catalog manager internally
         CHECKED_STATUS SetCatalogVersion(uint64_t new_version);
@@ -184,7 +185,7 @@ namespace sql {
 
         CHECKED_STATUS CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse> response);  
 
-        CHECKED_STATUS ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespaceResponse> response);
+        CHECKED_STATUS ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespacesResponse> response);
 
         CHECKED_STATUS GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse> response);
 
@@ -207,6 +208,8 @@ namespace sql {
 
         CHECKED_STATUS GetLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version);
 
+        void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
+
     private:
         std::string cluster_id_;
 
@@ -224,6 +227,8 @@ namespace sql {
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_id_map_;
 
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
+
+        // TODO: add transaction handler for DDLs
     };
 
 } // namespace sql
