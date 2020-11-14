@@ -161,30 +161,32 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
     std::shared_ptr<k2::Query> query = create_result.query;
     std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
     K23SITxn txn = txn_future.get();
-    std::future<k2::QueryResult> query_result_future = txn.scanRead(query);
-    k2::QueryResult query_result = query_result_future.get();
-    // TODO: how to handle query pagination token and do pagination here?
-    if (!query_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
-            << " and message: " << query_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = query_result.status.code;
-        response.status.errorMessage = std::move(query_result.status.message);
-        return response;                                                  
-    }
+    do {
+        std::future<k2::QueryResult> query_result_future = txn.scanRead(query);
+        k2::QueryResult query_result = query_result_future.get();
+        if (!query_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message;
+            response.status.succeeded = false;
+            response.status.errorCode = query_result.status.code;
+            response.status.errorMessage = std::move(query_result.status.message);
+            return response;                                                  
+        }
 
-    if (!query_result.records.empty()) {
-        for (k2::dto::SKVRecord& record : query_result.records) {
-            std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
-            namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
-            namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
-            // use signed integers for unsigned integers since SKV does not support them
-            namespace_ptr->SetNamespaceOid(record.deserializeNext<int32_t>().value());
-            namespace_ptr->SetNextPgOid(record.deserializeNext<int32_t>().value()); 
-            response.namespaceInfos.push_back(namespace_ptr);
-        } 
-    }
-    
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
+                namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
+                namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
+                // use signed integers for unsigned integers since SKV does not support them
+                namespace_ptr->SetNamespaceOid(record.deserializeNext<int32_t>().value());
+                namespace_ptr->SetNextPgOid(record.deserializeNext<int32_t>().value()); 
+                response.namespaceInfos.push_back(namespace_ptr);
+            } 
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+
     // TODO: double check if we need to commit transaction for scan, what if this fails?
     std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
     k2::EndResult txn_result = txn_result_future.get();
