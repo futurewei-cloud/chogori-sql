@@ -27,10 +27,15 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <assert.h>     
 
+#include "yb/pggate/k23si_txn.h"
+
 namespace k2pg {
 namespace sql {
 
 using std::string;
+using k2pg::gate::K23SITxn;
+// use the pair <namespace_id, table_name> to reference a table
+typedef std::pair<std::string, std::string> TableNameKey;
 
 class ClusterInfo {
     public: 
@@ -138,6 +143,22 @@ class NamespaceInfo {
 
     // next PG Oid that is available for object id assignment for this namespace
     uint32_t next_pg_oid_;
+};
+
+class Context {
+    Context() = default;
+    ~Context() = default;
+
+    void SetTxn(std::shared_ptr<K23SITxn> txn) {
+        txn_ = txn;
+    }
+
+    std::shared_ptr<K23SITxn> GetTxn() {
+        return txn_;
+    }
+    
+    private: 
+    std::shared_ptr<K23SITxn> txn_;   
 };
 
 // response status

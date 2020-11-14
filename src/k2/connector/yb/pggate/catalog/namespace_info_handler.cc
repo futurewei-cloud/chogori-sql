@@ -48,7 +48,7 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Namespace info table does not exist"; 
         // create the table schema since it does not exist
-        std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name_, schema);
+        std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
         k2::CreateSchemaResult result = result_future.get();
         if (!result.status.is2xxOK()) {
             LOG(FATAL) << "Failed to create SKV schema for namespaces due to error code " << result.status.code
@@ -57,7 +57,7 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
             response.status.errorCode = result.status.code;
             response.status.errorMessage = std::move(result.status.message);
             return response;            
-        }
+       }
     }
     response.status.succeeded = true;
     return response;

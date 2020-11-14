@@ -51,7 +51,7 @@ class K2Adapter {
 
   std::future<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
 
-  std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, k2::dto::Schema schema);
+  std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
   
   std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName, 
                                                      const std::string& schemaName);

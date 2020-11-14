@@ -24,6 +24,8 @@ Copyright(c) 2020 Futurewei Cloud
 #ifndef CHOGORI_SQL_CATALOG_MANAGER_H
 #define CHOGORI_SQL_CATALOG_MANAGER_H
 
+#include <boost/functional/hash.hpp>
+
 #include "yb/common/env.h"
 #include "yb/common/status.h"
 #include "yb/common/concurrent/locks.h"
@@ -32,6 +34,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
+#include "yb/pggate/catalog/table_info_handler.h"
 
 namespace k2pg {
 namespace sql {
@@ -90,6 +93,7 @@ namespace sql {
         uint32_t tableId;
         Schema schema;
         bool isSysCatalogTable;
+        // should put shared table in primary collection
         bool isSharedTable;
 
         // for index table
@@ -227,6 +231,13 @@ namespace sql {
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_id_map_;
 
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
+
+        // a table is uniquely referenced by its id, which is generated based on its 
+        // database (namespace) PgOid and table PgOid, as a result, no namespace is required here
+        std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_id_map_;
+
+        // to reference a table by its name, we have to use both namespaceId and table name
+        std::unordered_map<TableNameKey, std::shared_ptr<TableInfo>, boost::hash<TableNameKey>> table_name_map_;
 
         // TODO: add transaction handler for DDLs
     };

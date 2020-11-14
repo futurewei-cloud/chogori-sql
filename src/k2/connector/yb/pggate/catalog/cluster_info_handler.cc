@@ -40,7 +40,7 @@ ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
 CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& cluster_info) {
-    std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema);
+    std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
     k2::CreateSchemaResult schema_result = schema_result_future.get();
     CreateClusterInfoResult response;
     if (!schema_result.status.is2xxOK()) {

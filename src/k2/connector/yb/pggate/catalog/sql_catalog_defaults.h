@@ -32,6 +32,9 @@ namespace sql {
 static const std::string sql_primary_collection_name = "K2_SKV_SQL_PRIMARY_COLLECTION";
 static const std::string cluster_info_schema_name = "K2_SKV_SQL_CLUSTER_INFO";
 static const std::string namespace_info_schema_name = "K2_SKV_SQL_NAMESPACE_INFO";
+static const std::string sys_catalog_tablelist_schema_name = "sys_catalog_tablelist_schema";
+static const std::string sys_catalog_table_schema_schema_name = "sys_catalog_table_schema";
+static const std::string sys_catalog_index_schema_schema_name = "sys_catalog_index_schema";
 
 }  // namespace sql
 }  // namespace k2pg

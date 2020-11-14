@@ -30,7 +30,7 @@ std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collect
   throw new std::logic_error("Not implemented yet");     
 }
 
-std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, k2::dto::Schema schema) {
+std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
   throw new std::logic_error("Not implemented yet");    
 }
 
