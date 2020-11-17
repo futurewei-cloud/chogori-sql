@@ -1,0 +1,21 @@
+version: '3'
+# run
+services:
+    postgres:
+        image: yugabytedb/yugabyte:latest
+        command: yugabyted start --daemon=false
+        volumes:
+            - pg_data:/home/yugabyte/var
+            - ./run_ydb.sh:/home/yugabyte/bin/run_ydb.sh
+        links:
+            - tester
+
+volumes:
+    pg_data:
+
+networks:
+    default:
+        ipam:
+          config:
+            - subnet: 172.23.0.0/16
+        driver: bridge
