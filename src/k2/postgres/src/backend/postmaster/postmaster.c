@@ -4223,12 +4223,9 @@ BackendInitialize(Port *port)
 	pq_init();					/* initialize libpq to talk to client */
 	/* initialize k2 */
 	if (k2_init_func) {
-		/* example "rrdma+k2rpc://fffffff" */
+		const int MAX_K2_ARGS = 64;
+		/* example "mlx5_1" */
 		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
-		if (NULL == rdmaDevice) {
-			ereport(LOG, (errmsg("missing env variable K2_RDMA_DEVICE")));
-			proc_exit(1);
-		}
 
 		/* example "rrdma+k2rpc://fffffff" */
 		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
@@ -4283,7 +4280,7 @@ BackendInitialize(Port *port)
 		/* example: "200m" */
 		const char* memToUse = getenv("K2_PG_MEM");
 		if (NULL == memToUse) {
-			memToUse="200m";
+			memToUse="200M";
 		}
 
 		/* example: "10ms" */
@@ -4292,16 +4289,35 @@ BackendInitialize(Port *port)
 			cpoTimeout = "100ms";
 		}
 
+		/* if this is set to anything, then enable it */
+		const char* hugepages = getenv("K2_HUGE_PAGES");
+		if (NULL != hugepages) {
+			hugepages = "--hugepages";
+		}
+
+		/* if this is set to anything, then it will be enabled */
+		const char* msgChecksum = getenv("K2_MSG_CHECKSUM");
+
 		/* example: "10ms" */
 		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
 		if (NULL == cpoBackoff) {
 			cpoBackoff = "10ms";
 		}
 
-		char* argv[] = {"k2_pg", "--cpuset", coreToUse, "--hugepages", "--rdma", rdmaDevice, "-m", memToUse,
-			"--partition_request_timeout", cpoTimeout, "--cpo", cpoAddress, "--tso_endpoint", tsoAddress,
-			"--cpo_request_timeout", cpoTimeout, "--cpo_request_backoff", cpoBackoff};
-		k2_init_func(sizeof(argv), argv);
+		char* argv[MAX_K2_ARGS];
+		int argc = 0;
+		argv[argc++] = "k2_pg";
+		argv[argc++] = "--cpuset"; argv[argc++] = coreToUse;
+		if (NULL != hugepages) argv[argc++] = hugepages;
+		if (NULL != rdmaDevice) { argv[argc++] = "--rdma"; argv[argc++] = rdmaDevice;}
+		argv[argc++] = "-m"; argv[argc++] = memToUse;
+		argv[argc++] = "--partition_request_timeout"; argv[argc++] = cpoTimeout;
+		argv[argc++] = "--cpo"; argv[argc++] = cpoAddress;
+		argv[argc++] = "--tso_endpoint"; argv[argc++] = tsoAddress;
+		argv[argc++] = "--cpo_request_timeout"; argv[argc++] = cpoTimeout;
+		argv[argc++] = "--cpo_request_backoff"; argv[argc++] = cpoBackoff;
+		if (NULL != msgChecksum) { argv[argc++] = "--enable_tx_checksum"; argv[argc++] = "true"; }
+		k2_init_func(argc, argv);
     }
 
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
