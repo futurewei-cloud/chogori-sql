@@ -1,4 +1,5 @@
 k2b
+pgroot
 src/k2/postgres/src/postgres-build/
 src/k2/postgres/src/postgres-stamp/
 build

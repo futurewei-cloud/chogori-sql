@@ -30,15 +30,19 @@ namespace gate {
 
 PGK2Client::PGK2Client():
     _client(k2::K23SIClientConfig()) {
+    K2INFO("Ctor");
 }
 
 seastar::future<> PGK2Client::gracefulStop() {
+    K2INFO("Stopping");
     return std::move(_poller);
 }
 
 seastar::future<> PGK2Client::start() {
+    K2INFO("Starting");
     // start polling the request queues only on core 0
     if (seastar::engine().cpu_id() == 0) {
+        K2INFO("Poller starting on CPU 0");
         _poller = _poller.then([this] {
             return seastar::do_until(
                 [] {
@@ -64,6 +68,7 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
     futs.reserve(q.size());
 
     while (!q.empty()) {
+        K2INFO("Found op in queue");
         futs.push_back(
             seastar::do_with(std::move(q.front()), std::forward<Func>(visitor), [](auto& req, auto& visitor) {
                 return visitor(req)
@@ -78,6 +83,8 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
 
 seastar::future<> PGK2Client::_pollBeginQ() {
     return pollQ(beginTxQ, [this](auto& req) {
+        K2INFO("Begin txn...");
+
         return _client.beginTxn(req.opts)
             .then([this, &req](auto&& txn) {
                 req.prom.set_value(K23SITxn(txn.mtr()));  // send a copy to the promise
@@ -89,6 +96,7 @@ seastar::future<> PGK2Client::_pollBeginQ() {
 
 seastar::future<> PGK2Client::_pollEndQ() {
     return pollQ(endTxQ, [this](auto& req) {
+        K2INFO("End txn...");
         auto fiter = _txns.find(req.mtr);
         if (fiter == _txns.end()) {
             req.prom.set_value(k2::EndResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
@@ -105,6 +113,7 @@ seastar::future<> PGK2Client::_pollEndQ() {
 
 seastar::future<> PGK2Client::_pollSchemaGetQ() {
     return pollQ(schemaGetTxQ, [this](auto& req) {
+        K2INFO("Schema get...");
         return _client.getSchema(req.collectionName, req.schemaName, req.schemaVersion)
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
@@ -114,6 +123,7 @@ seastar::future<> PGK2Client::_pollSchemaGetQ() {
 
 seastar::future<> PGK2Client::_pollSchemaCreateQ() {
     return pollQ(schemaCreateTxQ, [this](auto& req) {
+        K2INFO("Schema create...");
         return _client.createSchema(req.collectionName, req.schema)
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
@@ -123,6 +133,7 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
 
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
+        K2INFO("Read...");
         auto fiter = _txns.find(req.mtr);
         if (fiter == _txns.end()) {
             req.prom.set_value(k2::ReadResult<k2::dto::SKVRecord>(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::SKVRecord()));
@@ -137,10 +148,11 @@ seastar::future<> PGK2Client::_pollReadQ() {
 
 seastar::future<> PGK2Client::_pollCreateScanReadQ() {
     return pollQ(scanReadCreateTxQ, [this](auto& req) {
+        K2INFO("Create scan...");
         return _client.createQuery(req.collectionName, req.schemaName)
             .then([this, &req](auto&& result) {
                 CreateScanReadResult response {
-                    .status = std::move(result.status), 
+                    .status = std::move(result.status),
                     .query = std::make_shared<k2::Query>(std::move(result.query))
                 };
                 req.prom.set_value(std::move(response));
@@ -150,6 +162,7 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
+        K2INFO("Scan...");
         auto fiter = _txns.find(req.mtr);
         if (fiter == _txns.end()) {
             req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
@@ -164,6 +177,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
 
 seastar::future<> PGK2Client::_pollWriteQ() {
     return pollQ(writeTxQ, [this](auto& req) mutable {
+        K2INFO("Write...");
         auto fiter = _txns.find(req.mtr);
         if (fiter == _txns.end()) {
             req.prom.set_value(k2::WriteResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::K23SIWriteResponse{}));
