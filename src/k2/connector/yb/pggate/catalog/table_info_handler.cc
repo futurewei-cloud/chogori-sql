@@ -96,22 +96,46 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(const Context& cont
     return response;
 }
 
-CreateUpdateTableResult CreateOrUpdateTable(const Context& context, std::string collection_name, std::string table_id, 
+CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(const Context& context, std::string collection_name, std::string table_id, 
         uint32_t table_oid, std::shared_ptr<TableInfo> table) {
     CreateUpdateTableResult response;
 
     return response;
 }
 
-GetTableResult GetTable(const Context& context, std::string collection_name, std::string table_id) {
+GetTableResult TableInfoHandler::GetTable(const Context& context, std::string collection_name, std::string table_id) {
     GetTableResult response;
 
     return response;
 }
     
-ListTablesResult ListTables(const Context& context, std::string collection_name, bool isSysTableIncluded) {
+ListTablesResult TableInfoHandler::ListTables(const Context& context, std::string collection_name, bool isSysTableIncluded) {
     ListTablesResult response;
 
+    return response;
+}
+
+CheckSchemaResult TableInfoHandler::CheckSchema(const Context& context, std::string collection_name, std::string schema_name) {
+    CheckSchemaResult response;
+    std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name, schema_name, 1);
+    k2::GetSchemaResult schema_result = schema_result_future.get();
+    if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
+        response.exist = false;
+        response.status.succeeded = true;
+    } else if (schema_result.status.is2xxOK()) {
+        if(schema_result.schema != nullptr) {
+            response.exist = true;
+            response.status.succeeded = true;
+        } else {
+            response.exist = false;
+            response.status.succeeded = true;          
+        }
+    } else {
+        response.status.succeeded = false;          
+        response.status.errorCode = schema_result.status.code;
+        response.status.errorMessage = std::move(schema_result.status.message);    
+    }
+    
     return response;
 }
 

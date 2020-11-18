@@ -154,13 +154,8 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_i
      return STATUS_SUBSTITUTE(RuntimeError,
                                "Failed to get schema for table $0 due to error: $1", table_id, response->errorMessage);
   } 
-  std::shared_ptr<TableInfo> result = std::make_shared<TableInfo>(response->namespaceName, response->tableName, response->schema);   
-  // TODO: double check wether we treat indexInfo as secondary Index or the index table itself                             
-  if (response->indexInfo != std::nullopt) {
-    PgObjectId pgObjectId(database_oid, table_id);
-    result->add_secondary_index(pgObjectId.GetYBTableId(), response->indexInfo.value());
-  }
-  table->swap(result);
+
+  table->swap(response->tableInfo);
   return Status::OK();
 }
 

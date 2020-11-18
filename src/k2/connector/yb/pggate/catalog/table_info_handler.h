@@ -60,6 +60,11 @@ struct ListTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+struct CheckSchemaResult {
+    RStatus status;
+    bool exist;
+};
+
 class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
@@ -127,6 +132,8 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     ListTablesResult ListTables(const Context& context, std::string collection_name, bool isSysTableIncluded);
 
+    CheckSchemaResult CheckSchema(const Context& context, std::string collection_name, std::string schema_name);
+    
     private:  
     CheckSysTableResult CheckAndCreateSysTable(const Context& context, std::string collection_name, std::string schema_name, 
         std::shared_ptr<k2::dto::Schema> schema);

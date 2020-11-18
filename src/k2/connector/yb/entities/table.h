@@ -29,10 +29,12 @@
 namespace k2pg {
 namespace sql {
     struct TableIdentifier {
-        // TODO: change to use PG Oid
-        NamespaceName namespace_name; // Can be empty, that means the namespace has not been set yet.
-        TableName table_name;  
-        TableIdentifier(NamespaceName ns, TableName tn) : namespace_name(ns), table_name(tn) {
+        std::string namespace_id;
+        std::string namespace_name; // Can be empty, that means the namespace has not been set yet.
+        std::string table_id;
+        std::string table_name;  
+        TableIdentifier(std::string ns_id, std::string ns_name, std::string tb_id, std::string tb_name) : 
+            namespace_id(ns_id), namespace_name(ns_name), table_id(tb_id), table_name(tb_name) {
         }
     };
 
@@ -41,15 +43,23 @@ namespace sql {
           
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(NamespaceName namespace_name, TableName table_name, Schema schema) : 
-            table_id_(namespace_name, table_name), schema_(std::move(schema)) {
+        TableInfo(std::string namespace_id, std::string namespace_name, std::string table_id, std::string table_name, Schema schema) : 
+            table_id_(namespace_id, namespace_name, table_id, table_name), schema_(std::move(schema)) {
         }
 
-        const NamespaceName& namespace_name() const {
+        const std::string& namespace_id() const {
+            return table_id_.namespace_id;
+        }
+
+        const std::string& namespace_name() const {
             return table_id_.namespace_name;
         }
 
-        const TableName& table_name() const {
+        const std::string& table_id() const {
+            return table_id_.table_id;
+        }
+
+        const std::string& table_name() const {
             return table_id_.table_name;
         }
 
@@ -85,14 +95,13 @@ namespace sql {
             return schema_.num_range_key_columns();
         }
 
-        void add_secondary_index(const TableId& index_id, const IndexInfo& index_info) {
+        void add_secondary_index(const std::string& index_id, const IndexInfo& index_info) {
             index_map_.emplace(index_id, index_info);
         }
 
-        Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
+        Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
 
-        private: 
-        
+        private:        
         TableIdentifier table_id_;
         Schema schema_;
         IndexMap index_map_;

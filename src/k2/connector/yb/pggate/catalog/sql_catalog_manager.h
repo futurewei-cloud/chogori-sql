@@ -31,6 +31,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/common/concurrent/locks.h"
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
+#include "yb/entities/table.h"
 #include "yb/pggate/k2_adapter.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
@@ -112,13 +113,7 @@ namespace sql {
     };
 
     struct GetTableSchemaResponse {
-        uint32_t namespaceId;
-        string namespaceName;
-        uint32_t tableId;    
-        string tableName;
-        Schema schema;
-        uint32_t version;
-        std::optional<IndexInfo> indexInfo;
+        std::shared_ptr<TableInfo> tableInfo;
         string errorMessage;
     };
 
