@@ -549,11 +549,11 @@ namespace sql {
 
         static ColumnId first_column_id();
 
-        uint64_t version() const {
+        uint32_t version() const {
             return version_;
         }
 
-        void set_version(uint64_t version) {
+        void set_version(uint32_t version) {
             version_ = version;
         }
 
@@ -590,7 +590,7 @@ namespace sql {
 
         TableProperties table_properties_;
 
-        uint64_t version_;
+        uint32_t version_;
     };
 
     // Helper used for schema creation/editing.

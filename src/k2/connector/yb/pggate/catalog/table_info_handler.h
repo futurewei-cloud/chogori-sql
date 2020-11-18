@@ -62,7 +62,15 @@ struct ListTablesResult {
 
 struct CheckSchemaResult {
     RStatus status;
-    bool exist;
+    std::shared_ptr<k2::dto::Schema> schema;
+};
+
+struct CreateUpdateSKVSchemaResult {
+    RStatus status;
+};
+
+struct PersistSysTableResult {
+    RStatus status;
 };
 
 class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
@@ -87,7 +95,7 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
                 {k2::dto::FieldType::STRING, "IndexedTableId", false, false},
                 {k2::dto::FieldType::INT16T, "IndexPermission", false, false},
                 {k2::dto::FieldType::INT32T, "NextColumnId", false, false},
-                {k2::dto::FieldType::INT64T, "SchemaVersion", false, false}},
+                {k2::dto::FieldType::INT32T, "SchemaVersion", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0 },
         .rangeKeyFields = std::vector<uint32_t> {}
     };
@@ -100,7 +108,7 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
-                {k2::dto::FieldType::STRING, "ColumnType", false, false},
+                {k2::dto::FieldType::INT16T, "ColumnType", false, false},
                 {k2::dto::FieldType::BOOL, "IsNullable", false, false},
                 {k2::dto::FieldType::BOOL, "IsPrimary", false, false},
                 {k2::dto::FieldType::BOOL, "IsPartition", false, false},
@@ -123,20 +131,43 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
         .rangeKeyFields = std::vector<uint32_t> {}
     };
 
-    CreateSysTablesResult CreateSysTablesIfNecessary(const Context& context, std::string collection_name);
+    CreateSysTablesResult CreateSysTablesIfNecessary(std::shared_ptr<Context> context, std::string collection_name);
 
-    CreateUpdateTableResult CreateOrUpdateTable(const Context& context, std::string collection_name, std::string table_id, 
-        uint32_t table_oid, std::shared_ptr<TableInfo> table);
+    CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
 
-    GetTableResult GetTable(const Context& context, std::string collection_name, std::string table_id);
+    GetTableResult GetTable(std::shared_ptr<Context> context, std::string collection_name, std::string table_id);
 
-    ListTablesResult ListTables(const Context& context, std::string collection_name, bool isSysTableIncluded);
+    ListTablesResult ListTables(std::shared_ptr<Context> context, std::string collection_name, bool isSysTableIncluded);
 
-    CheckSchemaResult CheckSchema(const Context& context, std::string collection_name, std::string schema_name);
-    
+    CheckSchemaResult CheckSchema(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, uint32_t version);
+
+    CreateUpdateSKVSchemaResult CreateOrUpdateSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    PersistSysTableResult PersistSysTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
     private:  
-    CheckSysTableResult CheckAndCreateSysTable(const Context& context, std::string collection_name, std::string schema_name, 
+    CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, 
         std::shared_ptr<k2::dto::Schema> schema);
+
+    std::shared_ptr<k2::dto::Schema> DeriveSKVTableSchema(std::shared_ptr<TableInfo> table);
+
+    std::vector<std::shared_ptr<k2::dto::Schema>> DeriveIndexSchemas(std::shared_ptr<TableInfo> table);
+
+    std::shared_ptr<k2::dto::Schema> DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_table_schema);
+
+    k2::dto::SKVRecord DeriveTableListRecord(std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    k2::dto::SKVRecord DeriveIndexTableListRecord(std::string collection_name, const IndexInfo& index, bool is_sys_table, int32_t next_column_id);
+
+    std::vector<k2::dto::SKVRecord> DeriveTableColumnRecords(std::string collection_name, std::shared_ptr<TableInfo> table);
+    
+    std::vector<k2::dto::SKVRecord> DeriveIndexColumnRecords(std::string collection_name, const IndexInfo& index, const Schema& base_table_schema);
+
+    k2::dto::FieldType GetType(std::shared_ptr<SQLType> type);
+
+    void PersistSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<k2::dto::Schema> schema);
+
+    void PersistSKVRecord(std::shared_ptr<Context> context, k2::dto::SKVRecord& record);
 
     std::shared_ptr<K2Adapter> k2_adapter_;  
     std::string tablelist_schema_name_;

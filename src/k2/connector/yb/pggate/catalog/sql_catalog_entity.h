@@ -146,6 +146,7 @@ class NamespaceInfo {
 };
 
 class Context {
+    public:
     Context() = default;
     ~Context() = default;
 
@@ -156,7 +157,7 @@ class Context {
     std::shared_ptr<K23SITxn> GetTxn() {
         return txn_;
     }
-    
+
     private: 
     std::shared_ptr<K23SITxn> txn_;   
 };

@@ -67,6 +67,22 @@ namespace sql {
             return table_id_;
         }
         
+        void set_pg_oid(uint32_t pg_oid) {
+            pg_oid_ = pg_oid;
+        }
+
+        uint32_t pg_oid() {
+            return pg_oid_;
+        }
+
+        void set_next_column_id(int32_t next_column_id) {
+            next_column_id_ = next_column_id;
+        }
+
+        int32_t next_column_id() {
+            return next_column_id_;
+        }
+
         const Schema& schema() const {
             return schema_;
         }
@@ -99,12 +115,28 @@ namespace sql {
             index_map_.emplace(index_id, index_info);
         }
 
+        const IndexMap& secondary_indexes() {
+            return index_map_;
+        }
+
         Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
 
+        void set_is_sys_table(bool is_sys_table) {
+            is_sys_table_ = is_sys_table;
+        }
+
+        bool is_sys_table() {
+            return is_sys_table_;
+        }
+        
         private:        
         TableIdentifier table_id_;
+        // PG internal object id
+        uint32_t pg_oid_;
         Schema schema_;
         IndexMap index_map_;
+        int32_t next_column_id_ = 0;
+        bool is_sys_table_ = false;
     };
 
 }  // namespace sql
