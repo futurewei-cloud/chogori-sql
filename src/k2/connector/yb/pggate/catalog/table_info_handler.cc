@@ -22,7 +22,7 @@ Copyright(c) 2020 Futurewei Cloud
 */
 
 #include "yb/pggate/catalog/table_info_handler.h"
-
+#include <stdexcept>
 #include <glog/logging.h>
 
 namespace k2pg {
@@ -30,15 +30,15 @@ namespace sql {
 
 TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : k2_adapter_(k2_adapter),  
-    tablelist_schema_name_(sys_catalog_tablelist_schema_name),
-    table_schema_name_(sys_catalog_table_schema_schema_name), 
-    index_schema_name_(sys_catalog_index_schema_schema_name) {
-    tablelist_schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(tablelist_schema_ptr.get()) = sys_catalog_tablelist_schema;
-    table_schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(table_schema_ptr.get()) = sys_catalog_table_schema;
-    index_schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(index_schema_ptr.get()) = sys_catalog_index_schema;
+    tablehead_schema_name_(sys_catalog_tablehead_schema_name),
+    tablecolumn_schema_name_(sys_catalog_tablecolumn_schema_schema_name), 
+    indexcolumn_schema_name_(sys_catalog_indexcolumn_schema_schema_name) {
+    tablehead_schema_ptr = std::make_shared<k2::dto::Schema>();
+    *(tablehead_schema_ptr.get()) = sys_catalog_tablehead_schema;
+    tablecolumn_schema_ptr = std::make_shared<k2::dto::Schema>();
+    *(tablecolumn_schema_ptr.get()) = sys_catalog_tablecolumn_schema;
+    indexcolumn_schema_ptr = std::make_shared<k2::dto::Schema>();
+    *(indexcolumn_schema_ptr.get()) = sys_catalog_indexcolumn_schema;
 }
 
 TableInfoHandler::~TableInfoHandler() {
@@ -47,19 +47,19 @@ TableInfoHandler::~TableInfoHandler() {
 CreateSysTablesResult TableInfoHandler::CreateSysTablesIfNecessary(std::shared_ptr<Context> context, std::string collection_name) {
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
-    CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablelist_schema_name_, tablelist_schema_ptr);
+    CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr);
     if (!result.status.succeeded) {
         response.status = std::move(result.status);
         return response;
     }
 
-    result = CheckAndCreateSysTable(context, collection_name, table_schema_name_, table_schema_ptr);
+    result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr);
      if (!result.status.succeeded) {
         response.status = std::move(result.status);
         return response;
     }
    
-    result = CheckAndCreateSysTable(context, collection_name, index_schema_name_, index_schema_ptr);
+    result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr);
      if (!result.status.succeeded) {
         response.status = std::move(result.status);
         return response;
@@ -114,13 +114,32 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Co
     return response;
 }
 
-GetTableResult TableInfoHandler::GetTable(std::shared_ptr<Context> context, std::string collection_name, std::string table_id) {
+GetTableResult TableInfoHandler::GetTable(std::shared_ptr<Context> context, std::string namespace_id, std::string namespace_name, std::string table_id) {
     GetTableResult response;
-
+    // use namespace_id, not namespace_name as the collection name 
+    // in this we could implement rename database easily by sticking to the same namespace_id 
+    // after the namespace_name change
+    // same purpose for using table_id instead of table_name
+    k2::dto::SKVRecord table_head_record = FetchTableHeadSKVRecord(context, namespace_id, table_id);
+    std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(context, namespace_id, table_id);
+    std::shared_ptr<TableInfo> table_info = BuildTableInfo(namespace_id, namespace_name, table_head_record, table_column_records);
+    // check all the indexes whose IndexedTableId is table_id
+    std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, namespace_id, table_id);
+    if (!index_records.empty()) {
+        // table has indexes defined
+        for (auto& index_record : index_records) {
+            // Fetch and build each index table
+            IndexInfo index_info = FetchAndBuildIndexInfo(context, namespace_id, index_record);
+            // populate index to table_info
+            table_info->add_secondary_index(index_info.table_id(), index_info);
+        }
+    }
+    response.status.succeeded = true;
+    response.tableInfo = table_info;
     return response;
 }
     
-ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<Context> context, std::string collection_name, bool isSysTableIncluded) {
+ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<Context> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded) {
     ListTablesResult response;
 
     return response;
@@ -158,14 +177,14 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateSKVSchema(std::share
     if (check_result.status.succeeded) {
         if (check_result.schema == nullptr) {
             // build the SKV schema from TableInfo, i.e., PG table schema
-            std::shared_ptr<k2::dto::Schema> table_schema = DeriveSKVTableSchema(table);
-            PersistSKVSchema(context, collection_name, table_schema);
+            std::shared_ptr<k2::dto::Schema> tablecolumn_schema = DeriveSKVTableSchema(table);
+            PersistSKVSchema(context, collection_name, tablecolumn_schema);
 
             if (table->has_secondary_indexes()) {
-                std::vector<std::shared_ptr<k2::dto::Schema>> index_schemas = DeriveIndexSchemas(table);
-                for (std::shared_ptr<k2::dto::Schema> index_schema : index_schemas) {
+                std::vector<std::shared_ptr<k2::dto::Schema>> indexcolumn_schemas = DeriveIndexSchemas(table);
+                for (std::shared_ptr<k2::dto::Schema> indexcolumn_schema : indexcolumn_schemas) {
                     // use sequential SKV writes for now, could optimize this later
-                    PersistSKVSchema(context, collection_name, index_schema);
+                    PersistSKVSchema(context, collection_name, indexcolumn_schema);
                 }
             }
         }
@@ -182,7 +201,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateSKVSchema(std::share
 PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
     PersistSysTableResult response;
     // use sequential SKV writes for now, could optimize this later
-    k2::dto::SKVRecord tablelist_table_record = DeriveTableListRecord(collection_name, table);
+    k2::dto::SKVRecord tablelist_table_record = DeriveTableHeadRecord(collection_name, table);
     PersistSKVRecord(context, tablelist_table_record);
     std::vector<k2::dto::SKVRecord> table_column_records = DeriveTableColumnRecords(collection_name, table);
     for (auto& table_column_record : table_column_records) {
@@ -190,7 +209,7 @@ PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<Context>
     }
     if (table->has_secondary_indexes()) {
         for( const auto& pair : table->secondary_indexes()) {
-            k2::dto::SKVRecord tablelist_index_record = DeriveIndexTableListRecord(collection_name, pair.second, table->is_sys_table(), table->next_column_id());
+            k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, pair.second, table->is_sys_table(), table->next_column_id());
             PersistSKVRecord(context, tablelist_index_record);
             std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, pair.second, table->schema());
             for (auto& index_column_record : index_column_records) {
@@ -209,7 +228,7 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::sha
     uint32_t count = 0;
     for (ColumnSchema col_schema : table->schema().columns()) {
         k2::dto::SchemaField field;
-        field.type = GetType(col_schema.type());
+        field.type = ToK2Type(col_schema.type());
         field.name = col_schema.name();
         switch (col_schema.sorting_type()) {
             case ColumnSchema::SortingType::kAscending: {
@@ -249,20 +268,20 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
     return response;
 }
 
-std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_table_schema) {
+std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
     uint32_t count = 0;
-    for (IndexColumn index_schema : index_info.columns()) {
+    for (IndexColumn indexcolumn_schema : index_info.columns()) {
         k2::dto::SchemaField field;
-        field.name = index_schema.column_name;
-        int column_idx = base_table_schema.find_column_by_id(index_schema.indexed_column_id);
+        field.name = indexcolumn_schema.column_name;
+        int column_idx = base_tablecolumn_schema.find_column_by_id(indexcolumn_schema.indexed_column_id);
         if (column_idx == Schema::kColumnNotFound) {
-            throw std::invalid_argument("Cannot find base column " + index_schema.indexed_column_id);
+            throw std::invalid_argument("Cannot find base column " + indexcolumn_schema.indexed_column_id);
         }
-        const ColumnSchema& col_schema = base_table_schema.column(column_idx);
-        field.type = GetType(col_schema.type());
+        const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
+        field.type = ToK2Type(col_schema.type());
         switch (col_schema.sorting_type()) {
             case ColumnSchema::SortingType::kAscending: {
                 field.descending = false;
@@ -291,7 +310,7 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
     return schema;
 }
 
-k2::dto::SKVRecord TableInfoHandler::DeriveTableListRecord(std::string collection_name, std::shared_ptr<TableInfo> table) {
+k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collection_name, std::shared_ptr<TableInfo> table) {
     k2::dto::SKVRecord record;
     // TableId
     record.serializeNext<k2::String>(table->table_id());  
@@ -319,7 +338,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableListRecord(std::string collectio
     return record;
 }
 
-k2::dto::SKVRecord TableInfoHandler::DeriveIndexTableListRecord(std::string collection_name, const IndexInfo& index, bool is_sys_table, int32_t next_column_id) {
+k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collection_name, const IndexInfo& index, bool is_sys_table, int32_t next_column_id) {
     k2::dto::SKVRecord record;
     // TableId
     record.serializeNext<k2::String>(index.table_id());  
@@ -377,15 +396,15 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnRecords(std::
     return response;
 }
     
-std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::string collection_name, const IndexInfo& index, const Schema& base_table_schema) {
+std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::string collection_name, const IndexInfo& index, const Schema& base_tablecolumn_schema) {
     std::vector<k2::dto::SKVRecord> response;
     int count = 0;
     for (IndexColumn index_column : index.columns()) {
-        int column_idx = base_table_schema.find_column_by_id(index_column.indexed_column_id);
+        int column_idx = base_tablecolumn_schema.find_column_by_id(index_column.indexed_column_id);
         if (column_idx == Schema::kColumnNotFound) {
             throw std::invalid_argument("Cannot find base column " + index_column.indexed_column_id);
         }
-        const ColumnSchema& col_schema = base_table_schema.column(column_idx);
+        const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
 
         k2::dto::SKVRecord record;
         // TableId
@@ -412,7 +431,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
     return response;
 }
 
-k2::dto::FieldType TableInfoHandler::GetType(std::shared_ptr<SQLType> type) {
+k2::dto::FieldType TableInfoHandler::ToK2Type(std::shared_ptr<SQLType> type) {
     k2::dto::FieldType field_type = k2::dto::FieldType::NOT_KNOWN; 
     switch (type->id()) {
         case DataType::INT8: {
@@ -448,10 +467,47 @@ k2::dto::FieldType TableInfoHandler::GetType(std::shared_ptr<SQLType> type) {
         case DataType::DECIMAL: {
             field_type = k2::dto::FieldType::DECIMAL64;
         } break;
-        default:                                                                                                             \
-            throw std::invalid_argument("Unsupported Type" + type->id());       
+        default:                                                                                                            
+            throw std::invalid_argument("Unsupported type " + type->id());       
     }
     return field_type;
+}
+
+DataType TableInfoHandler::ToSqlType(k2::dto::FieldType type) {
+    // utility method, not used yet
+    DataType sql_type = DataType::NOT_SUPPORTED;
+    switch (type) {
+        case k2::dto::FieldType::INT16T: {
+            sql_type = DataType::INT16;
+        } break;
+        case k2::dto::FieldType::INT32T: {
+            sql_type = DataType::INT32;
+        } break;
+        case k2::dto::FieldType::INT64T: {
+            sql_type = DataType::INT64;
+        } break;
+        case k2::dto::FieldType::STRING: {
+            sql_type = DataType::STRING;
+        } break;
+        case k2::dto::FieldType::BOOL: {
+            sql_type = DataType::BOOL;
+        } break;
+        case k2::dto::FieldType::FLOAT: {
+            sql_type = DataType::FLOAT;
+        } break;
+        case k2::dto::FieldType::DOUBLE: {
+            sql_type = DataType::DOUBLE;
+        } break;
+        case k2::dto::FieldType::DECIMAL64: {
+            sql_type = DataType::DECIMAL;
+        } break;
+        default: {
+            std::ostringstream oss;
+            oss << "Unsupported Type: " << type;
+            throw std::invalid_argument(oss.str());                                                                                                           
+        }  
+    }
+    return sql_type;
 }
 
 void TableInfoHandler::PersistSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<k2::dto::Schema> schema) {
@@ -474,6 +530,272 @@ void TableInfoHandler::PersistSKVRecord(std::shared_ptr<Context> context, k2::dt
             << " and message: " << result.status.message;
         throw std::runtime_error("Failed to persist SKV record due to " + result.status.message);
     }  
+}
+
+k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<Context> context, std::string collection_name, std::string table_id) {
+    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr);
+    // table_id is the primary key
+    record.serializeNext<k2::String>(table_id);
+    std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
+    k2::ReadResult<k2::dto::SKVRecord> result = result_future.get();
+    // TODO: add error handling and retry logic in catalog manager
+    if (result.status == k2::dto::K23SIStatus::KeyNotFound) {
+        throw std::runtime_error("Cannot find entry " + table_id + " in " + collection_name);
+    } else if (!result.status.is2xxOK()) {
+        std::ostringstream oss;
+        oss << "Error fetching entry " << table_id <<  " in " << collection_name << " due to " << result.status.message;
+        throw std::runtime_error(oss.str());      
+    }
+    return std::move(result.value);
+}
+
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::shared_ptr<Context> context, std::string collection_name, std::string base_table_id) {
+    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_);
+    CreateScanReadResult create_result = create_result_future.get();
+    if (!create_result.status.is2xxOK()) {       
+        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message;                                      
+        std::ostringstream oss;
+        oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << create_result.status.message;
+        throw std::runtime_error(oss.str());      
+  }
+
+    std::vector<k2::dto::SKVRecord> records;
+    std::shared_ptr<k2::Query> query = create_result.query;
+    std::vector<k2::dto::expression::Value> values;
+    std::vector<k2::dto::expression::Expression> exps;
+    // find all the indexes for the base table, i.e., by IndexedTableId
+    values.emplace_back(k2::dto::expression::makeValueReference("IndexedTableId"));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
+    k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
+    query->setFilterExpression(std::move(filterExpr));
+    do {
+        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
+        k2::QueryResult query_result = query_result_future.get();
+        if (!query_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message;
+            std::ostringstream oss;
+            oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << query_result.status.message;
+            throw std::runtime_error(oss.str());      
+        }
+
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                records.push_back(std::move(record));
+            } 
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+
+    return records;
+}
+
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name, std::string table_id) {
+    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_);
+    CreateScanReadResult create_result = create_result_future.get();
+    if (!create_result.status.is2xxOK()) {       
+        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message;                                      
+        std::ostringstream oss;
+        oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
+        throw std::runtime_error(oss.str());      
+   }
+
+    std::vector<k2::dto::SKVRecord> records;
+    std::shared_ptr<k2::Query> query = create_result.query;
+    std::vector<k2::dto::expression::Value> values;
+    std::vector<k2::dto::expression::Expression> exps;
+    // find all the columns for a table by TableId
+    values.emplace_back(k2::dto::expression::makeValueReference("TableId"));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
+    k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
+    query->setFilterExpression(std::move(filterExpr));
+    do {
+        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
+        k2::QueryResult query_result = query_result_future.get();
+        if (!query_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message;
+            std::ostringstream oss;
+            oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
+            throw std::runtime_error(oss.str());      
+        }
+
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                records.push_back(std::move(record));
+            } 
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+
+    return records;
+}
+
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name, std::string table_id) {
+    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_);
+    CreateScanReadResult create_result = create_result_future.get();
+    if (!create_result.status.is2xxOK()) {       
+        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message;                                      
+        std::ostringstream oss;
+        oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
+        throw std::runtime_error(oss.str());      
+   }
+
+    std::vector<k2::dto::SKVRecord> records;
+    std::shared_ptr<k2::Query> query = create_result.query;
+    std::vector<k2::dto::expression::Value> values;
+    std::vector<k2::dto::expression::Expression> exps;
+    // find all the columns for an index table by TableId
+    values.emplace_back(k2::dto::expression::makeValueReference("TableId"));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
+    k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
+    query->setFilterExpression(std::move(filterExpr));
+    do {
+        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
+        k2::QueryResult query_result = query_result_future.get();
+        if (!query_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message;
+            std::ostringstream oss;
+            oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
+            throw std::runtime_error(oss.str());      
+        }
+
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                records.push_back(std::move(record));
+            } 
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+
+    return records;
+}
+
+std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespace_id, std::string namespace_name, 
+        k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns) {
+    // deserialize table head
+    // TableId
+    std::string table_id = table_head.deserializeNext<k2::String>().value();
+    // TableName
+    std::string table_name = table_head.deserializeNext<k2::String>().value();
+    // TableOid
+    uint32_t table_oid = table_head.deserializeNext<int32_t>().value();
+    // IsSysTable
+    bool is_sys_table = table_head.deserializeNext<bool>().value();
+    // IsTransactional
+    bool is_transactional = table_head.deserializeNext<bool>().value();
+    // IsIndex
+    bool is_index = table_head.deserializeNext<bool>().value();
+    if (is_index) {
+        throw std::runtime_error("Table " + table_id + " should not be an index");
+    }
+    // IsUnique
+    table_head.skipNext();
+    // IndexedTableId
+    table_head.skipNext();
+    // IndexPermission
+    table_head.skipNext();
+    // NextColumnId
+    int32_t next_column_id = table_head.deserializeNext<int32_t>().value();
+     // SchemaVersion
+    uint32_t version = table_head.deserializeNext<int32_t>().value();
+
+    TableProperties table_properties;
+    table_properties.SetTransactional(is_transactional);
+
+    vector<ColumnSchema> cols;
+    int key_columns = 0;
+    vector<ColumnId> ids;
+    // deserialize table columns
+    for (auto& column : table_columns) {
+        // TableId
+        std::string tb_id = column.deserializeNext<k2::String>().value();
+        // ColumnId
+        int32_t col_id = column.deserializeNext<int32_t>().value();
+        // ColumnName
+        std::string col_name = column.deserializeNext<k2::String>().value();
+        // ColumnType, we persist SQL type directly as an integer
+        int16_t col_type = column.deserializeNext<int16_t>().value();
+        // IsNullable
+        bool is_nullable = column.deserializeNext<bool>().value();
+        // IsPrimary
+        bool is_primary = column.deserializeNext<bool>().value();
+        // IsPartition
+        bool is_partition = column.deserializeNext<bool>().value();
+        // Order
+        int32 order = column.deserializeNext<int32_t>().value();
+        // SortingType
+        int16_t sorting_type = column.deserializeNext<int16_t>().value();
+        ColumnSchema col_schema(col_name, static_cast<DataType>(col_type), is_nullable, is_primary, is_partition, order, static_cast<ColumnSchema::SortingType>(sorting_type));
+        cols.push_back(std::move(col_schema));
+        ids.push_back(col_id);
+        if (is_primary) {
+            key_columns++; 
+        }
+    }
+    Schema table_schema(cols, ids, key_columns, table_properties);
+    table_schema.set_version(version);
+    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_id, table_name, table_schema);
+    table_info->set_pg_oid(table_oid);
+    table_info->set_next_column_id(next_column_id);
+    table_info->set_is_sys_table(is_sys_table);
+    return table_info;
+}
+
+IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<Context> context, std::string collection_name, k2::dto::SKVRecord& index_head) {
+    // deserialize index head
+    // TableId
+    std::string table_id = index_head.deserializeNext<k2::String>().value();
+    // TableName
+    std::string table_name = index_head.deserializeNext<k2::String>().value();
+    // TableOid
+    uint32_t table_oid = index_head.deserializeNext<int32_t>().value();
+    // IsSysTable
+    index_head.skipNext();
+    // IsTransactional
+    index_head.skipNext();
+    // IsIndex
+    bool is_index = index_head.deserializeNext<bool>().value();
+    if (!is_index) {
+        throw std::runtime_error("Table " + table_id + " should be an index");
+    }
+    // IsUnique
+    bool is_unique = index_head.deserializeNext<bool>().value();
+    // IndexedTableId
+    std::string indexed_table_id = index_head.deserializeNext<k2::String>().value();
+    // IndexPermission
+    IndexPermissions index_perm = static_cast<IndexPermissions>(index_head.deserializeNext<int16_t>().value());
+    // NextColumnId
+    index_head.skipNext();
+ //   int32_t next_column_id = index_head.deserializeNext<int32_t>().value();
+    // SchemaVersion
+    uint32_t version = index_head.deserializeNext<int32_t>().value();
+
+    // Fetch index columns
+    std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(context, collection_name, table_id);
+
+    // deserialize index columns
+    std::vector<IndexColumn> columns;
+    for (auto& column : index_columns) {
+        // TableId
+        std::string tb_id = column.deserializeNext<k2::String>().value();
+        // ColumnId
+        int32_t col_id = column.deserializeNext<int32_t>().value();
+        // ColumnName
+        std::string col_name = column.deserializeNext<k2::String>().value();
+        // IndexedColumnId
+        int32_t indexed_col_id = column.deserializeNext<int32_t>().value();
+        // TODO: add support for expression in index
+        IndexColumn index_column(col_id, col_name, indexed_col_id);
+        columns.push_back(std::move(index_column));
+    }
+
+    IndexInfo index_info(table_id, table_name, table_oid, indexed_table_id, version, is_unique, columns, index_perm);
+    return index_info;
 }
 
 } // namespace sql

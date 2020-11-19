@@ -128,7 +128,7 @@ namespace sql {
         bool is_sys_table() {
             return is_sys_table_;
         }
-        
+
         private:        
         TableIdentifier table_id_;
         // PG internal object id

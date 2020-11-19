@@ -243,8 +243,11 @@ namespace sql {
         SortingType sorting_type_;
     };
 
-    class TableProperties{
+    class TableProperties {
         public:
+        TableProperties() = default;
+        ~TableProperties() = default;
+
         bool operator==(const TableProperties& other) const {
             return default_time_to_live_ == other.default_time_to_live_;
         }
