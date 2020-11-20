@@ -84,17 +84,17 @@ Status SqlCatalogClient::CreateTable(
     bool if_not_exist) {
   std::shared_ptr<CreateTableRequest> request = std::make_shared<CreateTableRequest>();
   request->namespaceName = std::move(namespace_name);
-  request->namespaceId = table_id.database_oid;
+  request->namespaceOid = table_id.database_oid;
   request->tableName = std::move(table_name);
-  request->tableId = table_id.object_oid;
+  request->tableOid = table_id.object_oid;
   request->schema = std::move(schema);
   request->isSysCatalogTable = is_pg_catalog_table;
   request->isSharedTable = is_shared_table;
   std::shared_ptr<CreateTableResponse> response = std::make_shared<CreateTableResponse>();   
   catalog_manager_->CreateTable(request, response);                                 
-  if (!response->errorMessage.empty()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->errorMessage);
+  if (!response->status.succeeded) {
+    return STATUS_SUBSTITUTE(RuntimeError,
+        "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->status.errorMessage);
   }     
   return Status::OK();
 }

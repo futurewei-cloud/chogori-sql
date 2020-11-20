@@ -69,7 +69,7 @@ struct PgObjectId {
     return database_oid != kPgInvalidOid && object_oid != kPgInvalidOid;
   }
 
-  TableId GetYBTableId() const {
+  TableId GetPgTableId() const {
     return GetPgsqlTableId(database_oid, object_oid);
   }
 

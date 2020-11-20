@@ -33,6 +33,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/index.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/catalog/sql_catalog_defaults.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
 #include "yb/pggate/catalog/table_info_handler.h"
@@ -43,6 +44,7 @@ namespace sql {
     using yb::Status;
     using yb::simple_spinlock;
     using k2pg::gate::K2Adapter;
+    using k2pg::gate::PgObjectId;
 
     struct CreateNamespaceRequest {
         string namespaceName;
@@ -89,9 +91,9 @@ namespace sql {
 
     struct CreateTableRequest {
         string namespaceName;
-        uint32_t namespaceId;
+        uint32_t namespaceOid;
         string tableName;
-        uint32_t tableId;
+        uint32_t tableOid;
         Schema schema;
         bool isSysCatalogTable;
         // should put shared table in primary collection
@@ -101,10 +103,9 @@ namespace sql {
         std::optional<IndexInfo> indexInfo;
     };
 
-    struct CreateTableResponse {
-        uint32_t namespaceId;
-        uint32_t tableId;
-        string errorMessage;
+    struct CreateTableResponse {        
+        RStatus status;
+        std::shared_ptr<TableInfo> tableInfo;
     };
 
     struct GetTableSchemaRequest {
@@ -209,7 +210,23 @@ namespace sql {
 
         void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
 
+        void UpdateTableCache(std::shared_ptr<TableInfo> table_info);
+
     private:
+        std::shared_ptr<NamespaceInfo> GetNamespaceById(std::string namespace_id);
+
+        std::shared_ptr<NamespaceInfo> GetNamespaceByName(std::string namespace_name);
+
+        std::shared_ptr<TableInfo> GetTableInfoById(std::string table_id);
+        
+        std::shared_ptr<TableInfo> GetTableInfoByName(std::string namespace_id, std::string table_name);
+
+        std::shared_ptr<Context> BeginTransaction();
+
+        void EndTransaction(std::shared_ptr<Context> context, bool should_commit);
+
+        void IncreaseCatalogVersion();
+
         std::string cluster_id_;
 
         std::shared_ptr<K2Adapter> k2_adapter_;
@@ -223,12 +240,14 @@ namespace sql {
 
         std::shared_ptr<NamespaceInfoHandler> namespace_info_handler_;
 
+        std::shared_ptr<TableInfoHandler> table_info_handler_;
+
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_id_map_;
 
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
 
         // a table is uniquely referenced by its id, which is generated based on its 
-        // database (namespace) PgOid and table PgOid, as a result, no namespace is required here
+        // database (namespace) PgOid and table PgOid, as a result, no namespace name is required here
         std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_id_map_;
 
         // to reference a table by its name, we have to use both namespaceId and table name

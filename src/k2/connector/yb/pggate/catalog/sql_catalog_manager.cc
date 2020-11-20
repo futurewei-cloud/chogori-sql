@@ -41,9 +41,10 @@ namespace sql {
     static yb::Env* default_env;
 
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) : 
-        cluster_id_("test_cluster"), k2_adapter_(k2_adapter) {
+        cluster_id_(default_cluster_id), k2_adapter_(k2_adapter) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
+        table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter_);
     }
 
     SqlCatalogManager::~SqlCatalogManager() {
@@ -274,6 +275,66 @@ namespace sql {
     }
 
     Status SqlCatalogManager::CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response) {
+        std::shared_ptr<NamespaceInfo> namespace_info = GetNamespaceByName(request->namespaceName);
+        if (namespace_info == nullptr) {
+            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+            // this could be avoided by use a single or a quorum of catalog managers 
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+            if (result.status.succeeded && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetNamespaceByName(request->namespaceName);          
+            }          
+        }
+        if (namespace_info == nullptr) {
+            throw std::runtime_error("Cannot find namespace " + request->namespaceName);
+        }
+        // check if the Table has already existed or not
+        std::shared_ptr<TableInfo> table_info = GetTableInfoByName(namespace_info->GetNamespaceId(), request->tableName);
+        uint32_t schema_version = 0;
+        std::string table_id;
+        if (table_info != nullptr) {
+            // increase the schema version by one
+            schema_version = request->schema.version() + 1;
+            table_id = table_info->table_id();
+        } else {
+            // new table
+            schema_version = request->schema.version();
+            if (schema_version == 0) {
+                schema_version++;
+            } 
+            PgObjectId pg_object(request->namespaceOid, request->tableOid);
+            // generate a string format table id based database object oid and table oid
+            table_id = pg_object.GetPgTableId();
+        }
+        Schema table_schema = std::move(request->schema);
+        table_schema.set_version(schema_version);
+        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request->namespaceName, 
+                table_info->table_id(), request->tableName, table_schema);
+        new_table_info->set_pg_oid(request->tableOid);
+        new_table_info->set_is_sys_table(request->isSysCatalogTable);
+        new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
+        
+        // TODO: add logic for shared table
+        std::shared_ptr<Context> context = BeginTransaction();
+        CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, new_table_info->namespace_id(), new_table_info);
+        if (result.status.succeeded) {
+            // commit transaction
+            EndTransaction(context, true);
+            // update table caches
+            UpdateTableCache(new_table_info);
+            // increase catalog version
+            IncreaseCatalogVersion();
+            // return response
+            response->status.succeeded = true;
+            response->tableInfo = new_table_info;
+        } else {
+            // abort the transaction
+            EndTransaction(context, false);
+            response->status = std::move(result.status);
+        }
+
         return Status::OK();
     }
     
@@ -345,6 +406,82 @@ namespace sql {
             namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr; 
         }
     }    
+
+    // update table caches
+    void SqlCatalogManager::UpdateTableCache(std::shared_ptr<TableInfo> table_info) {
+        std::lock_guard<simple_spinlock> l(lock_);
+        table_id_map_[table_info->table_id()] = table_info;
+        // TODO: add logic to remove table with old name if rename table is called
+        TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
+        table_name_map_[key] = table_info;
+    }  
+
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetNamespaceById(std::string namespace_id) {
+        if (!namespace_id_map_.empty()) {
+            const auto itr = namespace_id_map_.find(namespace_id);
+            if (itr != namespace_id_map_.end()) {
+                return itr->second;
+            }
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetNamespaceByName(std::string namespace_name) {
+        if (!namespace_name_map_.empty()) {
+            const auto itr = namespace_name_map_.find(namespace_name);
+            if (itr != namespace_name_map_.end()) {
+                return itr->second;
+            }
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetTableInfoById(std::string table_id) {
+        if (!table_id_map_.empty()) {
+            const auto itr = table_id_map_.find(table_id);
+            if (itr != table_id_map_.end()) {
+                return itr->second;
+            }
+        }
+        return nullptr;
+    }
+        
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetTableInfoByName(std::string namespace_id, std::string table_name) {
+        if (!table_id_map_.empty()) {
+           TableNameKey key = std::make_pair(namespace_id, table_name);
+           const auto itr = table_name_map_.find(key);
+            if (itr != table_name_map_.end()) {
+                return itr->second;
+            }
+        }
+        return nullptr;
+    }   
+    
+    std::shared_ptr<Context> SqlCatalogManager::BeginTransaction() {
+        std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
+        std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(txn_future.get());
+        std::shared_ptr<Context> context = std::make_shared<Context>();
+        context->SetTxn(txn);
+        return context;  
+    }
+
+    void SqlCatalogManager::EndTransaction(std::shared_ptr<Context> context, bool should_commit) {
+        std::future<k2::EndResult> txn_result_future = context->GetTxn()->endTxn(should_commit);
+        k2::EndResult txn_result = txn_result_future.get();
+        if (!txn_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
+                    << " and message: " << txn_result.status.message;
+            throw std::runtime_error("Failed to end transaction, should_commit: " + should_commit);                                 
+        }   
+    }
+
+    void SqlCatalogManager::IncreaseCatalogVersion() {
+        catalog_version_++; 
+        // need to update the catalog version on SKV
+        // the update frequency could be reduced once we have a single or a quorum of catalog managers
+        ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
+        cluster_info_handler_->UpdateClusterInfo(cluster_info);             
+    }
 }  // namespace sql
 }  // namespace k2pg
 
