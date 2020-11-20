@@ -146,13 +146,13 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
    
 Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table) {
   std::shared_ptr<GetTableSchemaRequest> request = std::make_shared<GetTableSchemaRequest>();
-  request->namespaceId = database_oid;
-  request->tableId = table_id;
+  request->namespaceOid = database_oid;
+  request->tableOid = table_id;
   std::shared_ptr<GetTableSchemaResponse> response = std::make_shared<GetTableSchemaResponse>();
   catalog_manager_->GetTableSchema(request, response);
-  if (!response->errorMessage.empty()) {
+  if (!response->status.succeeded) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to get schema for table $0 due to error: $1", table_id, response->errorMessage);
+                               "Failed to get schema for table $0 due to error: $1", table_id, response->status.errorMessage);
   } 
 
   table->swap(response->tableInfo);

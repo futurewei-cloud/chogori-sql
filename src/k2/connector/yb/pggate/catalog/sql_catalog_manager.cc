@@ -304,9 +304,8 @@ namespace sql {
             if (schema_version == 0) {
                 schema_version++;
             } 
-            PgObjectId pg_object(request->namespaceOid, request->tableOid);
             // generate a string format table id based database object oid and table oid
-            table_id = pg_object.GetPgTableId();
+            table_id = GetPgsqlTableId(request->namespaceOid, request->tableOid);
         }
         Schema table_schema = std::move(request->schema);
         table_schema.set_version(schema_version);
@@ -339,6 +338,55 @@ namespace sql {
     }
     
     Status SqlCatalogManager::GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response) {
+        // generate table id from namespace oid and table oid
+        std::string table_id = GetPgsqlTableId(request->namespaceOid, request->tableOid);
+        // check the table schema from cache
+        std::shared_ptr<TableInfo> table_info = GetTableInfoById(table_id);
+        if (table_info != nullptr) {
+            response->tableInfo = table_info;
+            response->status.succeeded = true;
+        } else {
+            std::string namespace_id = GetPgsqlNamespaceId(request->namespaceOid);
+            std::shared_ptr<NamespaceInfo> namespace_info = GetNamespaceById(namespace_id);
+            std::shared_ptr<Context> context = BeginTransaction();
+            if (namespace_info == nullptr) {
+                // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+                // this could be avoided by use a single or a quorum of catalog managers 
+                ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+                if (result.status.succeeded && !result.namespaceInfos.empty()) {
+                    // update namespace caches
+                    UpdateNamespaceCache(result.namespaceInfos);    
+                    // recheck namespace
+                    namespace_info = GetNamespaceById(namespace_id);          
+                }          
+            }
+            if (namespace_info == nullptr) {
+                throw std::runtime_error("Cannot find namespace " + namespace_id);
+            }
+          
+            // fetch the table from SKV
+            GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+                table_id);
+            if (table_result.status.succeeded) {
+                if (table_result.tableInfo != nullptr) {
+                    response->status.succeeded = true;
+                    response->tableInfo = table_result.tableInfo;
+                    // update table cache
+                    UpdateTableCache(table_result.tableInfo);
+                } else {
+                    response->status.succeeded = false;
+                    response->status.errorCode = 0;
+                    response->status.errorMessage = "Cannot find table " + table_id;
+                    response->tableInfo = nullptr;
+                }
+                EndTransaction(context, true);
+            } else {
+                response->status = std::move(table_result.status);
+                response->tableInfo = nullptr;
+                EndTransaction(context, false);
+           }
+        }
+
         return Status::OK();
     }
 

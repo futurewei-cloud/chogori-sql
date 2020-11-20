@@ -109,13 +109,13 @@ namespace sql {
     };
 
     struct GetTableSchemaRequest {
-        uint32_t namespaceId;
-        uint32_t tableId;    
+        uint32_t namespaceOid;
+        uint32_t tableOid;    
     };
 
     struct GetTableSchemaResponse {
         std::shared_ptr<TableInfo> tableInfo;
-        string errorMessage;
+        RStatus status;
     };
 
     struct ListTablesRequest {
