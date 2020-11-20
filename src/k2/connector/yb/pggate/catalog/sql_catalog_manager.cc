@@ -275,7 +275,7 @@ namespace sql {
     }
 
     Status SqlCatalogManager::CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response) {
-        std::shared_ptr<NamespaceInfo> namespace_info = GetNamespaceByName(request->namespaceName);
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request->namespaceName);
         if (namespace_info == nullptr) {
             // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
             // this could be avoided by use a single or a quorum of catalog managers 
@@ -284,17 +284,24 @@ namespace sql {
                 // update namespace caches
                 UpdateNamespaceCache(result.namespaceInfos);    
                 // recheck namespace
-                namespace_info = GetNamespaceByName(request->namespaceName);          
+                namespace_info = GetCachedNamespaceByName(request->namespaceName);          
             }          
         }
         if (namespace_info == nullptr) {
             throw std::runtime_error("Cannot find namespace " + request->namespaceName);
         }
         // check if the Table has already existed or not
-        std::shared_ptr<TableInfo> table_info = GetTableInfoByName(namespace_info->GetNamespaceId(), request->tableName);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoByName(namespace_info->GetNamespaceId(), request->tableName);
         uint32_t schema_version = 0;
         std::string table_id;
         if (table_info != nullptr) {
+            // only create table when it does not exist
+            if (request->isNotExist) {
+                response->status.succeeded = true;
+                response->tableInfo = table_info;
+                // return if the table already exists
+                return Status::OK();
+            }
             // increase the schema version by one
             schema_version = request->schema.version() + 1;
             table_id = table_info->table_id();
@@ -316,11 +323,11 @@ namespace sql {
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
         
         // TODO: add logic for shared table
-        std::shared_ptr<Context> context = BeginTransaction();
+        std::shared_ptr<Context> context = NewTransactionContext();
         CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, new_table_info->namespace_id(), new_table_info);
         if (result.status.succeeded) {
             // commit transaction
-            EndTransaction(context, true);
+            EndTransactionContext(context, true);
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version
@@ -330,25 +337,111 @@ namespace sql {
             response->tableInfo = new_table_info;
         } else {
             // abort the transaction
-            EndTransaction(context, false);
+            EndTransactionContext(context, false);
             response->status = std::move(result.status);
         }
 
         return Status::OK();
     }
-    
+   
+    Status SqlCatalogManager::CreateIndexTable(const std::shared_ptr<CreateIndexTableRequest> request, std::shared_ptr<CreateIndexTableResponse> response) {
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request->namespaceName);
+        if (namespace_info == nullptr) {
+            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+            // this could be avoided by use a single or a quorum of catalog managers 
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+            if (result.status.succeeded && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetCachedNamespaceByName(request->namespaceName);          
+            }          
+        }
+        if (namespace_info == nullptr) {
+            throw std::runtime_error("Cannot find namespace " + request->namespaceName);
+        }
+        // generate table id from namespace oid and table oid
+        std::string base_table_id = GetPgsqlTableId(request->namespaceOid, request->baseTableOid);
+        std::string index_table_id = GetPgsqlTableId(request->namespaceOid, request->tableOid);
+
+        // check if the base table exists or not
+        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
+        std::shared_ptr<Context> context = NewTransactionContext();
+        // try to fetch the table from SKV if not found
+        if (base_table_info == nullptr) {
+            GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+                base_table_id);
+                if (table_result.status.succeeded && table_result.tableInfo != nullptr) {
+                      // update table cache
+                    UpdateTableCache(table_result.tableInfo); 
+                    base_table_info = table_result.tableInfo;                 
+                }
+        }
+
+        if (base_table_info == nullptr) {
+            // cannot find the base table
+            response->status.succeeded = false;
+            response->status.errorCode = 0;
+            response->status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request->tableName;
+        } else {
+            bool need_create_index = false;
+            if (base_table_info->has_secondary_indexes()) {
+                const IndexMap& index_map = base_table_info->secondary_indexes();
+                const auto itr = index_map.find(index_table_id);
+                // the index has already been defined
+                if (itr != index_map.end()) {
+                    // return if 'create .. if not exist' clause is specified
+                    if (request->isNotExist) {
+                        const IndexInfo& index_info = itr->second;
+                        response->indexInfo = std::make_shared<IndexInfo>(index_info);
+                    } else {
+                        // TODO: add logic to alter index instead of recreating it here
+                        need_create_index = true;
+                    }
+                } else {
+                    need_create_index = true;
+                }
+            } else {
+                need_create_index = true;
+            }
+
+            if (need_create_index) {
+                // use default index permission, could be customized by user/api
+                IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request->tableName, request->tableOid,
+                    request->schema, request->isUnique, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
+                // persist the index table metadata to the system catalog SKV tables   
+                table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info); 
+                // create a SKV schema to insert the actual index data
+                table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info); 
+                // update the base table with the new index 
+                base_table_info->add_secondary_index(index_table_id, new_index_info);
+                // update table cache
+                UpdateTableCache(base_table_info);
+                // increase catalog version
+                IncreaseCatalogVersion();
+                if (!request->skipIndexBackfill) {
+                    // TODO: add logic to backfill the index
+                }
+                response->indexInfo = std::make_shared<IndexInfo>(new_index_info);
+            }
+            response->status.succeeded = true;
+        }
+
+        return Status::OK();
+    }
+
     Status SqlCatalogManager::GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response) {
         // generate table id from namespace oid and table oid
         std::string table_id = GetPgsqlTableId(request->namespaceOid, request->tableOid);
         // check the table schema from cache
-        std::shared_ptr<TableInfo> table_info = GetTableInfoById(table_id);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_id);
         if (table_info != nullptr) {
             response->tableInfo = table_info;
             response->status.succeeded = true;
         } else {
             std::string namespace_id = GetPgsqlNamespaceId(request->namespaceOid);
-            std::shared_ptr<NamespaceInfo> namespace_info = GetNamespaceById(namespace_id);
-            std::shared_ptr<Context> context = BeginTransaction();
+            std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(namespace_id);
+            std::shared_ptr<Context> context = NewTransactionContext();
             if (namespace_info == nullptr) {
                 // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
                 // this could be avoided by use a single or a quorum of catalog managers 
@@ -357,7 +450,7 @@ namespace sql {
                     // update namespace caches
                     UpdateNamespaceCache(result.namespaceInfos);    
                     // recheck namespace
-                    namespace_info = GetNamespaceById(namespace_id);          
+                    namespace_info = GetCachedNamespaceById(namespace_id);          
                 }          
             }
             if (namespace_info == nullptr) {
@@ -379,11 +472,11 @@ namespace sql {
                     response->status.errorMessage = "Cannot find table " + table_id;
                     response->tableInfo = nullptr;
                 }
-                EndTransaction(context, true);
+                EndTransactionContext(context, true);
             } else {
                 response->status = std::move(table_result.status);
                 response->tableInfo = nullptr;
-                EndTransaction(context, false);
+                EndTransactionContext(context, false);
            }
         }
 
@@ -464,7 +557,7 @@ namespace sql {
         table_name_map_[key] = table_info;
     }  
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetNamespaceById(std::string namespace_id) {
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceById(std::string namespace_id) {
         if (!namespace_id_map_.empty()) {
             const auto itr = namespace_id_map_.find(namespace_id);
             if (itr != namespace_id_map_.end()) {
@@ -474,7 +567,7 @@ namespace sql {
         return nullptr;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetNamespaceByName(std::string namespace_name) {
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceByName(std::string namespace_name) {
         if (!namespace_name_map_.empty()) {
             const auto itr = namespace_name_map_.find(namespace_name);
             if (itr != namespace_name_map_.end()) {
@@ -484,7 +577,7 @@ namespace sql {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetTableInfoById(std::string table_id) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoById(std::string table_id) {
         if (!table_id_map_.empty()) {
             const auto itr = table_id_map_.find(table_id);
             if (itr != table_id_map_.end()) {
@@ -494,7 +587,7 @@ namespace sql {
         return nullptr;
     }
         
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetTableInfoByName(std::string namespace_id, std::string table_name) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(std::string namespace_id, std::string table_name) {
         if (!table_id_map_.empty()) {
            TableNameKey key = std::make_pair(namespace_id, table_name);
            const auto itr = table_name_map_.find(key);
@@ -505,7 +598,7 @@ namespace sql {
         return nullptr;
     }   
     
-    std::shared_ptr<Context> SqlCatalogManager::BeginTransaction() {
+    std::shared_ptr<Context> SqlCatalogManager::NewTransactionContext() {
         std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
         std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(txn_future.get());
         std::shared_ptr<Context> context = std::make_shared<Context>();
@@ -513,7 +606,7 @@ namespace sql {
         return context;  
     }
 
-    void SqlCatalogManager::EndTransaction(std::shared_ptr<Context> context, bool should_commit) {
+    void SqlCatalogManager::EndTransactionContext(std::shared_ptr<Context> context, bool should_commit) {
         std::future<k2::EndResult> txn_result_future = context->GetTxn()->endTxn(should_commit);
         k2::EndResult txn_result = txn_result_future.get();
         if (!txn_result.status.is2xxOK()) {
@@ -530,6 +623,29 @@ namespace sql {
         ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
         cluster_info_handler_->UpdateClusterInfo(cluster_info);             
     }
+    
+    IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
+            const Schema& index_schema, bool is_unique, IndexPermissions index_permissions) {
+        std::vector<IndexColumn> columns;
+        for (ColumnId col_id: index_schema.column_ids()) {
+            int col_idx = index_schema.find_column_by_id(col_id);
+            if (col_idx == Schema::kColumnNotFound) {
+                throw std::runtime_error("Cannot find column with id " + col_id);
+            }
+            const ColumnSchema& col_schema = index_schema.column(col_idx);
+            std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
+            if (!pair.first) {
+                throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
+            }
+            ColumnId indexed_column_id = pair.second;
+            IndexColumn col(col_id, col_schema.name(),  indexed_column_id);
+            columns.push_back(col);   
+        }
+        IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(), 
+                is_unique, columns, index_permissions);
+        return index_info;        
+    }
+
 }  // namespace sql
 }  // namespace k2pg
 

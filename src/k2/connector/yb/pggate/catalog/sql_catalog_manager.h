@@ -98,14 +98,31 @@ namespace sql {
         bool isSysCatalogTable;
         // should put shared table in primary collection
         bool isSharedTable;
-
-        // for index table
-        std::optional<IndexInfo> indexInfo;
+        bool isNotExist;
     };
 
     struct CreateTableResponse {        
         RStatus status;
         std::shared_ptr<TableInfo> tableInfo;
+    };
+
+    struct CreateIndexTableRequest {
+        string namespaceName;
+        uint32_t namespaceOid;
+        string tableName;
+        uint32_t tableOid;
+        uint32_t baseTableOid;
+        Schema schema;
+        bool isUnique;
+        bool skipIndexBackfill;
+        bool isSysCatalogTable;
+        bool isSharedTable;
+        bool isNotExist;
+    };
+
+    struct CreateIndexTableResponse {
+        RStatus status;
+        std::shared_ptr<IndexInfo> indexInfo;
     };
 
     struct GetTableSchemaRequest {
@@ -114,8 +131,8 @@ namespace sql {
     };
 
     struct GetTableSchemaResponse {
-        std::shared_ptr<TableInfo> tableInfo;
         RStatus status;
+        std::shared_ptr<TableInfo> tableInfo;
     };
 
     struct ListTablesRequest {
@@ -192,6 +209,8 @@ namespace sql {
         CHECKED_STATUS DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> response);
 
         CHECKED_STATUS CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response);
+
+        CHECKED_STATUS CreateIndexTable(const std::shared_ptr<CreateIndexTableRequest> request, std::shared_ptr<CreateIndexTableResponse> response);
         
         CHECKED_STATUS GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response);
 
@@ -212,20 +231,24 @@ namespace sql {
 
         void UpdateTableCache(std::shared_ptr<TableInfo> table_info);
 
-    private:
-        std::shared_ptr<NamespaceInfo> GetNamespaceById(std::string namespace_id);
+        std::shared_ptr<NamespaceInfo> GetCachedNamespaceById(std::string namespace_id);
 
-        std::shared_ptr<NamespaceInfo> GetNamespaceByName(std::string namespace_name);
+        std::shared_ptr<NamespaceInfo> GetCachedNamespaceByName(std::string namespace_name);
 
-        std::shared_ptr<TableInfo> GetTableInfoById(std::string table_id);
+        std::shared_ptr<TableInfo> GetCachedTableInfoById(std::string table_id);
         
-        std::shared_ptr<TableInfo> GetTableInfoByName(std::string namespace_id, std::string table_name);
+        std::shared_ptr<TableInfo> GetCachedTableInfoByName(std::string namespace_id, std::string table_name);
 
-        std::shared_ptr<Context> BeginTransaction();
+        std::shared_ptr<Context> NewTransactionContext();
 
-        void EndTransaction(std::shared_ptr<Context> context, bool should_commit);
+        void EndTransactionContext(std::shared_ptr<Context> context, bool should_commit);
 
         void IncreaseCatalogVersion();
+
+        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
+                const Schema& index_schema, bool is_unique, IndexPermissions index_permissions);
+
+    private:
 
         std::string cluster_id_;
 
@@ -253,7 +276,6 @@ namespace sql {
         // to reference a table by its name, we have to use both namespaceId and table name
         std::unordered_map<TableNameKey, std::shared_ptr<TableInfo>, boost::hash<TableNameKey>> table_name_map_;
 
-        // TODO: add transaction handler for DDLs
     };
 
 } // namespace sql

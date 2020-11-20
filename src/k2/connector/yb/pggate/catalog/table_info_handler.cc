@@ -105,7 +105,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Co
         return response;
     }
     // persist SKV table and index schemas
-    CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateSKVSchema(context, collection_name, table);
+    CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);
     if (skv_schema_result.status.succeeded) {
         response.status.succeeded = true;
     } else {
@@ -170,7 +170,7 @@ CheckSchemaResult TableInfoHandler::CheckSchema(std::shared_ptr<Context> context
     return response;
 }
 
-CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
+CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
     CreateUpdateSKVSchemaResult response;
     // use table id (string) instead of table name as the schema name
     CheckSchemaResult check_result = CheckSchema(context, collection_name, table->table_id(), table->schema().version());
@@ -181,10 +181,10 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateSKVSchema(std::share
             PersistSKVSchema(context, collection_name, tablecolumn_schema);
 
             if (table->has_secondary_indexes()) {
-                std::vector<std::shared_ptr<k2::dto::Schema>> indexcolumn_schemas = DeriveIndexSchemas(table);
-                for (std::shared_ptr<k2::dto::Schema> indexcolumn_schema : indexcolumn_schemas) {
+                std::vector<std::shared_ptr<k2::dto::Schema>> index_schemas = DeriveIndexSchemas(table);
+                for (std::shared_ptr<k2::dto::Schema> index_schema : index_schemas) {
                     // use sequential SKV writes for now, could optimize this later
-                    PersistSKVSchema(context, collection_name, indexcolumn_schema);
+                    PersistSKVSchema(context, collection_name, index_schema);
                 }
             }
         }
@@ -198,6 +198,15 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateSKVSchema(std::share
     return response;
 }
 
+CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::shared_ptr<Context> context, std::string collection_name, 
+        std::shared_ptr<TableInfo> table, const IndexInfo& index_info) {
+    CreateUpdateSKVSchemaResult response;
+    std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info, table->schema());
+    PersistSKVSchema(context, collection_name, index_schema);
+    response.status.succeeded = true;
+    return response;        
+}
+
 PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
     PersistSysTableResult response;
     // use sequential SKV writes for now, could optimize this later
@@ -209,13 +218,21 @@ PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<Context>
     }
     if (table->has_secondary_indexes()) {
         for( const auto& pair : table->secondary_indexes()) {
-            k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, pair.second, table->is_sys_table(), table->next_column_id());
-            PersistSKVRecord(context, tablelist_index_record);
-            std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, pair.second, table->schema());
-            for (auto& index_column_record : index_column_records) {
-                PersistSKVRecord(context, index_column_record);    
-            }
+            PersistIndexTable(context, collection_name, table, pair.second);
         }
+    }
+    response.status.succeeded = true;
+    return response;
+}
+
+PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table, 
+        const IndexInfo& index_info) {
+    PersistIndexTableResult response;        
+    k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
+    PersistSKVRecord(context, tablelist_index_record);
+    std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, index_info, table->schema());
+    for (auto& index_column_record : index_column_records) {
+        PersistSKVRecord(context, index_column_record);    
     }
     response.status.succeeded = true;
     return response;
@@ -771,7 +788,6 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<Context> cont
     IndexPermissions index_perm = static_cast<IndexPermissions>(index_head.deserializeNext<int16_t>().value());
     // NextColumnId
     index_head.skipNext();
- //   int32_t next_column_id = index_head.deserializeNext<int32_t>().value();
     // SchemaVersion
     uint32_t version = index_head.deserializeNext<int32_t>().value();
 

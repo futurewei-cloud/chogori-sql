@@ -460,6 +460,8 @@ namespace sql {
 
         Result<int> ColumnIndexByName(GStringPiece col_name) const;
 
+        std::pair<bool, ColumnId> FindColumnIdByName(const std::string& col_name) const;
+
         // Returns true if the schema contains nullable columns
         bool has_nullables() const {
             return has_nullables_;

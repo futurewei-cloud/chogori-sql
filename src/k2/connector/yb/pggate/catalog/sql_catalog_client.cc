@@ -53,7 +53,7 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
   catalog_manager_->CreateNamespace(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to create namespace $0 due to error: $1", namespace_name, response->errorMessage);
+         "Failed to create namespace $0 due to error: $1", namespace_name, response->errorMessage);
   }
   return Status::OK();
 }
@@ -69,7 +69,7 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
   catalog_manager_->DeleteNamespace(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to delete namespace $0 due to error: $1", namespace_name, response->errorMessage);
+         "Failed to delete namespace $0 due to error: $1", namespace_name, response->errorMessage);
   }                             
   return Status::OK();
 }
@@ -90,6 +90,7 @@ Status SqlCatalogClient::CreateTable(
   request->schema = std::move(schema);
   request->isSysCatalogTable = is_pg_catalog_table;
   request->isSharedTable = is_shared_table;
+  request->isNotExist = if_not_exist;
   std::shared_ptr<CreateTableResponse> response = std::make_shared<CreateTableResponse>();   
   catalog_manager_->CreateTable(request, response);                                 
   if (!response->status.succeeded) {
@@ -110,8 +111,25 @@ Status SqlCatalogClient::CreateIndexTable(
     bool is_pg_catalog_table, 
     bool is_shared_table, 
     bool if_not_exist) {
-
-  // TODO: add implementation                                   
+  std::shared_ptr<CreateIndexTableRequest> request = std::make_shared<CreateIndexTableRequest>();
+  request->namespaceName = std::move(namespace_name);
+  request->namespaceOid = table_id.database_oid;
+  request->tableName = std::move(table_name);
+  request->tableOid = table_id.object_oid;
+  // index and the base table should be in the same namespace, i.e., database
+  request->baseTableOid = base_table_id.object_oid;
+  request->schema = std::move(schema);
+  request->isUnique = is_unique_index;
+  request->skipIndexBackfill = skip_index_backfill;
+  request->isSysCatalogTable = is_pg_catalog_table;
+  request->isSharedTable = is_shared_table;
+  request->isNotExist = if_not_exist;
+  std::shared_ptr<CreateIndexTableResponse> response = std::make_shared<CreateIndexTableResponse>();   
+  catalog_manager_->CreateIndexTable(request, response);                                 
+  if (!response->status.succeeded) {
+    return STATUS_SUBSTITUTE(RuntimeError,
+        "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->status.errorMessage);
+  }     
   return Status::OK();
 }
 
@@ -124,7 +142,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
   catalog_manager_->DeleteTable(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to delete table $0 due to error: $1", table_id, response->errorMessage);
+         "Failed to delete table $0 due to error: $1", table_id, response->errorMessage);
   }   
   return Status::OK();
 }
@@ -138,7 +156,7 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
   catalog_manager_->DeleteTable(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to delete index table $0 due to error: $1", table_id, response->errorMessage);
+         "Failed to delete index table $0 due to error: $1", table_id, response->errorMessage);
   }   
   *base_table_id = response->indexedTableId;
   return Status::OK();
@@ -152,7 +170,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_i
   catalog_manager_->GetTableSchema(request, response);
   if (!response->status.succeeded) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to get schema for table $0 due to error: $1", table_id, response->status.errorMessage);
+         "Failed to get schema for table $0 due to error: $1", table_id, response->status.errorMessage);
   } 
 
   table->swap(response->tableInfo);
@@ -172,7 +190,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
   catalog_manager_->ReservePgOid(request, response);
   if (!response->errorMessage.empty()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-                               "Failed to reserve PG Oids for database $0 due to error: $1", database_oid, response->errorMessage);
+         "Failed to reserve PG Oids for database $0 due to error: $1", database_oid, response->errorMessage);
   }        
   *begin_oid = response->beginOid;
   *end_oid = response->endOid;                        

@@ -74,6 +74,10 @@ struct PersistSysTableResult {
     RStatus status;
 };
 
+struct PersistIndexTableResult {
+    RStatus status;
+};
+
 class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
@@ -142,9 +146,14 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     CheckSchemaResult CheckSchema(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, uint32_t version);
 
-    CreateUpdateSKVSchemaResult CreateOrUpdateSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+    CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<Context> context, std::string collection_name, 
+        std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
     PersistSysTableResult PersistSysTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    PersistIndexTableResult PersistIndexTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
     private:  
     CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, 
