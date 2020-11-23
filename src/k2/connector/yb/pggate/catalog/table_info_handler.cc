@@ -27,6 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {    
 
 TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : k2_adapter_(k2_adapter),  
@@ -48,24 +49,24 @@ CreateSysTablesResult TableInfoHandler::CreateSysTablesIfNecessary(std::shared_p
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
     CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr);
-    if (!result.status.succeeded) {
+    if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
     }
 
     result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr);
-     if (!result.status.succeeded) {
+     if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
     }
    
     result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr);
-     if (!result.status.succeeded) {
+     if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
     }
 
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -77,7 +78,7 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Con
     CheckSysTableResult response;
     // TODO: double check if this check is valid for schema
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        response.status.succeeded = true;
+        response.status.Succeed();
         LOG(INFO) << schema_name << " table does not exist in " << collection_name; 
         // create the table schema since it does not exist
         std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name, schema);
@@ -86,13 +87,13 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Con
             LOG(FATAL) << "Failed to create SKV schema for " << schema_name << "in" << collection_name
                 << " due to error code " << result.status.code
                 << " and message: " << result.status.message;
-            response.status.succeeded = false;
-            response.status.errorCode = result.status.code;
+            // TODO: add SKV error code to PG gate response code translation    
+            response.status.code = StatusCode::INTERNAL_ERROR;
             response.status.errorMessage = std::move(result.status.message);
             return response;            
         }        
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -100,14 +101,14 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Co
     CreateUpdateTableResult response;
     // persist system catalog entries to sys tables
     PersistSysTableResult sys_table_result = PersistSysTable(context, collection_name, table);
-    if (!sys_table_result.status.succeeded) {
+    if (!sys_table_result.status.IsSucceeded()) {
         response.status = std::move(sys_table_result.status);
         return response;
     }
     // persist SKV table and index schemas
     CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);
-    if (skv_schema_result.status.succeeded) {
-        response.status.succeeded = true;
+    if (skv_schema_result.status.IsSucceeded()) {
+        response.status.Succeed();
     } else {
         response.status = std::move(skv_schema_result.status);       
     }
@@ -134,7 +135,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<Context> context, std:
             table_info->add_secondary_index(index_info.table_id(), index_info);
         }
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     response.tableInfo = table_info;
     return response;
 }
@@ -152,18 +153,17 @@ CheckSchemaResult TableInfoHandler::CheckSchema(std::shared_ptr<Context> context
     k2::GetSchemaResult schema_result = schema_result_future.get();
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         response.schema = nullptr;
-        response.status.succeeded = true;
+        response.status.Succeed();
     } else if (schema_result.status.is2xxOK()) {
         if(schema_result.schema != nullptr) {
             response.schema = std::move(schema_result.schema);
-            response.status.succeeded = true;
+            response.status.Succeed();
         } else {
             response.schema = nullptr;
-            response.status.succeeded = true;          
+            response.status.Succeed();          
         }
     } else {
-        response.status.succeeded = false;          
-        response.status.errorCode = schema_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(schema_result.status.message);    
     }
 
@@ -174,7 +174,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::
     CreateUpdateSKVSchemaResult response;
     // use table id (string) instead of table name as the schema name
     CheckSchemaResult check_result = CheckSchema(context, collection_name, table->table_id(), table->schema().version());
-    if (check_result.status.succeeded) {
+    if (check_result.status.IsSucceeded()) {
         if (check_result.schema == nullptr) {
             // build the SKV schema from TableInfo, i.e., PG table schema
             std::shared_ptr<k2::dto::Schema> tablecolumn_schema = DeriveSKVTableSchema(table);
@@ -188,10 +188,9 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::
                 }
             }
         }
-        response.status.succeeded = true;
+        response.status.Succeed();
     } else {
-        response.status.succeeded = false;
-        response.status.errorCode = check_result.status.errorCode;
+        response.status.code = check_result.status.code;
         response.status.errorMessage = std::move(check_result.status.errorMessage);
     }
 
@@ -203,7 +202,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::
     CreateUpdateSKVSchemaResult response;
     std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info, table->schema());
     PersistSKVSchema(context, collection_name, index_schema);
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;        
 }
 
@@ -221,7 +220,7 @@ PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<Context>
             PersistIndexTable(context, collection_name, table, pair.second);
         }
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -234,7 +233,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Cont
     for (auto& index_column_record : index_column_records) {
         PersistSKVRecord(context, index_column_record);    
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -814,5 +813,6 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<Context> cont
     return index_info;
 }
 
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg

@@ -25,6 +25,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
 ClusterInfo::ClusterInfo() {
 };
@@ -36,5 +37,6 @@ ClusterInfo::ClusterInfo(string cluster_id, uint64_t catalog_version, bool initd
 ClusterInfo::~ClusterInfo() {
 };
 
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg

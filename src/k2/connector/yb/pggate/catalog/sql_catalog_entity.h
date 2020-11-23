@@ -31,6 +31,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
 using std::string;
 using k2pg::gate::K23SITxn;
@@ -162,13 +163,53 @@ class Context {
     std::shared_ptr<K23SITxn> txn_;   
 };
 
+// mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)
+typedef enum RStatusCode {
+    OK = 0,
+    NOT_FOUND = 1,
+    CORRUPTION = 2,
+    NOT_SUPPORTED = 3,
+    INVALID_ARGUMENT = 4,
+    IO_ERROR = 5,
+    ALREADY_PRESENT = 6,
+    RUNTIME_ERROR = 7,
+    NETWORK_ERROR = 8,
+    ILLEGAL_STATE = 9,
+    NOT_AUTHORIZED = 10,
+    ABORTED = 11,
+    REMOTE_ERROR = 12,
+    SERVICE_UNAVAILABLE = 13,
+    TIMED_OUT = 14,
+    UNINITIALIZED = 15,
+    CONFIGURATION_ERROR = 16,
+    INCOMPLETE = 17,
+    END_OF_FILE = 18,
+    INVALID_COMMAND = 19,
+    QUERY_ERROR = 20,
+    INTERNAL_ERROR = 21,
+    EXPIRED = 22,    
+} StatusCode;
+
 // response status
 struct RStatus {
-    bool succeeded;
-    int errorCode;
-    std::string errorMessage;   
+    RStatus() = default;
+    ~RStatus() = default;
+
+    StatusCode code;
+    std::string errorMessage;
+
+    void Succeed() {
+        code = StatusCode::OK;
+    }
+
+    bool IsSucceeded() {
+        return code == StatusCode::OK;
+    }  
 };
 
+static const inline RStatus StatusOK{.code = StatusCode::OK, .errorMessage=""};
+
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg
 

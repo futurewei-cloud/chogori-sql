@@ -35,6 +35,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
     
 using yb::Status;
 using k2pg::gate::PgObjectId;
@@ -104,6 +105,7 @@ class SqlCatalogClient {
     std::shared_ptr<SqlCatalogManager> catalog_manager_;
 };
 
+} // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
 

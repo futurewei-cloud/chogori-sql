@@ -40,11 +40,28 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {    
     using yb::Env;
     using yb::Status;
     using yb::simple_spinlock;
     using k2pg::gate::K2Adapter;
     using k2pg::gate::PgObjectId;
+
+    struct GetInitDbRequest {
+    };
+
+    struct GetInitDbResponse {
+        RStatus status;
+        bool isInitDbDone;
+    };
+
+    struct GetCatalogVersionRequest {  
+    };
+
+    struct GetCatalogVersionResponse {
+        RStatus status;
+        uint64_t catalogVersion;     
+    };
 
     struct CreateNamespaceRequest {
         string namespaceName;
@@ -56,8 +73,8 @@ namespace sql {
     };
 
     struct CreateNamespaceResponse {
-        string namespaceId;
-        string errorMessage;
+        RStatus status;
+        std::shared_ptr<NamespaceInfo> namespaceInfo;
     };
 
     struct ListNamespacesRequest {
@@ -84,9 +101,7 @@ namespace sql {
     };
 
     struct DeleteNamespaceResponse {
-        string namespaceName;
-        string namespaceId;     
-        string errorMessage;        
+        RStatus status;       
     };
 
     struct CreateTableRequest {
@@ -143,9 +158,9 @@ namespace sql {
     };
 
     struct ListTablesResponse {
+        RStatus status;
         string namespaceName;
         std::vector<string> tableNames;
-        string errorMessage;
     };
 
     struct DeleteTableRequest {
@@ -155,10 +170,10 @@ namespace sql {
     };
 
     struct DeleteTableResponse {
+        RStatus status;
         uint32_t namespaceId;
         uint32_t tableId;
-        uint32_t indexedTableId;
-        string errorMessage;
+        uint32_t indexedTableId;  
     };
 
     struct ReservePgOidsRequest {
@@ -168,12 +183,12 @@ namespace sql {
     };
 
     struct ReservePgOidsResponse {
+        RStatus status;
         std::string namespaceId;
         // the beginning of the oid reserver, which could be higher than requested
         uint32_t beginOid;
         // the end (exclusive) oid reserved
         uint32_t endOid;
-        string errorMessage;  
     };
 
     class SqlCatalogManager : public std::enable_shared_from_this<SqlCatalogManager> {
@@ -190,42 +205,39 @@ namespace sql {
 
         virtual Env* GetEnv();
 
-        CHECKED_STATUS IsInitDbDone(bool* isDone);
+        // use synchronous APIs for the first attempt here
+        // TODO: change them to asynchronous with status check later by introducing threadpool task processing
+
+        GetInitDbResponse IsInitDbDone(const GetInitDbRequest& request);
+
+        GetCatalogVersionResponse GetCatalogVersion(const GetCatalogVersionRequest& request);
+
+        CreateNamespaceResponse CreateNamespace(const CreateNamespaceRequest& request);  
+
+        ListNamespacesResponse ListNamespaces(const ListNamespacesRequest& request);
+
+        GetNamespaceResponse GetNamespace(const GetNamespaceRequest& request);
+
+        DeleteNamespaceResponse DeleteNamespace(const DeleteNamespaceRequest& request);
+
+        CreateTableResponse CreateTable(const CreateTableRequest& request);
+
+        CreateIndexTableResponse CreateIndexTable(const CreateIndexTableRequest& request);
         
-        // TODO: change APIs to not use STATUS but pass RStatus in response object
+        GetTableSchemaResponse GetTableSchema(const GetTableSchemaRequest& request);
 
-        // TODO: double check, we might not need this API to change the catalog version since the version should be
-        // managed by the catalog manager internally
-        CHECKED_STATUS SetCatalogVersion(uint64_t new_version);
+        ListTablesResponse ListTables(const ListTablesRequest& request);
 
-        CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
+        DeleteTableResponse DeleteTable(const DeleteTableRequest& request);
 
-        CHECKED_STATUS CreateNamespace(const std::shared_ptr<CreateNamespaceRequest> request, std::shared_ptr<CreateNamespaceResponse> response);  
-
-        CHECKED_STATUS ListNamespaces(const std::shared_ptr<ListNamespacesRequest> request, std::shared_ptr<ListNamespacesResponse> response);
-
-        CHECKED_STATUS GetNamespace(const std::shared_ptr<GetNamespaceRequest> request, std::shared_ptr<GetNamespaceResponse> response);
-
-        CHECKED_STATUS DeleteNamespace(const std::shared_ptr<DeleteNamespaceRequest> request, std::shared_ptr<DeleteNamespaceResponse> response);
-
-        CHECKED_STATUS CreateTable(const std::shared_ptr<CreateTableRequest> request, std::shared_ptr<CreateTableResponse> response);
-
-        CHECKED_STATUS CreateIndexTable(const std::shared_ptr<CreateIndexTableRequest> request, std::shared_ptr<CreateIndexTableResponse> response);
-        
-        CHECKED_STATUS GetTableSchema(const std::shared_ptr<GetTableSchemaRequest> request, std::shared_ptr<GetTableSchemaResponse> response);
-
-        CHECKED_STATUS ListTables(const std::shared_ptr<ListTablesRequest> request, std::shared_ptr<ListTablesResponse> response);
-
-        CHECKED_STATUS DeleteTable(const std::shared_ptr<DeleteTableRequest> request, std::shared_ptr<DeleteTableResponse> response);
-
-        CHECKED_STATUS ReservePgOid(const std::shared_ptr<ReservePgOidsRequest> request, std::shared_ptr<ReservePgOidsResponse> response);
+        ReservePgOidsResponse ReservePgOid(const ReservePgOidsRequest& request);
 
     protected:
         std::atomic<bool> initted_{false};
 
         mutable simple_spinlock lock_;
 
-        CHECKED_STATUS GetLatestClusterInfo(bool *initdb_done, uint64_t *catalog_version);
+        RStatus UpdateCatalogVersion(uint64_t new_version);
 
         void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
 
@@ -278,6 +290,7 @@ namespace sql {
 
     };
 
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg
 

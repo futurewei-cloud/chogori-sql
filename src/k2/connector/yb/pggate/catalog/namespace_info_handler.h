@@ -31,6 +31,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
 using yb::Status;
 using k2pg::gate::K2Adapter;
@@ -92,6 +93,7 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
     std::shared_ptr<k2::dto::Schema> schema_ptr;  
 };
 
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg
 

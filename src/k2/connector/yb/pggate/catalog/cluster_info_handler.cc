@@ -27,6 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
 ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : collection_name_(sql_primary_collection_name), 
@@ -46,8 +47,7 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!schema_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create schema due to error code " << schema_result.status.code
             << " and message: " << schema_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = schema_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(schema_result.status.message);
         return response;
     }
@@ -65,8 +65,7 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
             << " and message: " << write_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = write_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(write_result.status.message);
         return response;  
     }
@@ -76,12 +75,11 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = txn_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(txn_result.status.message);
         return response;             
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -100,8 +98,7 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clust
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
             << " and message: " << write_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = write_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(write_result.status.message);
         return response;    
     }
@@ -111,12 +108,11 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clust
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = txn_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(txn_result.status.message);
         return response;                        
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
@@ -132,15 +128,14 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(const std::string& clus
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Cluster info record does not exist"; 
         response.clusterInfo = nullptr;
-        response.status.succeeded = true;
+        response.status.Succeed();
         return response;
     }
 
     if (!read_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to read SKV record due to error code " << read_result.status.code
             << " and message: " << read_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = read_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = read_result.status.message; 
         return response;     
     }
@@ -157,14 +152,14 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(const std::string& clus
     if (!txn_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
             << " and message: " << txn_result.status.message;
-        response.status.succeeded = false;
-        response.status.errorCode = txn_result.status.code;
+        response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(txn_result.status.message);
         return response;                                    
     }
-    response.status.succeeded = true;
+    response.status.Succeed();
     return response;
 }
 
+} // namespace sql
 } // namespace sql
 } // namespace k2pg

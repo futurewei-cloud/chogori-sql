@@ -70,7 +70,7 @@ namespace k2pg {
 namespace gate {
 
 using k2pg::sql::IndexPermissions;
-using k2pg::sql::SqlCatalogClient;
+using k2pg::sql::catalog::SqlCatalogClient;
 using yb::ObjectIdGenerator;
 using yb::MonoDelta;
 using yb::Status;

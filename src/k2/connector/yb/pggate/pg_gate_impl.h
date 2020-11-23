@@ -76,7 +76,8 @@ using yb::MetricEntity;
 using yb::MetricRegistry;
 using yb::Status;
 using k2pg::sql::PgExpr;
-using k2pg::sql::SqlCatalogManager;
+using k2pg::sql::catalog::SqlCatalogClient;
+using k2pg::sql::catalog::SqlCatalogManager;
 
 //--------------------------------------------------------------------------------------------------
 // Implements support for CAPI.

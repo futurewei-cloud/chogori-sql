@@ -25,9 +25,17 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
-Status SqlCatalogClient::IsInitDbDone(bool* isDone) {                                  
-  return catalog_manager_->IsInitDbDone(isDone);
+Status SqlCatalogClient::IsInitDbDone(bool* isDone) {  
+  GetInitDbRequest request;
+  GetInitDbResponse response = catalog_manager_->IsInitDbDone(request); 
+  if(!response.status.IsSucceeded()) {
+     return STATUS_SUBSTITUTE(RuntimeError,
+         "Failed to check init_db state due to code $0 and message $1", response.status.code, response.status.errorMessage);
+  }
+  *isDone = response.isInitDbDone;
+  return Status::OK();
 }
 
 Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
@@ -35,41 +43,39 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id,
                                  const std::string& source_namespace_id,
                                  const std::optional<uint32_t>& next_pg_oid) {
-  std::shared_ptr<CreateNamespaceRequest> request = std::make_shared<CreateNamespaceRequest>();
-  request->namespaceName = std::move(namespace_name);
+  CreateNamespaceRequest request;
+  request.namespaceName = namespace_name;
   if(!namespace_id.empty()) {
-    request->namespaceId = std::move(namespace_id);
+    request.namespaceId = namespace_id;
   }
   if (!creator_role_name.empty()) {
-    request->creatorRoleName = std::move(creator_role_name); 
+    request.creatorRoleName = creator_role_name; 
   }  
   if (!source_namespace_id.empty()) {
-    request->sourceNamespaceId = std::move(source_namespace_id);
+    request.sourceNamespaceId = source_namespace_id;
   }
   if (next_pg_oid) {
-    request->nextPgOid = next_pg_oid;  
+    request.nextPgOid = next_pg_oid;  
   }
-  std::shared_ptr<CreateNamespaceResponse> response;
-  catalog_manager_->CreateNamespace(request, response);
-  if (!response->errorMessage.empty()) {
+  CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to create namespace $0 due to error: $1", namespace_name, response->errorMessage);
+         "Failed to create namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
   }
   return Status::OK();
 }
 
 Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id) {
-  std::shared_ptr<DeleteNamespaceRequest> request = std::make_shared<DeleteNamespaceRequest>();
-  request->namespaceName = std::move(namespace_name);
+  DeleteNamespaceRequest request;
+  request.namespaceName = namespace_name;
   if (!namespace_id.empty()) {
-    request->namespaceId = std::move(namespace_id);
+    request.namespaceId = namespace_id;
   }     
-  std::shared_ptr<DeleteNamespaceResponse> response = std::make_shared<DeleteNamespaceResponse>();
-  catalog_manager_->DeleteNamespace(request, response);
-  if (!response->errorMessage.empty()) {
+  DeleteNamespaceResponse response = catalog_manager_->DeleteNamespace(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to delete namespace $0 due to error: $1", namespace_name, response->errorMessage);
+         "Failed to delete namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
   }                             
   return Status::OK();
 }
@@ -82,20 +88,20 @@ Status SqlCatalogClient::CreateTable(
     bool is_pg_catalog_table, 
     bool is_shared_table, 
     bool if_not_exist) {
-  std::shared_ptr<CreateTableRequest> request = std::make_shared<CreateTableRequest>();
-  request->namespaceName = std::move(namespace_name);
-  request->namespaceOid = table_id.database_oid;
-  request->tableName = std::move(table_name);
-  request->tableOid = table_id.object_oid;
-  request->schema = std::move(schema);
-  request->isSysCatalogTable = is_pg_catalog_table;
-  request->isSharedTable = is_shared_table;
-  request->isNotExist = if_not_exist;
-  std::shared_ptr<CreateTableResponse> response = std::make_shared<CreateTableResponse>();   
-  catalog_manager_->CreateTable(request, response);                                 
-  if (!response->status.succeeded) {
+  CreateTableRequest request;
+  request.namespaceName = namespace_name;
+  request.namespaceOid = table_id.database_oid;
+  request.tableName = table_name;
+  request.tableOid = table_id.object_oid;
+  request.schema = schema;
+  request.isSysCatalogTable = is_pg_catalog_table;
+  request.isSharedTable = is_shared_table;
+  request.isNotExist = if_not_exist;
+  CreateTableResponse response = catalog_manager_->CreateTable(request);                                 
+  if (!response.status.IsSucceeded()) {
     return STATUS_SUBSTITUTE(RuntimeError,
-        "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->status.errorMessage);
+        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name, 
+            response.status.code, response.status.errorMessage);
   }     
   return Status::OK();
 }
@@ -111,69 +117,67 @@ Status SqlCatalogClient::CreateIndexTable(
     bool is_pg_catalog_table, 
     bool is_shared_table, 
     bool if_not_exist) {
-  std::shared_ptr<CreateIndexTableRequest> request = std::make_shared<CreateIndexTableRequest>();
-  request->namespaceName = std::move(namespace_name);
-  request->namespaceOid = table_id.database_oid;
-  request->tableName = std::move(table_name);
-  request->tableOid = table_id.object_oid;
+  CreateIndexTableRequest request;
+  request.namespaceName = namespace_name;
+  request.namespaceOid = table_id.database_oid;
+  request.tableName = table_name;
+  request.tableOid = table_id.object_oid;
   // index and the base table should be in the same namespace, i.e., database
-  request->baseTableOid = base_table_id.object_oid;
-  request->schema = std::move(schema);
-  request->isUnique = is_unique_index;
-  request->skipIndexBackfill = skip_index_backfill;
-  request->isSysCatalogTable = is_pg_catalog_table;
-  request->isSharedTable = is_shared_table;
-  request->isNotExist = if_not_exist;
-  std::shared_ptr<CreateIndexTableResponse> response = std::make_shared<CreateIndexTableResponse>();   
-  catalog_manager_->CreateIndexTable(request, response);                                 
-  if (!response->status.succeeded) {
+  request.baseTableOid = base_table_id.object_oid;
+  request.schema = schema;
+  request.isUnique = is_unique_index;
+  request.skipIndexBackfill = skip_index_backfill;
+  request.isSysCatalogTable = is_pg_catalog_table;
+  request.isSharedTable = is_shared_table;
+  request.isNotExist = if_not_exist;
+  CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);                                 
+  if (!response.status.IsSucceeded()) {
     return STATUS_SUBSTITUTE(RuntimeError,
-        "Failed to create table $0 in database $1 due to error: $2", table_name, namespace_name, response->status.errorMessage);
+        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name, 
+            response.status.code, response.status.errorMessage);
   }     
   return Status::OK();
 }
 
 Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table_id, bool wait) {
-  std::shared_ptr<DeleteTableRequest> request = std::make_shared<DeleteTableRequest>();
-  request->namespaceId = database_oid;
-  request->tableId = table_id;
-  request->isIndexTable = false;
-  std::shared_ptr<DeleteTableResponse> response = std::make_shared<DeleteTableResponse>();
-  catalog_manager_->DeleteTable(request, response);
-  if (!response->errorMessage.empty()) {
+  DeleteTableRequest request;
+  request.namespaceId = database_oid;
+  request.tableId = table_id;
+  request.isIndexTable = false;
+  DeleteTableResponse response = catalog_manager_->DeleteTable(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to delete table $0 due to error: $1", table_id, response->errorMessage);
+         "Failed to delete table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
   }   
   return Status::OK();
 }
 
 Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid table_id, PgOid *base_table_id, bool wait) {
-  std::shared_ptr<DeleteTableRequest> request = std::make_shared<DeleteTableRequest>();
-  request->namespaceId = database_oid;
-  request->tableId = table_id;
-  request->isIndexTable = true;
-  std::shared_ptr<DeleteTableResponse> response = std::make_shared<DeleteTableResponse>();
-  catalog_manager_->DeleteTable(request, response);
-  if (!response->errorMessage.empty()) {
+  DeleteTableRequest request;
+  request.namespaceId = database_oid;
+  request.tableId = table_id;
+  request.isIndexTable = true;
+  DeleteTableResponse response = catalog_manager_->DeleteTable(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to delete index table $0 due to error: $1", table_id, response->errorMessage);
+         "Failed to delete index table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
   }   
-  *base_table_id = response->indexedTableId;
+  *base_table_id = response.indexedTableId;
+  // TODO: add wait logic once we refactor the catalog manager APIs to be asynchronous for state/response
   return Status::OK();
 } 
    
 Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table) {
-  std::shared_ptr<GetTableSchemaRequest> request = std::make_shared<GetTableSchemaRequest>();
-  request->namespaceOid = database_oid;
-  request->tableOid = table_id;
-  std::shared_ptr<GetTableSchemaResponse> response = std::make_shared<GetTableSchemaResponse>();
-  catalog_manager_->GetTableSchema(request, response);
-  if (!response->status.succeeded) {
+  GetTableSchemaRequest request;
+  request.namespaceOid = database_oid;
+  request.tableOid = table_id;
+  GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to get schema for table $0 due to error: $1", table_id, response->status.errorMessage);
+         "Failed to get schema for table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
   } 
 
-  table->swap(response->tableInfo);
+  table->swap(response.tableInfo);
   return Status::OK();
 }
 
@@ -182,24 +186,32 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
                                   const uint32_t count,
                                   uint32_t* begin_oid, 
                                   uint32_t* end_oid) {
-  std::shared_ptr<ReservePgOidsRequest> request =  std::make_shared<ReservePgOidsRequest>();   
-  request->namespaceId = GetPgsqlNamespaceId(database_oid);
-  request->nextOid = next_oid;
-  request->count = count;
-  std::shared_ptr<ReservePgOidsResponse> response = std::make_shared<ReservePgOidsResponse>();
-  catalog_manager_->ReservePgOid(request, response);
-  if (!response->errorMessage.empty()) {
+  ReservePgOidsRequest request;   
+  request.namespaceId = GetPgsqlNamespaceId(database_oid);
+  request.nextOid = next_oid;
+  request.count = count;
+  ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
+  if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to reserve PG Oids for database $0 due to error: $1", database_oid, response->errorMessage);
+         "Failed to reserve PG Oids for database $0 due to code $1 and message $2", database_oid, response.status.code, response.status.errorMessage);
   }        
-  *begin_oid = response->beginOid;
-  *end_oid = response->endOid;                        
+  *begin_oid = response.beginOid;
+  *end_oid = response.endOid;                        
   return Status::OK();
 }
 
 Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
-  return catalog_manager_->GetCatalogVersion(pg_catalog_version);
+  GetCatalogVersionRequest request;
+  GetCatalogVersionResponse response = catalog_manager_->GetCatalogVersion(request);
+  if(!response.status.IsSucceeded()) {
+     return STATUS_SUBSTITUTE(RuntimeError,
+         "Failed to get catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
+  }
+  *pg_catalog_version = response.catalogVersion;
+
+  return Status::OK();
 }    
  
+} // namespace catalog
 }  // namespace sql
 }  // namespace k2pg

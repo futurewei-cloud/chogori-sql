@@ -28,6 +28,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
 
 static const std::string default_cluster_id = "test_cluster";
 static const std::string sql_primary_collection_name = "K2_SKV_SQL_PRIMARY_COLLECTION";
@@ -37,6 +38,7 @@ static const std::string sys_catalog_tablehead_schema_name = "sys_catalog_tableh
 static const std::string sys_catalog_tablecolumn_schema_schema_name = "sys_catalog_tablecolumn_schema";
 static const std::string sys_catalog_indexcolumn_schema_schema_name = "sys_catalog_indexcolumn_schema";
 
+} // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
 
