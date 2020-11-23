@@ -78,9 +78,9 @@ k2::dto::SKVRecord K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest&
     // TODO use namespace name and table name directly? How does secondary index fit into this?
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_name, request.table_name, 
                                                                   request.schema_version);
-    // TODO ok to use it synchronously?
+    // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
+    // cross-thread traffic
     k2::GetSchemaResult schema_result = schema_f.get();
-    // TODO how are we handling errors? throwing exceptions?
     if (!schema_result.status.is2xxOK()) {
         throw std::runtime_error("Failed to get schema");
     }
@@ -91,7 +91,7 @@ k2::dto::SKVRecord K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest&
     if (request.ybctid_column_value) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields
         record.skipNext(); // For table name
-        record.skipNext(); // For index id TODO still mapping it this way?
+        record.skipNext(); // For index id
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
             record.skipNext();
@@ -100,13 +100,16 @@ k2::dto::SKVRecord K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest&
         // Serialize key data into SKVRecord
         record.serializeNext<k2::String>(request.table_name);
         record.serializeNext<int16_t>(0); // TODO how to get index id?
-        // TODO ok to assume key fields are in order?
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (!expr->isValueType()) {
                 throw std::logic_error("Non value type in key_column_values");
             }
 
             std::shared_ptr<SqlValue> value = expr->getValue();
+            if (value->IsNull()) {
+                record.skipNext();
+                continue;
+            }
 
             // TODO can make a macro for this when we have another use case
             switch (value->type_) {
