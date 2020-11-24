@@ -119,6 +119,10 @@ namespace sql {
             return index_map_;
         }
 
+        void drop_index(const std::string& index_id) {
+            index_map_.erase(index_id);
+        }
+
         Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
 
         void set_is_sys_table(bool is_sys_table) {

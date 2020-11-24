@@ -237,6 +237,123 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Cont
     return response;
 }
 
+// Delete table_info and the related index_info from tablehead, tablecolumn, and indexcolumn system tables
+DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
+    DeleteTableResult response;
+    // first delete indexes 
+    std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, collection_name, table->table_id());
+    if (!index_records.empty()) {
+        for (auto& record : index_records) {
+            // get table id for the index
+            std::string index_id = record.deserializeNext<k2::String>().value();
+            // delete index columns and the index head
+            DeleteIndexResult index_result = DeleteIndexMetadata(context, collection_name, index_id);
+            if (!index_result.status.IsSucceeded()) {
+                response.status = std::move(index_result.status);
+                return response;
+            }
+        }
+    }
+
+    // then delete the table metadata itself
+    // first, fetch the table columns
+    std::vector<k2::dto::SKVRecord> table_columns = FetchTableColumnSchemaSKVRecords(context, collection_name, table->table_id());
+    std::future<Status> columns_future = k2_adapter_->BatchDeleteSKVRecords(context->GetTxn(), table_columns);
+    Status columns_status = columns_future.get();
+    if (!columns_status.ok()) {
+        response.status.code = StatusCode::INTERNAL_ERROR;
+        response.status.errorMessage = "Failed to delete table column records for table " + table->table_id();    
+    } else {
+        // fetch table head 
+        k2::dto::SKVRecord table_head = FetchTableHeadSKVRecord(context, collection_name, table->table_id());
+        // then delete table head record
+        std::future<Status> head_future = k2_adapter_->DeleteSKVRecord(context->GetTxn(), table_head);
+        Status head_status = head_future.get();
+        if (!head_status.ok()) {
+            response.status.code = StatusCode::INTERNAL_ERROR;
+            response.status.errorMessage = "Failed to delete table head record for index " + table->table_id();               
+        } else {
+            response.status.Succeed();
+        }
+    }
+ 
+    return response;
+}
+
+// Delete the actual table records from SKV that are stored with the SKV schema name to be table_id as in table_info
+DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table) {
+    DeleteTableResult response;
+    // TODO: add a task to delete the actual data from SKV
+
+    response.status.Succeed();
+    return response;
+}
+
+// Delete index_info from tablehead and indexcolumn system tables
+DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<Context> context, std::string collection_name, std::string& index_id) {
+    DeleteIndexResult response;
+    // fetch index columns first
+    std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(context, collection_name, index_id);
+    // delete index columns first
+    std::future<Status> columns_future = k2_adapter_->BatchDeleteSKVRecords(context->GetTxn(), index_columns);
+    Status columns_status = columns_future.get();
+    if (!columns_status.ok()) {
+        response.status.code = StatusCode::INTERNAL_ERROR;
+        response.status.errorMessage = "Failed to delete index column records for index " + index_id;    
+    } else {
+        // fetch index head 
+        k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
+        // then delete index head record
+        std::future<Status> head_future = k2_adapter_->DeleteSKVRecord(context->GetTxn(), index_head);
+        Status head_status = head_future.get();
+        if (!head_status.ok()) {
+            response.status.code = StatusCode::INTERNAL_ERROR;
+            response.status.errorMessage = "Faild to delete index head record for index " + index_id;               
+        } else {
+            response.status.Succeed();
+        }
+    }
+    return response;
+}
+
+// Delete the actual index records from SKV that are stored with the SKV schema name to be table_id as in index_info
+DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<Context> context, std::string collection_name, std::string& index_id) {
+    DeleteIndexResult response;
+    // TODO: add a task to delete the actual data from SKV
+
+    response.status.Succeed();
+    return response;
+}
+
+GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<Context> context, std::string collection_name, std::string index_id) {
+    GeBaseTableIdResult response;
+    try {
+        // exception would be thrown if the record could not be found
+        k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
+        // TableId
+        index_head.skipNext();
+        // TableName
+        index_head.skipNext();
+        // TableOid
+        index_head.skipNext();
+        // IsSysTable
+        index_head.skipNext();
+        // IsTransactional
+        index_head.skipNext();
+        // IsIndex
+        index_head.skipNext();
+        // IsUnique
+        index_head.skipNext();
+        // IndexedTableId
+        response.baseTableId = index_head.deserializeNext<k2::String>().value();
+    }catch (const std::exception& e) {
+        response.status.code = StatusCode::RUNTIME_ERROR;
+        response.status.errorMessage = e.what();
+    }
+
+    return response;
+}
+
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::shared_ptr<TableInfo> table) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = table->table_id();

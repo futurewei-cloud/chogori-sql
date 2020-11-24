@@ -139,42 +139,40 @@ Status SqlCatalogClient::CreateIndexTable(
   return Status::OK();
 }
 
-Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table_id, bool wait) {
+Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait) {
   DeleteTableRequest request;
-  request.namespaceId = database_oid;
-  request.tableId = table_id;
-  request.isIndexTable = false;
+  request.namespaceOid = database_oid;
+  request.tableOid = table_oid;
   DeleteTableResponse response = catalog_manager_->DeleteTable(request);
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to delete table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
+         "Failed to delete table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   }   
   return Status::OK();
 }
 
-Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid table_id, PgOid *base_table_id, bool wait) {
-  DeleteTableRequest request;
-  request.namespaceId = database_oid;
-  request.tableId = table_id;
-  request.isIndexTable = true;
-  DeleteTableResponse response = catalog_manager_->DeleteTable(request);
+Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait) {
+  DeleteIndexRequest request;
+  request.namespaceOid = database_oid;
+  request.tableOid = table_oid;
+  DeleteIndexResponse response = catalog_manager_->DeleteIndex(request);
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to delete index table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
+         "Failed to delete index $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   }   
-  *base_table_id = response.indexedTableId;
+  *base_table_oid = response.baseIndexTableOid;
   // TODO: add wait logic once we refactor the catalog manager APIs to be asynchronous for state/response
   return Status::OK();
 } 
    
-Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table) {
+Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table) {
   GetTableSchemaRequest request;
   request.namespaceOid = database_oid;
-  request.tableOid = table_id;
+  request.tableOid = table_oid;
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
-         "Failed to get schema for table $0 due to code $1 and message $2", table_id, response.status.code, response.status.errorMessage);
+         "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   } 
 
   table->swap(response.tableInfo);

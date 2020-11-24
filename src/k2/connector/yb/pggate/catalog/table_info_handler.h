@@ -79,6 +79,19 @@ struct PersistIndexTableResult {
     RStatus status;
 };
 
+struct DeleteTableResult {
+    RStatus status;
+};
+
+struct DeleteIndexResult {
+    RStatus status;
+};
+
+struct GeBaseTableIdResult {
+    RStatus status;
+    std::string baseTableId;
+};
+
 class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
@@ -155,6 +168,16 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     PersistSysTableResult PersistSysTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
 
     PersistIndexTableResult PersistIndexTable(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
+
+    DeleteTableResult DeleteTableMetadata(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    DeleteTableResult DeleteTableData(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+
+    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<Context> context, std::string collection_name,  std::string& index_id);
+
+    DeleteIndexResult DeleteIndexData(std::shared_ptr<Context> context, std::string collection_name,  std::string& index_id);
+
+    GeBaseTableIdResult GeBaseTableId(std::shared_ptr<Context> context, std::string collection_name, std::string index_id);
 
     private:  
     CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, 

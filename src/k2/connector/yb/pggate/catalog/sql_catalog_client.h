@@ -82,11 +82,11 @@ class SqlCatalogClient {
 
     // Delete the specified table.
     // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.
-    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_id, bool wait = true);  
+    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait = true);  
 
-    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_id, PgOid *base_table_id, bool wait = true);  
+    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait = true);  
 
-    CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table);
+    CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table);
 
     Result<std::shared_ptr<TableInfo>> OpenTable(const PgOid database_oid, const PgOid table_id) {
         std::shared_ptr<TableInfo> result;
