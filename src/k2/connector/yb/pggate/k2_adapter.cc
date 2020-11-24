@@ -40,13 +40,13 @@ std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& c
 }
 
 // delete one SKV record
-std::future<Status> DeleteSKVRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record) {
-  throw new std::logic_error("Not implemented yet");
+std::future<Status> K2Adapter::DeleteSKVRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record) {
+  throw std::logic_error("Not implemented yet");
 }
 
 // delete a batch of SKV records
-std::future<Status> BatchDeleteSKVRecords(std::shared_ptr<K23SITxn> k23SITxn, std::vector<k2::dto::SKVRecord>& records) {
-  throw new std::logic_error("Not implemented yet");
+std::future<Status> K2Adapter::BatchDeleteSKVRecords(std::shared_ptr<K23SITxn> k23SITxn, std::vector<k2::dto::SKVRecord>& records) {
+  throw std::logic_error("Not implemented yet");
 }
 
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
@@ -59,14 +59,14 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
   //   a) populate the response object in op
   //   b) populate the data field in op as result set
   //   c) set the value for future
-  throw new std::logic_error("Not implemented yet");
+  throw std::logic_error("Not implemented yet");
 }
 
 std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
   // same as the above except that send multiple requests and need to handle multiple futures from SKV
   // but only return a single future to this method caller
   // TODO: add implementation
-  throw new std::logic_error("Not implemented yet");
+  throw std::logic_error("Not implemented yet");
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
@@ -74,7 +74,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
   // either use the virtual row id defined in ybctid_column_value field
   // if it has been set or calculate the row id based on primary key values
   // in key_column_values in the request
-  throw new std::logic_error("Not implemented yet");
+  throw std::logic_error("Not implemented yet");
 }
 
 std::future<K23SITxn> K2Adapter::beginTransaction() {

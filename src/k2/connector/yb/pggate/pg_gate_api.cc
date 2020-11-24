@@ -11,6 +11,7 @@
 namespace k2pg {
 namespace gate {
 
+using yb::Status;
 using k2pg::sql::catalog::SqlCatalogManager;
 
 namespace {
@@ -885,6 +886,9 @@ void YBCAssignTransactionPriorityLowerBound(double newval, void* extra) {
 
 void YBCAssignTransactionPriorityUpperBound(double newval, void* extra) {
 }
+
+// the following APIs are called by pg_dump.c only
+// TODO: check if we really need to implement them
 
 // Setup the master IP(s) before calling YBCInitPgGate().
 void YBCSetMasterAddresses(const char* hosts) {
