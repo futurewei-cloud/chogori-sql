@@ -63,18 +63,15 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
     return response;
 }
 
-AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::shared_ptr<NamespaceInfo> namespace_info) {
-    AddOrUpdateNamespaceResult response;
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();   
-       
+AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info) {
+    AddOrUpdateNamespaceResult response;     
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(namespace_info->GetNamespaceId());  
     record.serializeNext<k2::String>(namespace_info->GetNamespaceName());  
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int32_t>(namespace_info->GetNamespaceOid());  
     record.serializeNext<int32_t>(namespace_info->GetNextPgOid());
-    std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
+    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
@@ -83,28 +80,15 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
         response.status.errorMessage = std::move(write_result.status.message);
         return response;  
     }
-
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;             
-    }
     response.status.Succeed();
     return response;
 }
 
-GetNamespaceResult NamespaceInfoHandler::GetNamespace(const std::string& namespace_id) {
+GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<Context> context, const std::string& namespace_id) {
     GetNamespaceResult response;
-
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(namespace_id);
-    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = txn.read(std::move(record));
+    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "SKV record does not exist for namespace " << namespace_id; 
@@ -127,21 +111,11 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(const std::string& namespa
     namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int32_t>().value());
     namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int32_t>().value());
     response.namespaceInfo = namespace_ptr;
-
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;                                    
-    }
     response.status.Succeed();
     return response;
 }
 
-ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
+ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Context> context) {
     ListNamespacesResult response;
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name_, schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
@@ -154,10 +128,8 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
     }
 
     std::shared_ptr<k2::Query> query = create_result.query;
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();
     do {
-        std::future<k2::QueryResult> query_result_future = txn.scanRead(query);
+        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
             LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
@@ -180,18 +152,6 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces() {
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
-
-    // TODO: double check if we need to commit transaction for scan, what if this fails?
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;             
-    }
-
     response.status.Succeed();
     return response;
 }

@@ -78,11 +78,11 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
 
     CreateNamespaceTableResult CreateNamespaceTableIfNecessary();
 
-    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<NamespaceInfo> namespace_info);
+    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info);
 
-    GetNamespaceResult GetNamespace(const std::string& namespace_id);
+    GetNamespaceResult GetNamespace(std::shared_ptr<Context> context, const std::string& namespace_id);
 
-    ListNamespacesResult ListNamespaces();
+    ListNamespacesResult ListNamespaces(std::shared_ptr<Context> context);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 

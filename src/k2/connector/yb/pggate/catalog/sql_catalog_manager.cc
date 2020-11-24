@@ -55,8 +55,9 @@ namespace catalog {
     Status SqlCatalogManager::Start() {
         CHECK(!initted_.load(std::memory_order_acquire));
         
+        std::shared_ptr<Context> ci_context = NewTransactionContext();
         // load cluster info
-        GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(cluster_id_);
+        GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(ci_context, cluster_id_);
         if (ciresp.status.IsSucceeded()) {
             if (ciresp.clusterInfo != nullptr) {
                 init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed); 
@@ -64,25 +65,32 @@ namespace catalog {
                 LOG(INFO) << "Loaded cluster info record succeeded";  
             } else {
                 ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
-                CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(cluster_info);
+                CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(ci_context, cluster_info);
                 if (clresp.status.IsSucceeded()) {
                     LOG(INFO) << "Created cluster info record succeeded";
                 } else {
+                    EndTransactionContext(ci_context, false);
                     LOG(FATAL) << "Failed to create cluster info record due to " << clresp.status.errorMessage;
                     return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
                         clresp.status.code, clresp.status.errorMessage);               
                 }
             }
         } else {
+            EndTransactionContext(ci_context, false);
             LOG(FATAL) << "Failed to read cluster info record";
             return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
                 ciresp.status.code, ciresp.status.errorMessage);             
         }
+        // end the current transaction so that we use a different one for later operations
+        EndTransactionContext(ci_context, true);
 
         // load namespaces
         CreateNamespaceTableResult cnresp = namespace_info_handler_->CreateNamespaceTableIfNecessary();
         if (cnresp.status.IsSucceeded()) {
-            ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces();
+            std::shared_ptr<Context> ns_context = NewTransactionContext();
+            ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces(ns_context);
+            EndTransactionContext(ns_context, true);
+
             if (nsresp.status.IsSucceeded()) {
                 if (!nsresp.namespaceInfos.empty()) {
                     for (auto ns_ptr : nsresp.namespaceInfos) {
@@ -127,7 +135,9 @@ namespace catalog {
     GetInitDbResponse SqlCatalogManager::IsInitDbDone(const GetInitDbRequest& request) {
         GetInitDbResponse response;
         if (!init_db_done_) {
-            GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(cluster_id_);
+            std::shared_ptr<Context> context = NewTransactionContext();
+            GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
+            EndTransactionContext(context, true);
             if (result.status.IsSucceeded() && result.clusterInfo != nullptr) {
                if (result.clusterInfo->IsInitdbDone()) {
                     init_db_done_.store(result.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);                             
@@ -147,10 +157,11 @@ namespace catalog {
 
     GetCatalogVersionResponse SqlCatalogManager::GetCatalogVersion(const GetCatalogVersionRequest& request) {
         GetCatalogVersionResponse response;
+        std::shared_ptr<Context> context = NewTransactionContext();
         // TODO: use a background thread to fetch the ClusterInfo record periodically instead of fetching it for each call
-        GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(cluster_id_);
+        GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
         if (result.status.IsSucceeded() && result.clusterInfo != nullptr) {
-            RStatus status = UpdateCatalogVersion(result.clusterInfo->GetCatalogVersion());
+            RStatus status = UpdateCatalogVersion(context, result.clusterInfo->GetCatalogVersion());
             if (!status.IsSucceeded()) {
                 response.status = std::move(status);
             } else {
@@ -160,6 +171,7 @@ namespace catalog {
         } else {
             response.status = std::move(result.status);
         }
+        EndTransactionContext(context, true);
         return response;
     }      
 
@@ -170,7 +182,10 @@ namespace catalog {
   
     ListNamespacesResponse SqlCatalogManager::ListNamespaces(const ListNamespacesRequest& request) {
         ListNamespacesResponse response;
-        ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+        std::shared_ptr<Context> context = NewTransactionContext();
+        ListNamespacesResult result = namespace_info_handler_->ListNamespaces(context);
+        EndTransactionContext(context, true);
+
         if (result.status.IsSucceeded()) {
             response.status.Succeed();             
             if (!result.namespaceInfos.empty()) {
@@ -192,8 +207,10 @@ namespace catalog {
 
     GetNamespaceResponse SqlCatalogManager::GetNamespace(const GetNamespaceRequest& request) {
         GetNamespaceResponse response;
+        std::shared_ptr<Context> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
-        GetNamespaceResult result = namespace_info_handler_->GetNamespace(request.namespaceId);
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
+        EndTransactionContext(context, true);
         if (result.status.IsSucceeded()) {
             if (result.namespaceInfo != nullptr) {
                 response.namespace_info = result.namespaceInfo;
@@ -227,7 +244,9 @@ namespace catalog {
         if (namespace_info == nullptr) {
             // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
             // this could be avoided by use a single or a quorum of catalog managers 
-            ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+            std::shared_ptr<Context> ns_context = NewTransactionContext();
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            EndTransactionContext(ns_context, true);
             if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
                 // update namespace caches
                 UpdateNamespaceCache(result.namespaceInfos);    
@@ -301,7 +320,9 @@ namespace catalog {
         if (namespace_info == nullptr) {
             // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
             // this could be avoided by use a single or a quorum of catalog managers 
-            ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+            std::shared_ptr<Context> ns_context = NewTransactionContext();
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            EndTransactionContext(ns_context, true);
             if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
                 // update namespace caches
                 UpdateNamespaceCache(result.namespaceInfos);    
@@ -406,7 +427,9 @@ namespace catalog {
             if (namespace_info == nullptr) {
                 // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
                 // this could be avoided by use a single or a quorum of catalog managers 
-                ListNamespacesResult result = namespace_info_handler_->ListNamespaces();
+                std::shared_ptr<Context> ns_context = NewTransactionContext();
+                ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+                EndTransactionContext(ns_context, true);
                 if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
                     // update namespace caches
                     UpdateNamespaceCache(result.namespaceInfos);    
@@ -459,7 +482,8 @@ namespace catalog {
 
     ReservePgOidsResponse SqlCatalogManager::ReservePgOid(const ReservePgOidsRequest& request) {
         ReservePgOidsResponse response;
-        GetNamespaceResult result = namespace_info_handler_->GetNamespace(request.namespaceId);
+        std::shared_ptr<Context> ns_context = NewTransactionContext();
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(ns_context, request.namespaceId);
         if (result.status.IsSucceeded()) {
             if (result.namespaceInfo != nullptr) {
                 uint32_t begin_oid = result.namespaceInfo->GetNextPgOid();
@@ -470,6 +494,7 @@ namespace catalog {
                     LOG(WARNING) << "No more object identifier is available for Postgres database " << request.namespaceId;
                     response.status.code = StatusCode::INVALID_ARGUMENT;
                     response.status.errorMessage = "No more object identifier is available for " + request.namespaceId;
+                    EndTransactionContext(ns_context, false);
                     return response;
                 }
 
@@ -486,7 +511,7 @@ namespace catalog {
                 // and won't lose the correctness of PgNextOid updates?
                 std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
                 updated_ns->SetNextPgOid(end_oid);
-                AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(updated_ns);
+                AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, updated_ns);
                 if (!update_result.status.IsSucceeded()) {
                     response.status = std::move(update_result.status);                 
                 } else {
@@ -502,11 +527,12 @@ namespace catalog {
         } else {
             response.status = std::move(result.status);
         }
+        EndTransactionContext(ns_context, true);
 
         return response;
     }
 
-    RStatus SqlCatalogManager::UpdateCatalogVersion(uint64_t new_version) {
+    RStatus SqlCatalogManager::UpdateCatalogVersion(std::shared_ptr<Context> context, uint64_t new_version) {
         std::lock_guard<simple_spinlock> l(lock_);
         // compare new_version with the local version
         uint64_t local_catalog_version = catalog_version_.load(std::memory_order_acquire);
@@ -514,7 +540,7 @@ namespace catalog {
             LOG(INFO) << "Catalog version update: version on SKV is too old. "
                         << "New: " << new_version << ", Old: " << local_catalog_version;
             ClusterInfo cluster_info(cluster_id_, init_db_done_, local_catalog_version);
-            UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(cluster_info);
+            UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
             if (!result.status.IsSucceeded()) {
                 LOG(ERROR) << "ClusterInfo update failed due to error code " << result.status.code << " and message " 
                     << result.status.errorMessage;
@@ -610,7 +636,9 @@ namespace catalog {
         // need to update the catalog version on SKV
         // the update frequency could be reduced once we have a single or a quorum of catalog managers
         ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
-        cluster_info_handler_->UpdateClusterInfo(cluster_info);             
+        std::shared_ptr<Context> context = NewTransactionContext();
+        cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
+        EndTransactionContext(context, true);
     }
     
     IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,

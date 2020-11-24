@@ -237,7 +237,7 @@ namespace catalog {
 
         mutable simple_spinlock lock_;
 
-        RStatus UpdateCatalogVersion(uint64_t new_version);
+        RStatus UpdateCatalogVersion(std::shared_ptr<Context> context, uint64_t new_version);
 
         void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
 

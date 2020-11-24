@@ -40,7 +40,7 @@ ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
-CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& cluster_info) {
+CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
     std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
     k2::CreateSchemaResult schema_result = schema_result_future.get();
     CreateClusterInfoResult response;
@@ -51,16 +51,12 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
         response.status.errorMessage = std::move(schema_result.status.message);
         return response;
     }
-
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();
-
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());  
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), false);
+    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
@@ -69,31 +65,18 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(ClusterInfo& clust
         response.status.errorMessage = std::move(write_result.status.message);
         return response;  
     }
-
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;             
-    }
     response.status.Succeed();
     return response;
 }
 
-UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& cluster_info) {
+UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
     UpdateClusterInfoResult response;
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();
-
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());     
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    std::future<k2::WriteResult> write_result_future = txn.write(std::move(record), true);
+    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), true);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
@@ -102,28 +85,15 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(ClusterInfo& clust
         response.status.errorMessage = std::move(write_result.status.message);
         return response;    
     }
-
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;                        
-    }
     response.status.Succeed();
     return response;
 }
 
-GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(const std::string& cluster_id) {
+GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<Context> context, const std::string& cluster_id) {
     GetClusterInfoResult response;
-    std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-    K23SITxn txn = txn_future.get();
-
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_id);
-    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = txn.read(std::move(record));
+    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Cluster info record does not exist"; 
@@ -145,17 +115,6 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(const std::string& clus
     cluster_info->SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
     cluster_info->SetInitdbDone(read_result.value.deserializeNext<bool>().value());
     response.clusterInfo = cluster_info;
-
-    // TODO: double check if we need to commit the transaction for read only call
-    std::future<k2::EndResult> txn_result_future = txn.endTxn(true);
-    k2::EndResult txn_result = txn_result_future.get();
-    if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-            << " and message: " << txn_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(txn_result.status.message);
-        return response;                                    
-    }
     response.status.Succeed();
     return response;
 }
