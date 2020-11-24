@@ -70,8 +70,6 @@ class K2Adapter {
 
   private: 
   std::shared_ptr<K23SIGate> k23si_;
-
-  k2::dto::SKVRecord MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
 };
 
 }  // namespace gate
