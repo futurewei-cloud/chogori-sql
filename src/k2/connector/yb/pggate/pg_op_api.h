@@ -184,6 +184,7 @@ namespace gate {
 
     struct SqlOpPagingState {
         TableName table_name;
+        // TODO use K2 token
         string next_token;
         uint64_t total_num_rows_read;
     };
@@ -197,23 +198,30 @@ namespace gate {
         int64_t stmt_id;
         NamespaceName namespace_name;
         TableName table_name;
+        // K2 SKV schema version
         uint64_t schema_version;
+        // One of either key_column_values or ybctid_column_value
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
         std::shared_ptr<SqlOpExpr> ybctid_column_value;
         // For select using local secondary index: this request selects the ybbasectids to fetch the rows
         // in place of the primary key above.
         std::shared_ptr<SqlOpReadRequest> index_request;
 
+        // Projection, aggregate, etc.
         std::vector<std::shared_ptr<SqlOpExpr>> targets;
         std::shared_ptr<SqlOpExpr> where_expr;
+        // Includes Scan Range start and end
         std::shared_ptr<SqlOpCondition> condition_expr;
         bool is_forward_scan = true;
         bool distinct = false;
+        // indicates if targets field above has aggregation
         bool is_aggregate = false;
         uint64_t limit;
         std::unique_ptr<SqlOpPagingState> paging_state;
         bool return_paging_state = false;
+        // Full, global SQL version
         uint64_t catalog_version;
+        // Ignored by K2 SKV
         RowMarkType row_mark_type;
 
         std::unique_ptr<SqlOpReadRequest> clone();
@@ -246,9 +254,11 @@ namespace gate {
         // Column New Values.
         // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
         std::vector<ColumnValue> column_new_values;
+        // K2 SKV does not support the following three cluases for writes:
         std::vector<std::shared_ptr<SqlOpExpr>> targets;
         std::shared_ptr<SqlOpExpr> where_expr;
         std::shared_ptr<SqlOpCondition> condition_expr;
+
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).
         bool is_ysql_catalog_change;

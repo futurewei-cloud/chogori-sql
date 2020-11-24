@@ -121,11 +121,12 @@ public:
 
   ~SqlValue();
 
+  ValueType type_;
+  Data* data_;
+
   private: 
   void Clear();
 
-  ValueType type_;
-  Data* data_;
   bool null_value_ = true;
 };
 
