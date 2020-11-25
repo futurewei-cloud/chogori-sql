@@ -27,6 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <thread>
 #include <vector>
 
+namespace k2pg {
 class ThreadPool {
 public:
     // Create a threadpool with the given number of total threads. All threads are created and started here.
@@ -108,3 +109,4 @@ private:
     std::mutex _qMutex;
     std::condition_variable _waitNotifier;
 };
+} // ns k2pg
