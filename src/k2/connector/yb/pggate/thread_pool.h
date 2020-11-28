@@ -32,6 +32,11 @@ class ThreadPool {
 public:
     // Create a threadpool with the given number of total threads. All threads are created and started here.
     // If the firstCPUPin is >=0, each thread will be pinned in incrementing order, starting with firstCPUPin
+    // In synthetic testing, the thread dispatch has overhead of avg~150nsec with CPU pinning and 1 worker thread.
+    // Adding more threads reduces the performance to avg~1.5usec. Thread pinning also helps here, especially in the high
+    // percentiles where threads may hop to different cores.
+    // One possible issue to consider is that if threads are pinned on hyperthreads, the performance may be worse
+    // due to cache misses.
     ThreadPool(int threadCount, int firstCPUPin=-1) {
         for (int i = 0; i < threadCount; ++i) {
             _workers.push_back(std::thread([i, firstCPUPin, this] {
