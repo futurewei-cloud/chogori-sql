@@ -28,19 +28,19 @@
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
 
+#include "thread_pool.h"
+
 
 namespace k2pg {
 namespace gate {
 
 using yb::Status;
-using k2pg::gate::K23SIGate;
-using k2pg::gate::K23SITxn;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
- public:  
-  K2Adapter() {
-    k23si_ = std::make_shared<K23SIGate>();
+ public:
+  K2Adapter():_tp(2, 0) {
+    _k23si = std::make_shared<K23SIGate>();
   };
 
   ~K2Adapter();
@@ -57,8 +57,9 @@ class K2Adapter {
 
   std::future<K23SITxn> beginTransaction();
 
-  private: 
-  std::shared_ptr<K23SIGate> k23si_;
+  private:
+  std::shared_ptr<K23SIGate> _k23si;
+  ThreadPool _tp;
 
   k2::dto::SKVRecord MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
 };

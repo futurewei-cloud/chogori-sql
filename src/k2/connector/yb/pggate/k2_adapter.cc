@@ -17,33 +17,80 @@ using k2::K2TxnOptions;
 
 
 Status K2Adapter::Init() {
-  // TODO: add implementation
-  return Status::OK();
+    // TODO: add implementation
+    return Status::OK();
 }
 
 Status K2Adapter::Shutdown() {
-  // TODO: add implementation
-  return Status::OK();
+    // TODO: add implementation
+    return Status::OK();
+}
+
+std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op) {
+    throw new std::logic_error("Unsupported op template type");
+}
+
+std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op) {
+    std::promise<Status> prom;
+    auto result = prom.get_future();
+    _tp.enqueue([this, k23SITxn, op, prom = std::move(prom)] {
+        auto writeRequest = op->request();
+
+        auto collection = writeRequest->namespace_name;
+        auto schemaName = writeRequest->table_name;
+        auto schemaVersion = writeRequest->schema_version;
+        bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
+
+        // block-get the schema
+        auto schemaResult = _k23si->getSchema(collection, schemaName, schemaVersion).get();
+        if (!schemaResult.status.is2xxOK()) {
+            // set failure response
+        }
+
+        // see if we have a cached key (ybctid)
+
+        // error if there is a where/condition clause
+
+        // handle insert/upsert/update
+        PGSQL_INSERT = 1,
+        PGSQL_UPDATE = 2,
+        PGSQL_DELETE = 3,
+        PGSQL_UPSERT = 4,
+
+        k2::dto::SKVRecord rec(collection, schemaResult.schema);
+        // populate the data
+
+        // block-write
+        auto writeResult = k23SITxn->write(rec, erase).get();
+    });
+    return result;
 }
 
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
-  // TODO: add implementation
-  // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
-  // 2) call read or write on k23SITxn
-  // 3) create create a runner in a thread pool to check the response of the SKV call
-  // 4) return a promise and return the future as the response for this method
-  // 5) once the response from SKV returns
-  //   a) populate the response object in op
-  //   b) populate the data field in op as result set
-  //   c) set the value for future
-  throw std::logic_error("Not implemented yet");
+    // TODO: add implementation
+    // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
+    // 2) call read or write on k23SITxn
+    // 3) create create a runner in a thread pool to check the response of the SKV call
+    // 4) return a promise and return the future as the response for this method
+    // 5) once the response from SKV returns
+    //   a) populate the response object in op
+    //   b) populate the data field in op as result set
+    //   c) set the value for future
+    switch (op->type()) {
+        case PgOpTemplate::WRITE:
+            return handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
+        case PgOpTemplate::READ:
+            return handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
+        default:
+            throw new std::logic_error("Unsupported op template type");
+    }
 }
 
 std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
-  // same as the above except that send multiple requests and need to handle multiple futures from SKV
-  // but only return a single future to this method caller
-  // TODO: add implementation
-  throw std::logic_error("Not implemented yet");
+    // same as the above except that send multiple requests and need to handle multiple futures from SKV
+    // but only return a single future to this method caller
+    // TODO: add implementation
+    throw std::logic_error("Not implemented yet");
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
@@ -71,12 +118,12 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 }
 
 std::future<K23SITxn> K2Adapter::beginTransaction() {
-  return k23si_->beginTxn(k2::K2TxnOptions{});
+    return k23si_->beginTxn(k2::K2TxnOptions{});
 }
 
 k2::dto::SKVRecord K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request) {
     // TODO use namespace name and table name directly? How does secondary index fit into this?
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_name, request.table_name, 
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_name, request.table_name,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic
