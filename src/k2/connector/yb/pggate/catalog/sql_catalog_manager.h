@@ -125,6 +125,7 @@ namespace catalog {
     struct CreateNamespaceRequest {
         string namespaceName;
         string namespaceId;
+        uint32_t namespaceOid;
         string sourceNamespaceId;
         string creatorRoleName;
         // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used

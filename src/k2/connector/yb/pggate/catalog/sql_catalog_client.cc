@@ -39,9 +39,10 @@ Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
 }
 
 Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
-                                 const std::string& creator_role_name,
                                  const std::string& namespace_id,
+                                 uint32_t namespace_oid,
                                  const std::string& source_namespace_id,
+                                 const std::string& creator_role_name,
                                  const std::optional<uint32_t>& next_pg_oid) {
   CreateNamespaceRequest request;
   request.namespaceName = namespace_name;

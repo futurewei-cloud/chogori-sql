@@ -68,6 +68,11 @@ struct CopySysTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+struct CopyTableResult {
+    RStatus status;
+    std::shared_ptr<TableInfo> tableInfo;
+};
+
 struct CheckSchemaResult {
     RStatus status;
     std::shared_ptr<k2::dto::Schema> schema;
@@ -177,8 +182,22 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     std::vector<std::string> ListTableIds(std::shared_ptr<Context> context, std::string namespace_id, bool isSysTableIncluded);
 
-    CopySysTablesResult CopySysTables(std::shared_ptr<Context> target_context, std::string target_namespace_id, std::string target_namespace_name, 
-        std::shared_ptr<Context> source_context, std::string source_namespace_id);
+    CopySysTablesResult CopySysTables(std::shared_ptr<Context> target_context, 
+            std::string target_namespace_id, 
+            std::string target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<Context> source_context, 
+            std::string source_namespace_id, 
+            std::string source_namespace_name);
+
+    CopyTableResult CopyTable(std::shared_ptr<Context> target_context,           
+            const std::string& target_namespace_id, 
+            const std::string& target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<Context> source_context, 
+            const std::string& source_namespace_id, 
+            const std::string& source_namespace_name,
+            const std::string& source_table_id);
 
     CheckSchemaResult CheckSchema(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, uint32_t version);
 
@@ -244,6 +263,9 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     std::vector<k2::dto::SKVRecord> FetchAllTableColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name);
 
     std::vector<k2::dto::SKVRecord> FetchAllIndexColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name);
+
+    std::shared_ptr<TableInfo> CloneTableForNewNamespace(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
+            std::string namespace_name, std::string table_id, std::string table_name);
 
     std::shared_ptr<K2Adapter> k2_adapter_;  
     std::string tablehead_schema_name_;

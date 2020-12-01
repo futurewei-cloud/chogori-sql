@@ -52,14 +52,15 @@ class SqlCatalogClient {
 
     // Create a new namespace with the given name.
     CHECKED_STATUS CreateNamespace(const std::string& namespace_name,
-                                const std::string& creator_role_name = "",
-                                const std::string& namespace_id = "",
-                                const std::string& source_namespace_id = "",
+                                const std::string& namespace_id,
+                                uint32_t namespace_oid,
+                                const std::string& source_namespace_id,
+                                const std::string& creator_role_name,
                                 const std::optional<uint32_t>& next_pg_oid = std::nullopt);
                                         
     // Delete namespace with the given name.
     CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
-                                const std::string& namespace_id = "");
+                                const std::string& namespace_id);
 
     CHECKED_STATUS CreateTable(const std::string& namespace_name, 
                             const std::string& table_name, 

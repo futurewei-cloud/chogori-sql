@@ -212,12 +212,49 @@ std::vector<std::string> TableInfoHandler::ListTableIds(std::shared_ptr<Context>
     return table_ids;    
 }
 
-CopySysTablesResult TableInfoHandler::CopySysTables(std::shared_ptr<Context> target_context, std::string target_namespace_id, std::string target_namespace_name, 
-        std::shared_ptr<Context> source_context, std::string source_namespace_id) {
+CopySysTablesResult TableInfoHandler::CopySysTables(std::shared_ptr<Context> target_context, 
+            std::string target_namespace_id, 
+            std::string target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<Context> source_context, 
+            std::string source_namespace_id, 
+            std::string source_namespace_name) {
     CopySysTablesResult response;
 
 
     return response;
+}
+
+CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<Context> target_context, 
+            const std::string& target_namespace_id, 
+            const std::string& target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<Context> source_context, 
+            const std::string& source_namespace_id, 
+            const std::string& source_namespace_name,
+            const std::string& source_table_id) {
+    CopyTableResult response;
+    GetTableResult table_result = GetTable(source_context, source_namespace_id, source_namespace_name, source_table_id);
+    if (table_result.status.IsSucceeded()) {
+        if (table_result.tableInfo != nullptr) {
+            std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());   
+            std::shared_ptr<TableInfo> target_table = CloneTableForNewNamespace(table_result.tableInfo, target_namespace_id,
+                target_namespace_name, target_table_id, table_result.tableInfo->table_name());
+            CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_namespace_id, target_table);
+            if (create_result.status.IsSucceeded()) {
+                response.tableInfo = target_table;
+                response.status.Succeed();
+            } else {
+                response.status = std::move(create_result.status);
+            }  
+        } else {
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find table " + source_table_id;                      
+        }   
+    } else {
+        response.status = std::move(table_result.status);
+    }
+    return response;            
 }
 
 std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchAllTableHeadSKVRecords(std::shared_ptr<Context> context, std::string collection_name) {
@@ -1116,6 +1153,21 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<Context> cont
 
     IndexInfo index_info(table_id, table_name, table_oid, indexed_table_id, version, is_unique, columns, index_perm);
     return index_info;
+}
+
+std::shared_ptr<TableInfo> TableInfoHandler::CloneTableForNewNamespace(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
+        std::string namespace_name, std::string table_id, std::string table_name) {
+    std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_id, table_name, table_info->schema());
+    new_table_info->set_pg_oid(table_info->pg_oid());
+    new_table_info->set_next_column_id(table_info->next_column_id());
+    new_table_info->set_is_sys_table(table_info->is_sys_table());
+    if (table_info->has_secondary_indexes()) {
+        for (std::pair<TableId, IndexInfo> secondary_index : table_info->secondary_indexes()) {
+            new_table_info->add_secondary_index(secondary_index.first, secondary_index.second);    
+        }    
+    }
+
+    return new_table_info;
 }
 
 } // namespace catalog

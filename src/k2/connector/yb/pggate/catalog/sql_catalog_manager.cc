@@ -177,6 +177,122 @@ namespace catalog {
 
     CreateNamespaceResponse SqlCatalogManager::CreateNamespace(const CreateNamespaceRequest& request) {
         CreateNamespaceResponse response;
+        // first check if the namespace has already been created
+        std::shared_ptr<Context> ns_context = NewTransactionContext();
+        // first check from cache
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request.namespaceName);
+        if (namespace_info == nullptr) {
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetCachedNamespaceByName(request.namespaceName);          
+            }             
+        }
+        if (namespace_info != nullptr) {
+            response.status.code = StatusCode::ALREADY_PRESENT;
+            response.status.errorMessage = "Namespace " + request.namespaceName + " has already existed";
+            EndTransactionContext(ns_context, true);           
+            return response;
+        } 
+
+        if (request.sourceNamespaceId.empty()) {
+            // no source namespace to copy from
+            // create the new namespace record
+            std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+            new_ns->SetNamespaceId(request.namespaceId);
+            new_ns->SetNamespaceName(request.namespaceName);
+            new_ns->SetNamespaceOid(request.namespaceOid);
+            new_ns->SetNextPgOid(request.nextPgOid.value());
+            // persist the new namespace record
+            AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+            EndTransactionContext(ns_context, true);           
+            if (add_result.status.IsSucceeded()) {
+                // cache namespaces by namespace id and namespace name
+                namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+                namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+            } else {
+                response.status = std::move(add_result.status);
+                return response;
+            }
+            response.namespaceInfo = new_ns;
+
+            // create the system table SKV schema for the new namespace
+            std::shared_ptr<Context> target_context = NewTransactionContext();
+            CreateSysTablesResult table_result = table_info_handler_->CreateSysTablesIfNecessary(target_context, new_ns->GetNamespaceId());
+            if (table_result.status.IsSucceeded()) {
+                response.status.Succeed();
+            } else {
+                response.status = std::move(table_result.status);
+            }
+            EndTransactionContext(target_context, true);           
+        } else {
+            // create a new namespace from a source namespace
+            // check if the source namespace exists
+            std::shared_ptr<NamespaceInfo> source_namespace_info = GetCachedNamespaceById(request.sourceNamespaceId);
+            if (source_namespace_info == nullptr) {
+                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
+                response.status.code = StatusCode::ALREADY_PRESENT;
+                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
+                EndTransactionContext(ns_context, true);           
+                return response;
+            } else {
+                // create the new namespace record
+                std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+                new_ns->SetNamespaceId(request.namespaceId);
+                new_ns->SetNamespaceName(request.namespaceName);
+                new_ns->SetNamespaceOid(request.namespaceOid);
+                new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
+                // persist the new namespace record
+                AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+                EndTransactionContext(ns_context, true);           
+                if (add_result.status.IsSucceeded()) {
+                    // cache namespaces by namespace id and namespace name
+                    namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+                    namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+                } else {
+                    response.status = std::move(add_result.status);
+                    return response;
+                }
+                response.namespaceInfo = new_ns;
+
+                // create the system table SKV schema for the new namespace
+                std::shared_ptr<Context> target_context = NewTransactionContext();
+                CreateSysTablesResult table_result = table_info_handler_->CreateSysTablesIfNecessary(target_context, new_ns->GetNamespaceId());
+                if (!table_result.status.IsSucceeded()) {
+                    response.status = std::move(table_result.status);
+                    EndTransactionContext(target_context, true); 
+                    return response;          
+                }
+
+                std::shared_ptr<Context> source_context = NewTransactionContext();
+                // get the source table ids
+                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
+                for (auto& source_table_id : table_ids) {
+                    // copy the source table metadata to the target table
+                    CopyTableResult copy_result = table_info_handler_->CopyTable(
+                        target_context, 
+                        new_ns->GetNamespaceId(), 
+                        new_ns->GetNamespaceName(), 
+                        new_ns->GetNamespaceOid(), 
+                        source_context, 
+                        source_namespace_info->GetNamespaceId(), 
+                        source_namespace_info->GetNamespaceName(), 
+                        source_table_id);
+                    if (!copy_result.status.IsSucceeded()) {
+                        response.status = std::move(copy_result.status);
+                        EndTransactionContext(source_context, true); 
+                        EndTransactionContext(target_context, true); 
+                        return response;
+                    }
+                }
+                EndTransactionContext(source_context, true); 
+                EndTransactionContext(target_context, true); 
+                response.status.Succeed();
+            }
+        }
+
         return response;
     }
   
