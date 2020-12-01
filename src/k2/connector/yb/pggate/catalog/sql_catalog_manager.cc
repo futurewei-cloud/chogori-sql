@@ -351,6 +351,41 @@ namespace catalog {
 
     DeleteNamespaceResponse SqlCatalogManager::DeleteNamespace(const DeleteNamespaceRequest& request) {
         DeleteNamespaceResponse response;
+        std::shared_ptr<Context> context = NewTransactionContext();
+        // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
+        if (result.status.IsSucceeded() && result.namespaceInfo != nullptr) {
+            std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
+            DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(context, namespace_info);
+            if (del_result.status.IsSucceeded()) {
+                // delete all namespace tables and indexes
+                std::shared_ptr<Context> tb_context = NewTransactionContext();
+                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
+                for (auto& table_id : table_ids) {
+                    GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId, 
+                            request.namespaceName, table_id);
+                    if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
+                        // delete table data
+                        table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
+                        // delete table schema metadata
+                        table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
+                   }         
+                }
+                EndTransactionContext(tb_context, true); 
+
+                // remove namespace from local cache
+                namespace_id_map_.erase(namespace_info->GetNamespaceId());
+                namespace_name_map_.erase(namespace_info->GetNamespaceName()); 
+                response.status.Succeed();      
+            } else {
+                response.status = std::move(del_result.status);
+            }
+        } else {
+            LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
+        }
+        EndTransactionContext(context, true);   
         return response;
     }
 

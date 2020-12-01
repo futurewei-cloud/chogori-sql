@@ -156,6 +156,27 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Contex
     return response;
 }
 
+DeleteNamespaceResult NamespaceInfoHandler::DeleteNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info) {
+    DeleteNamespaceResult response;
+    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    record.serializeNext<k2::String>(namespace_info->GetNamespaceId());  
+    record.serializeNext<k2::String>(namespace_info->GetNamespaceName());  
+    // use signed integers for unsigned integers since SKV does not support them
+    record.serializeNext<int32_t>(namespace_info->GetNamespaceOid());  
+    record.serializeNext<int32_t>(namespace_info->GetNextPgOid());
+    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), true);
+    k2::WriteResult write_result = write_result_future.get();
+    if (!write_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
+            << " and message: " << write_result.status.message;
+        response.status.code = StatusCode::INTERNAL_ERROR;
+        response.status.errorMessage = std::move(write_result.status.message);
+        return response;  
+    }
+    response.status.Succeed();
+    return response;
+}
+
 } // namespace catalog
 } // namespace sql
 } // namespace k2pg

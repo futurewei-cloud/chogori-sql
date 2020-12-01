@@ -56,6 +56,10 @@ struct ListNamespacesResult {
     std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;  
 };
 
+struct DeleteNamespaceResult {
+    RStatus status;
+};
+
 class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHandler> {
     public:
     typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
@@ -83,6 +87,8 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
     GetNamespaceResult GetNamespace(std::shared_ptr<Context> context, const std::string& namespace_id);
 
     ListNamespacesResult ListNamespaces(std::shared_ptr<Context> context);
+
+    DeleteNamespaceResult DeleteNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 
