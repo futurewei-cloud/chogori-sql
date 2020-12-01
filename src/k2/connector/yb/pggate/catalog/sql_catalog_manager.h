@@ -211,15 +211,15 @@ namespace catalog {
 
     struct ListTablesRequest {
         string namespaceName;
-        // use string match for table name
+        // use string match for table name, not used for now
         string nameFilter;
-        bool excludeSystemTables = false;
+        bool isSysTableIncluded = false;
     };
 
     struct ListTablesResponse {
         RStatus status;
-        string namespaceName;
-        std::vector<string> tableNames;
+        string namespaceId;
+        std::vector<std::shared_ptr<TableInfo>> tableInfos;
     };
 
     struct DeleteTableRequest {

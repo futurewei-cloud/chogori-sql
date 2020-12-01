@@ -482,6 +482,46 @@ namespace catalog {
 
     ListTablesResponse SqlCatalogManager::ListTables(const ListTablesRequest& request) {
         ListTablesResponse response;
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request.namespaceName);
+        if (namespace_info == nullptr) {
+            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+            // this could be avoided by use a single or a quorum of catalog managers 
+            std::shared_ptr<Context> ns_context = NewTransactionContext();
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            EndTransactionContext(ns_context, true);
+            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetCachedNamespaceByName(request.namespaceName);          
+            }          
+        }
+        if (namespace_info == nullptr) {
+            LOG(FATAL) << "Cannot find namespace " << request.namespaceName;
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
+            return response;
+        }
+        response.namespaceId = namespace_info->GetNamespaceId();
+
+        std::shared_ptr<Context> context = NewTransactionContext();
+        try {       
+            ListTablesResult tables_result = table_info_handler_->ListTables(context, namespace_info->GetNamespaceId(), 
+                    namespace_info->GetNamespaceName(), request.isSysTableIncluded);
+            if (tables_result.status.IsSucceeded()) {
+                for (auto& tableInfo :  tables_result.tableInfos) {
+                    response.tableInfos.push_back(std::move(tableInfo));    
+                }   
+                response.status.Succeed();
+            } else {
+                response.status = std::move(tables_result.status);
+            }
+        } catch (const std::exception& e) {
+            response.status.code = StatusCode::RUNTIME_ERROR;
+            response.status.errorMessage = e.what();
+        }
+        EndTransactionContext(context, true);
+
         return response;
     }
 

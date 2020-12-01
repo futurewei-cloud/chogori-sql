@@ -26,6 +26,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 #include <vector>
+#include <set>
 
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
 #include "yb/pggate/catalog/sql_catalog_entity.h"
@@ -62,6 +63,11 @@ struct ListTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+struct CopySysTablesResult {
+    RStatus status;
+    std::vector<std::shared_ptr<TableInfo>> tableInfos;
+};
+
 struct CheckSchemaResult {
     RStatus status;
     std::shared_ptr<k2::dto::Schema> schema;
@@ -90,6 +96,17 @@ struct DeleteIndexResult {
 struct GeBaseTableIdResult {
     RStatus status;
     std::string baseTableId;
+};
+
+struct TableSKVRecord {
+    std::string table_id;
+    k2::dto::SKVRecord headRecord;
+    std::vector<k2::dto::SKVRecord> columnRecords;
+};
+
+struct TableIndexes {
+    std::string table_id;
+    std::vector<std::string> indexes;
 };
 
 class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
@@ -158,6 +175,11 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     ListTablesResult ListTables(std::shared_ptr<Context> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded);
 
+    std::vector<std::string> ListTableIds(std::shared_ptr<Context> context, std::string namespace_id, bool isSysTableIncluded);
+
+    CopySysTablesResult CopySysTables(std::shared_ptr<Context> target_context, std::string target_namespace_id, std::string target_namespace_name, 
+        std::shared_ptr<Context> source_context, std::string source_namespace_id);
+
     CheckSchemaResult CheckSchema(std::shared_ptr<Context> context, std::string collection_name, std::string schema_name, uint32_t version);
 
     CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<Context> context, std::string collection_name, std::shared_ptr<TableInfo> table);
@@ -216,6 +238,12 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
     std::shared_ptr<TableInfo> BuildTableInfo(std::string namespace_id, std::string namespace_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<Context> context, std::string collection_name, k2::dto::SKVRecord& index_head);
+
+    std::vector<k2::dto::SKVRecord> FetchAllTableHeadSKVRecords(std::shared_ptr<Context> context, std::string collection_name);
+
+    std::vector<k2::dto::SKVRecord> FetchAllTableColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name);
+
+    std::vector<k2::dto::SKVRecord> FetchAllIndexColumnSchemaSKVRecords(std::shared_ptr<Context> context, std::string collection_name);
 
     std::shared_ptr<K2Adapter> k2_adapter_;  
     std::string tablehead_schema_name_;
