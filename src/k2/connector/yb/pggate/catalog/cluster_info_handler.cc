@@ -30,66 +30,39 @@ namespace sql {
 namespace catalog {
 
 ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
-    : collection_name_(sql_primary_collection_name), 
-      schema_name_(cluster_info_schema_name), 
-      k2_adapter_(k2_adapter) {
-    schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(schema_ptr.get()) = schema;
+    : BaseHandler(k2_adapter), 
+      collection_name_(skv__collection_name_sql_primary), 
+      schema_name_(skv_schema_name_cluster_info) {
+    schema_ptr = std::make_shared<k2::dto::Schema>(schema);
 }
 
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
-CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
-    std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
-    k2::CreateSchemaResult schema_result = schema_result_future.get();
+CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     CreateClusterInfoResult response;
-    if (!schema_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to create schema due to error code " << schema_result.status.code
-            << " and message: " << schema_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(schema_result.status.message);
+    RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr);
+    if (!schema_result.IsSucceeded()) {
+        response.status = std::move(schema_result);
         return response;
     }
-    k2::dto::SKVRecord record(collection_name_, schema_ptr);
-    record.serializeNext<k2::String>(cluster_info.GetClusterId());  
-    // use signed integers for unsigned integers since SKV does not support them
-    record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());  
-    record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), false);
-    k2::WriteResult write_result = write_result_future.get();
-    if (!write_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
-            << " and message: " << write_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(write_result.status.message);
-        return response;  
-    }
-    response.status.Succeed();
+    UpdateClusterInfoResult result = UpdateClusterInfo(context, cluster_info);
+    response.status = std::move(result.status);
     return response;
 }
 
-UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
+UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     UpdateClusterInfoResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());     
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), true);
-    k2::WriteResult write_result = write_result_future.get();
-    if (!write_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to create SKV record due to error code " << write_result.status.code
-            << " and message: " << write_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(write_result.status.message);
-        return response;    
-    }
-    response.status.Succeed();
+    response.status = PersistSKVRecord(context, record);
     return response;
 }
 
-GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<Context> context, const std::string& cluster_id) {
+GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id) {
     GetClusterInfoResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_id);

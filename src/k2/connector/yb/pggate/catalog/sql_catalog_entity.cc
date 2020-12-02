@@ -23,6 +23,8 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include "yb/pggate/catalog/sql_catalog_entity.h"
 
+#include <glog/logging.h>
+
 namespace k2pg {
 namespace sql {
 namespace catalog {
@@ -36,6 +38,29 @@ ClusterInfo::ClusterInfo(string cluster_id, uint64_t catalog_version, bool initd
 
 ClusterInfo::~ClusterInfo() {
 };
+
+SessionTransactionContext::SessionTransactionContext(std::shared_ptr<K23SITxn> txn) {
+    txn_ = txn;
+    finished = false;
+}
+
+SessionTransactionContext::~SessionTransactionContext() {
+    if (!finished) {
+        // abort the transaction if it has been committed or aborted
+        EndTransaction(false);
+        finished = true;
+    }
+}
+
+void SessionTransactionContext::EndTransaction(bool should_commit) {
+    std::future<k2::EndResult> txn_result_future = txn_->endTxn(should_commit);
+    k2::EndResult txn_result = txn_result_future.get();
+    if (!txn_result.status.is2xxOK()) {
+        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
+                << " and message: " << txn_result.status.message;
+        throw std::runtime_error("Failed to end transaction, should_commit: " + should_commit);                                 
+    }   
+}
 
 } // namespace catalog
 } // namespace sql

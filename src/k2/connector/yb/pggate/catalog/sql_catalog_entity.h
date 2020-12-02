@@ -146,21 +146,30 @@ class NamespaceInfo {
     uint32_t next_pg_oid_;
 };
 
-class Context {
+class SessionTransactionContext {
     public:
-    Context() = default;
-    ~Context() = default;
-
-    void SetTxn(std::shared_ptr<K23SITxn> txn) {
-        txn_ = txn;
-    }
+    SessionTransactionContext(std::shared_ptr<K23SITxn> txn);
+    ~SessionTransactionContext();
 
     std::shared_ptr<K23SITxn> GetTxn() {
         return txn_;
     }
 
+    void Commit() {
+        EndTransaction(true);
+        finished = true;
+    }
+
+    void Abort() {
+        EndTransaction(false);
+        finished = true;
+    }
+
     private: 
-    std::shared_ptr<K23SITxn> txn_;   
+    void EndTransaction(bool should_commit);
+
+    std::shared_ptr<K23SITxn> txn_;
+    bool finished;   
 };
 
 // mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)
