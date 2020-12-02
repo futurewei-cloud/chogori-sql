@@ -66,8 +66,8 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "NamespaceId", false, false},
                 {k2::dto::FieldType::STRING, "NamespaceName", false, false},
-                {k2::dto::FieldType::INT32T, "NamespaceOid", false, false},
-                {k2::dto::FieldType::INT32T, "NextPgOid", false, false}},
+                {k2::dto::FieldType::INT64T, "NamespaceOid", false, false},
+                {k2::dto::FieldType::INT64T, "NextPgOid", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0 },
         .rangeKeyFields = std::vector<uint32_t> {}
     };
@@ -78,11 +78,11 @@ class NamespaceInfoHandler : public std::enable_shared_from_this<NamespaceInfoHa
 
     CreateNamespaceTableResult CreateNamespaceTableIfNecessary();
 
-    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info);
+    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info);
 
-    GetNamespaceResult GetNamespace(std::shared_ptr<Context> context, const std::string& namespace_id);
+    GetNamespaceResult GetNamespace(std::shared_ptr<SessionTransactionContext> context, const std::string& namespace_id);
 
-    ListNamespacesResult ListNamespaces(std::shared_ptr<Context> context);
+    ListNamespacesResult ListNamespaces(std::shared_ptr<SessionTransactionContext> context);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 

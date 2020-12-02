@@ -33,14 +33,13 @@ ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
     : collection_name_(sql_primary_collection_name), 
       schema_name_(cluster_info_schema_name), 
       k2_adapter_(k2_adapter) {
-    schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(schema_ptr.get()) = schema;
+    schema_ptr = std::make_shared<k2::dto::Schema>(schema);
 }
 
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
-CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
+CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     std::future<k2::CreateSchemaResult> schema_result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
     k2::CreateSchemaResult schema_result = schema_result_future.get();
     CreateClusterInfoResult response;
@@ -69,7 +68,7 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<Co
     return response;
 }
 
-UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info) {
+UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     UpdateClusterInfoResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
@@ -89,7 +88,7 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Co
     return response;
 }
 
-GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<Context> context, const std::string& cluster_id) {
+GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id) {
     GetClusterInfoResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(cluster_id);

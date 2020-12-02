@@ -133,6 +133,8 @@ namespace k2pg {
                     schema_version_(schema_version),
                     is_unique_(is_unique),
                     columns_(std::move(columns)),
+                    // All the index columns are primary keys and we don't manage range keys in PG gate, as a result, 
+                    // we treat all primary keys  as the (hash) partition keys. 
                     hash_column_count_(columns_.size()),
                     range_column_count_(0),
                     index_permissions_(index_permissions) {

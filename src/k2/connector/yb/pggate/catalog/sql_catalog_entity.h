@@ -146,10 +146,10 @@ class NamespaceInfo {
     uint32_t next_pg_oid_;
 };
 
-class Context {
+class SessionTransactionContext {
     public:
-    Context() = default;
-    ~Context() = default;
+    SessionTransactionContext() = default;
+    ~SessionTransactionContext() = default;
 
     void SetTxn(std::shared_ptr<K23SITxn> txn) {
         txn_ = txn;

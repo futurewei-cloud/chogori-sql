@@ -69,11 +69,11 @@ class ClusterInfoHandler : public std::enable_shared_from_this<ClusterInfoHandle
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
     
-    CreateClusterInfoResult CreateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info);
+    CreateClusterInfoResult CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 
-    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<Context> context, ClusterInfo& cluster_info);
+    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 
-    GetClusterInfoResult ReadClusterInfo(std::shared_ptr<Context> context, const std::string& cluster_id);
+    GetClusterInfoResult ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id);
 
     private:  
     std::string collection_name_;

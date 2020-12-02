@@ -33,8 +33,7 @@ NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter
     : collection_name_(sql_primary_collection_name), 
       schema_name_(namespace_info_schema_name), 
       k2_adapter_(k2_adapter) {
-    schema_ptr = std::make_shared<k2::dto::Schema>();
-    *(schema_ptr.get()) = schema;
+    schema_ptr = std::make_shared<k2::dto::Schema>(schema);
 }
 
 NamespaceInfoHandler::~NamespaceInfoHandler() {
@@ -63,14 +62,14 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
     return response;
 }
 
-AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::shared_ptr<Context> context, std::shared_ptr<NamespaceInfo> namespace_info) {
+AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info) {
     AddOrUpdateNamespaceResult response;     
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(namespace_info->GetNamespaceId());  
     record.serializeNext<k2::String>(namespace_info->GetNamespaceName());  
-    // use signed integers for unsigned integers since SKV does not support them
-    record.serializeNext<int32_t>(namespace_info->GetNamespaceOid());  
-    record.serializeNext<int32_t>(namespace_info->GetNextPgOid());
+    // use int64_t to represent uint32_t since since SKV does not support them
+    record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());  
+    record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
     std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), false);
     k2::WriteResult write_result = write_result_future.get();
     if (!write_result.status.is2xxOK()) {
@@ -84,7 +83,7 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     return response;
 }
 
-GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<Context> context, const std::string& namespace_id) {
+GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<SessionTransactionContext> context, const std::string& namespace_id) {
     GetNamespaceResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(namespace_id);
@@ -107,15 +106,15 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<Context> c
     std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
     namespace_ptr->SetNamespaceId(read_result.value.deserializeNext<k2::String>().value());
     namespace_ptr->SetNamespaceName(read_result.value.deserializeNext<k2::String>().value());
-    // use signed integers for unsigned integers since SKV does not support them
-    namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int32_t>().value());
-    namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int32_t>().value());
+     // use int64_t to represent uint32_t since since SKV does not support them
+    namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int64_t>().value());
+    namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int64_t>().value());
     response.namespaceInfo = namespace_ptr;
     response.status.Succeed();
     return response;
 }
 
-ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Context> context) {
+ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<SessionTransactionContext> context) {
     ListNamespacesResult response;
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name_, schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
@@ -144,9 +143,9 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Contex
                 std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
                 namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
                 namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
-                // use signed integers for unsigned integers since SKV does not support them
-                namespace_ptr->SetNamespaceOid(record.deserializeNext<int32_t>().value());
-                namespace_ptr->SetNextPgOid(record.deserializeNext<int32_t>().value()); 
+                // use int64_t to represent uint32_t since since SKV does not support them
+                namespace_ptr->SetNamespaceOid(record.deserializeNext<int64_t>().value());
+                namespace_ptr->SetNextPgOid(record.deserializeNext<int64_t>().value()); 
                 response.namespaceInfos.push_back(namespace_ptr);
             } 
         }

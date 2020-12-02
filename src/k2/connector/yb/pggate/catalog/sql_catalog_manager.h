@@ -289,7 +289,7 @@ namespace catalog {
 
         mutable simple_spinlock lock_;
 
-        RStatus UpdateCatalogVersion(std::shared_ptr<Context> context, uint64_t new_version);
+        RStatus UpdateCatalogVersion(std::shared_ptr<SessionTransactionContext> context, uint64_t new_version);
 
         void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
 
@@ -313,9 +313,9 @@ namespace catalog {
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(std::string index_id);
 
-        std::shared_ptr<Context> NewTransactionContext();
+        std::shared_ptr<SessionTransactionContext> NewTransactionContext();
 
-        void EndTransactionContext(std::shared_ptr<Context> context, bool should_commit);
+        void EndTransactionContext(std::shared_ptr<SessionTransactionContext> context, bool should_commit);
 
         void IncreaseCatalogVersion();
 
