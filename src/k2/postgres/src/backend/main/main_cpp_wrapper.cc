@@ -29,7 +29,7 @@ void startK2App(int argc, char** argv) {
         try {
             K2INFO("Configure app");
             k2::App app("PG");
-            app.addApplet<k2::TSO_ClientLib>(0s);
+            app.addApplet<k2::TSO_ClientLib>();
             app.addApplet<k2pg::gate::PGK2Client>();
             app.addOptions()
             // config for dependencies
