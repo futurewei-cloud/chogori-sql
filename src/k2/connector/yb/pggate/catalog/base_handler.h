@@ -21,29 +21,37 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#ifndef CHOGORI_SQL_DEFAULTS_H
-#define CHOGORI_SQL_DEFAULTS_H
+#ifndef CHOGORI_SQL_BASE_HANDLER_H
+#define CHOGORI_SQL_BASE_HANDLER_H
 
 #include <string>
+
+#include "yb/pggate/catalog/sql_catalog_defaults.h"
+#include "yb/pggate/catalog/sql_catalog_entity.h"
+#include "yb/pggate/k2_adapter.h"
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
 
-static const std::string default_cluster_id = "PG_DEFAULT_CLUSTER";
-static const std::string skv__collection_name_sql_primary = "K2RESVD_COLLECTION_SQL_PRIMARY";
-static const std::string skv_schema_name_cluster_info = "K2RESVD_SCHEMA_SQL_CLUSTER_INFO";
-static const std::string skv_schema_name_namespace_info = "K2RESVD_SCHEMA_SQL_NAMESPACE_INFO";
-static const std::string skv_schema_name_sys_catalog_tablehead = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLEHEAD";
-static const std::string skv_schema_name_sys_catalog_tablecolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLECOLUMN";
-static const std::string skv_schema_name_sys_catalog_indexcolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_INDEXCOLUMN";
+using k2pg::gate::K2Adapter;
+using k2pg::gate::K23SITxn;
 
-static const std::string TABLE_ID_COLUMN_NAME = "TableId";
-static const std::string INDEX_ID_COLUMN_NAME = "IndexId";
-static const std::string INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
+class BaseHandler : public std::enable_shared_from_this<BaseHandler> {
+    public:
+    BaseHandler(std::shared_ptr<K2Adapter> k2_adapter);
+    ~BaseHandler();
 
-} // namespace catalog
-}  // namespace sql
-}  // namespace k2pg
+    RStatus CreateSKVSchema(std::string collection_name, std::shared_ptr<k2::dto::Schema> schema);
 
-#endif //CHOGORI_SQL_DEFAULTS_H     
+    RStatus PersistSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record);
+
+    protected:
+    std::shared_ptr<K2Adapter> k2_adapter_;  
+};
+
+} // namespace sql
+} // namespace sql
+} // namespace k2pg
+
+#endif //CHOGORI_SQL_BASE_HANDLER_H

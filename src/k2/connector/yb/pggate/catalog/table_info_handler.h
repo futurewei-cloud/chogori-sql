@@ -27,17 +27,12 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <vector>
 
-#include "yb/pggate/catalog/sql_catalog_defaults.h"
-#include "yb/pggate/catalog/sql_catalog_entity.h"
-#include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/catalog/base_handler.h"
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
 
-using yb::Status;
-using k2pg::gate::K2Adapter;
-using k2pg::gate::K23SITxn;
 using k2pg::gate::CreateScanReadResult;
 
 struct CreateSysTablesResult {
@@ -92,7 +87,7 @@ struct GeBaseTableIdResult {
     std::string baseTableId;
 };
 
-class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
+class TableInfoHandler : public BaseHandler {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
 
@@ -101,7 +96,7 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     // schema to store table information for a namespace
     static inline k2::dto::Schema sys_catalog_tablehead_schema {
-        .name = sys_catalog_tablehead_schema_name,
+        .name = skv_schema_name_sys_catalog_tablehead,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
@@ -121,7 +116,7 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     // schema to store table column schema information
     static inline k2::dto::Schema sys_catalog_tablecolumn_schema {
-        .name = sys_catalog_tablecolumn_schema_schema_name,
+        .name = skv_schema_name_sys_catalog_tablecolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
@@ -139,7 +134,7 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     // schema to store index column schema information
     static inline k2::dto::Schema sys_catalog_indexcolumn_schema {
-        .name = sys_catalog_indexcolumn_schema_schema_name,
+        .name = skv_schema_name_sys_catalog_indexcolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
@@ -201,10 +196,6 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     DataType ToSqlType(k2::dto::FieldType type);
 
-    void PersistSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<k2::dto::Schema> schema);
-
-    void PersistSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record);
-
     k2::dto::SKVRecord FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string table_id);
 
     std::vector<k2::dto::SKVRecord> FetchIndexHeadSKVRecords(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string base_table_id);
@@ -219,7 +210,6 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
-    std::shared_ptr<K2Adapter> k2_adapter_;  
     std::string tablehead_schema_name_;
     std::string tablecolumn_schema_name_;
     std::string indexcolumn_schema_name_;

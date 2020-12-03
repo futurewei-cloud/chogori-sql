@@ -30,9 +30,9 @@ namespace sql {
 namespace catalog {
 
 NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
-    : collection_name_(sql_primary_collection_name), 
-      schema_name_(namespace_info_schema_name), 
-      k2_adapter_(k2_adapter) {
+    : BaseHandler(k2_adapter), 
+      collection_name_(skv__collection_name_sql_primary), 
+      schema_name_(skv_schema_name_namespace_info) {
     schema_ptr = std::make_shared<k2::dto::Schema>(schema);
 }
 
@@ -48,17 +48,11 @@ CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Namespace info table does not exist"; 
         // create the table schema since it does not exist
-        std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name_, schema_ptr);
-        k2::CreateSchemaResult result = result_future.get();
-        if (!result.status.is2xxOK()) {
-            LOG(FATAL) << "Failed to create SKV schema for namespaces due to error code " << result.status.code
-                << " and message: " << result.status.message;
-            response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = std::move(result.status.message);
-            return response;            
-       }
+        RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr);
+        response.status = std::move(schema_result);
+    } else {
+        response.status.Succeed();
     }
-    response.status.Succeed();
     return response;
 }
 
@@ -70,16 +64,7 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     // use int64_t to represent uint32_t since since SKV does not support them
     record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());  
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
-    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), false);
-    k2::WriteResult write_result = write_result_future.get();
-    if (!write_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
-            << " and message: " << write_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(write_result.status.message);
-        return response;  
-    }
-    response.status.Succeed();
+    response.status = PersistSKVRecord(context, record);
     return response;
 }
 

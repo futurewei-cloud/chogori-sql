@@ -650,8 +650,8 @@ namespace catalog {
                 response.endOid = end_oid; 
 
                 // update the namespace record on SKV
-                // TODO: would K23SI guarantees that concurrent SKV records on SKV won't override each other
-                // and won't lose the correctness of PgNextOid updates?
+                // We use read and write in the same transaction so that K23SI guarantees that concurrent SKV records on SKV 
+                // won't override each other and won't lose the correctness of PgNextOid
                 std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
                 updated_ns->SetNextPgOid(end_oid);
                 AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, updated_ns);
