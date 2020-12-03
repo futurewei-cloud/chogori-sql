@@ -183,7 +183,7 @@ seastar::future<> PGK2Client::_pollWriteQ() {
             req.prom.set_value(k2::WriteResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::K23SIWriteResponse{}));
             return seastar::make_ready_future();
         }
-        return fiter->second.write(req.record, req.erase)
+        return fiter->second.write(req.record, req.erase, req.rejectIfExists)
             .then([this, &req](auto&& writeResult) {
                 req.prom.set_value(std::move(writeResult));
             });

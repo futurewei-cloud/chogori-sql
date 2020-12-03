@@ -43,8 +43,6 @@ class K2Adapter {
     _k23si = std::make_shared<K23SIGate>();
   };
 
-  ~K2Adapter();
-
   CHECKED_STATUS Init();
 
   CHECKED_STATUS Shutdown();
@@ -61,7 +59,13 @@ class K2Adapter {
   std::shared_ptr<K23SIGate> _k23si;
   ThreadPool _tp;
 
-  k2::dto::SKVRecord MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
+  std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
+  std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
+
+  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
+  void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
+  static Status K2StatusToYBStatus(const k2::Status& status);
+  static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
 };
 
 }  // namespace gate

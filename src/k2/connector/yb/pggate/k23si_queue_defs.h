@@ -79,6 +79,7 @@ struct ReadRequest {
 struct WriteRequest {
     k2::dto::K23SI_MTR mtr;
     bool erase = false;
+    bool rejectIfExists = false; // If true, acts like SQL Insert
     k2::SKVRecord record;
     std::promise<k2::WriteResult> prom;
 };

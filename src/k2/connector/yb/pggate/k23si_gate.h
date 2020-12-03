@@ -43,7 +43,7 @@ public:
     // Ctor: creates a new library instance. The library just proxies calls over request queues to the
     // seastar counterpart. All configuration relevant to the k2 client is performed in the seastar client (k23si_app.h)
     K23SIGate();
-    static constexpr auto ANY_VERSION = K23SIClient::ANY_VERSION;
+    static constexpr auto ANY_VERSION = k2::K23SIClient::ANY_VERSION;
 
     // Starts a new transaction with the given options.
     // the result future is eventually satisfied with a valid transaction handle, or with an exception if the library

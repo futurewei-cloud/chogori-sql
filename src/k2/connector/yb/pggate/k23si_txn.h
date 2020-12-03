@@ -57,7 +57,7 @@ public:
     // the record from K2.
     // The result future is eventually satisfied with the result of the write
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase = false);
+    std::future<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
 
     // Ends the transaction. The transaction can be either committed or aborted.
     // The result future is eventually satisfied with the result of the end operation

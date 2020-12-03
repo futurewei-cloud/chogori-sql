@@ -55,8 +55,8 @@ std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     return result;
 }
 
-std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase) {
-    WriteRequest qr {.mtr = _mtr, .erase=erase, .record=std::move(rec), .prom={}};
+std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rejectIfExists) {
+    WriteRequest qr{.mtr = _mtr, .erase=erase, .rejectIfExists=rejectIfExists, .record=std::move(rec), .prom={}};
 
     auto result = qr.prom.get_future();
     pushQ(writeTxQ, std::move(qr));
