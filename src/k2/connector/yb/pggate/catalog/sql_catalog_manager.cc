@@ -509,15 +509,19 @@ namespace catalog {
                 if (table_result.tableInfo != nullptr) {
                     // delete indexes and the table itself
                     // delete table data
-                    table_info_handler_->DeleteTableData(context, namespace_info->GetNamespaceId(), table_result.tableInfo);
-                    // delete table schema metadata
-                    DeleteTableResult delete_result = table_info_handler_->DeleteTableMetadata(context, namespace_info->GetNamespaceId(), table_result.tableInfo);
-                    if (!delete_result.status.IsSucceeded()) {
-                        response.status = std::move(delete_result.status);
+                    DeleteTableResult delete_data_result = table_info_handler_->DeleteTableData(context, namespace_info->GetNamespaceId(), table_result.tableInfo);
+                    if (!delete_data_result.status.IsSucceeded()) {
+                        response.status = std::move(delete_data_result.status);
                     } else {
-                        // clear table cache after table deletion
-                        ClearTableCache(table_result.tableInfo);
-                        response.status.Succeed();
+                        // delete table schema metadata
+                        DeleteTableResult delete_metadata_result = table_info_handler_->DeleteTableMetadata(context, namespace_info->GetNamespaceId(), table_result.tableInfo);
+                        if (!delete_metadata_result.status.IsSucceeded()) {
+                            response.status = std::move(delete_metadata_result.status);
+                        } else {
+                            // clear table cache after table deletion
+                            ClearTableCache(table_result.tableInfo);
+                            response.status.Succeed();
+                        }
                     }
                 } else {
                     response.status.code = StatusCode::NOT_FOUND;
