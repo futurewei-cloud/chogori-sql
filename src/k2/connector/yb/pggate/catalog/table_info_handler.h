@@ -217,6 +217,8 @@ class TableInfoHandler : public std::enable_shared_from_this<TableInfoHandler> {
 
     IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, k2::dto::SKVRecord& index_head);
 
+    void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
+
     std::shared_ptr<K2Adapter> k2_adapter_;  
     std::string tablehead_schema_name_;
     std::string tablecolumn_schema_name_;

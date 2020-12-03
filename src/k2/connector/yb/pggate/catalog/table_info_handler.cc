@@ -351,11 +351,29 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
     return response;
 }
 
+void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema) {
+    // "TableId"
+    k2::dto::SchemaField table_id_field;
+    table_id_field.type = k2::dto::FieldType::STRING;
+    table_id_field.name = TABLE_ID_COLUMN_NAME;
+    schema->fields.push_back(table_id_field);
+    schema->partitionKeyFields.push_back(0);
+    // "IndexId"
+    k2::dto::SchemaField index_id_field;
+    index_id_field.type = k2::dto::FieldType::STRING;
+    // use an empty string for the primary index
+    index_id_field.name = INDEX_ID_COLUMN_NAME;
+    schema->fields.push_back(index_id_field);
+    schema->partitionKeyFields.push_back(1);
+}
+
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::shared_ptr<TableInfo> table) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = table->table_id();
     schema->version = table->schema().version();
-    uint32_t count = 0;
+    // add two partitionkey fields
+    AddDefaultPartitionKeys(schema);
+    uint32_t count = 2;
     for (ColumnSchema col_schema : table->schema().columns()) {
         k2::dto::SchemaField field;
         field.type = ToK2Type(col_schema.type());
@@ -402,7 +420,9 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
-    uint32_t count = 0;
+    // add two partitionkey fields: base table id + index table id
+    AddDefaultPartitionKeys(schema);
+    uint32_t count = 2;
     for (IndexColumn indexcolumn_schema : index_info.columns()) {
         k2::dto::SchemaField field;
         field.name = indexcolumn_schema.column_name;
