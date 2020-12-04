@@ -66,6 +66,7 @@ class K2Adapter {
   void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToYBStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
+  static std::string YBCTIDToString(SqlOpWriteRequest& request);
 };
 
 }  // namespace gate

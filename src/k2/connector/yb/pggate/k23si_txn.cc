@@ -63,6 +63,24 @@ std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool 
     return result;
 }
 
+std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
+                                                         std::vector<uint32_t> fieldsForUpdate,
+                                                         std::string partitionKey) {
+    k2::dto::Key key{};
+    if (partitionKey != "") {
+        key.schemaName = rec.schema->name;
+        key.partitionKey = partitionKey;
+        key.rangeKey = "";
+    }
+
+    UpdateRequest qr{.mtr = _mtr, .record=std::move(rec), .fieldsForUpdate=std::move(fieldsForUpdate),
+                     .key=std::move(key), .prom={}};
+
+    auto result = qr.prom.get_future();
+    pushQ(updateTxQ, std::move(qr));
+    return result;
+}
+
 const k2::dto::K23SI_MTR& K23SITxn::mtr() const {
     return _mtr;
 }

@@ -53,14 +53,12 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             return;
         }
 
-        // Cached key (ybctid) may only be used with UPDATE
-        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
-            // TODO on next PR
-            throw std::runtime_error("Update not implemented yet");
-        }
-
+        // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
         bool rejectIfExists = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
+        // These two are UDPATE only
+        std::vector<uint32_t> fieldsForUpdate;
+        std::string cachedKey = YBCTIDToString(*writeRequest); // aka ybctid or rowid
 
         // populate the data
         for (const ColumnValue& column : writeRequest->column_values) {
@@ -68,20 +66,33 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
                 throw std::logic_error("Non value type in column_values");
             }
 
+            // Assumes field ids need to be offset by 2 for the implicit tableID and indexID SKV fields
+            // TODO support update on key fields
+            fieldsForUpdate.push_back(column.column_id+2);
             SerializeValueToSKVRecord(*(column.expr->getValue()), record);
         }
 
+        k2::Status writeStatus;
+
         // block-write
-        k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
-        if (writeResult.status.is2xxOK()) {
+        if (writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
+            k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
+            writeStatus = std::move(writeResult.status);
+        } else {
+            k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record), 
+                            std::move(fieldsForUpdate), std::move(cachedKey)).get();
+            writeStatus = std::move(updateResult.status);
+        }
+
+        if (writeStatus.is2xxOK()) {
             response.rows_affected_count = 1;
         } else {
             response.rows_affected_count = 0;
-            response.error_message = writeResult.status.message;
+            response.error_message = writeStatus.message;
             // TODO pg_error_code or txn_error_code in response?
         }
-        response.status = K2StatusToPGStatus(writeResult.status);
-        prom->set_value(K2StatusToYBStatus(writeResult.status));
+        response.status = K2StatusToPGStatus(writeStatus);
+        prom->set_value(K2StatusToYBStatus(writeStatus));
     });
 
     return result;
@@ -120,16 +131,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     // in key_column_values in the request
 
     if (request->ybctid_column_value) {
-        if (!request->ybctid_column_value->isValueType()) {
-            throw std::logic_error("Non value type in ybctid_column_value");
-        }
-
-        std::shared_ptr<SqlValue> value = request->ybctid_column_value->getValue();
-        if (value->type_ != SqlValue::ValueType::SLICE) {
-            throw std::logic_error("ybctid_column_value value is not a Slice");
-        }
-
-        return value->data_->slice_val_.ToBuffer();
+        return YBCTIDToString(*request);
     }
 
     auto [record, status] = MakeSKVRecordWithKeysSerialized(*request);
@@ -210,6 +212,24 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
 
     return std::make_pair(std::move(record), Status());
 }
+
+std::string K2Adapter::YBCTIDToString(SqlOpWriteRequest& request) {
+    if (!request.ybctid_column_value) {
+        return "";
+    }
+
+    if (!request.ybctid_column_value->isValueType()) {
+        throw std::logic_error("Non value type in ybctid_column_value");
+    }
+
+    std::shared_ptr<SqlValue> value = request.ybctid_column_value->getValue();
+    if (value->type_ != SqlValue::ValueType::SLICE) {
+        throw std::logic_error("ybctid_column_value value is not a Slice");
+    }
+
+    return value->data_->slice_val_.ToBuffer();
+}
+
 
 Status K2Adapter::K2StatusToYBStatus(const k2::Status& status) {
     // TODO verify this translation with how the upper layers use the Status, 

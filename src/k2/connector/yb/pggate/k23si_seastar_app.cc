@@ -190,9 +190,24 @@ seastar::future<> PGK2Client::_pollWriteQ() {
     });
 }
 
+seastar::future<> PGK2Client::_pollUpdateQ() {
+    return pollQ(updateTxQ, [this](auto& req) mutable {
+        K2INFO("Update...");
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
+            req.prom.set_value(k2::PartialUpdateResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
+            return seastar::make_ready_future();
+        }
+        return fiter->second.partialUpdate(req.record, std::move(req.fieldsForUpdate), std::move(req.key))
+            .then([this, &req](auto&& updateResult) {
+                req.prom.set_value(std::move(updateResult));
+            });
+    });
+}
+
 seastar::future<> PGK2Client::_pollForWork() {
     return seastar::when_all_succeed(
-        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ());
+        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ());
 }
 
 }  // namespace gate

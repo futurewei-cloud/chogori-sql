@@ -53,11 +53,20 @@ public:
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
     std::future<k2::ReadResult<k2::SKVRecord>> read(k2::dto::SKVRecord&& rec);
 
-    // Writes a record (both partial and full) into K2. The erase flag is used if this write should delete
+    // Writes a record (full) into K2. The erase flag is used if this write should delete
     // the record from K2.
     // The result future is eventually satisfied with the result of the write
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
     std::future<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
+
+    // Writes a partial update (e.g. SQL UPDATE) into K2.
+    // fieldsToUpdate are the indexes of the fields to change, key may be empty in which case the key is 
+    // generated from the SKVRecord or filled in with a previously cached value
+    // The result future is eventually satisfied with the result of the update
+    // Uncaught exceptions may also be propagated and show up as exceptional futures here.
+    std::future<k2::PartialUpdateResult> partialUpdate(k2::dto::SKVRecord&& rec, 
+                                                       std::vector<uint32_t> fieldsForUpdate, 
+                                                       std::string key="");
 
     // Ends the transaction. The transaction can be either committed or aborted.
     // The result future is eventually satisfied with the result of the end operation
