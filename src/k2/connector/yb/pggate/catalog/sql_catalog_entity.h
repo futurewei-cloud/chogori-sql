@@ -157,19 +157,19 @@ class SessionTransactionContext {
 
     void Commit() {
         EndTransaction(true);
-        finished = true;
+        finished_ = true;
     }
 
     void Abort() {
         EndTransaction(false);
-        finished = true;
+        finished_ = true;
     }
 
     private: 
     void EndTransaction(bool should_commit);
 
     std::shared_ptr<K23SITxn> txn_;
-    bool finished;   
+    bool finished_;   
 };
 
 // mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)

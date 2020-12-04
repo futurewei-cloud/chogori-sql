@@ -41,14 +41,14 @@ ClusterInfo::~ClusterInfo() {
 
 SessionTransactionContext::SessionTransactionContext(std::shared_ptr<K23SITxn> txn) {
     txn_ = txn;
-    finished = false;
+    finished_ = false;
 }
 
 SessionTransactionContext::~SessionTransactionContext() {
-    if (!finished) {
+    if (!finished_) {
         // abort the transaction if it has been committed or aborted
         EndTransaction(false);
-        finished = true;
+        finished_ = true;
     }
 }
 
