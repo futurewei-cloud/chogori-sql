@@ -32,6 +32,8 @@
 
 #include "yb/pggate/pg_tuple.h"
 
+#include <k2/dto/SKVRecord.h>
+
 namespace k2pg {
 namespace gate {
     using std::shared_ptr;
@@ -49,7 +51,7 @@ namespace gate {
     using k2pg::sql::TableInfo;
     using k2pg::sql::TableName;
 
-    class SqlOpCondition; 
+    class SqlOpCondition;
 
     // A SQL expression in a WHERE condition.
     // TODO: change to use the Expression defined in K2 SKV
@@ -73,7 +75,7 @@ namespace gate {
         SqlOpExpr(std::shared_ptr<SqlOpCondition> condition) : type_(ExprType::CONDITION), condition_(condition) {
         }
 
-        SqlOpExpr() {       
+        SqlOpExpr() {
         }
 
         ~SqlOpExpr() {
@@ -146,7 +148,7 @@ namespace gate {
     };
 
     class SqlOpCondition {
-        public:  
+        public:
         SqlOpCondition() = default;
         ~SqlOpCondition() = default;
 
@@ -166,7 +168,7 @@ namespace gate {
             return operands_;
         }
 
-        private: 
+        private:
         PgExpr::Opcode op_;
         std::vector<std::shared_ptr<SqlOpExpr>> operands_;
     };
@@ -177,7 +179,7 @@ namespace gate {
 
         ColumnValue(int columnId, std::shared_ptr<SqlOpExpr> expression) : column_id(columnId), expr(expression) {
         };
-        
+
         int column_id;
         std::shared_ptr<SqlOpExpr> expr;
     };
@@ -240,7 +242,7 @@ namespace gate {
             // TODO: not used in K2, remove it
             PGSQL_TRUNCATE_COLOCATED = 5
         };
-        
+
         string client_id;
         int64_t stmt_id;
         StmtType stmt_type;
@@ -281,7 +283,7 @@ namespace gate {
         string error_message;
         std::unique_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
-   
+
         //
         // External statuses.
         //
@@ -295,12 +297,12 @@ namespace gate {
 
         // Transaction error code, obtained by static_cast of TransactionErrorTag::Decode
         // of Status::ErrorData(TransactionErrorTag::kCategory)
-        int32_t txn_error_code;      
+        int32_t txn_error_code;
     };
 
     // template operation that could be cloned and updated for actual PG operations
     class PgOpTemplate {
-        public: 
+        public:
         enum Type {
             WRITE,
             READ,
@@ -317,10 +319,10 @@ namespace gate {
 
         const SqlOpResponse& response() const { return *response_; }
 
-        std::string&& rows_data() { return std::move(rows_data_); }
+        std::vector<k2::dto::SKVRecord>&& rows_data() { return std::move(rows_data_); }
 
         // api to get row_data reference and set the value, for example, using std::string assign() or other ways
-        std::string* mutable_rows_data() { return &rows_data_; }
+        std::vector<k2::dto::SKVRecord>* mutable_rows_data() { return &rows_data_; }
 
         bool IsTransactional() const {
             return table_->schema().table_properties().is_transactional();
@@ -341,7 +343,7 @@ namespace gate {
         void set_active(bool val) {
             is_active_ = val;
         }
-        
+
         std::shared_ptr<TableInfo> getTable() {
             return table_;
         }
@@ -349,7 +351,7 @@ namespace gate {
         protected:
         std::shared_ptr<TableInfo> table_;
         std::unique_ptr<SqlOpResponse> response_;
-        std::string rows_data_;
+        std::vector<k2::dto::SKVRecord> rows_data_; // should be SKVRecord
         bool is_active_ = true;
     };
 
@@ -359,8 +361,8 @@ namespace gate {
 
         ~PgWriteOpTemplate();
 
-        virtual Type type() const { 
-            return WRITE; 
+        virtual Type type() const {
+            return WRITE;
         }
 
         std::shared_ptr<SqlOpWriteRequest> request() const { return write_request_; }
@@ -382,7 +384,7 @@ namespace gate {
         // Does NOT, however, copy response and rows data.
         std::unique_ptr<PgWriteOpTemplate> DeepCopy();
 
-        private: 
+        private:
         std::shared_ptr<SqlOpWriteRequest> write_request_;
         // Whether this operation should be run as a single row txn.
         // Else could be distributed transaction (or non-transactional) depending on target table type.
@@ -396,7 +398,7 @@ namespace gate {
         ~PgReadOpTemplate() {};
 
         std::shared_ptr<SqlOpReadRequest> request() const { return read_request_; }
-  
+
         std::string ToString() const;
 
         bool read_only() const override { return true; };
