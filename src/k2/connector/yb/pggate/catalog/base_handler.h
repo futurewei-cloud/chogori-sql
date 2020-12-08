@@ -46,6 +46,12 @@ class BaseHandler : public std::enable_shared_from_this<BaseHandler> {
 
     RStatus PersistSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record);
 
+    RStatus DeleteSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record);
+
+    RStatus BatchDeleteSKVRecords(std::shared_ptr<SessionTransactionContext> context, std::vector<k2::dto::SKVRecord>& records);
+
+    RStatus SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record, bool isDelete);
+
     protected:
     std::shared_ptr<K2Adapter> k2_adapter_;  
 };

@@ -50,7 +50,7 @@ class ClusterInfoHandler : public BaseHandler {
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
     static inline k2::dto::Schema schema {
-        .name = skv_schema_name_cluster_info,
+        .name = CatalogConsts::skv_schema_name_cluster_info,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "ClusterId", false, false},

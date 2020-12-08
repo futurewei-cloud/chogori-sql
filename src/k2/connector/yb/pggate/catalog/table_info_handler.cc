@@ -33,9 +33,9 @@ namespace catalog {
 
 TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : BaseHandler(k2_adapter),  
-    tablehead_schema_name_(skv_schema_name_sys_catalog_tablehead),
-    tablecolumn_schema_name_(skv_schema_name_sys_catalog_tablecolumn), 
-    indexcolumn_schema_name_(skv_schema_name_sys_catalog_indexcolumn) {
+    tablehead_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablehead),
+    tablecolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablecolumn), 
+    indexcolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_indexcolumn) {
     tablehead_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_tablehead_schema);
     tablecolumn_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_tablecolumn_schema);
     indexcolumn_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_indexcolumn_schema);
@@ -275,20 +275,16 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<SessionT
     // then delete the table metadata itself
     // first, fetch the table columns
     std::vector<k2::dto::SKVRecord> table_columns = FetchTableColumnSchemaSKVRecords(context, collection_name, table->table_id());
-    std::future<Status> columns_future = k2_adapter_->BatchDeleteSKVRecords(context->GetTxn(), table_columns);
-    Status columns_status = columns_future.get();
-    if (!columns_status.ok()) {
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = "Failed to delete table column records for table " + table->table_id();    
+    RStatus columns_result = BatchDeleteSKVRecords(context, table_columns);
+    if (!columns_result.IsSucceeded()) {
+        response.status = std::move(columns_result); 
     } else {
         // fetch table head 
         k2::dto::SKVRecord table_head = FetchTableHeadSKVRecord(context, collection_name, table->table_id());
         // then delete table head record
-        std::future<Status> head_future = k2_adapter_->DeleteSKVRecord(context->GetTxn(), table_head);
-        Status head_status = head_future.get();
-        if (!head_status.ok()) {
-            response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = "Failed to delete table head record for index " + table->table_id();               
+        RStatus head_result = DeleteSKVRecord(context, table_head);
+        if (!head_result.IsSucceeded()) {
+            response.status = std::move(head_result);             
         } else {
             response.status.Succeed();
         }
@@ -312,20 +308,16 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<SessionT
     // fetch index columns first
     std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(context, collection_name, index_id);
     // delete index columns first
-    std::future<Status> columns_future = k2_adapter_->BatchDeleteSKVRecords(context->GetTxn(), index_columns);
-    Status columns_status = columns_future.get();
-    if (!columns_status.ok()) {
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = "Failed to delete index column records for index " + index_id;    
+    RStatus columns_result = BatchDeleteSKVRecords(context, index_columns);
+    if (!columns_result.IsSucceeded()) {
+        response.status = std::move(columns_result);   
     } else {
         // fetch index head 
         k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
         // then delete index head record
-        std::future<Status> head_future = k2_adapter_->DeleteSKVRecord(context->GetTxn(), index_head);
-        Status head_status = head_future.get();
-        if (!head_status.ok()) {
-            response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = "Faild to delete index head record for index " + index_id;               
+        RStatus head_result = DeleteSKVRecord(context, index_head);
+        if (!head_result.IsSucceeded()) {
+            response.status = std::move(head_result);           
         } else {
             response.status.Succeed();
         }
@@ -375,13 +367,13 @@ void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> 
     // "TableId"
     k2::dto::SchemaField table_id_field;
     table_id_field.type = k2::dto::FieldType::STRING;
-    table_id_field.name = TABLE_ID_COLUMN_NAME;
+    table_id_field.name = CatalogConsts::TABLE_ID_COLUMN_NAME;
     schema->fields.push_back(table_id_field);
     schema->partitionKeyFields.push_back(0);
     // "IndexId"
     k2::dto::SchemaField index_id_field;
     index_id_field.type = k2::dto::FieldType::STRING;
-    index_id_field.name = INDEX_ID_COLUMN_NAME;
+    index_id_field.name = CatalogConsts::INDEX_ID_COLUMN_NAME;
     schema->fields.push_back(index_id_field);
     schema->partitionKeyFields.push_back(1);
 }
@@ -712,7 +704,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     std::vector<k2::dto::expression::Value> values;
     std::vector<k2::dto::expression::Expression> exps;
     // find all the indexes for the base table, i.e., by IndexedTableId
-    values.emplace_back(k2::dto::expression::makeValueReference(INDEXED_TABLE_ID_COLUMN_NAME));
+    values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME));
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
@@ -754,7 +746,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     std::vector<k2::dto::expression::Value> values;
     std::vector<k2::dto::expression::Expression> exps;
     // find all the columns for a table by TableId
-    values.emplace_back(k2::dto::expression::makeValueReference(TABLE_ID_COLUMN_NAME));
+    values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::TABLE_ID_COLUMN_NAME));
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
@@ -796,7 +788,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     std::vector<k2::dto::expression::Value> values;
     std::vector<k2::dto::expression::Expression> exps;
     // find all the columns for an index table by TableId
-    values.emplace_back(k2::dto::expression::makeValueReference(TABLE_ID_COLUMN_NAME));
+    values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::TABLE_ID_COLUMN_NAME));
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
