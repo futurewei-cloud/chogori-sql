@@ -199,6 +199,14 @@ class PgColumnRef : public PgExpr {
                        const PgTypeAttrs *type_attrs);
   virtual ~PgColumnRef();
 
+  void set_attr_name(const std::string& name) {
+    attr_name_ = name;
+  }
+
+  const std::string attr_name() const {
+      return attr_name_;
+  }
+
   int attr_num() const {
     return attr_num_;
   }
@@ -207,6 +215,7 @@ class PgColumnRef : public PgExpr {
 
  private:
   int attr_num_;
+  std::string attr_name_;
 };
 
 class PgOperator : public PgExpr {

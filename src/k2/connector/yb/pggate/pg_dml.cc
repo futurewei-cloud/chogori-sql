@@ -372,6 +372,8 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
   if (target->is_colref()) {
     // PgColumnRef
     PgColumnRef *col_ref = static_cast<PgColumnRef *>(target);
+    PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(col_ref->attr_num()));
+    col_ref->set_attr_name(col->attr_name());
     PrepareColumnForRead(col_ref->attr_num(), expr_var);
   } else if (target->is_constant()) {
     // PgConstant
