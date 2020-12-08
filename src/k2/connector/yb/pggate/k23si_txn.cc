@@ -67,7 +67,7 @@ std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
                                                          std::vector<uint32_t> fieldsForUpdate,
                                                          std::string partitionKey) {
     k2::dto::Key key{};
-    if (partitionKey != "") {
+    if (!partitionKey.empty()) {
         key.schemaName = rec.schema->name;
         key.partitionKey = partitionKey;
         key.rangeKey = "";

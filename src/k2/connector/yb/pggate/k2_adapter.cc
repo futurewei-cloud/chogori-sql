@@ -36,7 +36,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     auto prom = std::make_shared<std::promise<Status>>();
     auto result = prom->get_future();
 
-    _tp.enqueue([this, k23SITxn, op, prom] () {
+    _threadPool.enqueue([this, k23SITxn, op, prom] () {
         std::shared_ptr<SqlOpWriteRequest> writeRequest = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -56,21 +56,13 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
         bool rejectIfExists = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
-        // These two are UDPATE only
-        std::vector<uint32_t> fieldsForUpdate;
+        // UDPATE only
         std::string cachedKey = YBCTIDToString(*writeRequest); // aka ybctid or rowid
 
-        // populate the data
-        for (const ColumnValue& column : writeRequest->column_values) {
-            if (!column.expr->isValueType()) {
-                throw std::logic_error("Non value type in column_values");
-            }
-
-            // Assumes field ids need to be offset by 2 for the implicit tableID and indexID SKV fields
-            // TODO support update on key fields
-            fieldsForUpdate.push_back(column.column_id+2);
-            SerializeValueToSKVRecord(*(column.expr->getValue()), record);
-        }
+        // populate the data, fieldsForUpdate is only relevant for UPDATE
+        std::vector<ColumnValue>& values = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE
+                ? writeRequest->column_values : writeRequest->column_new_values;
+        std::vector<uint32_t> fieldsForUpdate = SerializeSKVValueFields(record, values);
 
         k2::Status writeStatus;
 
@@ -211,6 +203,37 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     }
 
     return std::make_pair(std::move(record), Status());
+}
+
+// Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
+std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& record, 
+                                                         std::vector<ColumnValue>& values) {
+    std::vector<uint32_t> fieldsForUpdate;
+    uint32_t nextIndex = record.schema->partitionKeyFields.size() + record.schema->rangeKeyFields.size();
+
+    std::sort(values.begin(), values.end(), [] (const ColumnValue& a, const ColumnValue& b) { 
+        return a.column_id < b.column_id; }
+    );
+
+    for (const ColumnValue& column : values) {
+        if (!column.expr->isValueType()) {
+            throw std::logic_error("Non value type in column_values");
+        }
+
+        // Assumes field ids need to be offset for the implicit tableID and indexID SKV fields
+        uint32_t skvIndex = column.column_id + SKV_FIELD_OFFSET;
+
+        while (nextIndex != skvIndex) {
+            record.skipNext();
+            ++nextIndex;
+        }
+
+        // TODO support update on key fields
+        fieldsForUpdate.push_back(skvIndex);
+        SerializeValueToSKVRecord(*(column.expr->getValue()), record);
+    }
+
+    return fieldsForUpdate;
 }
 
 std::string K2Adapter::YBCTIDToString(SqlOpWriteRequest& request) {

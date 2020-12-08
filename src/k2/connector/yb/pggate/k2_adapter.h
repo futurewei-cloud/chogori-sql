@@ -39,7 +39,8 @@ using yb::Status;
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
  public:
-  K2Adapter():_tp(2, 0) {
+  // TODO make thead pool size configurable and investigate best number of threads
+  K2Adapter():_threadPool(2, 0) {
     _k23si = std::make_shared<K23SIGate>();
   };
 
@@ -57,16 +58,23 @@ class K2Adapter {
 
   private:
   std::shared_ptr<K23SIGate> _k23si;
-  ThreadPool _tp;
+  ThreadPool _threadPool;
 
   std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
 
   std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
+  // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
+  std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record, 
+                                                std::vector<ColumnValue>& values);
+
   void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToYBStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
   static std::string YBCTIDToString(SqlOpWriteRequest& request);
+
+  // We have two implicit fields (tableID and indexID) in the SKV, so this is the offset to get a user field
+  static constexpr uint32_t SKV_FIELD_OFFSET = 2;
 };
 
 }  // namespace gate
