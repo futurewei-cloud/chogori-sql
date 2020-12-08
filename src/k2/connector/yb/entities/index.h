@@ -86,7 +86,7 @@ namespace k2pg {
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
                 ColumnId in_indexed_column_id, std::shared_ptr<PgExpr> in_colexpr)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
-                    indexed_column_id(in_indexed_column_id), colexpr(std::move(colexpr)) {
+                    indexed_column_id(in_indexed_column_id), colexpr(in_colexpr) {
             }
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
@@ -126,8 +126,8 @@ namespace k2pg {
                 bool is_unique, 
                 std::vector<IndexColumn> columns,
                 IndexPermissions index_permissions)
-                : table_id_(table_id),
-                    table_name_(table_name),
+                : table_id_(std::move(table_id)),
+                    table_name_(std::move(table_name)),
                     pg_oid_(pg_oid),
                     indexed_table_id_(indexed_table_id),
                     schema_version_(schema_version),

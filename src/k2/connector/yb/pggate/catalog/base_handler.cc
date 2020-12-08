@@ -36,8 +36,7 @@ BaseHandler::~BaseHandler() {
 
 RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_ptr<k2::dto::Schema> schema) {
     RStatus response;
-    std::future<k2::CreateSchemaResult> result_future = k2_adapter_->CreateSchema(collection_name, schema);
-    k2::CreateSchemaResult result = result_future.get();
+    auto result = k2_adapter_->CreateSchema(collection_name, schema).get();
     if (!result.status.is2xxOK()) {
         LOG(FATAL) << "Failed to create SKV schema for " << schema->name << "in" << collection_name
             << " due to error code " << result.status.code
@@ -51,11 +50,31 @@ RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_pt
 }
 
 RStatus BaseHandler::PersistSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record) {
+    return SaveOrUpdateSKVRecord(context, record, false);
+}
+
+RStatus BaseHandler::DeleteSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record) {
+    return SaveOrUpdateSKVRecord(context, record, true);    
+}
+
+RStatus BaseHandler::BatchDeleteSKVRecords(std::shared_ptr<SessionTransactionContext> context, std::vector<k2::dto::SKVRecord>& records) {
     RStatus response;
-    std::future<k2::WriteResult> result_future = context->GetTxn()->write(std::move(record), true);
-    k2::WriteResult result = result_future.get();
+    for (auto& record : records) {
+        RStatus result = DeleteSKVRecord(context, record);
+        if (!result.IsSucceeded()) {
+            return result;
+        }
+    }
+    response.Succeed();
+    return response;
+}
+
+RStatus BaseHandler::SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record, bool isDelete) {
+    RStatus response;
+    auto result = context->GetTxn()->write(std::move(record), isDelete).get();
     if (!result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to persist SKV record "
+        LOG(FATAL) << "Failed to " << (isDelete ? "Delete" : "Save")
+            <<" SKV record "
             << " due to error code " << result.status.code
             << " and message: " << result.status.message;
         response.code = StatusCode::INTERNAL_ERROR;

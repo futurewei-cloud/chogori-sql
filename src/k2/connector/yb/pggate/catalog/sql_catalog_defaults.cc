@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_DEFAULTS_H
-#define CHOGORI_SQL_DEFAULTS_H
+#include "yb/pggate/catalog/sql_catalog_defaults.h"
 
 #include <string>
 
@@ -30,22 +28,18 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
 
-struct CatalogConsts {
-    static const std::string default_cluster_id;
-    static const std::string skv_collection_name_sql_primary;
-    static const std::string skv_schema_name_cluster_info;
-    static const std::string skv_schema_name_namespace_info;
-    static const std::string skv_schema_name_sys_catalog_tablehead;
-    static const std::string skv_schema_name_sys_catalog_tablecolumn;
-    static const std::string skv_schema_name_sys_catalog_indexcolumn;
+const std::string CatalogConsts::default_cluster_id = "PG_DEFAULT_CLUSTER";
+const std::string CatalogConsts::skv_collection_name_sql_primary = "K2RESVD_COLLECTION_SQL_PRIMARY";
+const std::string CatalogConsts::skv_schema_name_cluster_info = "K2RESVD_SCHEMA_SQL_CLUSTER_INFO";
+const std::string CatalogConsts::skv_schema_name_namespace_info = "K2RESVD_SCHEMA_SQL_NAMESPACE_INFO";
+const std::string CatalogConsts::skv_schema_name_sys_catalog_tablehead = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLEHEAD";
+const std::string CatalogConsts::skv_schema_name_sys_catalog_tablecolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLECOLUMN";
+const std::string CatalogConsts::skv_schema_name_sys_catalog_indexcolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_INDEXCOLUMN";
 
-    static const std::string TABLE_ID_COLUMN_NAME;
-    static const std::string INDEX_ID_COLUMN_NAME;
-    static const std::string INDEXED_TABLE_ID_COLUMN_NAME;
-};
+const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
+const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
+const std::string CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
 
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
-
-#endif //CHOGORI_SQL_DEFAULTS_H     

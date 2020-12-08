@@ -118,7 +118,7 @@ class TableInfoHandler : public BaseHandler {
 
     // schema to store table information for a namespace
     static inline k2::dto::Schema sys_catalog_tablehead_schema {
-        .name = skv_schema_name_sys_catalog_tablehead,
+        .name = CatalogConsts::skv_schema_name_sys_catalog_tablehead,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
@@ -138,7 +138,7 @@ class TableInfoHandler : public BaseHandler {
 
     // schema to store table column schema information
     static inline k2::dto::Schema sys_catalog_tablecolumn_schema {
-        .name = skv_schema_name_sys_catalog_tablecolumn,
+        .name = CatalogConsts::skv_schema_name_sys_catalog_tablecolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
@@ -156,7 +156,7 @@ class TableInfoHandler : public BaseHandler {
 
     // schema to store index column schema information
     static inline k2::dto::Schema sys_catalog_indexcolumn_schema {
-        .name = skv_schema_name_sys_catalog_indexcolumn,
+        .name = CatalogConsts::skv_schema_name_sys_catalog_indexcolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "TableId", false, false},

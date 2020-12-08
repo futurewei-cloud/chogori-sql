@@ -31,8 +31,8 @@ namespace catalog {
 
 NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter) 
     : BaseHandler(k2_adapter), 
-      collection_name_(skv__collection_name_sql_primary), 
-      schema_name_(skv_schema_name_namespace_info) {
+      collection_name_(CatalogConsts::skv_collection_name_sql_primary), 
+      schema_name_(CatalogConsts::skv_schema_name_namespace_info) {
     schema_ptr = std::make_shared<k2::dto::Schema>(schema);
 }
 

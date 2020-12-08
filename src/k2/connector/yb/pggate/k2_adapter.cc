@@ -39,16 +39,6 @@ std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& c
   return k23si_->createScanRead(collectionName, schemaName);   
 }
 
-// delete one SKV record
-std::future<Status> K2Adapter::DeleteSKVRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record) {
-  throw std::logic_error("Not implemented yet");
-}
-
-// delete a batch of SKV records
-std::future<Status> K2Adapter::BatchDeleteSKVRecords(std::shared_ptr<K23SITxn> k23SITxn, std::vector<k2::dto::SKVRecord>& records) {
-  throw std::logic_error("Not implemented yet");
-}
-
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
   // TODO: add implementation
   // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE

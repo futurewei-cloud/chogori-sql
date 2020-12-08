@@ -43,7 +43,7 @@ namespace catalog {
     static yb::Env* default_env;
 
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) : 
-        cluster_id_(default_cluster_id), k2_adapter_(k2_adapter) {
+        cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
         table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter_);
