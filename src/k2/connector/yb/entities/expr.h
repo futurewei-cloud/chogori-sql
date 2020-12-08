@@ -203,7 +203,7 @@ class PgColumnRef : public PgExpr {
     attr_name_ = name;
   }
 
-  const std::string attr_name() const {
+  const std::string& attr_name() const {
       return attr_name_;
   }
 
