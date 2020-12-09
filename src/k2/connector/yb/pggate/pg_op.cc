@@ -51,6 +51,7 @@
 #include "yb/common/type/decimal.h"
 #include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_env.h"
+#include "yb/pggate/catalog/sql_catalog_defaults.h" // for the table/index name constants
 #include <string>
 
 namespace k2pg {
@@ -236,7 +237,14 @@ template<typename T>
 void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result) {
     auto iter = targets_by_name.find(fieldName.c_str());
     if (iter == targets_by_name.end()) {
-        result = Status::OK();
+        if (k2pg::sql::catalog::CatalogConsts::TABLE_ID_COLUMN_NAME == fieldName.c_str() ||
+            k2pg::sql::catalog::CatalogConsts::INDEX_ID_COLUMN_NAME == fieldName.c_str()) {
+            result = Status::OK();
+        }
+        else {
+            LOG(DFATAL) << "Encountered field " << fieldName << ", without target reference";
+            result = STATUS(InternalError, "Encountered field without target reference");
+        }
         return;
     }
     if (!iter->second->is_colref()) {
