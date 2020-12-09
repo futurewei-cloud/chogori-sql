@@ -90,12 +90,15 @@ public:
 
     // End of this batch.
     bool is_eof() const {
-        return nextToConsume_ < 0 || nextToConsume_ >= data_.size();
+        return nextToConsume_ >= data_.size();
     }
 
     // Get the postgres tuple from this batch.
-    CHECKED_STATUS WritePgTuple(const std::vector<PgExpr *>& targets, PgTuple *pg_tuple,
-                                int64_t *row_order);
+    CHECKED_STATUS
+    WritePgTuple(const std::vector<PgExpr *>& targets,
+                 const std::unordered_map<std::string, PgExpr*>& targets_by_name,
+                 PgTuple *pg_tuple,
+                 int64_t *row_order);
 
     // Get system columns' values from this batch.
     // Currently, we only have ybctids, but there could be more.
@@ -119,8 +122,8 @@ private:
     // the size is based on the returning data and thus a list instead of an array is used
     std::list<int64_t> row_orders_;
 
-    // Cursor to the next record to consume, or -1 if there are no records
-    int64_t nextToConsume_ = -1;
+    // Cursor to the next record to consume
+    int64_t nextToConsume_ = 0;
 
     // flag used to tell if the system columns have been processed.
     bool syscol_processed_ = false;

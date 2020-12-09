@@ -57,81 +57,102 @@ namespace k2pg {
 namespace gate {
 using yb::util::Decimal;
 
-void TranslateRegularCol(k2::dto::SKVRecord& rec, int index, const YBCPgTypeEntity *type_entity,
-                         const PgTypeAttrs *type_attrs, PgTuple *pg_tuple) {
+template <typename T>  // static checker to see if a type is numeric (i.e. we can get it out from field by value)
+constexpr bool isNumericType() { return std::is_arithmetic<T>::value || std::is_enum<T>::value; }
+
+// template resolution for types that are not supported
+template <typename T>
+std::enable_if_t<!isNumericType<T>(), Status>
+TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
+    return STATUS(InternalError, "unsupported type for user column");
+}
+
+// translate numeric types (integers, bool, floats)
+template <typename T>
+std::enable_if_t<isNumericType<T>(), Status>
+TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
     switch (type_entity->yb_type) {
         case YB_YQL_DATA_TYPE_INT8: {
-            int8_t val = (int8_t)rec.deserializeField<int32_t>(index).value();
+            int8_t val = (int8_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_INT16: {
-            int16_t val = (int16_t)rec.deserializeField<int32_t>(index).value();
+            int16_t val = (int16_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_INT32: {
-            int32_t val = (int32_t)rec.deserializeField<int32_t>(index).value();
+            int32_t val = (int32_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_INT64: {
-            int64_t val = (int64_t)rec.deserializeField<int64_t>(index).value();
+            int64_t val = (int64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_UINT32: {
-            uint32_t val = (uint32_t)rec.deserializeField<int64_t>(index).value();
+            uint32_t val = (uint32_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_UINT64: {
-            uint64_t val = (uint64_t)rec.deserializeField<int64_t>(index).value();
+            uint64_t val = (uint64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_STRING: {
-            auto opt = rec.deserializeField<k2::String>(index);
-            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(opt.value().c_str(), opt.value().size(), type_attrs));
-            break;
-        }
         case YB_YQL_DATA_TYPE_BOOL: {
-            bool val = rec.deserializeField<bool>(index).value();
+            bool val = (bool)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_FLOAT: {
-            float val = rec.deserializeField<float>(index).value();
+            float val = (float)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_DOUBLE: {
-            double val = rec.deserializeField<double>(index).value();
+            double val = (double)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
-            break;
-        }
-        case YB_YQL_DATA_TYPE_BINARY: {
-            auto opt = rec.deserializeField<k2::String>(index);
-            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(opt.value().c_str(), opt.value().size(), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_TIMESTAMP: {
-            int64_t val = (int64_t)rec.deserializeField<int64_t>(index).value();
+            int64_t val = (int64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
+            break;
+        }
+        default:
+            LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+            return STATUS(InternalError, "unsupported type for user column");
+    }
+    return Status::OK();
+}
+
+// translate k2::String -based types
+template <>
+Status
+TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<k2::String> field, PgTuple* pg_tuple) {
+    switch (type_entity->yb_type) {
+        case YB_YQL_DATA_TYPE_BINARY: {
+            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(field.value().c_str(), field.value().size(), type_attrs));
+            break;
+        }
+        case YB_YQL_DATA_TYPE_STRING: {
+            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(field.value().c_str(), field.value().size(), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_DECIMAL: {
             // TODO use SKV/c++ -native decimal64 type
-            auto opt = rec.deserializeField<k2::String>(index);
-            std::string serialized_decimal(opt.value().c_str(), opt.value().size());
+            std::string serialized_decimal(field.value().c_str(), field.value().size());
             Decimal yb_decimal;
             if (!yb_decimal.DecodeFromComparable(serialized_decimal).ok()) {
                 LOG(FATAL) << "Failed to deserialize DECIMAL from " << serialized_decimal;
-                return;
+                return STATUS(InternalError, "failed to deserialize DECIMAL");
             }
             auto plaintext = yb_decimal.ToString();
 
-            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(plaintext.c_str(), opt.value().size(), type_attrs));
+            pg_tuple->WriteDatum(index, type_entity->yb_to_datum(plaintext.c_str(), field.value().size(), type_attrs));
             break;
         }
         case YB_YQL_DATA_TYPE_VARINT:
@@ -152,59 +173,102 @@ void TranslateRegularCol(k2::dto::SKVRecord& rec, int index, const YBCPgTypeEnti
         case YB_YQL_DATA_TYPE_UINT16:
         default:
             LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+            return STATUS(InternalError, "unsupported type for user column");
     }
+    return Status::OK();
 }
 
-void TranslateColumnRef(const PgColumnRef *target, k2::dto::SKVRecord &rec, PgTuple *pg_tuple) {
-    int attr_num = target->attr_num();  // the attribute number in the schema (1-counted)
-    if (attr_num < 0) {
-        // attr_num < 0 is a type encoding for system/catalog columns. We pull these by name in order
-        // to conform to the SKV schema
-        switch (attr_num) {
-            case static_cast<int>(PgSystemAttrNum::kSelfItemPointer):
-                pg_tuple->syscols()->ctid = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kObjectId):
-                pg_tuple->syscols()->oid = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kMinTransactionId):
-                pg_tuple->syscols()->xmin = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kMinCommandId):
-                pg_tuple->syscols()->cmin = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kMaxTransactionId):
-                pg_tuple->syscols()->xmax = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kMaxCommandId):
-                pg_tuple->syscols()->cmax = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kTableOid):
-                pg_tuple->syscols()->tableoid = rec.deserializeField<int64_t>(target->attr_name()).value();
-                break;
-            case static_cast<int>(PgSystemAttrNum::kYBTupleId): {
-                auto opt = rec.deserializeField<k2::String>(target->attr_name());
-                pg_tuple->Write(&pg_tuple->syscols()->ybctid, (const uint8_t*)opt->c_str(), opt->size());
-                break;
-            }
-            case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId): {
-                auto opt = rec.deserializeField<k2::String>(target->attr_name());
-                pg_tuple->Write(&pg_tuple->syscols()->ybbasectid, (const uint8_t *)opt->c_str(), opt->size());
-                break;
-            }
+template<typename T>
+Status TranslateSysCol(int attr_num, std::optional<T> field, PgTuple* pg_tuple) {
+    return STATUS(InternalError, "unsupported type for system column");
+}
+
+template<>
+Status TranslateSysCol<int64_t>(int attr_num, std::optional<int64_t> field, PgTuple* pg_tuple) {
+    switch (attr_num) {
+        case static_cast<int>(PgSystemAttrNum::kSelfItemPointer):
+            pg_tuple->syscols()->ctid = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kObjectId):
+            pg_tuple->syscols()->oid = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kMinTransactionId):
+            pg_tuple->syscols()->xmin = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kMinCommandId):
+            pg_tuple->syscols()->cmin = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kMaxTransactionId):
+            pg_tuple->syscols()->xmax = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kMaxCommandId):
+            pg_tuple->syscols()->cmax = field.value();
+            break;
+        case static_cast<int>(PgSystemAttrNum::kTableOid):
+            pg_tuple->syscols()->tableoid = field.value();
+            break;
+        default:
+            return STATUS(InternalError, "system column is not int64_t compatible");
+    }
+    return Status::OK();
+}
+
+template <>
+Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field, PgTuple* pg_tuple) {
+    switch (attr_num) {
+        case static_cast<int>(PgSystemAttrNum::kYBTupleId): {
+            k2::String& val = field.value();
+            pg_tuple->Write(&pg_tuple->syscols()->ybctid, (const uint8_t*)val.c_str(), val.size());
+            break;
         }
-    } else {
-        TranslateRegularCol(rec, attr_num-1, target->type_entity(), target->type_attrs(), pg_tuple);
+        case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId): {
+            k2::String& val = field.value();
+            pg_tuple->Write(&pg_tuple->syscols()->ybbasectid, (const uint8_t*)val.c_str(), val.size());
+            break;
+        }
+        default:
+            return STATUS(InternalError, "system column is not string compatible");
+    }
+    return Status::OK();
+}
+
+template<typename T>
+void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result) {
+    auto iter = targets_by_name.find(fieldName.c_str());
+    if (iter == targets_by_name.end()) {
+        result = STATUS(InternalError, "targets_by_name mapping does not contain target field");
+        return;
+    }
+    if (!iter->second->is_colref()) {
+        result= STATUS(InternalError, "Unexpected expression, only column refs supported in SKV");
+        return;
+    }
+    const PgColumnRef* target = (PgColumnRef*)iter->second;
+    int attr_num = target->attr_num();
+
+    if (attr_num < 0) {
+        if (!field) {
+            result= STATUS(InternalError, "Null system column encountered");
+            return;
+        }
+        result = TranslateSysCol(attr_num, std::move(field), pg_tuple);
+    }
+    else {
+        if (!field) {
+            pg_tuple->WriteNull(attr_num-1);
+            result = Status::OK();
+        }
+        else {
+            result = TranslateUserCol(attr_num-1, target->type_entity(), target->type_attrs(), std::move(field), pg_tuple);
+        }
     }
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data) : data_(std::move(data)) {
-    nextToConsume_ = data_.size() -1;
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data, std::list<int64_t>&& row_orders):
     data_(std::move(data)), row_orders_(move(row_orders)) {
-    nextToConsume_ = data_.size() -1;
 }
 
 PgOpResult::~PgOpResult() {
@@ -215,14 +279,9 @@ int64_t PgOpResult::NextRowOrder() {
 }
 
 // Get the postgres tuple from this batch.
-Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, PgTuple *pg_tuple, int64_t *row_order) {
-    for (auto const &target : targets) {
-        if (!target->is_colref()) {
-            return STATUS(InternalError, "Unexpected expression, only column refs supported in SKV");
-        }
-        const PgColumnRef *col_ref = static_cast<const PgColumnRef *>(target);
-        TranslateColumnRef(col_ref, data_[nextToConsume_], pg_tuple);
-    }
+Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
+    Status result;
+    FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result);
 
     if (row_orders_.size()) {
         *row_order = row_orders_.front();
@@ -232,7 +291,7 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, PgTuple *p
     }
     ++nextToConsume_;
 
-    return Status::OK();
+    return result;
 }
 
 // Get system columns' values from this batch.

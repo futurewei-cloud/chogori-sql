@@ -182,15 +182,17 @@ class PgDml : public PgStatement {
   // - "target_desc_" is the table descriptor where data will be read from.
   // - "targets_" are either selected or returned expressions by DML statements.
   std::shared_ptr<PgTableDesc> target_desc_;
-  
-  // reverted this back to still use raw pointer since the all PgExprs have already been 
+
+  // reverted this back to still use raw pointer since the all PgExprs have already been
   // stored in its parent class PgStatement as follows
-  // 
+  //
   // std::list<PgExpr::SharedPtr> exprs_;
   //
   // they would be released once the statement is finished.
   // As a result, we don't need double effort here
   std::vector<PgExpr *> targets_;
+  // helper map over the above vector, maps targets by their attribute names.
+  std::unordered_map<string, PgExpr*> targets_by_name_;
 
   // bind_desc_ is the descriptor of the table whose key columns' values will be specified by the
   // the DML statement being executed.
