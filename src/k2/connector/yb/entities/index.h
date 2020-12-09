@@ -81,23 +81,32 @@ namespace k2pg {
             ColumnId column_id;         // Column id in the index table.
             std::string column_name;    // Column name in the index table - colexpr.MangledName().
             ColumnId indexed_column_id; // Corresponding column id in indexed table.
-            PgExpr colexpr;     // Index expression.
+            std::shared_ptr<PgExpr> colexpr = nullptr;     // Index expression.
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
-                ColumnId in_indexed_column_id, PgExpr in_colexpr)
+                ColumnId in_indexed_column_id, std::shared_ptr<PgExpr> in_colexpr)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
-                indexed_column_id(in_indexed_column_id), colexpr(std::move(colexpr)) {
+                    indexed_column_id(in_indexed_column_id), colexpr(in_colexpr) {
+            }
+
+            explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
+                ColumnId in_indexed_column_id)
+                : column_id(in_column_id), column_name(std::move(in_column_name)),
+                    indexed_column_id(in_indexed_column_id) {
             }
         };
 
         class IndexInfo {
         public:
-            explicit IndexInfo(TableId table_id, TableId indexed_table_id, uint32_t schema_version,
+            explicit IndexInfo(TableId table_id, std::string table_name, uint32_t pg_oid,
+                TableId indexed_table_id, uint32_t schema_version,
                 bool is_unique, std::vector<IndexColumn> columns, size_t hash_column_count,
                 size_t range_column_count, std::vector<ColumnId> indexed_hash_column_ids,
                 std::vector<ColumnId> indexed_range_column_ids, IndexPermissions index_permissions,
                 bool use_mangled_column_name)
                 : table_id_(table_id),
+                table_name_(table_name),
+                pg_oid_(pg_oid),
                 indexed_table_id_(indexed_table_id),
                 schema_version_(schema_version),
                 is_unique_(is_unique),
@@ -109,20 +118,50 @@ namespace k2pg {
                 index_permissions_(index_permissions) {
             }
 
+            explicit IndexInfo(TableId table_id, 
+                std::string table_name, 
+                uint32_t pg_oid,
+                TableId indexed_table_id, 
+                uint32_t schema_version,
+                bool is_unique, 
+                std::vector<IndexColumn> columns,
+                IndexPermissions index_permissions)
+                : table_id_(std::move(table_id)),
+                    table_name_(std::move(table_name)),
+                    pg_oid_(pg_oid),
+                    indexed_table_id_(indexed_table_id),
+                    schema_version_(schema_version),
+                    is_unique_(is_unique),
+                    columns_(std::move(columns)),
+                    // All the index columns are primary keys and we don't manage range keys in PG gate, as a result, 
+                    // we treat all primary keys  as the (hash) partition keys. 
+                    hash_column_count_(columns_.size()),
+                    range_column_count_(0),
+                    index_permissions_(index_permissions) {
+            }
+
             const TableId& table_id() const {
                 return table_id_;
             }
 
+            const std::string& table_name() const {
+                return table_name_;
+            }
+
+            const uint32_t pg_oid() const {
+                return pg_oid_;
+            }
+            
             const TableId& indexed_table_id() const {
                 return indexed_table_id_;
             }
 
-            uint32_t schema_version() const {
-                return schema_version_;
-            }
-
             bool is_unique() const {
                 return is_unique_;
+            }
+
+            const uint32_t version() const {
+                return schema_version_;
             }
 
             const std::vector<IndexColumn>& columns() const {
@@ -193,6 +232,8 @@ namespace k2pg {
 
         private:
             const TableId table_id_;            // Index table id.
+            const std::string table_name_;      // Index table name.
+            const uint32_t pg_oid_;
             const TableId indexed_table_id_;    // Indexed table id.
             const uint32_t schema_version_ = 0; // Index table's schema version.
             const bool is_unique_ = false;      // Whether this is a unique index.

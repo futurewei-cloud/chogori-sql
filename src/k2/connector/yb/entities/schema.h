@@ -243,8 +243,11 @@ namespace sql {
         SortingType sorting_type_;
     };
 
-    class TableProperties{
+    class TableProperties {
         public:
+        TableProperties() = default;
+        ~TableProperties() = default;
+
         bool operator==(const TableProperties& other) const {
             return default_time_to_live_ == other.default_time_to_live_;
         }
@@ -457,6 +460,8 @@ namespace sql {
 
         Result<int> ColumnIndexByName(GStringPiece col_name) const;
 
+        std::pair<bool, ColumnId> FindColumnIdByName(const std::string& col_name) const;
+
         // Returns true if the schema contains nullable columns
         bool has_nullables() const {
             return has_nullables_;
@@ -549,11 +554,11 @@ namespace sql {
 
         static ColumnId first_column_id();
 
-        uint64_t version() const {
+        uint32_t version() const {
             return version_;
         }
 
-        void set_version(uint64_t version) {
+        void set_version(uint32_t version) {
             version_ = version;
         }
 
@@ -590,7 +595,7 @@ namespace sql {
 
         TableProperties table_properties_;
 
-        uint64_t version_;
+        uint32_t version_;
     };
 
     // Helper used for schema creation/editing.

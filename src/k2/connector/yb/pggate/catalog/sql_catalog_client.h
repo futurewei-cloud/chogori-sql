@@ -31,10 +31,11 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/entities/schema.h"
 #include "yb/entities/value.h"
 #include "yb/pggate/pg_env.h"
-#include "yb/pggate/sql_catalog_manager.h"
+#include "yb/pggate/catalog/sql_catalog_manager.h"
 
 namespace k2pg {
 namespace sql {
+namespace catalog {
     
 using yb::Status;
 using k2pg::gate::PgObjectId;
@@ -81,11 +82,11 @@ class SqlCatalogClient {
 
     // Delete the specified table.
     // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.
-    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_id, bool wait = true);  
+    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait = true);  
 
-    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_id, PgOid *base_table_id, bool wait = true);  
+    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait = true);  
 
-    CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_id, std::shared_ptr<TableInfo>* table);
+    CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table);
 
     Result<std::shared_ptr<TableInfo>> OpenTable(const PgOid database_oid, const PgOid table_id) {
         std::shared_ptr<TableInfo> result;
@@ -98,12 +99,13 @@ class SqlCatalogClient {
                                 uint32_t next_oid, uint32_t count,
                                 uint32_t* begin_oid, uint32_t* end_oid);
 
-    CHECKED_STATUS GetCatalogVersion(uint64_t *ysql_catalog_version);
+    CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
     private:  
     std::shared_ptr<SqlCatalogManager> catalog_manager_;
 };
 
+} // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
 

@@ -264,6 +264,14 @@ namespace sql {
         return ColumnId(column_id(column_index));
     }
 
+    std::pair<bool, ColumnId> Schema::FindColumnIdByName(const std::string& column_name) const {
+        size_t column_index = find_column(column_name);
+        if (column_index == Schema::kColumnNotFound) {
+            return std::make_pair<bool, ColumnId>(false, -1);
+        }
+        return std::make_pair<bool, ColumnId>(true, ColumnId(column_id(column_index)));
+    }
+
     ColumnId Schema::first_column_id() {
         return kFirstColumnId;
     }

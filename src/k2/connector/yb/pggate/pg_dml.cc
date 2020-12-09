@@ -347,7 +347,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
   // TODO: generate the row id by calling K2 Adapter to use SKV client to 
   // generate the id in string format from the primary keys
-  throw new std::logic_error("Not implemented yet");
+  throw std::logic_error("Not implemented yet");
 }
 
 bool PgDml::has_aggregate_targets() {

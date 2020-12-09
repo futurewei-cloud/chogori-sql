@@ -222,9 +222,9 @@ Status PgSession::DeleteDBSequences(int64_t db_oid) {
   return Status::OK();  
 }
 
-void PgSession::InvalidateTableCache(const PgObjectId& table_id) {
-  const TableId yb_table_id = table_id.GetYBTableId();
-  table_cache_.erase(yb_table_id);
+void PgSession::InvalidateTableCache(const PgObjectId& table_obj_id) {
+  const TableId pg_table_id = table_obj_id.GetPgTableId();
+  table_cache_.erase(pg_table_id);
 }
 
 void PgSession::StartOperationsBuffering() {
@@ -406,7 +406,7 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
  VLOG(3) << "Loading table descriptor for " << table_id;
-  const TableId yb_table_id = table_id.GetYBTableId();
+  const TableId yb_table_id = table_id.GetPgTableId();
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(yb_table_id);

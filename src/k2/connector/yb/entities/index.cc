@@ -84,15 +84,15 @@ namespace sql {
     // the dependency list does not need to be cached in a member id list for fast access.
     bool IndexInfo::CheckColumnDependency(ColumnId column_id) const {
         for (const IndexColumn &index_col : columns_) {
-            // The protobuf data contains IDs of all columns that this index is referencing.
+            // The index data contains IDs of all columns that this index is referencing.
             // Examples:
             // 1. Index by column
             // - INDEX ON tab (a_column)
-            // - The ID of "a_column" is included in protobuf data.
+            // - The ID of "a_column" is included in index data.
             //
             // 2. Index by expression of column:
             // - INDEX ON tab (j_column->>'field')
-            // - The ID of "j_column" is included in protobuf data.
+            // - The ID of "j_column" is included in index data.
             if (index_col.indexed_column_id == column_id) {
                 return true;
             }

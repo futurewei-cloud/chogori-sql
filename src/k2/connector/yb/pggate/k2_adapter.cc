@@ -26,6 +26,19 @@ Status K2Adapter::Shutdown() {
   return Status::OK();
 }
 
+std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
+  return k23si_->getSchema(collectionName, schemaName, schemaVersion);     
+}
+
+std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
+  return k23si_->createSchema(collectionName, *schema.get());
+}
+
+std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName, 
+                                                     const std::string& schemaName) {
+  return k23si_->createScanRead(collectionName, schemaName);   
+}
+
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
   // TODO: add implementation
   // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
