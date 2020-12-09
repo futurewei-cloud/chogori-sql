@@ -351,7 +351,7 @@ namespace gate {
         protected:
         std::shared_ptr<TableInfo> table_;
         std::unique_ptr<SqlOpResponse> response_;
-        std::vector<k2::dto::SKVRecord> rows_data_; // should be SKVRecord
+        std::vector<k2::dto::SKVRecord> rows_data_;
         bool is_active_ = true;
     };
 
