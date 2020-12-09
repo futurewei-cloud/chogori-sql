@@ -57,6 +57,12 @@ struct ListTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+
+struct CopyTableResult {
+    RStatus status;
+    std::shared_ptr<TableInfo> tableInfo;
+};
+
 struct CheckSKVSchemaResult {
     RStatus status;
     std::shared_ptr<k2::dto::Schema> schema;
@@ -153,6 +159,17 @@ class TableInfoHandler : public BaseHandler {
 
     ListTablesResult ListTables(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded);
 
+    std::vector<std::string> ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded);
+
+    CopyTableResult CopyTable(std::shared_ptr<SessionTransactionContext> target_context,           
+            const std::string& target_namespace_id, 
+            const std::string& target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<SessionTransactionContext> source_context, 
+            const std::string& source_namespace_id, 
+            const std::string& source_namespace_name,
+            const std::string& source_table_id);
+
     CheckSKVSchemaResult CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name, uint32_t version);
 
     CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
@@ -207,6 +224,9 @@ class TableInfoHandler : public BaseHandler {
     std::shared_ptr<TableInfo> BuildTableInfo(std::string namespace_id, std::string namespace_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, k2::dto::SKVRecord& index_head);
+   
+    std::shared_ptr<TableInfo> CloneTableForNewNamespace(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
+            std::string namespace_name, std::string table_id, std::string table_name);
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 

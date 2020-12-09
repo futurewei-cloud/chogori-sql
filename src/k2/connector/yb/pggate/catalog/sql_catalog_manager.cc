@@ -167,7 +167,124 @@ namespace catalog {
     }      
 
     CreateNamespaceResponse SqlCatalogManager::CreateNamespace(const CreateNamespaceRequest& request) {
-        throw std::logic_error("Not implemented yet");
+        CreateNamespaceResponse response;
+        // first check if the namespace has already been created
+        std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
+        // first check from cache
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request.namespaceName);
+        if (namespace_info == nullptr) {
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetCachedNamespaceByName(request.namespaceName);          
+            }             
+        }
+        if (namespace_info != nullptr) {
+            response.status.code = StatusCode::ALREADY_PRESENT;
+            response.status.errorMessage = "Namespace " + request.namespaceName + " has already existed";
+            ns_context->Commit();         
+            return response;
+        } 
+
+        if (request.sourceNamespaceId.empty()) {
+            // no source namespace to copy from
+            // create the new namespace record
+            std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+            new_ns->SetNamespaceId(request.namespaceId);
+            new_ns->SetNamespaceName(request.namespaceName);
+            new_ns->SetNamespaceOid(request.namespaceOid);
+            new_ns->SetNextPgOid(request.nextPgOid.value());
+            // persist the new namespace record
+            AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+            ns_context->Commit();      
+            if (add_result.status.IsSucceeded()) {
+                // cache namespaces by namespace id and namespace name
+                namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+                namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+            } else {
+                response.status = std::move(add_result.status);
+                return response;
+            }
+            response.namespaceInfo = new_ns;
+
+            // create the system table SKV schema for the new namespace
+            std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
+            CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
+            if (table_result.status.IsSucceeded()) {
+                response.status.Succeed();
+            } else {
+                response.status = std::move(table_result.status);
+            }
+            target_context->Commit();        
+        } else {
+            // create a new namespace from a source namespace
+            // check if the source namespace exists
+            std::shared_ptr<NamespaceInfo> source_namespace_info = GetCachedNamespaceById(request.sourceNamespaceId);
+            if (source_namespace_info == nullptr) {
+                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
+                response.status.code = StatusCode::ALREADY_PRESENT;
+                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
+                ns_context->Commit();      
+                return response;
+            } else {
+                // create the new namespace record
+                std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+                new_ns->SetNamespaceId(request.namespaceId);
+                new_ns->SetNamespaceName(request.namespaceName);
+                new_ns->SetNamespaceOid(request.namespaceOid);
+                new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
+                // persist the new namespace record
+                AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+                ns_context->Commit();        
+                if (add_result.status.IsSucceeded()) {
+                    // cache namespaces by namespace id and namespace name
+                    namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+                    namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+                } else {
+                    response.status = std::move(add_result.status);
+                    return response;
+                }
+                response.namespaceInfo = new_ns;
+
+                // create the system table SKV schema for the new namespace
+                std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
+                CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
+                if (!table_result.status.IsSucceeded()) {
+                    response.status = std::move(table_result.status);
+                    target_context->Commit(); 
+                    return response;          
+                }
+
+                std::shared_ptr<SessionTransactionContext> source_context = NewTransactionContext();
+                // get the source table ids
+                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
+                for (auto& source_table_id : table_ids) {
+                    // copy the source table metadata to the target table
+                    CopyTableResult copy_result = table_info_handler_->CopyTable(
+                        target_context, 
+                        new_ns->GetNamespaceId(), 
+                        new_ns->GetNamespaceName(), 
+                        new_ns->GetNamespaceOid(), 
+                        source_context, 
+                        source_namespace_info->GetNamespaceId(), 
+                        source_namespace_info->GetNamespaceName(), 
+                        source_table_id);
+                    if (!copy_result.status.IsSucceeded()) {
+                        response.status = std::move(copy_result.status);
+                        source_context->Commit();
+                        target_context->Commit();
+                        return response;
+                    }
+                }
+                source_context->Commit();
+                target_context->Commit();
+                response.status.Succeed();
+            }
+        }
+
+        return response;
     }
   
     ListNamespacesResponse SqlCatalogManager::ListNamespaces(const ListNamespacesRequest& request) {
@@ -222,7 +339,43 @@ namespace catalog {
     }
 
     DeleteNamespaceResponse SqlCatalogManager::DeleteNamespace(const DeleteNamespaceRequest& request) {
-        throw std::logic_error("Not implemented yet");
+        DeleteNamespaceResponse response;
+        std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
+        // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
+        GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
+        if (result.status.IsSucceeded() && result.namespaceInfo != nullptr) {
+            std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
+            DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(context, namespace_info);
+            if (del_result.status.IsSucceeded()) {
+                // delete all namespace tables and indexes
+                std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
+                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
+                for (auto& table_id : table_ids) {
+                    GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId, 
+                            request.namespaceName, table_id);
+                    if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
+                        // delete table data
+                        table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
+                        // delete table schema metadata
+                        table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
+                   }         
+                }
+                tb_context->Commit();
+
+                // remove namespace from local cache
+                namespace_id_map_.erase(namespace_info->GetNamespaceId());
+                namespace_name_map_.erase(namespace_info->GetNamespaceName()); 
+                response.status.Succeed();      
+            } else {
+                response.status = std::move(del_result.status);
+            }
+        } else {
+            LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
+        }
+        context->Commit();
+        return response;
     }
 
     CreateTableResponse SqlCatalogManager::CreateTable(const CreateTableRequest& request) {
@@ -466,6 +619,51 @@ namespace catalog {
                 context->Abort();
            }
         }
+
+        return response;
+    }
+
+    ListTablesResponse SqlCatalogManager::ListTables(const ListTablesRequest& request) {
+        ListTablesResponse response;
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(request.namespaceName);
+        if (namespace_info == nullptr) {
+            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+            // this could be avoided by use a single or a quorum of catalog managers 
+            std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
+            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
+            ns_context->Commit();
+            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+                // update namespace caches
+                UpdateNamespaceCache(result.namespaceInfos);    
+                // recheck namespace
+                namespace_info = GetCachedNamespaceByName(request.namespaceName);          
+            }          
+        }
+        if (namespace_info == nullptr) {
+            LOG(FATAL) << "Cannot find namespace " << request.namespaceName;
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
+            return response;
+        }
+        response.namespaceId = namespace_info->GetNamespaceId();
+
+        std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
+        try {       
+            ListTablesResult tables_result = table_info_handler_->ListTables(context, namespace_info->GetNamespaceId(), 
+                    namespace_info->GetNamespaceName(), request.isSysTableIncluded);
+            if (tables_result.status.IsSucceeded()) {
+                for (auto& tableInfo :  tables_result.tableInfos) {
+                    response.tableInfos.push_back(std::move(tableInfo));    
+                }   
+                response.status.Succeed();
+            } else {
+                response.status = std::move(tables_result.status);
+            }
+        } catch (const std::exception& e) {
+            response.status.code = StatusCode::RUNTIME_ERROR;
+            response.status.errorMessage = e.what();
+        }
+        context->Commit();
 
         return response;
     }

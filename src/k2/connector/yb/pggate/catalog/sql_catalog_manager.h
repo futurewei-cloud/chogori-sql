@@ -124,6 +124,7 @@ namespace catalog {
     struct CreateNamespaceRequest {
         string namespaceName;
         string namespaceId;
+        uint32_t namespaceOid;
         string sourceNamespaceId;
         string creatorRoleName;
         // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used
@@ -208,6 +209,19 @@ namespace catalog {
         std::shared_ptr<TableInfo> tableInfo;
     };
 
+    struct ListTablesRequest {
+        string namespaceName;
+        // use string match for table name, not used for now
+        string nameFilter;
+        bool isSysTableIncluded = false;
+    };
+
+    struct ListTablesResponse {
+        RStatus status;
+        string namespaceId;
+        std::vector<std::shared_ptr<TableInfo>> tableInfos;
+    };
+
     struct DeleteTableRequest {
         uint32_t namespaceOid;
         uint32_t tableOid;
@@ -277,6 +291,8 @@ namespace catalog {
         CreateIndexTableResponse CreateIndexTable(const CreateIndexTableRequest& request);
         
         GetTableSchemaResponse GetTableSchema(const GetTableSchemaRequest& request);
+
+        ListTablesResponse ListTables(const ListTablesRequest& request);
 
         DeleteTableResponse DeleteTable(const DeleteTableRequest& request);
 
