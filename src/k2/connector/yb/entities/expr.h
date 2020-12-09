@@ -77,7 +77,7 @@ class PgExpr {
 
         // exists
         PG_EXPR_EXISTS,
-        
+
         // Logic operators that take two or more operands.
         PG_EXPR_AND,
         PG_EXPR_OR,
@@ -96,7 +96,7 @@ class PgExpr {
 
         PG_EXPR_GENERATE_ROWID,
     };
-    
+
     typedef std::shared_ptr<PgExpr> SharedPtr;
 
     explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity);
@@ -233,7 +233,7 @@ class PgOperator : public PgExpr {
   const std::vector<PgExpr*> & getArgs() const {
       return args_;
   }
-  
+
   private:
   const string opname_;
   std::vector<PgExpr*> args_;

@@ -104,10 +104,16 @@ Status PgDml::AppendTargetVar(PgExpr *target) {
   // - Bind values for a target of SELECT
   //   SELECT AVG(col + ?) FROM a_table;
   expr_binds_[expr_var] = target;
+  if (!target->is_colref()) {
+      return STATUS(InternalError, "Unexpected expression, only column refs supported in SKV");
+  }
+  // update the name mapping for the targets
+  targets_by_name_[((PgColumnRef*)target)->attr_name()] = target;
+
   return Status::OK();
 }
 
-Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> target_var) 
+Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> target_var)
 {
   // Find column from targeted table.
   PgColumn *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
@@ -334,7 +340,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
     if (rowset.NextRowOrder() <= current_row_order_) {
       // Write row to postgres tuple.
       int64_t row_order = -1;
-      RETURN_NOT_OK(rowset.WritePgTuple(targets_, pg_tuple, &row_order));
+      RETURN_NOT_OK(rowset.WritePgTuple(targets_, targets_by_name_, pg_tuple, &row_order));
       SCHECK(row_order == -1 || row_order == current_row_order_, InternalError,
              "The resulting row are not arranged in indexing order");
 
@@ -350,7 +356,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 }
 
 Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
-  // TODO: generate the row id by calling K2 Adapter to use SKV client to 
+  // TODO: generate the row id by calling K2 Adapter to use SKV client to
   // generate the id in string format from the primary keys
   throw std::logic_error("Not implemented yet");
 }
@@ -383,7 +389,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
     std::shared_ptr<SqlValue> col_val(col_const->getValue()->Clone());
     expr_var->setValue(col_val);
   } else {
-    // PgOperator 
+    // PgOperator
     // we only consider logic expressions for now
     // TODO: add aggregation function support once SKV supports that
     if (target->is_logic_expr()) {
