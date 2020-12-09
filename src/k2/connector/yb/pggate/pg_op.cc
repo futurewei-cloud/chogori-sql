@@ -156,22 +156,6 @@ TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, cons
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(plaintext.c_str(), field.value().size(), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_VARINT:
-        case YB_YQL_DATA_TYPE_INET:
-        case YB_YQL_DATA_TYPE_LIST:
-        case YB_YQL_DATA_TYPE_MAP:
-        case YB_YQL_DATA_TYPE_SET:
-        case YB_YQL_DATA_TYPE_UUID:
-        case YB_YQL_DATA_TYPE_TIMEUUID:
-        case YB_YQL_DATA_TYPE_TUPLE:
-        case YB_YQL_DATA_TYPE_TYPEARGS:
-        case YB_YQL_DATA_TYPE_USER_DEFINED_TYPE:
-        case YB_YQL_DATA_TYPE_FROZEN:
-        case YB_YQL_DATA_TYPE_DATE:  // Not used for PG storage
-        case YB_YQL_DATA_TYPE_TIME:  // Not used for PG storage
-        case YB_YQL_DATA_TYPE_JSONB:
-        case YB_YQL_DATA_TYPE_UINT8:
-        case YB_YQL_DATA_TYPE_UINT16:
         default:
             LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
             return STATUS(InternalError, "unsupported type for user column");
