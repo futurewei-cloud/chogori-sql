@@ -211,9 +211,6 @@ class PgColumnRef : public PgExpr {
     return attr_num_;
   }
 
-  const std::string& attr_name() const {
-      return attr_name_;
-  }
   bool is_ybbasetid() const override;
 
  private:
