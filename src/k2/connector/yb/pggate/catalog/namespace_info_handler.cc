@@ -145,19 +145,11 @@ DeleteNamespaceResult NamespaceInfoHandler::DeleteNamespace(std::shared_ptr<Sess
     k2::dto::SKVRecord record(collection_name_, schema_ptr);
     record.serializeNext<k2::String>(namespace_info->GetNamespaceId());  
     record.serializeNext<k2::String>(namespace_info->GetNamespaceName());  
-    // use signed integers for unsigned integers since SKV does not support them
-    record.serializeNext<int32_t>(namespace_info->GetNamespaceOid());  
-    record.serializeNext<int32_t>(namespace_info->GetNextPgOid());
-    std::future<k2::WriteResult> write_result_future = context->GetTxn()->write(std::move(record), true);
-    k2::WriteResult write_result = write_result_future.get();
-    if (!write_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to add or update SKV record due to error code " << write_result.status.code
-            << " and message: " << write_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(write_result.status.message);
-        return response;  
-    }
-    response.status.Succeed();
+    // use int64_t to represent uint32_t since since SKV does not support them
+    record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());  
+    record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
+    RStatus delete_result = DeleteSKVRecord(context, record);
+    response.status = std::move(delete_result);
     return response;
 }
 

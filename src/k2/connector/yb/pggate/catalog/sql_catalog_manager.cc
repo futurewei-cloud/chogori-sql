@@ -198,13 +198,14 @@ namespace catalog {
             new_ns->SetNextPgOid(request.nextPgOid.value());
             // persist the new namespace record
             AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-            ns_context->Commit();      
             if (add_result.status.IsSucceeded()) {
                 // cache namespaces by namespace id and namespace name
                 namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
                 namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-            } else {
+                ns_context->Commit();      
+           } else {
                 response.status = std::move(add_result.status);
+                ns_context->Abort();      
                 return response;
             }
             response.namespaceInfo = new_ns;
@@ -214,10 +215,12 @@ namespace catalog {
             CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
             if (table_result.status.IsSucceeded()) {
                 response.status.Succeed();
-            } else {
+                target_context->Commit();        
+           } else {
                 response.status = std::move(table_result.status);
-            }
-            target_context->Commit();        
+                target_context->Abort();   
+                return response;     
+           }
         } else {
             // create a new namespace from a source namespace
             // check if the source namespace exists
@@ -237,13 +240,14 @@ namespace catalog {
                 new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
                 // persist the new namespace record
                 AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-                ns_context->Commit();        
                 if (add_result.status.IsSucceeded()) {
                     // cache namespaces by namespace id and namespace name
                     namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
                     namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+                    ns_context->Commit();        
                 } else {
                     response.status = std::move(add_result.status);
+                    ns_context->Abort();        
                     return response;
                 }
                 response.namespaceInfo = new_ns;
@@ -253,7 +257,7 @@ namespace catalog {
                 CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
                 if (!table_result.status.IsSucceeded()) {
                     response.status = std::move(table_result.status);
-                    target_context->Commit(); 
+                    target_context->Abort(); 
                     return response;          
                 }
 
@@ -273,8 +277,8 @@ namespace catalog {
                         source_table_id);
                     if (!copy_result.status.IsSucceeded()) {
                         response.status = std::move(copy_result.status);
-                        source_context->Commit();
-                        target_context->Commit();
+                        source_context->Abort();
+                        target_context->Abort();
                         return response;
                     }
                 }
@@ -355,12 +359,23 @@ namespace catalog {
                             request.namespaceName, table_id);
                     if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
                         // delete table data
-                        table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
+                        DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
+                        if (!tb_data_result.status.IsSucceeded()) {
+                            response.status = std::move(tb_data_result.status);
+                            tb_context->Abort();
+                            return response;
+                        }
                         // delete table schema metadata
-                        table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
+                        DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
+                        if (!tb_metadata_result.status.IsSucceeded()) {
+                            response.status = std::move(tb_metadata_result.status);
+                            tb_context->Abort();
+                            return response;
+                        }
                    }         
                 }
                 tb_context->Commit();
+                context->Commit();
 
                 // remove namespace from local cache
                 namespace_id_map_.erase(namespace_info->GetNamespaceId());
@@ -368,13 +383,14 @@ namespace catalog {
                 response.status.Succeed();      
             } else {
                 response.status = std::move(del_result.status);
+                context->Abort();                
             }
         } else {
             LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
+            context->Commit();
         }
-        context->Commit();
         return response;
     }
 
