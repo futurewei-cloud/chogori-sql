@@ -236,7 +236,7 @@ template<typename T>
 void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result) {
     auto iter = targets_by_name.find(fieldName.c_str());
     if (iter == targets_by_name.end()) {
-        result = STATUS(InternalError, "targets_by_name mapping does not contain target field");
+        result = Status::OK();
         return;
     }
     if (!iter->second->is_colref()) {
