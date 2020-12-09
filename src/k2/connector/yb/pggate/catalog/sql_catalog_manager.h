@@ -344,6 +344,7 @@ namespace catalog {
         std::string cluster_id_;
 
         std::shared_ptr<K2Adapter> k2_adapter_;
+
         // flag to indicate whether init_db is done or not
         std::atomic<bool> init_db_done_{false};
 
