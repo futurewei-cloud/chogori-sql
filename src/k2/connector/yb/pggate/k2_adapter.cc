@@ -26,17 +26,17 @@ Status K2Adapter::Shutdown() {
     return Status::OK();
 }
 
-std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, 
+std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                                             std::shared_ptr<PgReadOpTemplate> op) {
     throw new std::logic_error("Unsupported op template type");
 }
 
-std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, 
+std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
                                              std::shared_ptr<PgWriteOpTemplate> op) {
     auto prom = std::make_shared<std::promise<Status>>();
     auto result = prom->get_future();
 
-    _threadPool.enqueue([this, k23SITxn, op, prom] () {
+    threadPool_.enqueue([this, k23SITxn, op, prom] () {
         std::shared_ptr<SqlOpWriteRequest> writeRequest = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -71,7 +71,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
             writeStatus = std::move(writeResult.status);
         } else {
-            k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record), 
+            k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record),
                             std::move(fieldsForUpdate), std::move(cachedKey)).get();
             writeStatus = std::move(updateResult.status);
         }
@@ -91,16 +91,16 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 }
 
 std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
-  return k23si_->getSchema(collectionName, schemaName, schemaVersion);     
+  return k23si_->getSchema(collectionName, schemaName, schemaVersion);
 }
 
 std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
   return k23si_->createSchema(collectionName, *schema.get());
 }
 
-std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName, 
+std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName) {
-  return k23si_->createScanRead(collectionName, schemaName);   
+  return k23si_->createScanRead(collectionName, schemaName);
 }
 
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
@@ -150,7 +150,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 }
 
 std::future<K23SITxn> K2Adapter::beginTransaction() {
-    return _k23si->beginTxn(k2::K2TxnOptions{});
+    return k23si_->beginTxn(k2::K2TxnOptions{});
 }
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
@@ -182,7 +182,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
 std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request) {
     // TODO names need to be replaced with IDs in the request
-    std::future<k2::GetSchemaResult> schema_f = _k23si->getSchema(request.namespace_name, request.table_name,
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_name, request.table_name,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic
@@ -219,12 +219,12 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
 }
 
 // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
-std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& record, 
+std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                          std::vector<ColumnValue>& values) {
     std::vector<uint32_t> fieldsForUpdate;
     uint32_t nextIndex = record.schema->partitionKeyFields.size() + record.schema->rangeKeyFields.size();
 
-    std::sort(values.begin(), values.end(), [] (const ColumnValue& a, const ColumnValue& b) { 
+    std::sort(values.begin(), values.end(), [] (const ColumnValue& a, const ColumnValue& b) {
         return a.column_id < b.column_id; }
     );
 
@@ -268,7 +268,7 @@ std::string K2Adapter::YBCTIDToString(SqlOpWriteRequest& request) {
 
 
 Status K2Adapter::K2StatusToYBStatus(const k2::Status& status) {
-    // TODO verify this translation with how the upper layers use the Status, 
+    // TODO verify this translation with how the upper layers use the Status,
     // especially the Aborted status
     switch (status.code) {
         case 200: // OK Codes
