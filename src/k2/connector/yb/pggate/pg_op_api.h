@@ -315,9 +315,8 @@ namespace gate {
         virtual std::string ToString() const = 0;
         virtual Type type() const = 0;
         virtual bool read_only() const = 0;
-        virtual bool returns_sidecar() = 0;
 
-        const SqlOpResponse& response() const { return *response_; }
+        SqlOpResponse& response() { return *response_; }
 
         std::vector<k2::dto::SKVRecord>&& rows_data() { return std::move(rows_data_); }
 
@@ -329,7 +328,7 @@ namespace gate {
         }
 
         bool succeeded() const {
-            return response().status == SqlOpResponse::RequestStatus::PGSQL_STATUS_OK;
+            return response_->status == SqlOpResponse::RequestStatus::PGSQL_STATUS_OK;
         }
 
         bool applied() {
@@ -371,9 +370,6 @@ namespace gate {
 
         bool read_only() const override { return false; };
 
-         // TODO check for e.g. returning clause.
-        bool returns_sidecar() override { return true; }
-
         bool IsTransactional() const;
 
         void set_is_single_row_txn(bool is_single_row_txn) {
@@ -402,8 +398,6 @@ namespace gate {
         std::string ToString() const;
 
         bool read_only() const override { return true; };
-
-        bool returns_sidecar() override { return true; }
 
         virtual Type type() const { return READ; }
 

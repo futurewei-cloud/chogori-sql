@@ -301,7 +301,7 @@ class PgSession {
     return runner.ApplyAndFlush(op, ops_count, relation_id, read_time, force_non_bufferable);
   }
 
-  CHECKED_STATUS HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id);
+  CHECKED_STATUS HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id);
 
   // Returns the appropriate session to use, in most cases the one used by the current transaction.
   // read_only - whether this is being done in the context of a read-only operation.

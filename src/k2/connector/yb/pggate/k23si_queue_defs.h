@@ -79,8 +79,17 @@ struct ReadRequest {
 struct WriteRequest {
     k2::dto::K23SI_MTR mtr;
     bool erase = false;
+    bool rejectIfExists = false; // If true, acts like SQL Insert
     k2::SKVRecord record;
     std::promise<k2::WriteResult> prom;
+};
+
+struct UpdateRequest {
+    k2::dto::K23SI_MTR mtr;
+    k2::SKVRecord record;
+    std::vector<uint32_t> fieldsForUpdate;
+    k2::dto::Key key = k2::dto::Key();
+    std::promise<k2::PartialUpdateResult> prom;
 };
 
 // Lock-free mutex
@@ -110,6 +119,7 @@ extern std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 extern std::queue<ScanReadRequest> scanReadTxQ;
 extern std::queue<ReadRequest> readTxQ;
 extern std::queue<WriteRequest> writeTxQ;
+extern std::queue<UpdateRequest> updateTxQ;
 
 // Helper function used to push an item onto a request queue safely.
 template <typename Q, typename Request>
