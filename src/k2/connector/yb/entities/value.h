@@ -101,11 +101,11 @@ public:
   // Construct a SQLValue by copying the value of the given Slice.
   static SqlValue* CopySlice(Slice s);
 
-  bool IsNull() {
+  bool IsNull() const {
       return null_value_;
   }
 
-  bool isBinaryValue() {
+  bool isBinaryValue() const {
       return type_ == ValueType::SLICE;
   }
 

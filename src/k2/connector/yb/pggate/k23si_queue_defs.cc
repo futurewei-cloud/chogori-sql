@@ -34,6 +34,7 @@ std::queue<ReadRequest> readTxQ;
 std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 std::queue<ScanReadRequest> scanReadTxQ;
 std::queue<WriteRequest> writeTxQ;
+std::queue<UpdateRequest> updateTxQ;
 
 } // ns gate
 } // ns k2pg

@@ -55,11 +55,29 @@ std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     return result;
 }
 
-std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase) {
-    WriteRequest qr {.mtr = _mtr, .erase=erase, .record=std::move(rec), .prom={}};
+std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rejectIfExists) {
+    WriteRequest qr{.mtr = _mtr, .erase=erase, .rejectIfExists=rejectIfExists, .record=std::move(rec), .prom={}};
 
     auto result = qr.prom.get_future();
     pushQ(writeTxQ, std::move(qr));
+    return result;
+}
+
+std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
+                                                         std::vector<uint32_t> fieldsForUpdate,
+                                                         std::string partitionKey) {
+    k2::dto::Key key{};
+    if (!partitionKey.empty()) {
+        key.schemaName = rec.schema->name;
+        key.partitionKey = partitionKey;
+        key.rangeKey = "";
+    }
+
+    UpdateRequest qr{.mtr = _mtr, .record=std::move(rec), .fieldsForUpdate=std::move(fieldsForUpdate),
+                     .key=std::move(key), .prom={}};
+
+    auto result = qr.prom.get_future();
+    pushQ(updateTxQ, std::move(qr));
     return result;
 }
 

@@ -419,12 +419,12 @@ void PgSession::DropBufferedOperations() {
   buffered_ops_.clear();
 }
 
-Status PgSession::HandleResponse(const PgOpTemplate& op, const PgObjectId& relation_id) {
+Status PgSession::HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id) {
   if (op.succeeded()) {
     return Status::OK();
   }
 
-  const auto& response = op.response();
+  auto& response = op.response();
   if (response.pg_error_code != 0) {
     // TODO: handle pg error code 
   }
