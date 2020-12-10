@@ -317,6 +317,14 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
   // wait for read to complete
   result.GetStatus();
   
+  int64_t row_count = psql_read->rows_data().size();
+   if (row_count == 0) {
+     return STATUS_SUBSTITUTE(NotFound, "Unable to find relation for sequence $0", seq_oid);   
+  }
+
+  // TODO: refactor the logic to read from a SKV record directly to populate last_val and is_called
+  
+  /*
   // TODO: make sure the response is populated correctly in K2 Adapter
   Slice cursor;
   int64_t row_count = 0;
@@ -326,7 +334,7 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
   }
   size_t read_size = PgOpResult::ReadNumber(&cursor, last_val);
   cursor.remove_prefix(read_size);
-  read_size = PgOpResult::ReadNumber(&cursor, is_called);
+  read_size = PgOpResult::ReadNumber(&cursor, is_called);*/
   return Status::OK();
 }
 
