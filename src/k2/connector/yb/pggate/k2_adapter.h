@@ -40,8 +40,8 @@ using yb::Status;
 class K2Adapter {
  public:
   // TODO make thead pool size configurable and investigate best number of threads
-  K2Adapter():_threadPool(2, 0) {
-    _k23si = std::make_shared<K23SIGate>();
+  K2Adapter():threadPool_(2, 0) {
+    k23si_ = std::make_shared<K23SIGate>();
   };
 
   CHECKED_STATUS Init();
@@ -51,10 +51,10 @@ class K2Adapter {
   std::future<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
 
   std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
-  
-  std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName, 
+
+  std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName);
- 
+
   std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 
   std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
@@ -64,15 +64,15 @@ class K2Adapter {
   std::future<K23SITxn> beginTransaction();
 
   private:
-  std::shared_ptr<K23SIGate> _k23si;
-  ThreadPool _threadPool;
+  std::shared_ptr<K23SIGate> k23si_;
+  ThreadPool threadPool_;
 
   std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
 
   std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
-  std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record, 
+  std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);
 
   void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
