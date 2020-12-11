@@ -70,7 +70,8 @@ class K2Adapter {
   std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
 
-  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request);
+  template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
+  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request);
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);

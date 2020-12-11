@@ -28,7 +28,89 @@ Status K2Adapter::Shutdown() {
 
 std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                                             std::shared_ptr<PgReadOpTemplate> op) {
-    throw new std::logic_error("Unsupported op template type");
+    auto prom = std::make_shared<std::promise<Status>>();
+    auto result = prom->get_future();
+
+    threadPool_.enqueue([this, k23SITxn, op, prom] () {
+        std::shared_ptr<SqlOpReadRequest> request = op->request();
+        SqlOpResponse& response = op->response();
+        response.skipped = false;
+        std::shared_ptr<k2::Query> scan = nullptr;
+
+        if (request->paging_state->query) {
+            scan = request->paging_state->query;
+            if (scan->isDone()) {
+                // TODO how does PG know it is done?
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_OK;
+                prom->set_value(Status());
+                return;
+            }
+        } else {
+            std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->namespace_id, request->table_id);
+            CreateScanReadResult scan_create_result = scan_f.get();
+            if (!scan_create_result.status.is2xxOK()) {
+                response.rows_affected_count = 0;
+                response.status = K2StatusToPGStatus(scan_create_result.status);
+                prom->set_value(K2StatusToYBStatus(scan_create_result.status));
+                return;
+            }
+
+            scan = scan_create_result.query;
+            scan->setReverseDirection(!request->is_forward_scan);
+            if (request->limit > 0) {
+                // TODO, should total_num_rows_read be subtracted from this?
+                scan->setLimit(request->limit);
+            }
+            
+            std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
+            for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
+                if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
+                    throw std::logic_error("Non-projection type in read targets");
+                }
+                k2::String& fieldName = schema->fields[target->getId()+SKV_FIELD_OFFSET].name;
+                scan->addProjection(fieldName);
+            }
+
+            if (request->ybctid_column_value) {
+                // TODO SKV doesn't support ybctid_column_value on query yet
+                throw std::logic_error("Not implemented");
+            }
+            if (request->key_column_values.size()) {
+                auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
+                auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request);
+
+                if (!startStatus.ok() || !endStatus.ok()) {
+                    response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                    response.rows_affected_count = 0;
+                    prom->set_value(std::move(startStatus));
+                    return;
+                }
+
+                scan->startScanRecord = std::move(startRecord);
+                scan->endScanRecord = std::move(endRecord);
+            }
+
+            // TODO where and condition clauses
+        }
+
+        k2::QueryResult scan_result = k23SITxn->scanRead(scan).get();
+        if (request->paging_state) {
+            response.paging_state = std::move(request->paging_state);
+        } else {
+            response.paging_state = std::make_unique<SqlOpPagingState>();
+            response.paging_state->query = scan;
+        }
+
+        response.paging_state->total_num_rows_read += scan_result.records.size();
+        *(op->mutable_rows_data()) = std::move(scan_result.records);
+
+        // TODO secondary index
+
+        response.status = K2StatusToPGStatus(scan_result.status);
+        prom->set_value(K2StatusToYBStatus(scan_result.status));
+    });
+
+    return result;
 }
 
 std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
@@ -104,7 +186,6 @@ std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& c
 }
 
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
-    // TODO: add implementation
     // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
     // 2) call read or write on k23SITxn
     // 3) create create a runner in a thread pool to check the response of the SKV call
@@ -180,8 +261,8 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
     }
 }
 
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request) {
-    // TODO names need to be replaced with IDs in the request
+template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request) {
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce

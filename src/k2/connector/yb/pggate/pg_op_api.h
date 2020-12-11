@@ -33,6 +33,7 @@
 #include "yb/pggate/pg_tuple.h"
 
 #include <k2/dto/SKVRecord.h>
+#include <k2/module/k23si/client/k23si_client.h>
 
 namespace k2pg {
 namespace gate {
@@ -186,9 +187,8 @@ namespace gate {
     };
 
     struct SqlOpPagingState {
-        TableName table_name;
-        // TODO use K2 token
-        string next_token;
+        TableName table_name; // TODO needed?
+        std::shared_ptr<k2::Query> query;
         uint64_t total_num_rows_read;
     };
 
@@ -219,7 +219,7 @@ namespace gate {
         bool distinct = false;
         // indicates if targets field above has aggregation
         bool is_aggregate = false;
-        uint64_t limit;
+        uint64_t limit = 0;
         std::unique_ptr<SqlOpPagingState> paging_state;
         bool return_paging_state = false;
         // Full, global SQL version
@@ -317,7 +317,7 @@ namespace gate {
 
         std::vector<k2::dto::SKVRecord>&& rows_data() { return std::move(rows_data_); }
 
-        // api to get row_data reference and set the value, for example, using std::string assign() or other ways
+        // api to get row_data reference and set the value
         std::vector<k2::dto::SKVRecord>* mutable_rows_data() { return &rows_data_; }
 
         bool IsTransactional() const {
