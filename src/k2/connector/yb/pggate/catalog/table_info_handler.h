@@ -57,6 +57,10 @@ struct ListTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+struct ListTableIdsResult {
+    RStatus status;
+    std::vector<std::string> tableIds;
+};
 
 struct CopyTableResult {
     RStatus status;
@@ -101,7 +105,7 @@ class TableInfoHandler : public BaseHandler {
     ~TableInfoHandler();
 
     // schema to store table information for a namespace
-    static inline k2::dto::Schema sys_catalog_tablehead_schema {
+    static inline k2::dto::Schema sys_catalog_tablehead_schema_ {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablehead,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -121,7 +125,7 @@ class TableInfoHandler : public BaseHandler {
     };
 
     // schema to store table column schema information
-    static inline k2::dto::Schema sys_catalog_tablecolumn_schema {
+    static inline k2::dto::Schema sys_catalog_tablecolumn_schema_ {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablecolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -139,7 +143,7 @@ class TableInfoHandler : public BaseHandler {
     };
 
     // schema to store index column schema information
-    static inline k2::dto::Schema sys_catalog_indexcolumn_schema {
+    static inline k2::dto::Schema sys_catalog_indexcolumn_schema_ {
         .name = CatalogConsts::skv_schema_name_sys_catalog_indexcolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -159,7 +163,7 @@ class TableInfoHandler : public BaseHandler {
 
     ListTablesResult ListTables(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded);
 
-    std::vector<std::string> ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded);
+    ListTableIdsResult ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded);
 
     CopyTableResult CopyTable(std::shared_ptr<SessionTransactionContext> target_context,           
             const std::string& target_namespace_id, 
@@ -224,18 +228,15 @@ class TableInfoHandler : public BaseHandler {
     std::shared_ptr<TableInfo> BuildTableInfo(std::string namespace_id, std::string namespace_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, k2::dto::SKVRecord& index_head);
-   
-    std::shared_ptr<TableInfo> CloneTableForNewNamespace(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
-            std::string namespace_name, std::string table_id, std::string table_name);
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
     std::string tablehead_schema_name_;
     std::string tablecolumn_schema_name_;
     std::string indexcolumn_schema_name_;
-    std::shared_ptr<k2::dto::Schema> tablehead_schema_ptr;  
-    std::shared_ptr<k2::dto::Schema> tablecolumn_schema_ptr;  
-    std::shared_ptr<k2::dto::Schema> indexcolumn_schema_ptr;  
+    std::shared_ptr<k2::dto::Schema> tablehead_schema_ptr_;  
+    std::shared_ptr<k2::dto::Schema> tablecolumn_schema_ptr_;  
+    std::shared_ptr<k2::dto::Schema> indexcolumn_schema_ptr_;  
 };
 
 } // namespace catalog

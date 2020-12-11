@@ -198,29 +198,29 @@ namespace catalog {
             new_ns->SetNextPgOid(request.nextPgOid.value());
             // persist the new namespace record
             AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-            if (add_result.status.IsSucceeded()) {
-                // cache namespaces by namespace id and namespace name
-                namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-                namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-                ns_context->Commit();      
-           } else {
+            if (!add_result.status.IsSucceeded()) {
                 response.status = std::move(add_result.status);
                 ns_context->Abort();      
                 return response;
-            }
+            } 
+
+            // cache namespaces by namespace id and namespace name
+            namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+            namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+            ns_context->Commit();      
             response.namespaceInfo = new_ns;
 
             // create the system table SKV schema for the new namespace
             std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
             CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
-            if (table_result.status.IsSucceeded()) {
-                response.status.Succeed();
-                target_context->Commit();        
-           } else {
-                response.status = std::move(table_result.status);
+            if (!table_result.status.IsSucceeded()) {
+                 response.status = std::move(table_result.status);
                 target_context->Abort();   
                 return response;     
-           }
+            } 
+
+            response.status.Succeed();
+            target_context->Commit();        
         } else {
             // create a new namespace from a source namespace
             // check if the source namespace exists
@@ -231,61 +231,65 @@ namespace catalog {
                 response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
                 ns_context->Commit();      
                 return response;
-            } else {
-                // create the new namespace record
-                std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
-                new_ns->SetNamespaceId(request.namespaceId);
-                new_ns->SetNamespaceName(request.namespaceName);
-                new_ns->SetNamespaceOid(request.namespaceOid);
-                new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
-                // persist the new namespace record
-                AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-                if (add_result.status.IsSucceeded()) {
-                    // cache namespaces by namespace id and namespace name
-                    namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-                    namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-                    ns_context->Commit();        
-                } else {
-                    response.status = std::move(add_result.status);
-                    ns_context->Abort();        
+            } 
+            // create the new namespace record
+            std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+            new_ns->SetNamespaceId(request.namespaceId);
+            new_ns->SetNamespaceName(request.namespaceName);
+            new_ns->SetNamespaceOid(request.namespaceOid);
+            new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
+            // persist the new namespace record
+            AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+            if (!add_result.status.IsSucceeded()) {
+                response.status = std::move(add_result.status);
+                ns_context->Abort();        
+                return response;
+            }
+            // cache namespaces by namespace id and namespace name
+            namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+            namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+            ns_context->Commit();        
+            response.namespaceInfo = new_ns;
+
+            // create the system table SKV schema for the new namespace
+            std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
+            CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
+            if (!table_result.status.IsSucceeded()) {
+                response.status = std::move(table_result.status);
+                target_context->Abort(); 
+                return response;          
+            }
+
+            std::shared_ptr<SessionTransactionContext> source_context = NewTransactionContext();
+            // get the source table ids
+            ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
+            if (!list_table_result.status.IsSucceeded()) {
+                response.status = std::move(list_table_result.status);
+                source_context->Abort();
+                target_context->Abort();
+                return response;
+            }
+            for (auto& source_table_id : list_table_result.tableIds) {
+                // copy the source table metadata to the target table
+                CopyTableResult copy_result = table_info_handler_->CopyTable(
+                    target_context, 
+                    new_ns->GetNamespaceId(), 
+                    new_ns->GetNamespaceName(), 
+                    new_ns->GetNamespaceOid(), 
+                    source_context, 
+                    source_namespace_info->GetNamespaceId(), 
+                    source_namespace_info->GetNamespaceName(), 
+                    source_table_id);
+                if (!copy_result.status.IsSucceeded()) {
+                    response.status = std::move(copy_result.status);
+                    source_context->Abort();
+                    target_context->Abort();
                     return response;
                 }
-                response.namespaceInfo = new_ns;
-
-                // create the system table SKV schema for the new namespace
-                std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
-                CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
-                if (!table_result.status.IsSucceeded()) {
-                    response.status = std::move(table_result.status);
-                    target_context->Abort(); 
-                    return response;          
-                }
-
-                std::shared_ptr<SessionTransactionContext> source_context = NewTransactionContext();
-                // get the source table ids
-                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
-                for (auto& source_table_id : table_ids) {
-                    // copy the source table metadata to the target table
-                    CopyTableResult copy_result = table_info_handler_->CopyTable(
-                        target_context, 
-                        new_ns->GetNamespaceId(), 
-                        new_ns->GetNamespaceName(), 
-                        new_ns->GetNamespaceOid(), 
-                        source_context, 
-                        source_namespace_info->GetNamespaceId(), 
-                        source_namespace_info->GetNamespaceName(), 
-                        source_table_id);
-                    if (!copy_result.status.IsSucceeded()) {
-                        response.status = std::move(copy_result.status);
-                        source_context->Abort();
-                        target_context->Abort();
-                        return response;
-                    }
-                }
-                source_context->Commit();
-                target_context->Commit();
-                response.status.Succeed();
             }
+            source_context->Commit();
+            target_context->Commit();
+            response.status.Succeed();
         }
 
         return response;
@@ -347,50 +351,58 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
-        if (result.status.IsSucceeded() && result.namespaceInfo != nullptr) {
-            std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
-            DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(context, namespace_info);
-            if (del_result.status.IsSucceeded()) {
-                // delete all namespace tables and indexes
-                std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
-                std::vector<std::string> table_ids = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
-                for (auto& table_id : table_ids) {
-                    GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId, 
-                            request.namespaceName, table_id);
-                    if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
-                        // delete table data
-                        DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
-                        if (!tb_data_result.status.IsSucceeded()) {
-                            response.status = std::move(tb_data_result.status);
-                            tb_context->Abort();
-                            return response;
-                        }
-                        // delete table schema metadata
-                        DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
-                        if (!tb_metadata_result.status.IsSucceeded()) {
-                            response.status = std::move(tb_metadata_result.status);
-                            tb_context->Abort();
-                            return response;
-                        }
-                   }         
-                }
-                tb_context->Commit();
-                context->Commit();
-
-                // remove namespace from local cache
-                namespace_id_map_.erase(namespace_info->GetNamespaceId());
-                namespace_name_map_.erase(namespace_info->GetNamespaceName()); 
-                response.status.Succeed();      
-            } else {
-                response.status = std::move(del_result.status);
-                context->Abort();                
-            }
-        } else {
+        if (!result.status.IsSucceeded() || result.namespaceInfo == nullptr) {
             LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
             context->Commit();
         }
+
+        std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
+        DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(context, namespace_info);
+        if (!del_result.status.IsSucceeded()) {
+            response.status = std::move(del_result.status);
+            context->Abort();                
+        }
+            
+        // delete all namespace tables and indexes
+        std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
+        ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
+        if (!list_table_result.status.IsSucceeded()) {
+            response.status = std::move(list_table_result.status);
+            tb_context->Abort();
+            return response;
+        }
+        for (auto& table_id : list_table_result.tableIds) {
+            GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId, 
+                    request.namespaceName, table_id);
+            if (!table_result.status.IsSucceeded() || table_result.tableInfo == nullptr) {
+                response.status = std::move(table_result.status);
+                tb_context->Abort();
+                return response;
+            }         
+            // delete table data
+            DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
+            if (!tb_data_result.status.IsSucceeded()) {
+                response.status = std::move(tb_data_result.status);
+                tb_context->Abort();
+                return response;
+            }
+            // delete table schema metadata
+            DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
+            if (!tb_metadata_result.status.IsSucceeded()) {
+                response.status = std::move(tb_metadata_result.status);
+                tb_context->Abort();
+                return response;
+            }
+        }
+        tb_context->Commit();
+        context->Commit();
+
+        // remove namespace from local cache
+        namespace_id_map_.erase(namespace_info->GetNamespaceId());
+        namespace_name_map_.erase(namespace_info->GetNamespaceName()); 
+        response.status.Succeed();      
         return response;
     }
 
