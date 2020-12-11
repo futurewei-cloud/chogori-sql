@@ -59,7 +59,7 @@ class NamespaceInfoHandler : public BaseHandler {
     public:
     typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
     
-    static inline k2::dto::Schema schema {
+    static inline k2::dto::Schema schema_ {
         .name = CatalogConsts::skv_schema_name_namespace_info,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -90,7 +90,7 @@ class NamespaceInfoHandler : public BaseHandler {
     private:  
     std::string collection_name_;
     std::string schema_name_;
-    std::shared_ptr<k2::dto::Schema> schema_ptr;  
+    std::shared_ptr<k2::dto::Schema> schema_ptr_;  
 };
 
 } // namespace catalog
