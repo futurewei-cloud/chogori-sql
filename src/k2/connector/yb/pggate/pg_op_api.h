@@ -50,6 +50,7 @@ namespace gate {
     using k2pg::sql::SqlValue;
     using k2pg::sql::TableInfo;
     using k2pg::sql::TableName;
+    using k2pg::sql::TableId;
 
     class SqlOpCondition;
 
@@ -198,8 +199,8 @@ namespace gate {
 
         string client_id;
         int64_t stmt_id;
-        NamespaceName namespace_name;
-        TableName table_name;
+        NamespaceId namespace_id;
+        TableId table_id;
         // K2 SKV schema version
         uint64_t schema_version;
         // One of either key_column_values or ybctid_column_value
@@ -230,10 +231,6 @@ namespace gate {
     };
 
     struct SqlOpWriteRequest {
-       SqlOpWriteRequest() = default;
-       ~SqlOpWriteRequest() {
-       };
-
        enum StmtType {
             PGSQL_INSERT = 1,
             PGSQL_UPDATE = 2,
@@ -246,8 +243,8 @@ namespace gate {
         string client_id;
         int64_t stmt_id;
         StmtType stmt_type;
-        NamespaceId namespace_name;
-        TableName table_name;
+        NamespaceId namespace_id;
+        TableName table_id;
         uint64_t schema_version;
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
         std::shared_ptr<SqlOpExpr> ybctid_column_value;

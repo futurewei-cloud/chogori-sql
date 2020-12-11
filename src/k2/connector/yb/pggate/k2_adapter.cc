@@ -182,7 +182,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
 std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request) {
     // TODO names need to be replaced with IDs in the request
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_name, request.table_name,
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic
@@ -192,7 +192,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     }
 
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
-    k2::dto::SKVRecord record(request.namespace_name, schema);
+    k2::dto::SKVRecord record(request.namespace_id, schema);
 
     if (request.ybctid_column_value) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields
@@ -204,7 +204,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         }
     } else {
         // Serialize key data into SKVRecord
-        record.serializeNext<k2::String>(request.table_name);
+        record.serializeNext<k2::String>(request.table_id);
         record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (!expr->isValueType()) {

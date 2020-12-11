@@ -25,8 +25,8 @@ namespace gate {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
-       newRequest->namespace_name = namespace_name;
-       newRequest->table_name = table_name;
+       newRequest->namespace_id = namespace_id;
+       newRequest->table_id = table_id;
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;
        newRequest->ybctid_column_value = ybctid_column_value;
@@ -37,7 +37,7 @@ namespace gate {
        newRequest->distinct = distinct;
        newRequest->is_aggregate = is_aggregate;
        newRequest->limit = limit;
-       newRequest->paging_state = std::move(paging_state);
+       newRequest->paging_state = std::move(paging_state); // TODO should this be moved?
        newRequest->return_paging_state = return_paging_state;
        newRequest->catalog_version = catalog_version;
        newRequest->row_mark_type = row_mark_type;
@@ -45,22 +45,7 @@ namespace gate {
     }
 
     std::unique_ptr<SqlOpWriteRequest> SqlOpWriteRequest::clone() {
-       std::unique_ptr<SqlOpWriteRequest> newRequest = std::make_unique<SqlOpWriteRequest>();
-       newRequest->client_id = client_id;
-       newRequest->stmt_id = stmt_id;
-       newRequest->stmt_type = stmt_type;
-       newRequest->namespace_name = namespace_name;
-       newRequest->table_name = table_name;
-       newRequest->schema_version = schema_version;
-       newRequest->key_column_values = key_column_values;
-       newRequest->ybctid_column_value = ybctid_column_value;
-       newRequest->column_values = column_values;
-       newRequest->column_new_values = column_new_values;
-       newRequest->targets = targets;
-       newRequest->where_expr = where_expr;
-       newRequest->condition_expr = condition_expr;
-       newRequest->catalog_version = catalog_version; 
-       return newRequest;        
+       return std::make_unique<SqlOpWriteRequest>(*this);
     }
 
     PgOpTemplate::PgOpTemplate(const std::shared_ptr<TableInfo>& table)  : table_(table) {
