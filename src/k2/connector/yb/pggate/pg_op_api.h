@@ -187,7 +187,6 @@ namespace gate {
     };
 
     struct SqlOpPagingState {
-        TableName table_name; // TODO needed?
         std::shared_ptr<k2::Query> query;
         uint64_t total_num_rows_read;
     };
@@ -278,6 +277,7 @@ namespace gate {
         RequestStatus status = RequestStatus::PGSQL_STATUS_OK;
         bool skipped;
         string error_message;
+        // If paging_state is nullptr, PG knows the request is done
         std::unique_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
 

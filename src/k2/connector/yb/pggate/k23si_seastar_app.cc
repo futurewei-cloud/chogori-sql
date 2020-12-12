@@ -139,6 +139,13 @@ seastar::future<> PGK2Client::_pollReadQ() {
             req.prom.set_value(k2::ReadResult<k2::dto::SKVRecord>(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::SKVRecord()));
             return seastar::make_ready_future();
         }
+
+        if (!req.key.partitionKey.empty()) {
+            return fiter->second.read(std::move(req.key), std::move(req.collectionName))
+            .then([this, &req](auto&& readResult) {
+                req.prom.set_value(std::move(readResult));
+            });
+        }
         return fiter->second.read(std::move(req.record))
             .then([this, &req](auto&& readResult) {
                 req.prom.set_value(std::move(readResult));

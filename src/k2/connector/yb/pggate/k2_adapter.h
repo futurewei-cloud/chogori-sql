@@ -69,6 +69,10 @@ class K2Adapter {
 
   std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
+  // Helper funcxtion for handleReadOp when ybctid is set in the request
+  void handleSingleKeyRead(std::shared_ptr<K23SITxn> k23SITxn,
+                           std::shared_ptr<PgReadOpTemplate> op,
+                           std::shared_ptr<std::promise<Status>> prom);
 
   template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
   std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request);
@@ -79,7 +83,8 @@ class K2Adapter {
   void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToYBStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
-  static std::string YBCTIDToString(SqlOpWriteRequest& request);
+  template <class T> // Either SqlOpWriteRequest or SqlOpReadRequest
+  static std::string YBCTIDToString(T& request);
 
   // We have two implicit fields (tableID and indexID) in the SKV, so this is the offset to get a user field
   static constexpr uint32_t SKV_FIELD_OFFSET = 2;
