@@ -339,6 +339,10 @@ namespace catalog {
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
                 const Schema& index_schema, bool is_unique, IndexPermissions index_permissions);
 
+        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
+
+        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
+
     private:
         // cluster identifier
         std::string cluster_id_;

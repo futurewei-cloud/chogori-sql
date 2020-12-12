@@ -63,6 +63,11 @@ struct CopySysTablesResult {
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
+struct ListTableIdsResult {
+    RStatus status;
+    std::vector<std::string> tableIds;
+};
+
 struct CopyTableResult {
     RStatus status;
     std::shared_ptr<TableInfo> tableInfo;
@@ -175,7 +180,7 @@ class TableInfoHandler : public BaseHandler {
 
     ListTablesResult ListTables(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded);
 
-    std::vector<std::string> ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded);
+    ListTableIdsResult ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded);
 
     CopySysTablesResult CopySysTables(std::shared_ptr<SessionTransactionContext> target_context, 
             std::string target_namespace_id, 
