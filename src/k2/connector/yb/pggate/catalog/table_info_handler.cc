@@ -207,6 +207,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
 
+    response.status.Succeed();
     return response;    
 }
 
