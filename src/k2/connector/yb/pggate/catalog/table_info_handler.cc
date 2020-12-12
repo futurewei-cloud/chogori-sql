@@ -163,9 +163,9 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         return response;
     }
 
-    std::vector<std::string> table_ids;
     std::shared_ptr<k2::Query> query = create_result.query;
     std::vector<k2::dto::expression::Value> values;
+    // TODO: consider to use the same additional table_id /index_id fields for the fixed system tables
     // find all the tables (not include indexes)
     values.emplace_back(k2::dto::expression::makeValueReference("IsIndex"));
     values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
@@ -220,25 +220,26 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
             const std::string& source_table_id) {
     CopyTableResult response;
     GetTableResult table_result = GetTable(source_context, source_namespace_id, source_namespace_name, source_table_id);
-    if (table_result.status.IsSucceeded()) {
-        if (table_result.tableInfo != nullptr) {
-            std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());   
-            std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_namespace_id,
-                target_namespace_name, target_table_id, table_result.tableInfo->table_name());
-            CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_namespace_id, target_table);
-            if (create_result.status.IsSucceeded()) {
-                response.tableInfo = target_table;
-                response.status.Succeed();
-            } else {
-                response.status = std::move(create_result.status);
-            }  
-        } else {
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find table " + source_table_id;                      
-        }   
-    } else {
+    if (!table_result.status.IsSucceeded()) {
         response.status = std::move(table_result.status);
+        return response;
     }
+    if (table_result.tableInfo == nullptr) {
+        response.status.code = StatusCode::NOT_FOUND;
+        response.status.errorMessage = "Cannot find table " + source_table_id;  
+        return response;                           
+    }
+
+    std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());   
+    std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_namespace_id,
+            target_namespace_name, target_table_id, table_result.tableInfo->table_name());
+    CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_namespace_id, target_table);
+    if (!create_result.status.IsSucceeded()) {
+        response.status = std::move(create_result.status);
+        return response;
+    }
+    response.tableInfo = target_table;
+    response.status.Succeed();
     return response;            
 }
 
