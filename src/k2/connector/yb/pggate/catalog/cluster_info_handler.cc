@@ -33,7 +33,7 @@ ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
     : BaseHandler(k2_adapter), 
       collection_name_(CatalogConsts::skv_collection_name_sql_primary), 
       schema_name_(CatalogConsts::skv_schema_name_cluster_info) {
-    schema_ptr = std::make_shared<k2::dto::Schema>(schema);
+    schema_ptr_ = std::make_shared<k2::dto::Schema>(schema_);
 }
 
 ClusterInfoHandler::~ClusterInfoHandler() {
@@ -41,7 +41,7 @@ ClusterInfoHandler::~ClusterInfoHandler() {
 
 CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     CreateClusterInfoResult response;
-    RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr);
+    RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
     if (!schema_result.IsSucceeded()) {
         response.status = std::move(schema_result);
         return response;
@@ -53,7 +53,7 @@ CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<Se
 
 UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     UpdateClusterInfoResult response;
-    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    k2::dto::SKVRecord record(collection_name_, schema_ptr_);
     record.serializeNext<k2::String>(cluster_info.GetClusterId());  
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());     
@@ -64,7 +64,7 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Se
 
 GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id) {
     GetClusterInfoResult response;
-    k2::dto::SKVRecord record(collection_name_, schema_ptr);
+    k2::dto::SKVRecord record(collection_name_, schema_ptr_);
     record.serializeNext<k2::String>(cluster_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();

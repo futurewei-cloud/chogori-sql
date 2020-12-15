@@ -36,9 +36,9 @@ TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
     tablehead_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablehead),
     tablecolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablecolumn), 
     indexcolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_indexcolumn) {
-    tablehead_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_tablehead_schema);
-    tablecolumn_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_tablecolumn_schema);
-    indexcolumn_schema_ptr = std::make_shared<k2::dto::Schema>(sys_catalog_indexcolumn_schema);
+    tablehead_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_tablehead_schema_);
+    tablecolumn_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_tablecolumn_schema_);
+    indexcolumn_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_indexcolumn_schema_);
 }
 
 TableInfoHandler::~TableInfoHandler() {
@@ -47,19 +47,19 @@ TableInfoHandler::~TableInfoHandler() {
 CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name) {
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
-    CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr);
+    CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr_);
     if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
     }
 
-    result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr);
+    result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr_);
      if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
     }
    
-    result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr);
+    result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr_);
      if (!result.status.IsSucceeded()) {
         response.status = std::move(result.status);
         return response;
@@ -132,9 +132,118 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionCont
     
 ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, bool isSysTableIncluded) {
     ListTablesResult response;
-
+    ListTableIdsResult list_result = ListTableIds(context, namespace_id, isSysTableIncluded);
+    if (!list_result.status.IsSucceeded()) {
+        response.status = std::move(list_result.status);
+        return response;
+    }
+    for (auto& table_id : list_result.tableIds) {
+        GetTableResult result = GetTable(context, namespace_id, namespace_name, table_id);
+        if (!result.status.IsSucceeded()) {
+            response.status = std::move(result.status);
+            return response;
+        }
+        response.tableInfos.push_back(std::move(result.tableInfo));    
+    }
+    response.status.Succeed();
     return response;
 }
+
+ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, bool isSysTableIncluded) {
+    ListTableIdsResult response;
+    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(namespace_id, tablehead_schema_name_);
+    CreateScanReadResult create_result = create_result_future.get();
+    if (!create_result.status.is2xxOK()) {       
+        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message;                                          
+        std::ostringstream oss;
+        oss << "Failed to create scan read for " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << create_result.status.message;
+        response.status.code = StatusCode::INTERNAL_ERROR;
+        response.status.errorMessage = std::move(oss.str());
+        return response;
+    }
+
+    std::shared_ptr<k2::Query> query = create_result.query;
+    std::vector<k2::dto::expression::Value> values;
+    // TODO: consider to use the same additional table_id /index_id fields for the fixed system tables
+    // find all the tables (not include indexes)
+    values.emplace_back(k2::dto::expression::makeValueReference("IsIndex"));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
+    k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), {});
+    query->setFilterExpression(std::move(filterExpr));
+    do {
+        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
+        k2::QueryResult query_result = query_result_future.get();
+        if (!query_result.status.is2xxOK()) {
+            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message;
+            std::ostringstream oss;
+            oss << "Failed to scan " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << query_result.status.message;
+            response.status.code = StatusCode::INTERNAL_ERROR;
+            response.status.errorMessage = std::move(oss.str());
+            return response;
+        }
+
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                // deserialize table head
+                // TableId
+                std::string table_id = record.deserializeNext<k2::String>().value();
+                // TableName
+                record.skipNext();
+                // TableOid
+                record.skipNext();
+                // IsSysTable
+                bool is_sys_table = record.deserializeNext<bool>().value();
+                if (isSysTableIncluded) {
+                    response.tableIds.push_back(std::move(table_id));
+                } else {
+                    if (!is_sys_table) {
+                        response.tableIds.push_back(std::move(table_id));                       
+                    }
+                }
+            } 
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+
+    response.status.Succeed();
+    return response;    
+}
+
+CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionContext> target_context, 
+            const std::string& target_namespace_id, 
+            const std::string& target_namespace_name, 
+            uint32_t target_namespace_oid,
+            std::shared_ptr<SessionTransactionContext> source_context, 
+            const std::string& source_namespace_id, 
+            const std::string& source_namespace_name,
+            const std::string& source_table_id) {
+    CopyTableResult response;
+    GetTableResult table_result = GetTable(source_context, source_namespace_id, source_namespace_name, source_table_id);
+    if (!table_result.status.IsSucceeded()) {
+        response.status = std::move(table_result.status);
+        return response;
+    }
+    if (table_result.tableInfo == nullptr) {
+        response.status.code = StatusCode::NOT_FOUND;
+        response.status.errorMessage = "Cannot find table " + source_table_id;  
+        return response;                           
+    }
+
+    std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());   
+    std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_namespace_id,
+            target_namespace_name, target_table_id, table_result.tableInfo->table_name());
+    CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_namespace_id, target_table);
+    if (!create_result.status.IsSucceeded()) {
+        response.status = std::move(create_result.status);
+        return response;
+    }
+    response.tableInfo = target_table;
+    response.status.Succeed();
+    return response;            
+}
+
 
 CheckSKVSchemaResult TableInfoHandler::CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name, uint32_t version) {
     CheckSKVSchemaResult response;
@@ -672,7 +781,7 @@ DataType TableInfoHandler::ToSqlType(k2::dto::FieldType type) {
 }
 
 k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string table_id) {
-    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr);
+    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
     // table_id is the primary key
     record.serializeNext<k2::String>(table_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
