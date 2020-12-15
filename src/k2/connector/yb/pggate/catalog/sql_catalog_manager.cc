@@ -390,7 +390,7 @@ namespace catalog {
         DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(ns_context, namespace_info);
         if (!del_result.status.IsSucceeded()) {
             response.status = std::move(del_result.status);
-            tb_context->Commit();
+            tb_context->Abort();
             ns_context->Abort();  
             return response;              
         }
