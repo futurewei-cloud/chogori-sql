@@ -9,7 +9,7 @@
 //
 
 #include "yb/pggate/k2_adapter.h"
-
+#include "yb/pggate/pg_gate_defaults.h"
 namespace k2pg {
 namespace gate {
 
@@ -150,7 +150,12 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 }
 
 std::future<K23SITxn> K2Adapter::beginTransaction() {
-    return k23si_->beginTxn(k2::K2TxnOptions{});
+    k2::K2TxnOptions options{};
+    // use default values for now
+    // TODO: read from configuration/env files
+    options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
+    options.priority = k2::dto::TxnPriority::Medium;
+    return k23si_->beginTxn(options);
 }
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
