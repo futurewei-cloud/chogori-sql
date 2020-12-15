@@ -206,7 +206,6 @@ namespace catalog {
             // cache namespaces by namespace id and namespace name
             namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
             namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-            ns_context->Commit();      
             response.namespaceInfo = new_ns;
 
             // create the system table SKV schema for the new namespace
@@ -214,12 +213,14 @@ namespace catalog {
             CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
             if (!table_result.status.IsSucceeded()) {
                 response.status = std::move(table_result.status);
-                target_context->Abort();   
+                target_context->Abort();  
+                ns_context->Abort();       
                 return response;     
             } 
 
-            response.status.Succeed();
             target_context->Commit();        
+            ns_context->Commit();      
+            response.status.Succeed();
         } else {
             // create a new namespace from a source namespace
             // check if the source namespace exists
@@ -244,7 +245,6 @@ namespace catalog {
                 ns_context->Abort();        
                 return response;
             }
-            ns_context->Commit();        
             // cache namespaces by namespace id and namespace name
             namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
             namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
@@ -256,6 +256,7 @@ namespace catalog {
             if (!table_result.status.IsSucceeded()) {
                 response.status = std::move(table_result.status);
                 target_context->Abort(); 
+                ns_context->Abort();        
                 return response;          
             }
 
@@ -266,6 +267,7 @@ namespace catalog {
                 response.status = std::move(list_table_result.status);
                 source_context->Abort();
                 target_context->Abort();
+                ns_context->Abort();        
                 return response;
             }
             for (auto& source_table_id : list_table_result.tableIds) {
@@ -283,11 +285,13 @@ namespace catalog {
                     response.status = std::move(copy_result.status);
                     source_context->Abort();
                     target_context->Abort();
+                    ns_context->Abort();        
                     return response;
                 }
             }
             source_context->Commit();
             target_context->Commit();
+            ns_context->Commit();        
             response.status.Succeed();
         }
 
@@ -350,20 +354,15 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
+        context->Commit();
         if (!result.status.IsSucceeded() || result.namespaceInfo == nullptr) {
             LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
-            context->Commit();
+            return response;
         }
-
         std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
-        DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(context, namespace_info);
-        if (!del_result.status.IsSucceeded()) {
-            response.status = std::move(del_result.status);
-            context->Abort();                
-        }
-            
+           
         // delete all namespace tables and indexes
         std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
         ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
@@ -395,8 +394,17 @@ namespace catalog {
                 return response;
             }
         }
+        
+        std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
+        DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(ns_context, namespace_info);
+        if (!del_result.status.IsSucceeded()) {
+            response.status = std::move(del_result.status);
+            tb_context->Abort();
+            ns_context->Abort();  
+            return response;              
+        }
         tb_context->Commit();
-        context->Commit();
+        ns_context->Commit();
 
         // remove namespace from local cache
         namespace_id_map_.erase(namespace_info->GetNamespaceId());
