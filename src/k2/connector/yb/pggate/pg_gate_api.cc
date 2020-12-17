@@ -8,6 +8,8 @@
 #include "yb/pggate/pg_gate_thread_local_vars.h"
 #include "yb/pggate/pg_gate_impl.h"
 
+#include <glog/logging.h>
+
 namespace k2pg {
 namespace gate {
 
@@ -37,6 +39,7 @@ void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbac
     api_impl_shutdown_done.exchange(false);
     api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
     VLOG(1) << "K2 PgGate open";
+    LOG(INFO) << "K2 PgGate open";
 }
 
 void YBCDestroyPgGate() {
@@ -47,6 +50,7 @@ void YBCDestroyPgGate() {
         api_impl = nullptr; // YBCPgIsYugaByteEnabled() must return false from now on.
         delete local_api_impl;
         VLOG(1) << __PRETTY_FUNCTION__ << " finished";
+        LOG(INFO) << "K2 PgGate destroyed";
     }
 }
 
