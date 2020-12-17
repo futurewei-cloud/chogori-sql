@@ -189,15 +189,17 @@ namespace k2pg
     {
       if (bind_condition_expr_var_ == nullptr)
       {
-        bind_condition_expr_var_ = read_req->condition_expr;
-        if (bind_condition_expr_var_ == nullptr)
-        {
-          bind_condition_expr_var_ = std::make_shared<SqlOpCondition>();
+        if (read_req->condition_expr == nullptr) {
+          read_req->condition_expr = std::make_shared<SqlOpCondition>();
+          read_req->condition_expr->setOp(PgExpr::Opcode::PG_EXPR_AND);
         }
-        bind_condition_expr_var_->setOp(PgExpr::Opcode::PG_EXPR_AND);
+        bind_condition_expr_var_ = read_req->condition_expr;
       }
 
-      return bind_condition_expr_var_;
+      std::shared_ptr<SqlOpCondition> new_condition = std::make_shared<SqlOpCondition>();
+      std::shared_ptr<SqlOpExpr> new_operand = std::make_shared<SqlOpExpr>(new_condition);
+      bind_condition_expr_var_->addOperand(new_operand);
+      return new_operand->getCondition();
     }
 
   } // namespace gate
