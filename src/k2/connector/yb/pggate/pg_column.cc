@@ -195,9 +195,13 @@ namespace k2pg
           bind_condition_expr_var_ = std::make_shared<SqlOpCondition>();
         }
         bind_condition_expr_var_->setOp(PgExpr::Opcode::PG_EXPR_AND);
+        return bind_condition_expr_var_;
       }
 
-      return bind_condition_expr_var_;
+      std::shared_ptr<SqlOpCondition> new_condition = std::make_shared<SqlOpCondition>();
+      std::shared_ptr<SqlOpExpr> new_operand = std::make_shared<SqlOpExpr>(new_condition);
+      bind_condition_expr_var_->addOperand(new_operand);
+      return new_operand->getCondition();
     }
 
   } // namespace gate
