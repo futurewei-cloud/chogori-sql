@@ -133,6 +133,9 @@ namespace sql {
             return is_sys_table_;
         }
 
+        static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
+            std::string namespace_name, std::string table_id, std::string table_name);
+
         private:        
         TableIdentifier table_id_;
         // PG internal object id
