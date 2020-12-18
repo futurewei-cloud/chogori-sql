@@ -67,6 +67,17 @@ namespace gate {
             ALIAS_ID,
             CONDITION,
         };
+        friend std::ostream& operator<<(std::ostream& os, const ExprType& expr) {
+            switch(expr) {
+                case ExprType::VALUE: return os << "VALUE";
+                case ExprType::LIST_VALUES: return os << "LIST_VALUES";
+                case ExprType::COLUMN_ID: return os << "COLUMN_ID";
+                case ExprType::BIND_ID: return os << "BIND_ID";
+                case ExprType::ALIAS_ID: return os << "ALIAS_ID";
+                case ExprType::CONDITION: return os << "CONDITION";
+                default: return os << "UNKNOWN";
+            }
+        }
 
         SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {
         }

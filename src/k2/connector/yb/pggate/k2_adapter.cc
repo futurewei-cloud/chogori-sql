@@ -9,6 +9,7 @@
 //
 
 #include "yb/pggate/k2_adapter.h"
+#include <k2/common/Log.h>
 
 namespace k2pg {
 namespace gate {
@@ -18,11 +19,141 @@ using k2::K2TxnOptions;
 
 Status K2Adapter::Init() {
     // TODO: add implementation
+    K2INFO("Initialize adapter");
     return Status::OK();
 }
 
 Status K2Adapter::Shutdown() {
     // TODO: add implementation
+    K2INFO("Shutdown adapter");
+    return Status::OK();
+}
+
+// this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
+// didBranch: output param. If this condition causes a branch (e.g. it has some sort of inequality),
+// then we set the didBranch output param so that the top-level processor knows that we can't build
+// more of the key prefix.
+// lastColId: is an input/output param. We check against it to make sure we haven't seen the current field yet,
+// and we set it to the current field if we are about to process it.
+Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
+                           k2::dto::SKVRecord& start, k2::dto::SKVRecord& end,
+                           bool& didBranch, int& lastColId) {
+    auto& ops = cond->getOperands();
+    // we expect 2 nested expressions except for BETWEEN which has 3
+    int expectedExpressions = cond->getOp() == PgExpr::Opcode::PG_EXPR_BETWEEN ? 3: 2;
+    if (ops.size() != expectedExpressions) {
+        const char* msg = "leaf condition wrong number of operands";
+        K2ERROR(msg << ", got " << ops.size() << ", expected=" << expectedExpressions);
+        return STATUS(InvalidCommand, msg);
+    }
+    // first operand is col reference expression
+    if (ops[0]->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
+        const char* msg = "1st expression in leaf condition must be a column reference";
+        K2ERROR(msg << ", got " << ops[0]->getType());
+        return STATUS(InvalidCommand, msg);
+    }
+
+    int colId = ops[0]->getId();
+    // make sure we're working on a prefix of the key
+    if (colId <= lastColId) {
+        const char* msg = "column reference in leaf condition is for an already processed field";
+        K2ERROR(msg << ", got " << colId << ", lastColId=" << lastColId);
+        return STATUS(InvalidCommand, msg);
+    }
+    // update the output param
+    lastColId = colId;
+    int skvId = colId +2;
+    // rewind the cursor if necessary. Ideally, the fields come in order so this should be a no-op
+    start.seekField(skvId);
+    end.seekField(skvId);
+
+    switch (cond->getOp()) {
+        case PgExpr::Opcode::PG_EXPR_EQ: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in EQ leaf condition must be a value";
+                K2ERROR(msg << ", got " << ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // non-branching case. Set the value here in both start and end keys as we're limiting both bounds
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_GE: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in GE leaf condition must be a value";
+                K2ERROR(msg << ", got " << ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can only set the lower bound
+            didBranch = true;
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_LE: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in LE leaf condition must be a value";
+                K2ERROR(msg << ", got " << ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can only set the upper bound
+            didBranch = true;
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_BETWEEN: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE || ops[2]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd and 3rd expressions in BETWEEN leaf condition must be values";
+                K2ERROR(msg << ", got " << ops[1]->getType() << ", and " << ops[2]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can set both bounds but no further prefix is possible
+            didBranch = true;
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            K2Adapter::SerializeValueToSKVRecord(*(ops[2]->getValue()), end);
+            break;
+        }
+        default: {
+            const char* msg = "Expression Condition must be one of [BETWEEN, EQ, GE, LE]";
+            K2ERROR(msg);
+            return STATUS(InvalidCommand, msg);
+        }
+    }
+    return Status();
+}
+
+// this method processes the given top-level condition and sets the start/end boundaries based on the condition
+Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
+                           k2::dto::SKVRecord& start, k2::dto::SKVRecord& end) {
+    // the top level condition must be AND
+    if (condition_expr->getOp() != PgExpr::Opcode::PG_EXPR_AND) {
+        const char* msg = "Only AND top-level condition is supported in condition expression";
+        K2ERROR(msg);
+        return STATUS(InvalidCommand, msg);
+    }
+
+    int lastColId = -1; // make sure we're setting the key fields in increasing order
+    bool didBranch = false;
+    for (auto& expr: condition_expr->getOperands()) {
+        if (didBranch) {
+            // there was a branch in the processing of previous condition and we cannot continue.
+            // Ideally, this shouldn't happen if the query parser did its job well.
+            // This is not an error, and so we can still process the request. PG would down-filter the result set after
+            K2WARN("Condition branched at previous key field. Cannot process further expressions");
+            continue; // keep going so that we log all skipped expressions;
+        }
+        if (expr->getType() != SqlOpExpr::ExprType::CONDITION) {
+            const char* msg = "First-level nested expression must be of type Condition";
+            K2ERROR(msg);
+            return STATUS(InvalidCommand, msg);
+        }
+        auto cond = expr->getCondition();
+        auto status = handleLeafCondition(expr->getCondition(), start, end, didBranch, lastColId);
+        if (!status.ok()) {
+            return status;
+        }
+    }
+
     return Status::OK();
 }
 
@@ -30,6 +161,7 @@ Status K2Adapter::Shutdown() {
 void K2Adapter::handleSingleKeyRead(std::shared_ptr<K23SITxn> k23SITxn,
                                     std::shared_ptr<PgReadOpTemplate> op,
                                     std::shared_ptr<std::promise<Status>> prom) {
+
     std::shared_ptr<SqlOpReadRequest> request = op->request();
     SqlOpResponse& response = op->response();
 
@@ -65,9 +197,18 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
+            // TODO this secondary index request seems like a yb-only optimization and so should be safe to ignore
+            // while still supporting secondary indices. We'll assert here anyway to see if it triggers a failure
+            if (request->index_request) {
+                K2ERROR("Scan read with index_request is not supported");
+                prom->set_exception(std::make_exception_ptr(std::runtime_error("index request detected")));
+                return;
+            }
+
             std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->namespace_id, request->table_id);
             CreateScanReadResult scan_create_result = scan_f.get();
             if (!scan_create_result.status.is2xxOK()) {
+                K2ERROR("Unable to create scan read request");
                 response.rows_affected_count = 0;
                 response.status = K2StatusToPGStatus(scan_create_result.status);
                 prom->set_value(K2StatusToYBStatus(scan_create_result.status));
@@ -76,36 +217,54 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
 
             scan = scan_create_result.query;
             scan->setReverseDirection(!request->is_forward_scan);
-            
+
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
             for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
                 if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
-                    throw std::logic_error("Non-projection type in read targets");
+                    prom->set_exception(std::make_exception_ptr(std::logic_error("Non-projection type in read targets")));
+                    return;
                 }
                 k2::String& fieldName = schema->fields[target->getId()+SKV_FIELD_OFFSET].name;
                 scan->addProjection(fieldName);
             }
 
-            if (request->key_column_values.size()) {
-                auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
-                auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request);
+            // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
+            auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
+            auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request);
 
-                if (!startStatus.ok() || !endStatus.ok()) {
-                    // An error here means the schema could not be retrieved, which shouldn't happen
-                    // because the schema would have been used to make the original query
-                    response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
-                    response.rows_affected_count = 0;
-                    prom->set_value(std::move(startStatus));
-                    return;
-                }
-
-                scan->startScanRecord = std::move(startRecord);
-                scan->endScanRecord = std::move(endRecord);
+            if (!startStatus.ok() || !endStatus.ok()) {
+                // An error here means the schema could not be retrieved, which shouldn't happen
+                // because the schema would have been used to make the original query
+                K2ERROR("Scan request cannot create SKVRecords due to: " << startStatus << " ;;; " << endStatus);
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                response.rows_affected_count = 0;
+                prom->set_value(std::move(startStatus.ok() ? endStatus : startStatus));
+                return;
             }
 
-            // TODO where and condition clauses
+            // update the records based on the condition expression found in the request
+            auto parseStatus = parseCondExprAsRange_(request->condition_expr, startRecord, endRecord);
+            if (!parseStatus.ok()) {
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                response.rows_affected_count = 0;
+                prom->set_value(std::move(parseStatus));
+                return;
+            }
+
+            scan->startScanRecord = std::move(startRecord);
+            scan->endScanRecord = std::move(endRecord);
+
+            // TODO apply the where clause as a filter expression in the scan
+            if (request->where_expr) {
+                K2ERROR("Read request with where_expr is not supported.");
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                response.rows_affected_count = 0;
+                prom->set_value(std::move(startStatus));
+                return;
+            }
         }
 
+        // this is a per-page limit.
         if (request->limit > 0) {
             scan->setLimit(request->limit);
         }
@@ -123,8 +282,6 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
 
         *(op->mutable_rows_data()) = std::move(scan_result.records);
-
-        // TODO secondary index
 
         response.status = K2StatusToPGStatus(scan_result.status);
         prom->set_value(K2StatusToYBStatus(scan_result.status));
@@ -312,7 +469,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
                 throw std::logic_error("Non value type in key_column_values");
             }
 
-            SerializeValueToSKVRecord(*(expr->getValue()), record);
+            K2Adapter::SerializeValueToSKVRecord(*(expr->getValue()), record);
         }
     }
 
@@ -344,7 +501,7 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
 
         // TODO support update on key fields
         fieldsForUpdate.push_back(skvIndex);
-        SerializeValueToSKVRecord(*(column.expr->getValue()), record);
+        K2Adapter::SerializeValueToSKVRecord(*(column.expr->getValue()), record);
     }
 
     return fieldsForUpdate;

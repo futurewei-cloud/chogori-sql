@@ -79,8 +79,8 @@ class K2Adapter {
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);
-
-  void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
+  public:
+  static void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToYBStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
   template <class T> // Either SqlOpWriteRequest or SqlOpReadRequest
