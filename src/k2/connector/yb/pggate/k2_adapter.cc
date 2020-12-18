@@ -62,10 +62,13 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     }
     // update the output param
     lastColId = colId;
-    int skvId = colId +2;
+    int skvId = colId + K2Adapter::SKV_FIELD_OFFSET;
     // rewind the cursor if necessary. Ideally, the fields come in order so this should be a no-op
-    start.seekField(skvId);
-    end.seekField(skvId);
+    if (start.fieldCursor != skvId || end.fieldCursor != skvId) {
+        const char* msg = "column reference in leaf condition refers to non-consecutive field";
+        K2ERROR(msg << ", got " << skvId << ", start=" << start.fieldCursor << ", end=" << end.fieldCursor);
+        return STATUS(InvalidCommand, msg);
+    }
 
     switch (cond->getOp()) {
         case PgExpr::Opcode::PG_EXPR_EQ: {
