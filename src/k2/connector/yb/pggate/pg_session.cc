@@ -106,10 +106,10 @@ Status PgSession::CreateDatabase(const string& database_name,
                                  const PgOid source_database_oid,
                                  const PgOid next_oid) {
   return catalog_client_->CreateNamespace(database_name,
-                                  "" /* creator_role_name */,
                                   GetPgsqlNamespaceId(database_oid),
-                                  source_database_oid != kPgInvalidOid
-                                  ? GetPgsqlNamespaceId(source_database_oid) : "",
+                                  database_oid,
+                                  source_database_oid != kPgInvalidOid ? GetPgsqlNamespaceId(source_database_oid) : "",
+                                  "" /* creator_role_name */,
                                   next_oid);
 }
 

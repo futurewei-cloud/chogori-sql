@@ -124,6 +124,7 @@ namespace catalog {
     struct CreateNamespaceRequest {
         string namespaceName;
         string namespaceId;
+        uint32_t namespaceOid;
         string sourceNamespaceId;
         string creatorRoleName;
         // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used
@@ -208,6 +209,19 @@ namespace catalog {
         std::shared_ptr<TableInfo> tableInfo;
     };
 
+    struct ListTablesRequest {
+        string namespaceName;
+        // use string match for table name, not used for now
+        string nameFilter;
+        bool isSysTableIncluded = false;
+    };
+
+    struct ListTablesResponse {
+        RStatus status;
+        string namespaceId;
+        std::vector<std::shared_ptr<TableInfo>> tableInfos;
+    };
+
     struct DeleteTableRequest {
         uint32_t namespaceOid;
         uint32_t tableOid;
@@ -278,6 +292,8 @@ namespace catalog {
         
         GetTableSchemaResponse GetTableSchema(const GetTableSchemaRequest& request);
 
+        ListTablesResponse ListTables(const ListTablesRequest& request);
+
         DeleteTableResponse DeleteTable(const DeleteTableRequest& request);
 
         DeleteIndexResponse DeleteIndex(const DeleteIndexRequest& request);
@@ -319,6 +335,10 @@ namespace catalog {
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
                 const Schema& index_schema, bool is_unique, IndexPermissions index_permissions);
+
+        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
+
+        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
 
     private:
         // cluster identifier
