@@ -54,6 +54,12 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     }
 
     int colId = ops[0]->getId();
+    if (colId < 0) {
+        const char* msg = "column reference is for a system field";
+        K2ERROR(msg << ", got " << colId);
+        return STATUS(InvalidCommand, msg);
+    }
+
     // make sure we're working on a prefix of the key
     if (colId <= lastColId) {
         const char* msg = "column reference in leaf condition is for an already processed field";
@@ -160,7 +166,7 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
     return Status::OK();
 }
 
-// Helper funcxtion for handleReadOp when ybctid is set in the request
+// Helper function for handleReadOp when ybctid is set in the request
 void K2Adapter::handleSingleKeyRead(std::shared_ptr<K23SITxn> k23SITxn,
                                     std::shared_ptr<PgReadOpTemplate> op,
                                     std::shared_ptr<std::promise<Status>> prom) {
@@ -276,10 +282,10 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (scan->isDone()) {
             response.paging_state = nullptr;
         } else if (request->paging_state) {
-            response.paging_state = std::move(request->paging_state);
+            response.paging_state = request->paging_state;
             response.paging_state->total_num_rows_read += scan_result.records.size();
         } else {
-            response.paging_state = std::make_unique<SqlOpPagingState>();
+            response.paging_state = std::make_shared<SqlOpPagingState>();
             response.paging_state->query = scan;
             response.paging_state->total_num_rows_read += scan_result.records.size();
         }

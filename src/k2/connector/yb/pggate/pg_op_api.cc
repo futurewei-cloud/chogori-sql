@@ -19,7 +19,7 @@
 #include "yb/common/endian.h"
 
 namespace k2pg {
-namespace gate {  
+namespace gate {
 
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
@@ -37,11 +37,11 @@ namespace gate {
        newRequest->distinct = distinct;
        newRequest->is_aggregate = is_aggregate;
        newRequest->limit = limit;
-       newRequest->paging_state = std::move(paging_state); // TODO should this be moved?
+       newRequest->paging_state = paging_state;
        newRequest->return_paging_state = return_paging_state;
        newRequest->catalog_version = catalog_version;
        newRequest->row_mark_type = row_mark_type;
-       return newRequest;   
+       return newRequest;
     }
 
     std::unique_ptr<SqlOpWriteRequest> SqlOpWriteRequest::clone() {
@@ -52,7 +52,7 @@ namespace gate {
     }
 
     PgOpTemplate::~PgOpTemplate() {}
- 
+
     PgWriteOpTemplate::PgWriteOpTemplate(const shared_ptr<TableInfo>& table)
             : PgOpTemplate(table), write_request_(new SqlOpWriteRequest()) {
     }
@@ -78,7 +78,7 @@ namespace gate {
     PgReadOpTemplate::PgReadOpTemplate(const shared_ptr<TableInfo>& table)
         : PgOpTemplate(table), read_request_(new SqlOpReadRequest()) {
     }
-    
+
     std::string PgReadOpTemplate::ToString() const {
         return "PGSQL READ: " + read_request_->stmt_id;
     }
@@ -88,6 +88,6 @@ namespace gate {
         result->set_active(is_active());
         result->read_request_ = read_request_->clone();
         return result;
-    }  
+    }
 }  // namespace gate
 }  // namespace k2pg

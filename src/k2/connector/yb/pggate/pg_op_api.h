@@ -230,7 +230,7 @@ namespace gate {
         // indicates if targets field above has aggregation
         bool is_aggregate = false;
         uint64_t limit = 0;
-        std::unique_ptr<SqlOpPagingState> paging_state;
+        std::shared_ptr<SqlOpPagingState> paging_state;
         bool return_paging_state = false;
         // Full, global SQL version
         uint64_t catalog_version;
@@ -289,7 +289,7 @@ namespace gate {
         bool skipped;
         string error_message;
         // If paging_state is nullptr, PG knows the request is done
-        std::unique_ptr<SqlOpPagingState> paging_state;
+        std::shared_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
 
         //
