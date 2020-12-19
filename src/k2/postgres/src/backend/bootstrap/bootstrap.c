@@ -522,6 +522,8 @@ BootstrapModeMain(void)
 	 */
 	if (IsYugaByteEnabled())
 	{
+		K2InitPGCluster();
+		
 		YBCCreateDatabase(TemplateDbOid,
 		                  "template1",
 		                  InvalidOid,

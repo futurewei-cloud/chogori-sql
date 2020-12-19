@@ -32,7 +32,7 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
 
-struct CreateClusterInfoResult {
+struct InitClusterInfoResult {
     RStatus status;
 };
 
@@ -63,7 +63,7 @@ class ClusterInfoHandler : public BaseHandler {
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
     
-    CreateClusterInfoResult CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
+    InitClusterInfoResult InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 
     UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 

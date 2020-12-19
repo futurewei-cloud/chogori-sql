@@ -39,19 +39,25 @@ NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter
 NamespaceInfoHandler::~NamespaceInfoHandler() {
 }
 
-CreateNamespaceTableResult NamespaceInfoHandler::CreateNamespaceTableIfNecessary() {
-    // check if the schema already exists or not, which is an indication of whether if we have created the table or not
+// Verify the Namespace(database)_info corresponding SKVSchema in the PG primary SKVCollection doesn't exist and create it
+// Called only once in sql_catalog_manager::InitPrimaryCluster()
+InitNamespaceTableResult NamespaceInfoHandler::InitNamespaceTable() {
+    // check to make sure the schema doesn't exists
     std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name_, schema_name_, 1);
     k2::GetSchemaResult schema_result = schema_result_future.get();
-    CreateNamespaceTableResult response;
+    InitNamespaceTableResult response;
     // TODO: double check if this check is valid for schema
+    CHECK(schema_result.status == k2::dto::K23SIStatus::KeyNotFound);
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         LOG(INFO) << "Namespace info table does not exist"; 
         // create the table schema since it does not exist
         RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
         response.status = std::move(schema_result);
     } else {
-        response.status.Succeed();
+        LOG(FATAL) << "Unexpected Namespace SKV schema already exists during init.";
+        response.status.code = StatusCode::INTERNAL_ERROR;
+        response.status.errorMessage = std::move("Unexpected Namespace SKV schema already exists during init."); 
+        return response;     
     }
     return response;
 }
@@ -150,6 +156,23 @@ DeleteNamespaceResult NamespaceInfoHandler::DeleteNamespace(std::shared_ptr<Sess
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
     response.status = DeleteSKVRecord(context, record);
     return response;
+}
+
+RStatus NamespaceInfoHandler::CreateSKVCollection(const std::string& collection_name, const std::string& nsName)
+{
+    RStatus response;
+
+    auto result = k2_adapter_->CreateCollection(collection_name, nsName).get();
+    if (!result.is2xxOK()) {
+        LOG(FATAL) << "Failed to create SKV Collection " << collection_name
+            << " due to error code " << result.code
+            << " and message: " << result.message;
+        response.code = StatusCode::INTERNAL_ERROR;
+        response.errorMessage = std::move(result.message);
+    } else {
+        response.Succeed();
+    }
+    return response;    
 }
 
 } // namespace catalog

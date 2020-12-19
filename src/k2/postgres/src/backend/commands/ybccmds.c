@@ -78,6 +78,15 @@ ColumnSortingOptions(SortByDir dir, SortByNulls nulls, bool* is_desc, bool* is_n
 }
 
 /* -------------------------------------------------------------------------- */
+/*  Cluster Functions. */
+void
+K2InitPGCluster()
+{
+	HandleYBStatus(K2PGInitPrimaryCluster());
+}
+
+
+/* -------------------------------------------------------------------------- */
 /*  Database Functions. */
 
 void

@@ -38,6 +38,11 @@ Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   return Status::OK();
 }
 
+Status SqlCatalogClient::InitPrimaryCluster()
+{
+  return catalog_manager_->InitPrimaryCluster();
+}
+
 Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id,
                                  uint32_t namespace_oid,

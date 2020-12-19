@@ -33,6 +33,9 @@
 
 #include "yb/pggate/pg_gate_api.h"
 
+/* K2 Cluster Fuctions -------------------------------------------------------------------------- */
+extern void K2InitPGCluster();
+
 /*  Database Functions -------------------------------------------------------------------------- */
 
 extern void YBCCreateDatabase(
