@@ -136,7 +136,7 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
     // case.
     DSCHECK(prepare_params_.querying_colocated_table, InvalidArgument, "Read request invalid");
     read_req_ = read_req;
-    read_req_->table_name = index_id_.GetPgTableId();
+    read_req_->table_id = index_id_.GetPgTableId();
     sql_op_ = nullptr;
   } else {
     auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);

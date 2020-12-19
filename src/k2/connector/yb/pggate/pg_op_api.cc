@@ -19,14 +19,14 @@
 #include "yb/common/endian.h"
 
 namespace k2pg {
-namespace gate {  
+namespace gate {
 
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
-       newRequest->namespace_name = namespace_name;
-       newRequest->table_name = table_name;
+       newRequest->namespace_id = namespace_id;
+       newRequest->table_id = table_id;
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;
        newRequest->ybctid_column_value = ybctid_column_value;
@@ -37,37 +37,22 @@ namespace gate {
        newRequest->distinct = distinct;
        newRequest->is_aggregate = is_aggregate;
        newRequest->limit = limit;
-       newRequest->paging_state = std::move(paging_state);
+       newRequest->paging_state = paging_state;
        newRequest->return_paging_state = return_paging_state;
        newRequest->catalog_version = catalog_version;
        newRequest->row_mark_type = row_mark_type;
-       return newRequest;   
+       return newRequest;
     }
 
     std::unique_ptr<SqlOpWriteRequest> SqlOpWriteRequest::clone() {
-       std::unique_ptr<SqlOpWriteRequest> newRequest = std::make_unique<SqlOpWriteRequest>();
-       newRequest->client_id = client_id;
-       newRequest->stmt_id = stmt_id;
-       newRequest->stmt_type = stmt_type;
-       newRequest->namespace_name = namespace_name;
-       newRequest->table_name = table_name;
-       newRequest->schema_version = schema_version;
-       newRequest->key_column_values = key_column_values;
-       newRequest->ybctid_column_value = ybctid_column_value;
-       newRequest->column_values = column_values;
-       newRequest->column_new_values = column_new_values;
-       newRequest->targets = targets;
-       newRequest->where_expr = where_expr;
-       newRequest->condition_expr = condition_expr;
-       newRequest->catalog_version = catalog_version; 
-       return newRequest;        
+       return std::make_unique<SqlOpWriteRequest>(*this);
     }
 
     PgOpTemplate::PgOpTemplate(const std::shared_ptr<TableInfo>& table)  : table_(table) {
     }
 
     PgOpTemplate::~PgOpTemplate() {}
- 
+
     PgWriteOpTemplate::PgWriteOpTemplate(const shared_ptr<TableInfo>& table)
             : PgOpTemplate(table), write_request_(new SqlOpWriteRequest()) {
     }
@@ -93,7 +78,7 @@ namespace gate {
     PgReadOpTemplate::PgReadOpTemplate(const shared_ptr<TableInfo>& table)
         : PgOpTemplate(table), read_request_(new SqlOpReadRequest()) {
     }
-    
+
     std::string PgReadOpTemplate::ToString() const {
         return "PGSQL READ: " + read_request_->stmt_id;
     }
@@ -103,6 +88,6 @@ namespace gate {
         result->set_active(is_active());
         result->read_request_ = read_request_->clone();
         return result;
-    }  
+    }
 }  // namespace gate
 }  // namespace k2pg

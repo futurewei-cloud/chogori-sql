@@ -542,7 +542,7 @@ Status PgReadOp::ProcessResponsePagingState() {
             while (innermost_req->index_request != nullptr) {
                     innermost_req = innermost_req->index_request.get();
             }
-            *innermost_req->paging_state = std::move(*res.paging_state);
+            *innermost_req->paging_state = *res.paging_state;
         }
 
         if (has_more_arg) {

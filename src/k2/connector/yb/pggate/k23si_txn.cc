@@ -48,7 +48,16 @@ std::future<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query
 }
 
 std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
-    ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .prom={}};
+    ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .key=k2::dto::Key(), .collectionName="", .prom={}};
+
+    auto result = qr.prom.get_future();
+    pushQ(readTxQ, std::move(qr));
+    return result;
+}
+
+std::future<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::string collectionName) {
+    ReadRequest qr {.mtr = _mtr, .record=k2::dto::SKVRecord(), .key=std::move(key), 
+                    .collectionName=std::move(collectionName), .prom={}};
 
     auto result = qr.prom.get_future();
     pushQ(readTxQ, std::move(qr));
