@@ -33,6 +33,7 @@
 #include "yb/pggate/pg_tuple.h"
 
 #include <k2/dto/SKVRecord.h>
+#include <k2/module/k23si/client/k23si_client.h>
 
 namespace k2pg {
 namespace gate {
@@ -50,6 +51,7 @@ namespace gate {
     using k2pg::sql::SqlValue;
     using k2pg::sql::TableInfo;
     using k2pg::sql::TableName;
+    using k2pg::sql::TableId;
 
     class SqlOpCondition;
 
@@ -65,6 +67,17 @@ namespace gate {
             ALIAS_ID,
             CONDITION,
         };
+        friend std::ostream& operator<<(std::ostream& os, const ExprType& expr) {
+            switch(expr) {
+                case ExprType::VALUE: return os << "VALUE";
+                case ExprType::LIST_VALUES: return os << "LIST_VALUES";
+                case ExprType::COLUMN_ID: return os << "COLUMN_ID";
+                case ExprType::BIND_ID: return os << "BIND_ID";
+                case ExprType::ALIAS_ID: return os << "ALIAS_ID";
+                case ExprType::CONDITION: return os << "CONDITION";
+                default: return os << "UNKNOWN";
+            }
+        }
 
         SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {
         }
@@ -185,9 +198,7 @@ namespace gate {
     };
 
     struct SqlOpPagingState {
-        TableName table_name;
-        // TODO use K2 token
-        string next_token;
+        std::shared_ptr<k2::Query> query;
         uint64_t total_num_rows_read;
     };
 
@@ -198,8 +209,8 @@ namespace gate {
 
         string client_id;
         int64_t stmt_id;
-        NamespaceName namespace_name;
-        TableName table_name;
+        NamespaceId namespace_id;
+        TableId table_id;
         // K2 SKV schema version
         uint64_t schema_version;
         // One of either key_column_values or ybctid_column_value
@@ -218,8 +229,8 @@ namespace gate {
         bool distinct = false;
         // indicates if targets field above has aggregation
         bool is_aggregate = false;
-        uint64_t limit;
-        std::unique_ptr<SqlOpPagingState> paging_state;
+        uint64_t limit = 0;
+        std::shared_ptr<SqlOpPagingState> paging_state;
         bool return_paging_state = false;
         // Full, global SQL version
         uint64_t catalog_version;
@@ -230,10 +241,6 @@ namespace gate {
     };
 
     struct SqlOpWriteRequest {
-       SqlOpWriteRequest() = default;
-       ~SqlOpWriteRequest() {
-       };
-
        enum StmtType {
             PGSQL_INSERT = 1,
             PGSQL_UPDATE = 2,
@@ -246,8 +253,8 @@ namespace gate {
         string client_id;
         int64_t stmt_id;
         StmtType stmt_type;
-        NamespaceId namespace_name;
-        TableName table_name;
+        NamespaceId namespace_id;
+        TableName table_id;
         uint64_t schema_version;
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
         std::shared_ptr<SqlOpExpr> ybctid_column_value;
@@ -281,7 +288,8 @@ namespace gate {
         RequestStatus status = RequestStatus::PGSQL_STATUS_OK;
         bool skipped;
         string error_message;
-        std::unique_ptr<SqlOpPagingState> paging_state;
+        // If paging_state is nullptr, PG knows the request is done
+        std::shared_ptr<SqlOpPagingState> paging_state;
         int32_t rows_affected_count;
 
         //
@@ -320,7 +328,7 @@ namespace gate {
 
         std::vector<k2::dto::SKVRecord>&& rows_data() { return std::move(rows_data_); }
 
-        // api to get row_data reference and set the value, for example, using std::string assign() or other ways
+        // api to get row_data reference and set the value
         std::vector<k2::dto::SKVRecord>* mutable_rows_data() { return &rows_data_; }
 
         bool IsTransactional() const {

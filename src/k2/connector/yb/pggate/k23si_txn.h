@@ -52,6 +52,7 @@ public:
     // The result future is eventually satisfied with the result of the read.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
     std::future<k2::ReadResult<k2::SKVRecord>> read(k2::dto::SKVRecord&& rec);
+    std::future<k2::ReadResult<k2::SKVRecord>> read(k2::dto::Key key, std::string collectionName);
 
     // Writes a record (full) into K2. The erase flag is used if this write should delete
     // the record from K2.

@@ -351,7 +351,7 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
       if ((*op)->type() == PgOpTemplate::Type::WRITE) {
         const auto& wop = down_cast<PgWriteOpTemplate*>((*op).get());
         std::string row_id = client_->GetRowId(wop->request());
-        std::string table_id = wop->request()->table_name;
+        std::string table_id = wop->request()->table_id;
         // check if we have already have a write op for the same row
         if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(table_id, row_id)).second)) {
           // if we have a write op for the same row, then we need to flush the buffer first

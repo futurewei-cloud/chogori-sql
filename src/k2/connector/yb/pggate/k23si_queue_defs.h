@@ -73,6 +73,10 @@ struct ScanReadRequest {
 struct ReadRequest {
     k2::dto::K23SI_MTR mtr;
     k2::SKVRecord record;
+    // For key-oriented read without SKVRecord
+    k2::dto::Key key = k2::dto::Key();
+    std::string collectionName = "";
+
     std::promise<k2::ReadResult<k2::SKVRecord>> prom;
 };
 

@@ -133,8 +133,8 @@ std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& clie
   std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>(table_);
   std::shared_ptr<SqlOpReadRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_name = table_->namespace_name();
-  req->table_name = table_->table_name();
+  req->namespace_id = table_->namespace_id();
+  req->table_id = table_->table_id();
   req->schema_version = table_->schema().version();
   req->stmt_id = stmt_id;
 
@@ -145,8 +145,8 @@ std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteReques
   std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>(table_);
   std::shared_ptr<SqlOpWriteRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_name = table_->namespace_name();
-  req->table_name = table_->table_name();
+  req->namespace_id = table_->namespace_id();
+  req->table_id = table_->table_id();
   req->schema_version = table_->schema().version();
   req->stmt_id = stmt_id;
   req->stmt_type = stmt_type;
