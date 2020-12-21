@@ -52,6 +52,9 @@ class K2Adapter {
 
   std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
 
+  std::future<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
+  // TODO: Add DeleteColection later when it is supported on CPO/K23si
+
   std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName);
 

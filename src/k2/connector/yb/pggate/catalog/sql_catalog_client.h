@@ -50,6 +50,8 @@ class SqlCatalogClient {
 
     CHECKED_STATUS IsInitDbDone(bool* isDone);
 
+    CHECKED_STATUS InitPrimaryCluster();
+
     // Create a new namespace with the given name.
     CHECKED_STATUS CreateNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id,

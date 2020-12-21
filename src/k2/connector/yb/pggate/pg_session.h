@@ -138,6 +138,8 @@ class PgSession {
 
   virtual ~PgSession();
 
+  CHECKED_STATUS InitPrimaryCluster();
+
   CHECKED_STATUS ConnectDatabase(const std::string& database_name);
 
   CHECKED_STATUS CreateDatabase(const std::string& database_name,

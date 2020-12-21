@@ -108,6 +108,12 @@ YBCStatus YBCGetSharedCatalogVersion(uint64_t* catalog_version) {
 // DDL Statements
 //--------------------------------------------------------------------------------------------------
 
+// K2 InitPrimaryCluster
+YBCStatus K2PGInitPrimaryCluster()
+{
+  return ToYBCStatus(api_impl->PGInitPrimaryCluster());
+}
+
 // DATABASE ----------------------------------------------------------------------------------------
 // Connect database. Switch the connected database to the given "database_name".
 YBCStatus YBCPgConnectDatabase(const char *database_name) {

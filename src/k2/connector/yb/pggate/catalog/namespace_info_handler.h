@@ -33,7 +33,7 @@ namespace catalog {
 
 using k2pg::gate::CreateScanReadResult;
 
-struct CreateNamespaceTableResult {
+struct InitNamespaceTableResult {
     RStatus status;    
 };
 
@@ -75,7 +75,7 @@ class NamespaceInfoHandler : public BaseHandler {
 
     ~NamespaceInfoHandler();
 
-    CreateNamespaceTableResult CreateNamespaceTableIfNecessary();
+    InitNamespaceTableResult InitNamespaceTable();
 
     AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info);
 
@@ -86,6 +86,13 @@ class NamespaceInfoHandler : public BaseHandler {
     DeleteNamespaceResult DeleteNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
+
+    // SKV collection utilites. 
+    // collection_name is namespace ID for its uniqueueness
+    // nsName(DBName) passed in for later hack finding collection configuration
+    // TODO: pass in other collection configure later
+    // TODO: add delete SKV collection later when cpo/k23si support it. 
+    RStatus CreateSKVCollection(const std::string& collection_name, const std::string& nsName);
 
     private:  
     std::string collection_name_;

@@ -223,6 +223,13 @@ Status PgGateApiImpl::ClearBinds(PgStatement *handle) {
 
 //--------------------------------------------------------------------------------------------------
 
+Status PgGateApiImpl::PGInitPrimaryCluster()
+{
+  return pg_session_->InitPrimaryCluster();
+}
+
+//--------------------------------------------------------------------------------------------------
+
 Status PgGateApiImpl::ConnectDatabase(const char *database_name) {
   return pg_session_->ConnectDatabase(database_name);
 }

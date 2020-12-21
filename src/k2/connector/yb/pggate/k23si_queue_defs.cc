@@ -29,6 +29,7 @@ LFMutex requestQMutex;
 std::queue<BeginTxnRequest> beginTxQ;
 std::queue<SchemaGetRequest> schemaGetTxQ;
 std::queue<SchemaCreateRequest> schemaCreateTxQ;
+std::queue<CollectionCreateRequest> collectionCreateTxQ;
 std::queue<EndTxnRequest> endTxQ;
 std::queue<ReadRequest> readTxQ;
 std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
