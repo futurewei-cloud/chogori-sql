@@ -39,8 +39,9 @@ ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
 ClusterInfoHandler::~ClusterInfoHandler() {
 }
 
-CreateClusterInfoResult ClusterInfoHandler::CreateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
-    CreateClusterInfoResult response;
+// Called only once in sql_catalog_manager::InitPrimaryCluster()
+InitClusterInfoResult ClusterInfoHandler::InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
+    InitClusterInfoResult response;
     RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
     if (!schema_result.IsSucceeded()) {
         response.status = std::move(schema_result);

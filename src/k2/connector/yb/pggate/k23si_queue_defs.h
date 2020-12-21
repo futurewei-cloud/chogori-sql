@@ -53,6 +53,11 @@ struct SchemaCreateRequest {
     std::promise<k2::CreateSchemaResult> prom;
 };
 
+struct CollectionCreateRequest {
+    k2::dto::CollectionCreateRequest ccr;
+    std::promise<k2::Status> prom;
+};
+
 struct CreateScanReadResult {
     k2::Status status;
     std::shared_ptr<k2::Query> query;
@@ -119,6 +124,7 @@ extern std::queue<BeginTxnRequest> beginTxQ;
 extern std::queue<EndTxnRequest> endTxQ;
 extern std::queue<SchemaGetRequest> schemaGetTxQ;
 extern std::queue<SchemaCreateRequest> schemaCreateTxQ;
+extern std::queue<CollectionCreateRequest> collectionCreateTxQ;
 extern std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 extern std::queue<ScanReadRequest> scanReadTxQ;
 extern std::queue<ReadRequest> readTxQ;

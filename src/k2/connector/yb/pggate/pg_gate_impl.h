@@ -130,6 +130,9 @@ class PgGateApiImpl {
   const YBCPgTypeEntity *FindTypeEntity(int type_oid);
 
   //------------------------------------------------------------------------------------------------
+  CHECKED_STATUS PGInitPrimaryCluster();
+
+  //------------------------------------------------------------------------------------------------
   // Connect database. Switch the connected database to the given "database_name".
   CHECKED_STATUS ConnectDatabase(const char *database_name);
 

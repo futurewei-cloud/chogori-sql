@@ -60,56 +60,46 @@ namespace catalog {
         GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(ci_context, cluster_id_);
         if (ciresp.status.IsSucceeded()) {
             if (ciresp.clusterInfo != nullptr) {
+                CHECK(ciresp.clusterInfo->IsInitdbDone());
                 init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed); 
                 catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed); 
                 LOG(INFO) << "Loaded cluster info record succeeded";  
             } else {
-                ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
-                CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(ci_context, cluster_info);
-                if (clresp.status.IsSucceeded()) {
-                    LOG(INFO) << "Created cluster info record succeeded";
-                } else {
-                    ci_context->Abort();
-                    LOG(FATAL) << "Failed to create cluster info record due to " << clresp.status.errorMessage;
-                    return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
-                        clresp.status.code, clresp.status.errorMessage);               
-                }
+                LOG(FATAL) << "Cluster info doesn't exits. Primary cluster is not initialized. Only operation allowed is primary cluster initialization.";
+                ci_context->Abort();  // no difference either abort or commit
+                return STATUS_FORMAT(IOError, "Unexpected emput cluster info, failed to read cluster info record to error code $0 and message $1",
+                    ciresp.status.code, ciresp.status.errorMessage);   
             }
         } else {
             ci_context->Abort();
-            LOG(FATAL) << "Failed to read cluster info record";
-            return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
-                ciresp.status.code, ciresp.status.errorMessage);             
-        }
+            LOG(WARNING) << "Failed to read cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization. ";
+            
+            // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
+            // keep initted_ to be false;
+            return Status::OK();           
+        }   
         // end the current transaction so that we use a different one for later operations
         ci_context->Commit();
 
         // load namespaces
-        CreateNamespaceTableResult cnresp = namespace_info_handler_->CreateNamespaceTableIfNecessary();
-        if (cnresp.status.IsSucceeded()) {
-            std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
-            ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces(ns_context);
-            ns_context->Commit();
+        std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
+        ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces(ns_context);
+        ns_context->Commit();
 
-            if (nsresp.status.IsSucceeded()) {
-                if (!nsresp.namespaceInfos.empty()) {
-                    for (auto ns_ptr : nsresp.namespaceInfos) {
-                        // cache namespaces by namespace id and namespace name
-                        namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
-                        namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
-                    }
-                } else {
-                    LOG(INFO) << "namespaces are empty";
+        if (nsresp.status.IsSucceeded()) {
+            if (!nsresp.namespaceInfos.empty()) {
+                for (auto ns_ptr : nsresp.namespaceInfos) {
+                    // cache namespaces by namespace id and namespace name
+                    namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
+                    namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
                 }
             } else {
-                LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.status.errorMessage;
-                return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
-                    nsresp.status.code, nsresp.status.errorMessage);
+                LOG(INFO) << "namespaces are empty";
             }
         } else {
-            LOG(FATAL) << "Failed to create or check namespace table due to " <<  cnresp.status.errorMessage;
-            return STATUS_FORMAT(IOError, "Failed to create or check namespace table due to error code $0 and message $1",
-                cnresp.status.code, cnresp.status.errorMessage);  
+            LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.status.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
+                nsresp.status.code, nsresp.status.errorMessage);
         }
 
         initted_.store(true, std::memory_order_release);
@@ -132,6 +122,65 @@ namespace catalog {
         return default_env;
     }
     
+    // Called only once during PG initDB
+    // TODO: handle partial failure(maybe simply fully cleanup) to allow retry later
+    Status SqlCatalogManager::InitPrimaryCluster()
+    {
+        LOG(INFO) << "SQL CatalogManager initialize primary Cluster!";
+
+        CHECK(!initted_.load(std::memory_order_relaxed));
+        CHECK(!init_db_done_.load(std::memory_order_relaxed));
+
+        // step 1/4 create the SKV collection for the primary
+        RStatus rs = namespace_info_handler_->CreateSKVCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
+        if (!rs.IsSucceeded())
+        {
+            LOG(FATAL) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  rs.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to create SKV collection during initialization primary PG cluster due to error code $0 and message $1",
+                    rs.code, rs.errorMessage);
+        }
+
+        std::shared_ptr<SessionTransactionContext> init_context = NewTransactionContext();
+
+        // step 2/4 Init Cluster info, including create the SKVSchema in the primary cluster's SKVCollection for cluster_info and insert current cluster info into 
+        //      Note: Initialize cluster info's init_db column with TRUE
+        ClusterInfo cluster_info(cluster_id_, catalog_version_, true /*init_db_done*/);
+        
+        InitClusterInfoResult initCIRes = cluster_info_handler_->InitClusterInfo(init_context, cluster_info);
+        if (initCIRes.status.IsSucceeded()) {
+            LOG(INFO) << "Initialization of cluster info succeeded";
+        } else {
+            init_context->Abort();
+                LOG(FATAL) << "Failed to initialize cluster info due to " << initCIRes.status.errorMessage;
+                return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
+                    initCIRes.status.code, initCIRes.status.errorMessage);               
+        }
+
+        // step 3/4 Init namespace_info - create the SKVSchema in the primary cluster's SKVcollection for namespace_info
+        InitNamespaceTableResult initRes = namespace_info_handler_->InitNamespaceTable();
+        if (!initRes.status.IsSucceeded()) {
+            LOG(FATAL) << "Failed to initialize creating namespace table due to " <<  initRes.status.errorMessage;
+            return STATUS_FORMAT(IOError, "Failed to initialize creating namespace table due to error code $0 and message $1",
+                initRes.status.code, initRes.status.errorMessage);  
+        }
+
+        // step 4/4 re-start this catalog manager so it can execute other APIs
+        Status status = Start();
+        if (status.ok())
+        {
+            // check things are ready
+            CHECK(initted_.load(std::memory_order_relaxed));
+            CHECK(init_db_done_.load(std::memory_order_relaxed));   
+            LOG(INFO) << "SQL CatalogManager successfully initialized primary Cluster!";     
+        }
+        else
+        {
+            LOG(FATAL) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  status.ToUserMessage();
+        }
+
+        return status;
+    }
+
     GetInitDbResponse SqlCatalogManager::IsInitDbDone(const GetInitDbRequest& request) {
         GetInitDbResponse response;
         if (!init_db_done_) {
@@ -177,8 +226,10 @@ namespace catalog {
 
     CreateNamespaceResponse SqlCatalogManager::CreateNamespace(const CreateNamespaceRequest& request) {
         CreateNamespaceResponse response;
-        // first check if the namespace has already been created
-        // by checking from cache and Loading it from SKV if not found
+
+        // step 1/3:  check input conditions
+        //      check if the target namespace has already been created, if yes, return already present
+        //      check the source namespace is already there, if it present in the create requet
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info != nullptr) {
             response.status.code = StatusCode::ALREADY_PRESENT;
@@ -186,80 +237,66 @@ namespace catalog {
             return response;
         } 
 
-        if (request.sourceNamespaceId.empty()) {
-            // no source namespace to copy from
-            // create the new namespace record
-            std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
-            new_ns->SetNamespaceId(request.namespaceId);
-            new_ns->SetNamespaceName(request.namespaceName);
-            new_ns->SetNamespaceOid(request.namespaceOid);
-            new_ns->SetNextPgOid(request.nextPgOid.value());
-            // persist the new namespace record
-            std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
-            AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-            if (!add_result.status.IsSucceeded()) {
-                response.status = std::move(add_result.status);
-                ns_context->Abort();      
-                return response;
-            } 
-
-            // cache namespaces by namespace id and namespace name
-            namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-            namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-            response.namespaceInfo = new_ns;
-
-            // create the system table SKV schema for the new namespace
-            std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
-            CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
-            if (!table_result.status.IsSucceeded()) {
-                response.status = std::move(table_result.status);
-                target_context->Abort();  
-                ns_context->Abort();       
-                return response;     
-            } 
-
-            target_context->Commit();        
-            ns_context->Commit();      
-            response.status.Succeed();
-        } else {
-            // create a new namespace from a source namespace
-            // check if the source namespace exists
-            std::shared_ptr<NamespaceInfo> source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
+        std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
+        uint32_t t_nextPgOid;
+        // validate source namespace id and check source namespace to set nextPgOid properly
+        if (!request.sourceNamespaceId.empty())
+        {
+            source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
             if (source_namespace_info == nullptr) {
                 LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
                 response.status.code = StatusCode::ALREADY_PRESENT;
                 response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
                 return response;
             } 
-            // create the new namespace record
-            std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
-            new_ns->SetNamespaceId(request.namespaceId);
-            new_ns->SetNamespaceName(request.namespaceName);
-            new_ns->SetNamespaceOid(request.namespaceOid);
-            new_ns->SetNextPgOid(source_namespace_info->GetNextPgOid());
-            // persist the new namespace record
-            std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
-            AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-            if (!add_result.status.IsSucceeded()) {
-                response.status = std::move(add_result.status);
-                ns_context->Abort();        
-                return response;
-            }
-            // cache namespaces by namespace id and namespace name
-            namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-            namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
-            response.namespaceInfo = new_ns;
+            t_nextPgOid = source_namespace_info->GetNextPgOid();
+        } else {
+            t_nextPgOid = request.nextPgOid.value();
+        }
 
-            // create the system table SKV schema for the new namespace
-            std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
-            CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
-            if (!table_result.status.IsSucceeded()) {
-                response.status = std::move(table_result.status);
-                target_context->Abort(); 
-                ns_context->Abort();        
-                return response;          
-            }
+        // step 2/3: create new namespace(database), total 3 sub-steps
 
+        // step 2.1 create new SKVCollection
+        //   Note: using unique immutable namespaceId as SKV collection name
+        //   TODO: pass in other collection configurations/parameters later.
+        response.status = namespace_info_handler_->CreateSKVCollection(request.namespaceId, request.namespaceName);
+        if (!response.status.IsSucceeded())
+        {
+            return response;
+        }
+
+        // step 2.2 Add new namespace(database) entry into default cluster Namespace table and update in-memory cache
+        std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
+        new_ns->SetNamespaceId(request.namespaceId);
+        new_ns->SetNamespaceName(request.namespaceName);
+        new_ns->SetNamespaceOid(request.namespaceOid);      
+        new_ns->SetNextPgOid(t_nextPgOid);
+        // persist the new namespace record
+        std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
+        AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
+        if (!add_result.status.IsSucceeded()) {
+            response.status = std::move(add_result.status);
+            ns_context->Abort();      
+            return response;
+        } 
+        // cache namespaces by namespace id and namespace name
+        namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
+        namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+        response.namespaceInfo = new_ns;
+
+        // step 2.3 Add new system tables for the new namespace(database)
+        std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
+        CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
+        if (!table_result.status.IsSucceeded()) {
+            response.status = std::move(table_result.status);
+            target_context->Abort();  
+            ns_context->Abort();       
+            return response;     
+        } 
+
+        // step 3/3: If source namespace(database) is present in the request, copy all the rest of tables from source namespace(database)
+        if (!request.sourceNamespaceId.empty())
+        {
             std::shared_ptr<SessionTransactionContext> source_context = NewTransactionContext();
             // get the source table ids
             ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
@@ -289,12 +326,12 @@ namespace catalog {
                     return response;
                 }
             }
-            source_context->Commit();
-            target_context->Commit();
-            ns_context->Commit();        
-            response.status.Succeed();
+            source_context->Commit();            
         }
-
+            
+        target_context->Commit();
+        ns_context->Commit();        
+        response.status.Succeed();
         return response;
     }
   

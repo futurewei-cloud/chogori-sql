@@ -277,6 +277,8 @@ namespace catalog {
         // use synchronous APIs for the first attempt here
         // TODO: change them to asynchronous with status check later by introducing threadpool task processing
 
+        Status InitPrimaryCluster();
+
         GetInitDbResponse IsInitDbDone(const GetInitDbRequest& request);
 
         GetCatalogVersionResponse GetCatalogVersion(const GetCatalogVersionRequest& request);

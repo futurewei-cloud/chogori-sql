@@ -55,6 +55,15 @@ std::future<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& co
     return result;
 }
 
+std::future<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateRequest&& ccr)
+{
+    CollectionCreateRequest req{.ccr = ccr, .prom = {}};
+
+    auto result = req.prom.get_future();
+    pushQ(collectionCreateTxQ, std::move(req));
+    return result;
+}
+
 std::future<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& collectionName, 
                                                             const k2::String& schemaName) {
     ScanReadCreateRequest cr{.collectionName = collectionName, .schemaName = schemaName, .prom = {}};

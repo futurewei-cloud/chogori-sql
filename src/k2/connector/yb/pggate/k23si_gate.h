@@ -51,6 +51,8 @@ public:
     std::future<K23SITxn> beginTxn(const k2::K2TxnOptions& txnOpts);
     std::future<k2::GetSchemaResult> getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion);
     std::future<k2::CreateSchemaResult> createSchema(const k2::String& collectionName, k2::dto::Schema schema);
+    std::future<k2::Status> createCollection(k2::dto::CollectionCreateRequest&& ccr);
+    // TODO: Add DeleteColection later when it is supported on CPO/K23si
     std::future<CreateScanReadResult> createScanRead(const k2::String& collectionName,
                                                      const k2::String& schemaName);
 };  // class K23SIGate

@@ -131,6 +131,17 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
     });
 }
 
+seastar::future<> PGK2Client::_pollCreateCollectionQ() {
+    return pollQ(collectionCreateTxQ, [this](auto& req) {
+        K2DEBUG("Collection create...");
+        //return _client.makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
+        return _client.makeCollection(std::move(req.ccr.metadata.name), std::move(req.ccr.rangeEnds))
+            .then([this, &req](auto&& result) {
+                req.prom.set_value(std::move(result));
+            });
+    });
+}
+
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
         K2DEBUG("Read...");
@@ -214,7 +225,8 @@ seastar::future<> PGK2Client::_pollUpdateQ() {
 
 seastar::future<> PGK2Client::_pollForWork() {
     return seastar::when_all_succeed(
-        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ());
+        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ(),
+        _pollCreateCollectionQ());  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
 }
 
 }  // namespace gate
