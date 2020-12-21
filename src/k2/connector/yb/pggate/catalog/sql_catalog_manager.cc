@@ -62,30 +62,17 @@ namespace catalog {
             } else {
                 LOG(FATAL) << "Cluster info doesn't exits. Primary cluster is not initialized. Only operation allowed is primary cluster initialization.";
                 ci_context->Abort();  // no difference either abort or commit
-
-                // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
-                // keep initted_ to be false;
-                return Status::OK();  
-
-                /*
-                ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
-                CreateClusterInfoResult clresp = cluster_info_handler_->CreateClusterInfo(ci_context, cluster_info);
-                if (clresp.status.IsSucceeded()) {
-                    LOG(INFO) << "Created cluster info record succeeded";
-                } else {
-                    ci_context->Abort();
-                    LOG(FATAL) << "Failed to create cluster info record due to " << clresp.status.errorMessage;
-                    return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
-                        clresp.status.code, clresp.status.errorMessage);               
-                }
-                */
+                return STATUS_FORMAT(IOError, "Unexpected emput cluster info, failed to read cluster info record to error code $0 and message $1",
+                    ciresp.status.code, ciresp.status.errorMessage);   
             }
         } else {
             ci_context->Abort();
-            LOG(FATAL) << "Failed to read cluster info record";
-            return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
-                ciresp.status.code, ciresp.status.errorMessage);             
-        }
+            LOG(WARNING) << "Failed to read cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization. ";
+            
+            // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
+            // keep initted_ to be false;
+            return Status::OK();           
+        }   
         // end the current transaction so that we use a different one for later operations
         ci_context->Commit();
 
@@ -263,12 +250,32 @@ namespace catalog {
             return response;
         }
 
+        std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
+        uint32_t t_nextPgOid;
+
+        // check source namespace to set nextPgOid properly
+        if (!request.sourceNamespaceId.empty())
+        {
+            // create a new namespace from a source namespace
+            // check if the source namespace exists
+            source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
+            if (source_namespace_info == nullptr) {
+                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
+                response.status.code = StatusCode::ALREADY_PRESENT;
+                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
+                return response;
+            } 
+            t_nextPgOid = source_namespace_info->GetNextPgOid();
+        } else {
+            t_nextPgOid = request.nextPgOid.value();
+        }
+
         // step 2.2 Add new namespace(database) entry into default cluster Namespace table and update in-memory cache
         std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
         new_ns->SetNamespaceId(request.namespaceId);
         new_ns->SetNamespaceName(request.namespaceName);
-        new_ns->SetNamespaceOid(request.namespaceOid);
-        new_ns->SetNextPgOid(request.nextPgOid.value());
+        new_ns->SetNamespaceOid(request.namespaceOid);      
+        new_ns->SetNextPgOid(t_nextPgOid);
         // persist the new namespace record
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
@@ -295,16 +302,6 @@ namespace catalog {
         // step 3/3: If source namespace(database) is present in the request, copy all the rest of tables from source namespace(database)
         if (!request.sourceNamespaceId.empty())
         {
-            // create a new namespace from a source namespace
-            // check if the source namespace exists
-            std::shared_ptr<NamespaceInfo> source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
-            if (source_namespace_info == nullptr) {
-                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
-                response.status.code = StatusCode::ALREADY_PRESENT;
-                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
-                return response;
-            } 
-
             std::shared_ptr<SessionTransactionContext> source_context = NewTransactionContext();
             // get the source table ids
             ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
