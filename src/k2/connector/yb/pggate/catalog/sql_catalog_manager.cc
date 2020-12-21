@@ -228,15 +228,21 @@ namespace catalog {
             return response;
         } 
 
+        std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
+        uint32_t t_nextPgOid;
+        // validate source namespace id and check source namespace to set nextPgOid properly
         if (!request.sourceNamespaceId.empty())
         {
-            std::shared_ptr<NamespaceInfo> source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
+            source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
             if (source_namespace_info == nullptr) {
                 LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
                 response.status.code = StatusCode::ALREADY_PRESENT;
                 response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
                 return response;
             } 
+            t_nextPgOid = source_namespace_info->GetNextPgOid();
+        } else {
+            t_nextPgOid = request.nextPgOid.value();
         }
 
         // step 2/3: create new namespace(database), total 3 sub-steps
@@ -248,26 +254,6 @@ namespace catalog {
         if (!response.status.IsSucceeded())
         {
             return response;
-        }
-
-        std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
-        uint32_t t_nextPgOid;
-
-        // check source namespace to set nextPgOid properly
-        if (!request.sourceNamespaceId.empty())
-        {
-            // create a new namespace from a source namespace
-            // check if the source namespace exists
-            source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
-            if (source_namespace_info == nullptr) {
-                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
-                response.status.code = StatusCode::ALREADY_PRESENT;
-                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
-                return response;
-            } 
-            t_nextPgOid = source_namespace_info->GetNextPgOid();
-        } else {
-            t_nextPgOid = request.nextPgOid.value();
         }
 
         // step 2.2 Add new namespace(database) entry into default cluster Namespace table and update in-memory cache
