@@ -37,7 +37,7 @@ namespace catalog {
     using yb::Status;
     using k2pg::gate::K2Adapter;
 
-    SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) : 
+    SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) :
         cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
@@ -49,30 +49,30 @@ namespace catalog {
 
     Status SqlCatalogManager::Start() {
         CHECK(!initted_.load(std::memory_order_acquire));
-        
+
         std::shared_ptr<SessionTransactionContext> ci_context = NewTransactionContext();
         // load cluster info
         GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(ci_context, cluster_id_);
         if (ciresp.status.IsSucceeded()) {
             if (ciresp.clusterInfo != nullptr) {
                 CHECK(ciresp.clusterInfo->IsInitdbDone());
-                init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed); 
-                catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed); 
-                LOG(INFO) << "Loaded cluster info record succeeded";  
+                init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
+                catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
+                LOG(INFO) << "Loaded cluster info record succeeded";
             } else {
-                LOG(FATAL) << "Cluster info doesn't exits. Primary cluster is not initialized. Only operation allowed is primary cluster initialization.";
                 ci_context->Abort();  // no difference either abort or commit
-                return STATUS_FORMAT(IOError, "Unexpected emput cluster info, failed to read cluster info record to error code $0 and message $1",
-                    ciresp.status.code, ciresp.status.errorMessage);   
+                LOG(WARNING) << "Empty cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization. ";
+                // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
+                // keep initted_ to be false;
+                return Status::OK();
             }
         } else {
+            LOG(FATAL) << "Failed to read cluster info record due to " << ciresp.status.errorMessage;
             ci_context->Abort();
-            LOG(WARNING) << "Failed to read cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization. ";
-            
-            // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
-            // keep initted_ to be false;
-            return Status::OK();           
-        }   
+            return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
+                    ciresp.status.code, ciresp.status.errorMessage);
+        }
+
         // end the current transaction so that we use a different one for later operations
         ci_context->Commit();
 
@@ -110,7 +110,7 @@ namespace catalog {
 
         }
 
-        LOG(INFO) << "SQL CatalogManager shut down complete. Bye!"; 
+        LOG(INFO) << "SQL CatalogManager shut down complete. Bye!";
     }
 
     // Called only once during PG initDB
@@ -133,10 +133,10 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> init_context = NewTransactionContext();
 
-        // step 2/4 Init Cluster info, including create the SKVSchema in the primary cluster's SKVCollection for cluster_info and insert current cluster info into 
+        // step 2/4 Init Cluster info, including create the SKVSchema in the primary cluster's SKVCollection for cluster_info and insert current cluster info into
         //      Note: Initialize cluster info's init_db column with TRUE
         ClusterInfo cluster_info(cluster_id_, catalog_version_, true /*init_db_done*/);
-        
+
         InitClusterInfoResult initCIRes = cluster_info_handler_->InitClusterInfo(init_context, cluster_info);
         if (initCIRes.status.IsSucceeded()) {
             LOG(INFO) << "Initialization of cluster info succeeded";
@@ -144,7 +144,7 @@ namespace catalog {
             init_context->Abort();
                 LOG(FATAL) << "Failed to initialize cluster info due to " << initCIRes.status.errorMessage;
                 return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
-                    initCIRes.status.code, initCIRes.status.errorMessage);               
+                    initCIRes.status.code, initCIRes.status.errorMessage);
         }
 
         // step 3/4 Init namespace_info - create the SKVSchema in the primary cluster's SKVcollection for namespace_info
@@ -152,7 +152,7 @@ namespace catalog {
         if (!initRes.status.IsSucceeded()) {
             LOG(FATAL) << "Failed to initialize creating namespace table due to " <<  initRes.status.errorMessage;
             return STATUS_FORMAT(IOError, "Failed to initialize creating namespace table due to error code $0 and message $1",
-                initRes.status.code, initRes.status.errorMessage);  
+                initRes.status.code, initRes.status.errorMessage);
         }
 
         // step 4/4 re-start this catalog manager so it can execute other APIs
@@ -161,8 +161,8 @@ namespace catalog {
         {
             // check things are ready
             CHECK(initted_.load(std::memory_order_relaxed));
-            CHECK(init_db_done_.load(std::memory_order_relaxed));   
-            LOG(INFO) << "SQL CatalogManager successfully initialized primary Cluster!";     
+            CHECK(init_db_done_.load(std::memory_order_relaxed));
+            LOG(INFO) << "SQL CatalogManager successfully initialized primary Cluster!";
         }
         else
         {
@@ -180,11 +180,11 @@ namespace catalog {
             context->Commit();
             if (result.status.IsSucceeded() && result.clusterInfo != nullptr) {
                if (result.clusterInfo->IsInitdbDone()) {
-                    init_db_done_.store(result.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);                             
+                    init_db_done_.store(result.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
                 }
                 if (result.clusterInfo->GetCatalogVersion() > catalog_version_) {
                     catalog_version_.store(result.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
-                }             
+                }
             } else {
                 response.status = std::move(result.status);
                 return response;
@@ -213,7 +213,7 @@ namespace catalog {
         }
         context->Commit();
         return response;
-    }      
+    }
 
     CreateNamespaceResponse SqlCatalogManager::CreateNamespace(const CreateNamespaceRequest& request) {
         CreateNamespaceResponse response;
@@ -226,7 +226,7 @@ namespace catalog {
             response.status.code = StatusCode::ALREADY_PRESENT;
             response.status.errorMessage = "Namespace " + request.namespaceName + " has already existed";
             return response;
-        } 
+        }
 
         std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
         uint32_t t_nextPgOid;
@@ -239,7 +239,7 @@ namespace catalog {
                 response.status.code = StatusCode::ALREADY_PRESENT;
                 response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
                 return response;
-            } 
+            }
             t_nextPgOid = source_namespace_info->GetNextPgOid();
         } else {
             t_nextPgOid = request.nextPgOid.value();
@@ -260,19 +260,19 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
         new_ns->SetNamespaceId(request.namespaceId);
         new_ns->SetNamespaceName(request.namespaceName);
-        new_ns->SetNamespaceOid(request.namespaceOid);      
+        new_ns->SetNamespaceOid(request.namespaceOid);
         new_ns->SetNextPgOid(t_nextPgOid);
         // persist the new namespace record
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
         if (!add_result.status.IsSucceeded()) {
             response.status = std::move(add_result.status);
-            ns_context->Abort();      
+            ns_context->Abort();
             return response;
-        } 
+        }
         // cache namespaces by namespace id and namespace name
         namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-        namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;  
+        namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;
         response.namespaceInfo = new_ns;
 
         // step 2.3 Add new system tables for the new namespace(database)
@@ -280,10 +280,10 @@ namespace catalog {
         CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
         if (!table_result.status.IsSucceeded()) {
             response.status = std::move(table_result.status);
-            target_context->Abort();  
-            ns_context->Abort();       
-            return response;     
-        } 
+            target_context->Abort();
+            ns_context->Abort();
+            return response;
+        }
 
         // step 3/3: If source namespace(database) is present in the request, copy all the rest of tables from source namespace(database)
         if (!request.sourceNamespaceId.empty())
@@ -295,37 +295,37 @@ namespace catalog {
                 response.status = std::move(list_table_result.status);
                 source_context->Abort();
                 target_context->Abort();
-                ns_context->Abort();        
+                ns_context->Abort();
                 return response;
             }
             for (auto& source_table_id : list_table_result.tableIds) {
                 // copy the source table metadata to the target table
                 CopyTableResult copy_result = table_info_handler_->CopyTable(
-                    target_context, 
-                    new_ns->GetNamespaceId(), 
-                    new_ns->GetNamespaceName(), 
-                    new_ns->GetNamespaceOid(), 
-                    source_context, 
-                    source_namespace_info->GetNamespaceId(), 
-                    source_namespace_info->GetNamespaceName(), 
+                    target_context,
+                    new_ns->GetNamespaceId(),
+                    new_ns->GetNamespaceName(),
+                    new_ns->GetNamespaceOid(),
+                    source_context,
+                    source_namespace_info->GetNamespaceId(),
+                    source_namespace_info->GetNamespaceName(),
                     source_table_id);
                 if (!copy_result.status.IsSucceeded()) {
                     response.status = std::move(copy_result.status);
                     source_context->Abort();
                     target_context->Abort();
-                    ns_context->Abort();        
+                    ns_context->Abort();
                     return response;
                 }
             }
-            source_context->Commit();            
+            source_context->Commit();
         }
-            
+
         target_context->Commit();
-        ns_context->Commit();        
+        ns_context->Commit();
         response.status.Succeed();
         return response;
     }
-  
+
     ListNamespacesResponse SqlCatalogManager::ListNamespaces(const ListNamespacesRequest& request) {
         ListNamespacesResponse response;
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
@@ -333,17 +333,17 @@ namespace catalog {
         context->Commit();
 
         if (result.status.IsSucceeded()) {
-            response.status.Succeed();             
+            response.status.Succeed();
             if (!result.namespaceInfos.empty()) {
                 UpdateNamespaceCache(result.namespaceInfos);
                 for (auto ns_ptr : result.namespaceInfos) {
                     response.namespace_infos.push_back(ns_ptr);
                 }
             } else {
-                LOG(WARNING) << "No namespaces are found";    
+                LOG(WARNING) << "No namespaces are found";
             }
         } else {
-            LOG(ERROR) << "Failed to list namespaces due to code " << result.status.code 
+            LOG(ERROR) << "Failed to list namespaces due to code " << result.status.code
                 << " and message " << result.status.errorMessage;
             response.status = std::move(result.status);
         }
@@ -363,8 +363,8 @@ namespace catalog {
 
                 // update namespace caches
                 namespace_id_map_[response.namespace_info->GetNamespaceId()] = response.namespace_info ;
-                namespace_name_map_[response.namespace_info->GetNamespaceName()] = response.namespace_info; 
-                response.status.Succeed();             
+                namespace_name_map_[response.namespace_info->GetNamespaceName()] = response.namespace_info;
+                response.status.Succeed();
             } else {
                 LOG(WARNING) << "Cannot find namespace " << request.namespaceId;
                 response.status.code = StatusCode::NOT_FOUND;
@@ -389,8 +389,8 @@ namespace catalog {
             response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
             return response;
         }
-        std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;  
-           
+        std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;
+
         // delete all namespace tables and indexes
         std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
         ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
@@ -400,13 +400,13 @@ namespace catalog {
             return response;
         }
         for (auto& table_id : list_table_result.tableIds) {
-            GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId, 
+            GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId,
                     request.namespaceName, table_id);
             if (!table_result.status.IsSucceeded() || table_result.tableInfo == nullptr) {
                 response.status = std::move(table_result.status);
                 tb_context->Abort();
                 return response;
-            }         
+            }
             // delete table data
             DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
             if (!tb_data_result.status.IsSucceeded()) {
@@ -422,22 +422,22 @@ namespace catalog {
                 return response;
             }
         }
-        
+
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(ns_context, namespace_info);
         if (!del_result.status.IsSucceeded()) {
             response.status = std::move(del_result.status);
             tb_context->Abort();
-            ns_context->Abort();  
-            return response;              
+            ns_context->Abort();
+            return response;
         }
         tb_context->Commit();
         ns_context->Commit();
 
         // remove namespace from local cache
         namespace_id_map_.erase(namespace_info->GetNamespaceId());
-        namespace_name_map_.erase(namespace_info->GetNamespaceName()); 
-        response.status.Succeed();      
+        namespace_name_map_.erase(namespace_info->GetNamespaceName());
+        response.status.Succeed();
         return response;
     }
 
@@ -463,7 +463,7 @@ namespace catalog {
                 return response;
             }
             // increase the schema version by one
-            // TODO: If SQL allows changing or rearranging primary key columns, we can't support that on SKV as 
+            // TODO: If SQL allows changing or rearranging primary key columns, we can't support that on SKV as
             // different versions of the same schema. Need to figure out a way to handle this case
             schema_version = request.schema.version() + 1;
             table_id = table_info->table_id();
@@ -472,18 +472,18 @@ namespace catalog {
             schema_version = request.schema.version();
             if (schema_version == 0) {
                 schema_version++;
-            } 
+            }
             // generate a string format table id based database object oid and table oid
             table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         }
         Schema table_schema = std::move(request.schema);
         table_schema.set_version(schema_version);
-        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName, 
+        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
                 table_info->table_id(), request.tableName, table_schema);
         new_table_info->set_pg_oid(request.tableOid);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
-        
+
         // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, new_table_info->namespace_id(), new_table_info);
@@ -505,7 +505,7 @@ namespace catalog {
 
         return response;
     }
-   
+
     CreateIndexTableResponse SqlCatalogManager::CreateIndexTable(const CreateIndexTableRequest& request) {
         CreateIndexTableResponse response;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
@@ -528,8 +528,8 @@ namespace catalog {
                 base_table_id);
                 if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
                       // update table cache
-                    UpdateTableCache(table_result.tableInfo); 
-                    base_table_info = table_result.tableInfo;                 
+                    UpdateTableCache(table_result.tableInfo);
+                    base_table_info = table_result.tableInfo;
                 }
         }
 
@@ -538,8 +538,8 @@ namespace catalog {
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request.tableName;
             return response;
-        } 
-            
+        }
+
         bool need_create_index = false;
         if (base_table_info->has_secondary_indexes()) {
             const IndexMap& index_map = base_table_info->secondary_indexes();
@@ -569,13 +569,13 @@ namespace catalog {
                 IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
                     request.schema, request.isUnique, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
-                // persist the index table metadata to the system catalog SKV tables   
-                table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info); 
+                // persist the index table metadata to the system catalog SKV tables
+                table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
                 // create a SKV schema to insert the actual index data
-                table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info); 
+                table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
-                // update the base table with the new index 
+                // update the base table with the new index
                 base_table_info->add_secondary_index(index_table_id, new_index_info);
 
                 // update table cache
@@ -596,7 +596,7 @@ namespace catalog {
             } catch (const std::exception& e) {
                 response.status.code = StatusCode::RUNTIME_ERROR;
                 response.status.errorMessage = e.what();
-            }  
+            }
         }
 
         return response;
@@ -612,17 +612,17 @@ namespace catalog {
             response.tableInfo = table_info;
             response.status.Succeed();
             return response;
-        } 
-        
+        }
+
         std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);          
+        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             LOG(FATAL) << "Cannot find namespace " << namespace_id;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + namespace_id;
             return response;
         }
-          
+
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // fetch the table from SKV
         GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
@@ -633,7 +633,7 @@ namespace catalog {
             response.tableInfo = nullptr;
             return response;
         }
-            
+
         if (table_result.tableInfo == nullptr) {
             context->Abort();
             response.status.code = StatusCode::NOT_FOUND;
@@ -641,7 +641,7 @@ namespace catalog {
             response.tableInfo = nullptr;
             return response;
         }
-            
+
         context->Commit();
         response.status.Succeed();
         response.tableInfo = table_result.tableInfo;
@@ -662,7 +662,7 @@ namespace catalog {
         response.namespaceId = namespace_info->GetNamespaceId();
 
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        ListTablesResult tables_result = table_info_handler_->ListTables(context, namespace_info->GetNamespaceId(), 
+        ListTablesResult tables_result = table_info_handler_->ListTables(context, namespace_info->GetNamespaceId(),
                 namespace_info->GetNamespaceName(), request.isSysTableIncluded);
         if (!tables_result.status.IsSucceeded()) {
             context->Abort();
@@ -672,8 +672,8 @@ namespace catalog {
 
         context->Commit();
         for (auto& tableInfo : tables_result.tableInfos) {
-            response.tableInfos.push_back(std::move(tableInfo));    
-        }   
+            response.tableInfos.push_back(std::move(tableInfo));
+        }
         response.status.Succeed();
         return response;
     }
@@ -712,10 +712,10 @@ namespace catalog {
                 response.status.errorMessage = "Cannot find table " + table_id;
                 return response;
             }
- 
+
             table_info = table_result.tableInfo;
         }
-            
+
         // delete indexes and the table itself
         // delete table data
          DeleteTableResult delete_data_result = table_info_handler_->DeleteTableData(context, namespace_id, table_info);
@@ -723,16 +723,16 @@ namespace catalog {
             context->Abort();
             response.status = std::move(delete_data_result.status);
             return response;
-        } 
-            
+        }
+
         // delete table schema metadata
         DeleteTableResult delete_metadata_result = table_info_handler_->DeleteTableMetadata(context, namespace_id, table_info);
         if (!delete_metadata_result.status.IsSucceeded()) {
             context->Abort();
             response.status = std::move(delete_metadata_result.status);
             return response;
-        } 
-                            
+        }
+
         context->Commit();
         // clear table cache after table deletion
         ClearTableCache(table_info);
@@ -751,7 +751,7 @@ namespace catalog {
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + namespace_id;
             return response;
-        }       
+        }
 
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_id);
@@ -767,7 +767,7 @@ namespace catalog {
         } else {
             base_table_id = index_info->indexed_table_id();
         }
-        
+
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
@@ -788,9 +788,9 @@ namespace catalog {
 
             base_table_info = table_result.tableInfo;
         }
-        
+
         // delete index data
-        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(context, namespace_id, table_id); 
+        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(context, namespace_id, table_id);
         if (!delete_data_result.status.IsSucceeded()) {
             context->Abort();
             response.status = std::move(delete_data_result.status);
@@ -798,7 +798,7 @@ namespace catalog {
         }
 
         // delete index metadata
-        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(context, namespace_id, table_id); 
+        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(context, namespace_id, table_id);
         if (!delete_metadata_result.status.IsSucceeded()) {
             context->Abort();
             response.status = std::move(delete_metadata_result.status);
@@ -811,7 +811,7 @@ namespace catalog {
         // update table cache with the index removed, index cache is updated accordingly
         UpdateTableCache(base_table_info);
         response.baseIndexTableOid = base_table_info->pg_oid();
-        response.status.Succeed();          
+        response.status.Succeed();
         return response;
     }
 
@@ -839,21 +839,21 @@ namespace catalog {
                 }
                 response.namespaceId = request.namespaceId;
                 response.beginOid = begin_oid;
-                response.endOid = end_oid; 
+                response.endOid = end_oid;
 
                 // update the namespace record on SKV
-                // We use read and write in the same transaction so that K23SI guarantees that concurrent SKV records on SKV 
+                // We use read and write in the same transaction so that K23SI guarantees that concurrent SKV records on SKV
                 // won't override each other and won't lose the correctness of PgNextOid
                 std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
                 updated_ns->SetNextPgOid(end_oid);
                 AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, updated_ns);
                 if (!update_result.status.IsSucceeded()) {
-                    response.status = std::move(update_result.status);                 
+                    response.status = std::move(update_result.status);
                 } else {
                     // update namespace caches after persisting to SKV successfully
                     namespace_id_map_[updated_ns->GetNamespaceId()] = updated_ns;
                     namespace_name_map_[updated_ns->GetNamespaceName()] = updated_ns;
-                    response.status.Succeed();              
+                    response.status.Succeed();
                 }
             } else {
                 response.status.code = StatusCode::NOT_FOUND;
@@ -877,7 +877,7 @@ namespace catalog {
             ClusterInfo cluster_info(cluster_id_, init_db_done_, local_catalog_version);
             UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
             if (!result.status.IsSucceeded()) {
-                LOG(ERROR) << "ClusterInfo update failed due to error code " << result.status.code << " and message " 
+                LOG(ERROR) << "ClusterInfo update failed due to error code " << result.status.code << " and message "
                     << result.status.errorMessage;
                 return result.status;
             }
@@ -894,9 +894,9 @@ namespace catalog {
         namespace_name_map_.clear();
         for (auto ns_ptr : namespace_infos) {
             namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
-            namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr; 
+            namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
         }
-    }    
+    }
 
     // update table caches
     void SqlCatalogManager::UpdateTableCache(std::shared_ptr<TableInfo> table_info) {
@@ -907,8 +907,8 @@ namespace catalog {
         table_name_map_[key] = table_info;
         // update the corresponding index cache
         UpdateIndexCacheForTable(table_info);
-    }  
-    
+    }
+
     // remove table info from table cache and its related indexes from index cache
     void SqlCatalogManager::ClearTableCache(std::shared_ptr<TableInfo> table_info) {
         std::lock_guard<simple_spinlock> l(lock_);
@@ -917,7 +917,7 @@ namespace catalog {
         TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
         table_name_map_.erase(key);
     }
-    
+
     // clear index infos for a table in the index cache
     void SqlCatalogManager::ClearIndexCacheForTable(std::string table_id) {
         std::lock_guard<simple_spinlock> l(lock_);
@@ -979,7 +979,7 @@ namespace catalog {
         }
         return nullptr;
     }
-        
+
     std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(std::string namespace_id, std::string table_name) {
         if (!table_id_map_.empty()) {
            TableNameKey key = std::make_pair(namespace_id, table_name);
@@ -989,8 +989,8 @@ namespace catalog {
             }
         }
         return nullptr;
-    }   
-     
+    }
+
     std::shared_ptr<IndexInfo> SqlCatalogManager::GetCachedIndexInfoById(std::string index_id) {
         if (!index_id_map_.empty()) {
             const auto itr = index_id_map_.find(index_id);
@@ -1005,11 +1005,11 @@ namespace catalog {
         std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
         std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(txn_future.get());
         std::shared_ptr<SessionTransactionContext> context = std::make_shared<SessionTransactionContext>(txn);
-        return context;  
+        return context;
     }
 
     void SqlCatalogManager::IncreaseCatalogVersion() {
-        catalog_version_++; 
+        catalog_version_++;
         // need to update the catalog version on SKV
         // the update frequency could be reduced once we have a single or a quorum of catalog managers
         ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
@@ -1017,7 +1017,7 @@ namespace catalog {
         cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
         context->Commit();
     }
-    
+
     IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
             const Schema& index_schema, bool is_unique, IndexPermissions index_permissions) {
         std::vector<IndexColumn> columns;
@@ -1033,27 +1033,27 @@ namespace catalog {
             }
             ColumnId indexed_column_id = pair.second;
             IndexColumn col(col_id, col_schema.name(),  indexed_column_id);
-            columns.push_back(col);   
+            columns.push_back(col);
         }
-        IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(), 
+        IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
                 is_unique, columns, index_permissions);
-        return index_info;        
+        return index_info;
     }
-    
+
     std::shared_ptr<NamespaceInfo> SqlCatalogManager::CheckAndLoadNamespaceByName(const std::string& namespace_name) {
         std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(namespace_name);
         if (namespace_info == nullptr) {
             // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
-            // this could be avoided by use a single or a quorum of catalog managers 
+            // this could be avoided by use a single or a quorum of catalog managers
             std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
             ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
             ns_context->Commit();
             if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
                 // update namespace caches
-                UpdateNamespaceCache(result.namespaceInfos);    
+                UpdateNamespaceCache(result.namespaceInfos);
                 // recheck namespace
-                namespace_info = GetCachedNamespaceByName(namespace_name);          
-            }          
+                namespace_info = GetCachedNamespaceByName(namespace_name);
+            }
         }
         return namespace_info;
     }
@@ -1062,16 +1062,16 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
-            // this could be avoided by use a single or a quorum of catalog managers 
+            // this could be avoided by use a single or a quorum of catalog managers
             std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
             ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
             ns_context->Commit();
             if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
                 // update namespace caches
-                UpdateNamespaceCache(result.namespaceInfos);    
+                UpdateNamespaceCache(result.namespaceInfos);
                 // recheck namespace
-                namespace_info = GetCachedNamespaceById(namespace_id);          
-            }          
+                namespace_info = GetCachedNamespaceById(namespace_id);
+            }
         }
         return namespace_info;
     }
