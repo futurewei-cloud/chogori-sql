@@ -34,21 +34,21 @@ namespace catalog {
 using k2pg::gate::CreateScanReadResult;
 
 struct InitNamespaceTableResult {
-    RStatus status;    
+    RStatus status;
 };
 
 struct AddOrUpdateNamespaceResult {
-    RStatus status;   
+    RStatus status;
 };
 
 struct GetNamespaceResult {
     RStatus status;
-    std::shared_ptr<NamespaceInfo> namespaceInfo;  
+    std::shared_ptr<NamespaceInfo> namespaceInfo;
 };
 
 struct ListNamespacesResult {
     RStatus status;
-    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;  
+    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;
 };
 
 struct DeleteNamespaceResult {
@@ -58,8 +58,8 @@ struct DeleteNamespaceResult {
 class NamespaceInfoHandler : public BaseHandler {
     public:
     typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
-    
-    static inline k2::dto::Schema schema_ {
+
+    k2::dto::Schema schema_ {
         .name = CatalogConsts::skv_schema_name_namespace_info,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -87,17 +87,17 @@ class NamespaceInfoHandler : public BaseHandler {
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 
-    // SKV collection utilites. 
+    // SKV collection utilites.
     // collection_name is namespace ID for its uniqueueness
     // nsName(DBName) passed in for later hack finding collection configuration
     // TODO: pass in other collection configure later
-    // TODO: add delete SKV collection later when cpo/k23si support it. 
+    // TODO: add delete SKV collection later when cpo/k23si support it.
     RStatus CreateSKVCollection(const std::string& collection_name, const std::string& nsName);
 
-    private:  
+    private:
     std::string collection_name_;
     std::string schema_name_;
-    std::shared_ptr<k2::dto::Schema> schema_ptr_;  
+    std::shared_ptr<k2::dto::Schema> schema_ptr_;
 };
 
 } // namespace catalog
