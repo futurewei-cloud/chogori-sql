@@ -371,7 +371,7 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
     std::vector<k2::String> rangeEnds {""};  // contains only one to make range partition
     std::vector<k2::String> endpoints {""};  // TODO: get endpoint config!
     k2::dto::HashScheme scheme = rangeEnds.size() ? k2::dto::HashScheme::Range : k2::dto::HashScheme::HashCRC32C;
-    
+
     //TODO - HACKHACK read/update collection metadata, rangeEnds and endpoints based on nsName from a hack config file here
 
     auto createCollectionReq = k2::dto::CollectionCreateRequest{
@@ -384,7 +384,7 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
                             //.readIOPs = 100000,
                             //.writeIOPs = 100000
                         },
-                        .retentionPeriod = k2::Duration(1h)*90*24  //TODO: get this from config or from param in 
+                        .retentionPeriod = k2::Duration(1h)*90*24  //TODO: get this from config or from param in
                     },
                     .clusterEndpoints = std::move(endpoints),
                     .rangeEnds = std::move(rangeEnds)
@@ -448,6 +448,7 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     // TODO: read from configuration/env files
     options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
     options.priority = k2::dto::TxnPriority::Medium;
+    options.syncFinalize = true;
     return k23si_->beginTxn(options);
 }
 
