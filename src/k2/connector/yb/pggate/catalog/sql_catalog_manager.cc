@@ -155,6 +155,8 @@ namespace catalog {
                 initRes.status.code, initRes.status.errorMessage);
         }
 
+        init_context->Commit();
+
         // step 4/4 re-start this catalog manager so it can execute other APIs
         Status status = Start();
         if (status.ok())
