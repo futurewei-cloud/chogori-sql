@@ -151,6 +151,7 @@ seastar::future<> PGK2Client::_pollReadQ() {
             return seastar::make_ready_future();
         }
 
+        K2INFO("Read..." << req.key);
         if (!req.key.partitionKey.empty()) {
             return fiter->second.read(std::move(req.key), std::move(req.collectionName))
             .then([this, &req](auto&& readResult) {

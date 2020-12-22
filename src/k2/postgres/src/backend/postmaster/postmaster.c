@@ -4172,56 +4172,10 @@ report_fork_failure_to_client(Port *port, int errnum)
 	} while (rc < 0 && errno == EINTR);
 }
 
-
-/*
- * BackendInitialize -- initialize an interactive (postmaster-child)
- *				backend process, and collect the client's startup packet.
- *
- * returns: nothing.  Will not return at all if there's any failure.
- *
- * Note: this code does not depend on having any access to shared memory.
- * In the EXEC_BACKEND case, we are physically attached to shared memory
- * but have not yet set up most of our local pointers to shmem structures.
- */
-static void
-BackendInitialize(Port *port)
+void 
+InitK23siWorker()
 {
-	int			status;
-	int			ret;
-	char		remote_host[NI_MAXHOST];
-	char		remote_port[NI_MAXSERV];
-	char		remote_ps_data[NI_MAXHOST];
-
-	/* Save port etc. for ps status */
-	MyProcPort = port;
-
-	/*
-	 * PreAuthDelay is a debugging aid for investigating problems in the
-	 * authentication cycle: it can be set in postgresql.conf to allow time to
-	 * attach to the newly-forked backend with a debugger.  (See also
-	 * PostAuthDelay, which we allow clients to pass through PGOPTIONS, but it
-	 * is not honored until after authentication.)
-	 */
-	if (PreAuthDelay > 0)
-		pg_usleep(PreAuthDelay * 1000000L);
-
-	/* This flag will remain set until InitPostgres finishes authentication */
-	ClientAuthInProgress = true;	/* limit visibility of log messages */
-
-	/* save process start time */
-	port->SessionStartTime = GetCurrentTimestamp();
-	MyStartTime = timestamptz_to_time_t(port->SessionStartTime);
-
-	/* set these to empty in case they are needed before we set them up */
-	port->remote_host = "";
-	port->remote_port = "";
-
-	/*
-	 * Initialize libpq and enable reporting of ereport errors to the client.
-	 * Must do this now because authentication uses libpq to send messages.
-	 */
-	pq_init();					/* initialize libpq to talk to client */
-	/* initialize k2 */
+		/* initialize k2 */
 	if (k2_init_func) {
 		const int MAX_K2_ARGS = 64;
 		/* example "mlx5_1" */
@@ -4319,6 +4273,58 @@ BackendInitialize(Port *port)
 		if (NULL != msgChecksum) { argv[argc++] = "--enable_tx_checksum"; argv[argc++] = "true"; }
 		k2_init_func(argc, argv);
     }
+}
+
+
+/*
+ * BackendInitialize -- initialize an interactive (postmaster-child)
+ *				backend process, and collect the client's startup packet.
+ *
+ * returns: nothing.  Will not return at all if there's any failure.
+ *
+ * Note: this code does not depend on having any access to shared memory.
+ * In the EXEC_BACKEND case, we are physically attached to shared memory
+ * but have not yet set up most of our local pointers to shmem structures.
+ */
+static void
+BackendInitialize(Port *port)
+{
+	int			status;
+	int			ret;
+	char		remote_host[NI_MAXHOST];
+	char		remote_port[NI_MAXSERV];
+	char		remote_ps_data[NI_MAXHOST];
+
+	/* Save port etc. for ps status */
+	MyProcPort = port;
+
+	/*
+	 * PreAuthDelay is a debugging aid for investigating problems in the
+	 * authentication cycle: it can be set in postgresql.conf to allow time to
+	 * attach to the newly-forked backend with a debugger.  (See also
+	 * PostAuthDelay, which we allow clients to pass through PGOPTIONS, but it
+	 * is not honored until after authentication.)
+	 */
+	if (PreAuthDelay > 0)
+		pg_usleep(PreAuthDelay * 1000000L);
+
+	/* This flag will remain set until InitPostgres finishes authentication */
+	ClientAuthInProgress = true;	/* limit visibility of log messages */
+
+	/* save process start time */
+	port->SessionStartTime = GetCurrentTimestamp();
+	MyStartTime = timestamptz_to_time_t(port->SessionStartTime);
+
+	/* set these to empty in case they are needed before we set them up */
+	port->remote_host = "";
+	port->remote_port = "";
+
+	/*
+	 * Initialize libpq and enable reporting of ereport errors to the client.
+	 * Must do this now because authentication uses libpq to send messages.
+	 */
+	pq_init();					/* initialize libpq to talk to client */
+	InitK23siWorker();
 
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
