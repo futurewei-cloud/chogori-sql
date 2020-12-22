@@ -54,7 +54,7 @@ seastar::future<> PGK2Client::start() {
             );
         });
     }
-    return seastar::make_ready_future();
+    return _client.start();
 }
 
 // Helper function used to poll a given queue. The given Func visitor is called with each element
