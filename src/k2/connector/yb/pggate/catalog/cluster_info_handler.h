@@ -49,7 +49,7 @@ class ClusterInfoHandler : public BaseHandler {
     public:
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
-    static inline k2::dto::Schema schema_ {
+    k2::dto::Schema schema_ {
         .name = CatalogConsts::skv_schema_name_cluster_info,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
@@ -62,17 +62,17 @@ class ClusterInfoHandler : public BaseHandler {
 
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
-    
+
     InitClusterInfoResult InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 
     UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
 
     GetClusterInfoResult ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id);
 
-    private:  
+    private:
     std::string collection_name_;
     std::string schema_name_;
-    std::shared_ptr<k2::dto::Schema> schema_ptr_;  
+    std::shared_ptr<k2::dto::Schema> schema_ptr_;
 };
 
 } // namespace sql
