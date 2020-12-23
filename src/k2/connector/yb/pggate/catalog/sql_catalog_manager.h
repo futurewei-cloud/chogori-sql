@@ -22,19 +22,19 @@ Copyright(c) 2020 Futurewei Cloud
 
 ------------- READ ME --------------
 
-Catalog Manager is the service that manages database metadata. It is local for now, but will become a central one 
+Catalog Manager is the service that manages database metadata. It is local for now, but will become a central one
 to avoid metadata update conflicts and reduce the need to access SKV frequently.
 
 The database data on SKV consists of the following:
 
 1) NamespaceInfo and TableInfo (IndexInfo): where NamespaceInfo represents database information and TableInfo for table metadata.
-    Both information are needed by PG Gate as database/table schema metadata to avoid deriving them by using the complicated logic in 
+    Both information are needed by PG Gate as database/table schema metadata to avoid deriving them by using the complicated logic in
     PG from PG system catalog tables.
 
 2) PG system catalog tables/indexes: each table has its own SKV schema and its data are managed by DMLs. Each system catalog
    table has a TableInfo representation in 1). PG still has its own internal logic to update the system catalog tables.
 
-3) User tables/indexes: each table has its own SKV schema and its data are managed by DMLs. The table metadata are stored 
+3) User tables/indexes: each table has its own SKV schema and its data are managed by DMLs. The table metadata are stored
    in PG system catalog and is also represented as a TableInfo in 1).
 
 For a namespace, i.e., database here, its identifier consists
@@ -58,12 +58,12 @@ The catalog system has a primary SKV collection to store
 2) namespace information: database information is shared across different databases and thus, we need to store them
     in the primary SKV record. It is accessed by the NamespaceInfoHandler
 
-3) Table information: PG gate needs to know the table schema and it is represented by the TableInfo object. 
+3) Table information: PG gate needs to know the table schema and it is represented by the TableInfo object.
     The TableInfoHandler is used to acccess the TableInfo (including IndexInfo) objects on SKV
 
-All tables in a namespace (database) are mapped to a SKV collection by namespace id, not namespace name to make the 
-rename database working. Similary, a table's SKV schema name is identified by the table id, not the table name to 
-avoid moving data around after renaming a table. 
+All tables in a namespace (database) are mapped to a SKV collection by namespace id, not namespace name to make the
+rename database working. Similary, a table's SKV schema name is identified by the table id, not the table name to
+avoid moving data around after renaming a table.
 
 To store a TableInfo with possible multiple IndexInfo on SKV (an IndexInfo represents a secondary index for a table),
 we have the following three catalog tables with fixed schema defined in table_info_handler.h for each namespace (database)
@@ -71,9 +71,9 @@ we have the following three catalog tables with fixed schema defined in table_in
 2) table column: store column information for a table. One entry for a table column
 3) index column: store index column for an index. One entry for an index column
 
-The TableInfoHandler is used to persist or read a TableInfo/IndexInfo object on SKV. When a TableInfo is stored to the 
-above catalog tables, the actual SKV schema is obtained dynamically and is created by TableInfoHandler as well by 
-table id so that DMLs could insert, update, select, and delete from the SKV table. 
+The TableInfoHandler is used to persist or read a TableInfo/IndexInfo object on SKV. When a TableInfo is stored to the
+above catalog tables, the actual SKV schema is obtained dynamically and is created by TableInfoHandler as well by
+table id so that DMLs could insert, update, select, and delete from the SKV table.
 
 Please be aware that blocking APIs are used for the catalog manager for now. Will refactor them to include task submission
 and task state checking APIs later by using thread pools.
@@ -99,7 +99,7 @@ and task state checking APIs later by using thread pools.
 
 namespace k2pg {
 namespace sql {
-namespace catalog {    
+namespace catalog {
     using yb::Status;
     using yb::simple_spinlock;
     using k2pg::gate::K2Adapter;
@@ -113,12 +113,12 @@ namespace catalog {
         bool isInitDbDone;
     };
 
-    struct GetCatalogVersionRequest {  
+    struct GetCatalogVersionRequest {
     };
 
     struct GetCatalogVersionResponse {
         RStatus status;
-        uint64_t catalogVersion;     
+        uint64_t catalogVersion;
     };
 
     struct CreateNamespaceRequest {
@@ -140,7 +140,7 @@ namespace catalog {
     };
 
     struct ListNamespacesResponse {
-        RStatus status;  
+        RStatus status;
         std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos;
     };
 
@@ -150,17 +150,17 @@ namespace catalog {
     };
 
     struct GetNamespaceResponse {
-        RStatus status;  
+        RStatus status;
         std::shared_ptr<NamespaceInfo> namespace_info;
     };
 
     struct DeleteNamespaceRequest {
         string namespaceName;
-        string namespaceId;      
+        string namespaceId;
     };
 
     struct DeleteNamespaceResponse {
-        RStatus status;       
+        RStatus status;
     };
 
     struct CreateTableRequest {
@@ -175,7 +175,7 @@ namespace catalog {
         bool isNotExist;
     };
 
-    struct CreateTableResponse {        
+    struct CreateTableResponse {
         RStatus status;
         std::shared_ptr<TableInfo> tableInfo;
     };
@@ -201,7 +201,7 @@ namespace catalog {
 
     struct GetTableSchemaRequest {
         uint32_t namespaceOid;
-        uint32_t tableOid;    
+        uint32_t tableOid;
     };
 
     struct GetTableSchemaResponse {
@@ -241,7 +241,7 @@ namespace catalog {
     struct DeleteIndexResponse {
         RStatus status;
         string namespaceId;
-        uint32_t baseIndexTableOid; 
+        uint32_t baseIndexTableOid;
     };
 
     struct ReservePgOidsRequest {
@@ -280,7 +280,7 @@ namespace catalog {
 
         GetCatalogVersionResponse GetCatalogVersion(const GetCatalogVersionRequest& request);
 
-        CreateNamespaceResponse CreateNamespace(const CreateNamespaceRequest& request);  
+        CreateNamespaceResponse CreateNamespace(const CreateNamespaceRequest& request);
 
         ListNamespacesResponse ListNamespaces(const ListNamespacesRequest& request);
 
@@ -291,7 +291,7 @@ namespace catalog {
         CreateTableResponse CreateTable(const CreateTableRequest& request);
 
         CreateIndexTableResponse CreateIndexTable(const CreateIndexTableRequest& request);
-        
+
         GetTableSchemaResponse GetTableSchema(const GetTableSchemaRequest& request);
 
         ListTablesResponse ListTables(const ListTablesRequest& request);
@@ -326,7 +326,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> GetCachedNamespaceByName(std::string namespace_name);
 
         std::shared_ptr<TableInfo> GetCachedTableInfoById(std::string table_id);
-        
+
         std::shared_ptr<TableInfo> GetCachedTableInfoByName(std::string namespace_id, std::string table_name);
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(std::string index_id);
@@ -351,13 +351,13 @@ namespace catalog {
         // flag to indicate whether init_db is done or not
         std::atomic<bool> init_db_done_{false};
 
-        // catalog version, 0 stands for uninitialized 
+        // catalog version, 0 stands for uninitialized
         std::atomic<uint64_t> catalog_version_{0};
 
         // handler to access ClusterInfo record including init_db_done flag and catalog version
         std::shared_ptr<ClusterInfoHandler> cluster_info_handler_;
 
-        // handler to access the namespace info record, which consists of database information 
+        // handler to access the namespace info record, which consists of database information
         // and it is a shared table across all databases
         std::shared_ptr<NamespaceInfoHandler> namespace_info_handler_;
 
@@ -370,7 +370,7 @@ namespace catalog {
         // namespace information cache based on namespace name
         std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
 
-        // a table is uniquely referenced by its id, which is generated based on its 
+        // a table is uniquely referenced by its id, which is generated based on its
         // database (namespace) PgOid and table PgOid, as a result, no namespace name is required here
         std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_id_map_;
 

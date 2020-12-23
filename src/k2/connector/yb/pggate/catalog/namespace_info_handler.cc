@@ -54,7 +54,7 @@ InitNamespaceTableResult NamespaceInfoHandler::InitNamespaceTable() {
         RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
         response.status = std::move(schema_result);
     } else {
-        LOG(FATAL) << "Unexpected Namespace SKV schema already exists during init.";
+        LOG(ERROR) << "Unexpected Namespace SKV schema already exists during init.";
         response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move("Unexpected Namespace SKV schema already exists during init.");
         return response;
@@ -88,7 +88,7 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<SessionTra
     }
 
     if (!read_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to read SKV record due to error code " << read_result.status.code
+        LOG(ERROR) << "Failed to read SKV record due to error code " << read_result.status.code
             << " and message: " << read_result.status.message;
         response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(read_result.status.message);
@@ -110,7 +110,7 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Sessio
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name_, schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to create scan read due to error code " << create_result.status.code
+        LOG(ERROR) << "Failed to create scan read due to error code " << create_result.status.code
             << " and message: " << create_result.status.message;
         response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = std::move(create_result.status.message);
@@ -125,7 +125,7 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Sessio
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            LOG(FATAL) << "Failed to run scan read due to error code " << query_result.status.code
+            LOG(ERROR) << "Failed to run scan read due to error code " << query_result.status.code
                 << " and message: " << query_result.status.message;
             response.status.code = StatusCode::INTERNAL_ERROR;
             response.status.errorMessage = std::move(query_result.status.message);
@@ -167,7 +167,7 @@ RStatus NamespaceInfoHandler::CreateSKVCollection(const std::string& collection_
 
     auto result = k2_adapter_->CreateCollection(collection_name, nsName).get();
     if (!result.is2xxOK()) {
-        LOG(FATAL) << "Failed to create SKV Collection " << collection_name
+        LOG(ERROR) << "Failed to create SKV Collection " << collection_name
             << " due to error code " << result.code
             << " and message: " << result.message;
         response.code = StatusCode::INTERNAL_ERROR;

@@ -38,7 +38,7 @@ RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_pt
     RStatus response;
     auto result = k2_adapter_->CreateSchema(collection_name, schema).get();
     if (!result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to create SKV schema for " << schema->name << "in" << collection_name
+        LOG(ERROR) << "Failed to create SKV schema for " << schema->name << "in" << collection_name
             << " due to error code " << result.status.code
             << " and message: " << result.status.message;
         response.code = StatusCode::INTERNAL_ERROR;
@@ -54,7 +54,7 @@ RStatus BaseHandler::PersistSKVRecord(std::shared_ptr<SessionTransactionContext>
 }
 
 RStatus BaseHandler::DeleteSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record) {
-    return SaveOrUpdateSKVRecord(context, record, true);    
+    return SaveOrUpdateSKVRecord(context, record, true);
 }
 
 RStatus BaseHandler::BatchDeleteSKVRecords(std::shared_ptr<SessionTransactionContext> context, std::vector<k2::dto::SKVRecord>& records) {
@@ -73,7 +73,7 @@ RStatus BaseHandler::SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionCon
     RStatus response;
     auto result = context->GetTxn()->write(std::move(record), isDelete).get();
     if (!result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to " << (isDelete ? "Delete" : "Save")
+        LOG(ERROR) << "Failed to " << (isDelete ? "Delete" : "Save")
             <<" SKV record "
             << " due to error code " << result.status.code
             << " and message: " << result.status.message;
