@@ -370,10 +370,10 @@ std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& c
 
 std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
 {
-    LOG(INFO) << "Create collection: name=" << collection_name << ", ns=" << nsName;
+    K2INFO("Create collection: name=" << collection_name << ", ns=" << nsName);
     Config conf;
     auto c = conf()["create_collections"];
-    LOG(INFO) << ">>> " << c;
+    K2INFO(c);
     auto ns = c[nsName];
     LOG(INFO) << ">>> " << ns;
     auto re = ns["range_ends"];

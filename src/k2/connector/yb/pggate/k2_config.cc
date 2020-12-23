@@ -25,6 +25,7 @@ Config::Config() {
     }
 
     // read the config file
+    K2INFO(configFileName);
     std::ifstream ifile(configFileName);
     ifile >> _config;
 }

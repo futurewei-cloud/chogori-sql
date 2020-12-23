@@ -18,18 +18,18 @@ export K2_CPO_BACKOFF=100ms
 export K2_MSG_CHECKSUM=TRUE
 
 export CPODIR=/tmp/___cpo_dir
-export EPS="tcp+k2rpc://0.0.0.0:10000"
+export EPS="tcp+k2rpc://0.0.0.0:10000 tcp+k2rpc://0.0.0.0:10001"
 export PERSISTENCE=tcp+k2rpc://0.0.0.0:12001
 
 rm -rf ${CPODIR}
 export PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} 9001 --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 &
+cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 &
 cpo_child_pid=$!
 
 # start nodepool
-nodepool -c1 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --reactor-backend epoll --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} &
+nodepool -c2 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --reactor-backend epoll --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} &
 nodepool_child_pid=$!
 
 # start persistence

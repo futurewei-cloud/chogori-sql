@@ -1,8 +1,12 @@
 {
     "create_collections": {
-        "K2RESVD_COLLECTION_SQL_PRIMARY": {
+        "PG_DEFAULT_CLUSTER": {
             "range_ends": [""],
             "endpoints": ["tcp+k2rpc://127.0.0.1:10000"]
+        },
+        "template1": {
+            "range_ends": [""],
+            "endpoints": ["tcp+k2rpc://127.0.0.1:10001"]
         }
     }
 }
