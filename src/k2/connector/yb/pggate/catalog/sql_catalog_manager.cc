@@ -48,6 +48,7 @@ namespace catalog {
     }
 
     Status SqlCatalogManager::Start() {
+        LOG(INFO) << "Starting Catalog Manager...";
         CHECK(!initted_.load(std::memory_order_acquire));
 
         std::shared_ptr<SessionTransactionContext> ci_context = NewTransactionContext();
@@ -67,7 +68,7 @@ namespace catalog {
                 return Status::OK();
             }
         } else {
-            LOG(FATAL) << "Failed to read cluster info record due to " << ciresp.status.errorMessage;
+            LOG(ERROR) << "Failed to read cluster info record due to " << ciresp.status.errorMessage;
             ci_context->Abort();
             return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
                     ciresp.status.code, ciresp.status.errorMessage);
@@ -92,12 +93,13 @@ namespace catalog {
                 LOG(INFO) << "namespaces are empty";
             }
         } else {
-            LOG(FATAL) << "Failed to load namespaces due to " <<  nsresp.status.errorMessage;
+            LOG(ERROR) << "Failed to load namespaces due to " <<  nsresp.status.errorMessage;
             return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
                 nsresp.status.code, nsresp.status.errorMessage);
         }
 
         initted_.store(true, std::memory_order_release);
+        LOG(INFO) << "Catalog Manager started up successfully";
         return Status::OK();
     }
 
@@ -126,7 +128,7 @@ namespace catalog {
         RStatus rs = namespace_info_handler_->CreateSKVCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
         if (!rs.IsSucceeded())
         {
-            LOG(FATAL) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  rs.errorMessage;
+            LOG(ERROR) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  rs.errorMessage;
             return STATUS_FORMAT(IOError, "Failed to create SKV collection during initialization primary PG cluster due to error code $0 and message $1",
                     rs.code, rs.errorMessage);
         }
@@ -142,7 +144,7 @@ namespace catalog {
             LOG(INFO) << "Initialization of cluster info succeeded";
         } else {
             init_context->Abort();
-                LOG(FATAL) << "Failed to initialize cluster info due to " << initCIRes.status.errorMessage;
+                LOG(ERROR) << "Failed to initialize cluster info due to " << initCIRes.status.errorMessage;
                 return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
                     initCIRes.status.code, initCIRes.status.errorMessage);
         }
@@ -150,7 +152,7 @@ namespace catalog {
         // step 3/4 Init namespace_info - create the SKVSchema in the primary cluster's SKVcollection for namespace_info
         InitNamespaceTableResult initRes = namespace_info_handler_->InitNamespaceTable();
         if (!initRes.status.IsSucceeded()) {
-            LOG(FATAL) << "Failed to initialize creating namespace table due to " <<  initRes.status.errorMessage;
+            LOG(ERROR) << "Failed to initialize creating namespace table due to " <<  initRes.status.errorMessage;
             return STATUS_FORMAT(IOError, "Failed to initialize creating namespace table due to error code $0 and message $1",
                 initRes.status.code, initRes.status.errorMessage);
         }
@@ -168,7 +170,7 @@ namespace catalog {
         }
         else
         {
-            LOG(FATAL) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  status.ToUserMessage();
+            LOG(ERROR) << "Failed to create SKV collection during initialization primary PG cluster due to " <<  status.ToUserMessage();
         }
 
         return status;
@@ -189,7 +191,7 @@ namespace catalog {
                     catalog_version_.store(result.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
                 }
             } else {
-                LOG(FATAL) << "Failed to check IsInitDbDone from SKV due to " << result.status.errorMessage;
+                LOG(ERROR) << "Failed to check IsInitDbDone from SKV due to " << result.status.errorMessage;
                 response.status = std::move(result.status);
                 return response;
             }
@@ -207,7 +209,7 @@ namespace catalog {
         // TODO: use a background thread to fetch the ClusterInfo record periodically instead of fetching it for each call
         GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
         if (!result.status.IsSucceeded()) {
-            LOG(FATAL) << "Failed to check cluster info due to " << result.status.errorMessage;
+            LOG(ERROR) << "Failed to check cluster info due to " << result.status.errorMessage;
             context->Abort();
             response.status = std::move(result.status);
             return response;
@@ -221,12 +223,12 @@ namespace catalog {
         RStatus status = UpdateCatalogVersion(context, result.clusterInfo->GetCatalogVersion());
         if (!status.IsSucceeded()) {
             context->Abort();
-            LOG(FATAL) << "Failed to update catalog version due to " << status.errorMessage;
+            LOG(ERROR) << "Failed to update catalog version due to " << status.errorMessage;
             response.status = std::move(status);
             return response;
         }
         context->Commit();
-        LOG(INFO) << "Get catalog version " << catalog_version_;
+        LOG(INFO) << "Returned catalog version " << catalog_version_;
         response.catalogVersion = catalog_version_;
         response.status.Succeed();
         return response;
@@ -241,7 +243,7 @@ namespace catalog {
         //      check the source namespace is already there, if it present in the create requet
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info != nullptr) {
-            LOG(FATAL) << "Namespace " << request.namespaceName << " has already existed";
+            LOG(ERROR) << "Namespace " << request.namespaceName << " has already existed";
             response.status.code = StatusCode::ALREADY_PRESENT;
             response.status.errorMessage = "Namespace " + request.namespaceName + " has already existed";
             return response;
@@ -254,7 +256,7 @@ namespace catalog {
         {
             source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
             if (source_namespace_info == nullptr) {
-                LOG(FATAL) << "Failed to find source namespaces " << request.sourceNamespaceId;
+                LOG(ERROR) << "Failed to find source namespaces " << request.sourceNamespaceId;
                 response.status.code = StatusCode::ALREADY_PRESENT;
                 response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
                 return response;
@@ -273,7 +275,7 @@ namespace catalog {
         response.status = namespace_info_handler_->CreateSKVCollection(request.namespaceId, request.namespaceName);
         if (!response.status.IsSucceeded())
         {
-            LOG(FATAL) << "Failed to create SKV collection " << request.namespaceId;
+            LOG(ERROR) << "Failed to create SKV collection " << request.namespaceId;
             return response;
         }
 
@@ -288,7 +290,7 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
         if (!add_result.status.IsSucceeded()) {
-            LOG(FATAL) << "Failed to add namespace " << request.namespaceId << " due to " << add_result.status.errorMessage;
+            LOG(ERROR) << "Failed to add namespace " << request.namespaceId << " due to " << add_result.status.errorMessage;
             ns_context->Abort();
             response.status = std::move(add_result.status);
             return response;
@@ -303,7 +305,7 @@ namespace catalog {
         LOG(INFO) << "Creating system tables for target namespace " << new_ns->GetNamespaceId();
         CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
         if (!table_result.status.IsSucceeded()) {
-            LOG(FATAL) << "Failed to create system tables for target namespace " << new_ns->GetNamespaceId() << " due to " << table_result.status.errorMessage;
+            LOG(ERROR) << "Failed to create system tables for target namespace " << new_ns->GetNamespaceId() << " due to " << table_result.status.errorMessage;
             target_context->Abort();
             ns_context->Abort();
             response.status = std::move(table_result.status);
@@ -319,7 +321,7 @@ namespace catalog {
             LOG(INFO) << "Listing table ids from source namespace " << request.sourceNamespaceId;
             ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
             if (!list_table_result.status.IsSucceeded()) {
-                LOG(FATAL) << "Failed to list table ids for namespace " << source_namespace_info->GetNamespaceId();
+                LOG(ERROR) << "Failed to list table ids for namespace " << source_namespace_info->GetNamespaceId();
                 source_context->Abort();
                 target_context->Abort();
                 ns_context->Abort();
@@ -339,7 +341,7 @@ namespace catalog {
                     source_namespace_info->GetNamespaceName(),
                     source_table_id);
                 if (!copy_result.status.IsSucceeded()) {
-                    LOG(FATAL) << "Failed to copy from source table " << source_table_id;
+                    LOG(ERROR) << "Failed to copy from source table " << source_table_id;
                     source_context->Abort();
                     target_context->Abort();
                     ns_context->Abort();
@@ -366,7 +368,7 @@ namespace catalog {
         ListNamespacesResult result = namespace_info_handler_->ListNamespaces(context);
         if (!result.status.IsSucceeded()) {
             context->Abort();
-            LOG(FATAL) << "Failed to list namespaces due to " << result.status.errorMessage;
+            LOG(ERROR) << "Failed to list namespaces due to " << result.status.errorMessage;
             response.status = std::move(result.status);
             return response;
         }
@@ -392,7 +394,7 @@ namespace catalog {
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
         if (!result.status.IsSucceeded()) {
             context->Abort();
-            LOG(FATAL) << "Failed to get namespace " << request.namespaceId << " due to " << result.status.errorMessage;
+            LOG(ERROR) << "Failed to get namespace " << request.namespaceId << " due to " << result.status.errorMessage;
             response.status = std::move(result.status);
             return response;
         }
@@ -481,9 +483,12 @@ namespace catalog {
 
     CreateTableResponse SqlCatalogManager::CreateTable(const CreateTableRequest& request) {
         CreateTableResponse response;
+        LOG(INFO) << "Creating table ns name: " << request.namespaceName << ", ns oid: " << request.namespaceOid
+            << ", table name: " << request.tableName << ", table oid: " << request.tableOid
+            << ", systable: " << request.isSysCatalogTable << ", shared: " << request.isSharedTable;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
-            LOG(FATAL) << "Cannot find namespace " << request.namespaceName;
+            LOG(ERROR) << "Cannot find namespace " << request.namespaceName;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
             return response;
@@ -528,6 +533,7 @@ namespace catalog {
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
+            LOG(INFO) << "Created table " << new_table_info->table_id() << " successfully";
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version
@@ -546,9 +552,12 @@ namespace catalog {
 
     CreateIndexTableResponse SqlCatalogManager::CreateIndexTable(const CreateIndexTableRequest& request) {
         CreateIndexTableResponse response;
+        LOG(INFO) << "Creating index ns name: " << request.namespaceName << ", ns oid: " << request.namespaceOid
+            << ", index name: " << request.tableName << ", index oid: " << request.tableOid
+            << ", base table oid: " << request.baseTableOid;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
-            LOG(FATAL) << "Cannot find namespace " << request.namespaceName;
+            LOG(ERROR) << "Cannot find namespace " << request.namespaceName;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
             return response;
@@ -564,15 +573,16 @@ namespace catalog {
         if (base_table_info == nullptr) {
             GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
                 base_table_id);
-                if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
-                      // update table cache
-                    UpdateTableCache(table_result.tableInfo);
-                    base_table_info = table_result.tableInfo;
-                }
+            if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
+                // update table cache
+                UpdateTableCache(table_result.tableInfo);
+                base_table_info = table_result.tableInfo;
+            }
         }
 
         if (base_table_info == nullptr) {
             // cannot find the base table
+            LOG(ERROR) << "Cannot find base table " << base_table_id << " for index " << request.tableName;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request.tableName;
             return response;
@@ -634,13 +644,15 @@ namespace catalog {
             } catch (const std::exception& e) {
                 response.status.code = StatusCode::RUNTIME_ERROR;
                 response.status.errorMessage = e.what();
-            }
+                LOG(ERROR) << "Failed to create index " << request.tableName << " due to " << response.status.errorMessage;
+           }
         }
-
+        LOG(INFO) << "Created index " << request.tableName << " successfully";
         return response;
     }
 
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
+        LOG(INFO) << "Get table schema ns oid: " << request.namespaceOid << ", table oid: " << request.tableOid;
         GetTableSchemaResponse response;
         // generate table id from namespace oid and table oid
         std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
@@ -655,7 +667,7 @@ namespace catalog {
         std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
-            LOG(FATAL) << "Cannot find namespace " << namespace_id;
+            LOG(ERROR) << "Cannot find namespace " << namespace_id;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + namespace_id;
             return response;
@@ -685,14 +697,16 @@ namespace catalog {
         response.tableInfo = table_result.tableInfo;
         // update table cache
         UpdateTableCache(table_result.tableInfo);
+        LOG(INFO) << "Returned schema for table name: " << response.tableInfo->table_name() << ", id: " << response.tableInfo->table_id() << " successfully";
         return response;
     }
 
     ListTablesResponse SqlCatalogManager::ListTables(const ListTablesRequest& request) {
+        LOG(INFO) << "Listing tables for namespace " << request.namespaceName;
         ListTablesResponse response;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
-            LOG(FATAL) << "Cannot find namespace " << request.namespaceName;
+            LOG(ERROR) << "Cannot find namespace " << request.namespaceName;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
             return response;
@@ -713,10 +727,12 @@ namespace catalog {
             response.tableInfos.push_back(std::move(tableInfo));
         }
         response.status.Succeed();
+        LOG(INFO) << "Found " << response.tableInfos.size() << " tables in namespace " << request.namespaceName;
         return response;
     }
 
     DeleteTableResponse SqlCatalogManager::DeleteTable(const DeleteTableRequest& request) {
+        LOG(INFO) << "Deleting table " << request.tableOid << " in namespace " << request.namespaceOid;
         DeleteTableResponse response;
         std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
         std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
@@ -729,7 +745,7 @@ namespace catalog {
             // try to find table from SKV by looking at namespace first
             std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
             if (namespace_info == nullptr) {
-                LOG(FATAL) << "Cannot find namespace " << namespace_id;
+                LOG(ERROR) << "Cannot find namespace " << namespace_id;
                 response.status.code = StatusCode::NOT_FOUND;
                 response.status.errorMessage = "Cannot find namespace " + namespace_id;
                 return response;
@@ -779,13 +795,14 @@ namespace catalog {
     }
 
     DeleteIndexResponse SqlCatalogManager::DeleteIndex(const DeleteIndexRequest& request) {
+        LOG(INFO) << "Deleting index " << request.tableOid << " in namespace " << request.namespaceOid;
         DeleteIndexResponse response;
         std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
         std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         response.namespaceId = namespace_id;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
-            LOG(FATAL) << "Cannot find namespace " << namespace_id;
+            LOG(ERROR) << "Cannot find namespace " << namespace_id;
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + namespace_id;
             return response;
@@ -860,13 +877,13 @@ namespace catalog {
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(ns_context, request.namespaceId);
         if (!result.status.IsSucceeded()) {
             ns_context->Abort();
-            LOG(FATAL) << "Failed to get namespace " << request.namespaceId;
+            LOG(ERROR) << "Failed to get namespace " << request.namespaceId;
             response.status = std::move(result.status);
             return response;
         }
         if (result.namespaceInfo == nullptr) {
             ns_context->Abort();
-            LOG(FATAL) << "Namespace " << request.namespaceId << " is empty";
+            LOG(ERROR) << "Namespace " << request.namespaceId << " is empty";
             response.status.code = StatusCode::NOT_FOUND;
             response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
             return response;
@@ -900,7 +917,7 @@ namespace catalog {
         AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, updated_ns);
         if (!update_result.status.IsSucceeded()) {
             ns_context->Abort();
-            LOG(FATAL) << "Failed to update nextPgOid on SKV due to " << update_result.status.errorMessage;
+            LOG(ERROR) << "Failed to update nextPgOid on SKV due to " << update_result.status.errorMessage;
             response.status = std::move(update_result.status);
             return response;
         }
@@ -926,7 +943,7 @@ namespace catalog {
             LOG(INFO) << "Updating catalog version on SKV to " << new_version;
             UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
             if (!result.status.IsSucceeded()) {
-                LOG(FATAL) << "ClusterInfo update failed due to error code " << result.status.code << " and message "
+                LOG(ERROR) << "ClusterInfo update failed due to error code " << result.status.code << " and message "
                     << result.status.errorMessage;
                 return result.status;
             }
