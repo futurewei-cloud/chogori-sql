@@ -87,13 +87,20 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Ses
     CheckSysTableResult response;
     // TODO: double check if this check is valid for schema
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        LOG(INFO) << schema_name << " table does not exist in " << collection_name;
+        LOG(INFO) << "Table " << schema_name << " does not exist in " << collection_name;
         // create the table schema since it does not exist
+        LOG(INFO) << "Creating SKV schema " << schema_name << " in " << collection_name;
         RStatus schema_result = CreateSKVSchema(collection_name, schema);
-        response.status = std::move(schema_result);
+        if (!schema_result.IsSucceeded()) {
+            LOG(ERROR) << "Failed to create SKV schema " << schema_name << " in " << collection_name << " due to " << schema_result.errorMessage;
+            response.status = std::move(schema_result);
+            return response;
+        }
+        LOG(INFO) << "Created SKV schema " << schema_name << " in " << collection_name;
     } else {
-        response.status.Succeed();
+        LOG(WARNING) << "SKV schema " << schema_name << " already exists in " << collection_name;
     }
+    response.status.Succeed();
     return response;
 }
 

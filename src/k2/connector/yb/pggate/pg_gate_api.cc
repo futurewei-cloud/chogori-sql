@@ -47,10 +47,10 @@ void YBCDestroyPgGate() {
         api_impl = nullptr; // YBCPgIsYugaByteEnabled() must return false from now on.
         delete local_api_impl;
         LOG(INFO) << __PRETTY_FUNCTION__ << " finished";
-        google::FlushLogFiles(google::FATAL);
-        google::FlushLogFiles(google::ERROR);
-        google::FlushLogFiles(google::WARNING);
-        google::FlushLogFiles(google::INFO);
+//        google::FlushLogFiles(google::FATAL);
+//        google::FlushLogFiles(google::ERROR);
+//        google::FlushLogFiles(google::WARNING);
+//        google::FlushLogFiles(google::INFO);
     }
 }
 
