@@ -1,4 +1,5 @@
 // compile with
+// YB_COMPILER_TYPE=gcc
 // g++ -O3 -std=c++17 -I../src/k2/postgres/include/ -L../src/k2/postgres/lib/ pg_test.cpp Logging.cpp -o pg_test -lpq
 #include <libpq-fe.h>
 #include "Logging.h"

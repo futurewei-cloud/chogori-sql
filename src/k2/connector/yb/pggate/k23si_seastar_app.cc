@@ -134,8 +134,7 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
 seastar::future<> PGK2Client::_pollCreateCollectionQ() {
     return pollQ(collectionCreateTxQ, [this](auto& req) {
         K2DEBUG("Collection create...");
-        //return _client.makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
-        return _client.makeCollection(std::move(req.ccr.metadata.name), std::move(req.ccr.rangeEnds))
+        return _client.makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
             });

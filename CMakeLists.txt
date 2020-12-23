@@ -23,6 +23,7 @@ find_package(gflags REQUIRED)
 find_package(Backtrace REQUIRED)
 find_package(k2 REQUIRED)
 find_package(Seastar REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 include_directories(src/k2/connector)
 add_subdirectory(src/k2/connector)
