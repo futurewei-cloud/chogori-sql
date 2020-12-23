@@ -14,10 +14,11 @@ export K2_PG_MEM=200M
 export K2_CPO_TIMEOUT=100ms
 export K2_CPO_BACKOFF=100ms
 export K2_MSG_CHECKSUM=TRUE
+export K2_CONFIG_FILE=/build/pgtest/k2config.json
 
 export CPODIR=/tmp/___cpo_dir
 export EPS="tcp+k2rpc://0.0.0.0:10000"
 export PERSISTENCE=tcp+k2rpc://0.0.0.0:12001
 
 mkdir -p pgroot/data
-/build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data
+/build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data -d
