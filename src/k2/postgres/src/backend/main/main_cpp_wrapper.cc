@@ -5,11 +5,18 @@
 
 #include "postmaster/postmaster_hook.h"
 #include "yb/pggate/k23si_seastar_app.h"
+
 #include <string>
 #include <thread>
 
 extern "C" {
 std::thread k2thread;
+
+static void
+killK2App(int, unsigned long) {
+    pthread_kill(k2thread.native_handle(), SIGINT);
+    k2thread.join();
+}
 
 // this function initializes the K2 client library and hooks it up with the k2 pg connector
 void startK2App(int argc, char** argv) {
@@ -50,7 +57,7 @@ void startK2App(int argc, char** argv) {
             free(argvN);
         }
     });
-    //TODO setup a notification callback back in PG so that we can get called on shutdown in order to stop the thread
+
     K2INFO("PG-K2 thread created");
 }
 
@@ -61,8 +68,8 @@ int PostgresServerProcessMain(int argc, char** argv);
 int main(int argc, char** argv) {
 	// setup the k2 hook in pg backend so that we can initialize k2 when PG forks to handle a new client
 	k2_init_func = startK2App;
+    k2_kill_func = killK2App;
 	auto code= PostgresServerProcessMain(argc, argv);
     K2INFO("PG process exiting...")
-    k2thread.join();
     return code;
 }

@@ -35,7 +35,8 @@ PGK2Client::PGK2Client():
 
 seastar::future<> PGK2Client::gracefulStop() {
     K2INFO("Stopping");
-    return std::move(_poller);
+    _stop = true;
+    return std::move(_poller).then([this] () { return _client.gracefulStop(); });
 }
 
 seastar::future<> PGK2Client::start() {
@@ -45,8 +46,8 @@ seastar::future<> PGK2Client::start() {
         K2INFO("Poller starting on CPU 0");
         _poller = _poller.then([this] {
             return seastar::do_until(
-                [] {
-                    return false; // TODO break out of poller pool if asked to exit
+                [this] {
+                    return _stop;
                 },
                 [this] {
                     return _pollForWork();
