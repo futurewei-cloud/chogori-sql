@@ -80,7 +80,7 @@ size_t hash_value(const RowIdentifier& key) {
 }
 
 PgSession::PgSession(
-    std::shared_ptr<SqlCatalogClient> catalog_client,        
+    std::shared_ptr<SqlCatalogClient> catalog_client,
     std::shared_ptr<K2Adapter> k2_adapter,
     const string& database_name,
     std::shared_ptr<PgTxnHandler> pg_txn_handler,
@@ -127,33 +127,33 @@ Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) 
 
 Status PgSession::RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to) {
   // TODO: add implementation
-  return Status::OK(); 
+  return Status::OK();
 }
 
 Status PgSession::CreateTable(
-    const std::string& namespace_id, 
-    const std::string& namespace_name, 
-    const std::string& table_name, 
-    const PgObjectId& table_id, 
-    PgSchema& schema, 
-    bool is_pg_catalog_table, 
-    bool is_shared_table, 
+    const std::string& namespace_id,
+    const std::string& namespace_name,
+    const std::string& table_name,
+    const PgObjectId& table_id,
+    PgSchema& schema,
+    bool is_pg_catalog_table,
+    bool is_shared_table,
     bool if_not_exist) {
   return catalog_client_->CreateTable(namespace_name, table_name, table_id, schema,
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
 Status PgSession::CreateIndexTable(
-    const std::string& namespace_id, 
-    const std::string& namespace_name, 
-    const std::string& table_name, 
-    const PgObjectId& table_id, 
-    const PgObjectId& base_table_id, 
-    PgSchema& schema, 
-    bool is_unique_index, 
+    const std::string& namespace_id,
+    const std::string& namespace_name,
+    const std::string& table_name,
+    const PgObjectId& table_id,
+    const PgObjectId& base_table_id,
+    PgSchema& schema,
+    bool is_unique_index,
     bool skip_index_backfill,
-    bool is_pg_catalog_table, 
-    bool is_shared_table, 
+    bool is_pg_catalog_table,
+    bool is_shared_table,
     bool if_not_exist) {
   return catalog_client_->CreateIndexTable(namespace_name, table_name, table_id, base_table_id, schema,
     is_unique_index, skip_index_backfill, is_pg_catalog_table, is_shared_table, if_not_exist);
@@ -164,7 +164,7 @@ Status PgSession::DropTable(const PgObjectId& table_id) {
 }
 
 Status PgSession::DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait) {
-  return catalog_client_->DeleteIndexTable(index_id.database_oid, index_id.object_oid, base_table_oid); 
+  return catalog_client_->DeleteIndexTable(index_id.database_oid, index_id.object_oid, base_table_oid);
 }
 
 Status PgSession::ReserveOids(const PgOid database_oid,
@@ -219,12 +219,12 @@ Status PgSession::ReadSequenceTuple(int64_t db_oid,
 
 Status PgSession::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
   // TODO: add implementation
-  return Status::OK();  
+  return Status::OK();
 }
 
 Status PgSession::DeleteDBSequences(int64_t db_oid) {
   // TODO: add implementation
-  return Status::OK();  
+  return Status::OK();
 }
 
 void PgSession::InvalidateTableCache(const PgObjectId& table_obj_id) {
@@ -275,7 +275,7 @@ Status PgSession::HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id
 
   auto& response = op.response();
   if (response.pg_error_code != 0) {
-    // TODO: handle pg error code 
+    // TODO: handle pg error code
   }
 
   if (response.txn_error_code != 0) {
@@ -284,7 +284,7 @@ Status PgSession::HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id
 
   Status s;
   // TODO: add errors to s
-  return s; 
+  return s;
 }
 
 bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
@@ -326,7 +326,7 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
     // TODO: need to consider the scenario that the flush fails due to some reason
     Flush();
 
-    // send new operations 
+    // send new operations
     if (ops_count < 1) {
       // invalid, do nothing
       return PgSessionAsyncRunResult(std::future<Status>());
@@ -338,10 +338,10 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
       // run multiple operations in a batch
       std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
       std::vector<std::shared_ptr<PgOpTemplate>> ops;
-      for (auto end = op + ops_count; op != end; ++op) { 
+      for (auto end = op + ops_count; op != end; ++op) {
         ops.push_back(*op);
-      } 
-      return PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));  
+      }
+      return PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));
     }
   } else {
     auto& buffered_keys = pg_session_->buffered_keys_;
@@ -350,8 +350,8 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
     // first add ops to the buffer
     for (auto end = op + ops_count; op != end; ++op) {
        if (buffered_ops_.size() >= default_session_max_batch_size) {
-        // we need to flush the buffer if we honor the batch size for 
-        Flush();  
+        // we need to flush the buffer if we honor the batch size for
+        Flush();
       }
       if ((*op)->type() == PgOpTemplate::Type::WRITE) {
         const auto& wop = down_cast<PgWriteOpTemplate*>((*op).get());
@@ -376,14 +376,14 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
       // buffer the operations and return
       return PgSessionAsyncRunResult(std::future<Status>());
     }
-  }                     
+  }
 }
 
 Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
   if (buffered_ops_.size() == 0) {
     return PgSessionAsyncRunResult(std::future<Status>());
   }
-  
+
   bool read_only = true;
   std::vector<std::shared_ptr<PgOpTemplate>> ops;
   for (auto buffered_op : buffered_ops_) {
@@ -393,14 +393,14 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
     }
     ops.push_back(op);
   }
-  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only); 
+  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only);
   PgSessionAsyncRunResult result = PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));
   // wait for the batch to complete
   result.GetStatus();
 
   // TODO: add logic to handle any failure in the batch
   for (const auto& buffered_op : buffered_ops_) {
-    // combine errors if there is any and return them in the final status 
+    // combine errors if there is any and return them in the final status
     pg_session_->HandleResponse(*buffered_op.operation, buffered_op.relation_id);
   }
   // clear up buffer
@@ -410,22 +410,22 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
- VLOG(3) << "Loading table descriptor for " << table_id;
+ LOG(INFO) << "Loading table descriptor for " << table_id;
   const TableId yb_table_id = table_id.GetPgTableId();
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(yb_table_id);
   if (cached_table == table_cache_.end()) {
-    VLOG(4) << "Table cache MISS: " << table_id;
+    LOG(INFO) << "Table cache MISS: " << table_id;
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
     if (!s.ok()) {
-      VLOG(3) << "LoadTable: Server returns an error: " << s;
+      LOG(ERROR) << "LoadTable: Server returns an error: " << s;
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
                            table_id.object_oid, table_id.database_oid, s.ToUserMessage());
     }
     table_cache_[yb_table_id] = table;
   } else {
-    VLOG(4) << "Table cache HIT: " << table_id;
+    LOG(INFO) << "Table cache HIT: " << table_id;
     table = cached_table->second;
   }
 

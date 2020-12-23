@@ -47,25 +47,35 @@ TableInfoHandler::~TableInfoHandler() {
 CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name) {
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
+    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_;
     CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr_);
     if (!result.status.IsSucceeded()) {
+        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_
+            << " due to " << result.status.errorMessage;
         response.status = std::move(result.status);
         return response;
     }
 
+    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_;
     result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr_);
-     if (!result.status.IsSucceeded()) {
+    if (!result.status.IsSucceeded()) {
+        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_
+            << " due to " << result.status.errorMessage;
         response.status = std::move(result.status);
         return response;
     }
 
+    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_;
     result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr_);
      if (!result.status.IsSucceeded()) {
+        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_
+            << " due to " << result.status.errorMessage;
         response.status = std::move(result.status);
         return response;
     }
 
     response.status.Succeed();
+    LOG(INFO) << "Created SKV schema for system tables successfully";
     return response;
 }
 

@@ -36,17 +36,21 @@ void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbac
     CHECK(api_impl == nullptr) << ": " << __PRETTY_FUNCTION__ << " can only be called once";
     api_impl_shutdown_done.exchange(false);
     api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
-    VLOG(1) << "K2 PgGate open";
+    LOG(INFO) << "K2 PgGate open";
 }
 
 void YBCDestroyPgGate() {
     if (api_impl_shutdown_done.exchange(true)) {
-        LOG(DFATAL) << __PRETTY_FUNCTION__ << " should only be called once";
+        LOG(FATAL) << __PRETTY_FUNCTION__ << " should only be called once";
     } else {
         k2pg::gate::PgGateApiImpl* local_api_impl = api_impl;
         api_impl = nullptr; // YBCPgIsYugaByteEnabled() must return false from now on.
         delete local_api_impl;
-        VLOG(1) << __PRETTY_FUNCTION__ << " finished";
+        LOG(INFO) << __PRETTY_FUNCTION__ << " finished";
+        google::FlushLogFiles(google::FATAL);
+        google::FlushLogFiles(google::ERROR);
+        google::FlushLogFiles(google::WARNING);
+        google::FlushLogFiles(google::INFO);
     }
 }
 

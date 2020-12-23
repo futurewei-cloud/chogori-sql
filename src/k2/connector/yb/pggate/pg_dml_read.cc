@@ -120,12 +120,12 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
     if (expr_binds_.find(expr) == expr_binds_.end()) {
       miss_key_columns = true;
       break;
-    } 
+    }
   }
 
   // if one of the primary keys is not bound, we need to use full scan without passing key values
   if (miss_key_columns) {
-    VLOG(1) << "Full scan is needed";
+    LOG(INFO) << "Full scan is needed";
     read_req_->key_column_values.clear();
   }
 
@@ -161,7 +161,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
     ybctid_bind_ = true;
   }
-  
+
   return Status::OK();
 }
 
@@ -218,8 +218,8 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
     } else {
       // Unreachable.
     }
-  }  
-  
+  }
+
   return Status::OK();
 }
 
@@ -305,7 +305,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
       }
     }
   }
-  
+
   return Status::OK();
 }
 
@@ -336,7 +336,7 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
                 "YSQL read operation was not sent");
     }
   }
-    
+
   return Status::OK();
 }
 

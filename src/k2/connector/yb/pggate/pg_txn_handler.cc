@@ -44,7 +44,7 @@ PgTxnHandler::~PgTxnHandler() {
 }
 
 Status PgTxnHandler::BeginTransaction() {
-  VLOG(2) << "BeginTransaction: txn_in_progress_=" << txn_in_progress_;
+  LOG(INFO) << "BeginTransaction: txn_in_progress_=" << txn_in_progress_;
   if (txn_in_progress_) {
     return STATUS(IllegalState, "Transaction is already in progress");
   }
@@ -74,26 +74,26 @@ Status PgTxnHandler::RestartTransaction() {
 
 Status PgTxnHandler::CommitTransaction() {
   if (!txn_in_progress_) {
-    VLOG(2) << "No transaction in progress, nothing to commit.";
+    LOG(INFO) << "No transaction in progress, nothing to commit.";
     return Status::OK();
   }
 
   if (txn_ != nullptr && read_only_) {
-    VLOG(2) << "This was a read-only transaction, nothing to commit.";
+    LOG(INFO) << "This was a read-only transaction, nothing to commit.";
     ResetTransaction();
     return Status::OK();
   }
 
-  VLOG(2) << "Committing transaction.";
+  LOG(INFO) << "Committing transaction.";
   // Use synchronous call for now until PG supports additional state check after this call
   std::future<k2::EndResult> result_future = txn_->endTxn(true);
   k2::EndResult result = result_future.get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
-   VLOG(2) << "Transaction commit failed";
+   LOG(ERROR) << "Transaction commit failed";
    return STATUS_FORMAT(RuntimeError, "Transaction commit failed with error code $0 and message $1", result.status.code, result.status.message);
   }
-  VLOG(2) << "Transaction commit succeeded";
+  LOG(INFO) << "Transaction commit succeeded";
   return Status::OK();
 }
 
@@ -113,7 +113,7 @@ Status PgTxnHandler::AbortTransaction() {
   if (!result.status.is2xxOK()) {
     return STATUS_FORMAT(RuntimeError, "Transaction abort failed with error code $0 and message $1", result.status.code, result.status.message);
   }
-  return Status::OK();    
+  return Status::OK();
 }
 
 Status PgTxnHandler::SetIsolationLevel(int level) {
@@ -132,12 +132,12 @@ Status PgTxnHandler::SetDeferrable(bool deferrable) {
 }
 
 Status PgTxnHandler::EnterSeparateDdlTxnMode() {
-  // TODO: do we support this mode and how ?  
+  // TODO: do we support this mode and how ?
   return Status::OK();
 }
 
 Status PgTxnHandler::ExitSeparateDdlTxnMode(bool success) {
-   // TODO: do we support this mode and how ?     
+   // TODO: do we support this mode and how ?
   return Status::OK();
 }
 
@@ -154,7 +154,7 @@ std::shared_ptr<K23SITxn> PgTxnHandler::GetNewTransactionIfNecessary(bool read_o
 void PgTxnHandler::ResetTransaction() {
   txn_in_progress_ = false;
   txn_ = nullptr;
-  can_restart_.store(true, std::memory_order_release);    
+  can_restart_.store(true, std::memory_order_release);
 }
 
 void PgTxnHandler::StartNewTransaction() {
@@ -165,4 +165,4 @@ void PgTxnHandler::StartNewTransaction() {
 }
 
 }  // namespace gate
-}  // namespace k2pg    
+}  // namespace k2pg

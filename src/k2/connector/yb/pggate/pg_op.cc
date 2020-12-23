@@ -315,7 +315,7 @@ PgOp::~PgOp() {
     // Wait for result in case request was sent.
     // Operation can be part of transaction it is necessary to complete it before transaction commit.
     if (response_.InProgress()) {
-        VLOG(1) << "Waiting for in progress response ";
+        LOG(INFO) << "Waiting for in progress response ";
         __attribute__((unused)) auto status = response_.GetStatus();
     }
 }
@@ -447,7 +447,7 @@ Result<std::list<PgOpResult>> PgOp::ProcessResponse(const Status& status) {
 }
 
 Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {
-    VLOG(1) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
+    LOG(INFO) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
 
     // Check for errors reported by storage server.
     for (int op_index = 0; op_index < active_op_count_; op_index++) {
@@ -634,7 +634,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
 
     // End execution and return result.
     end_of_data_ = true;
-    VLOG(1) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
+    LOG(INFO) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
     return result;
 }
 
