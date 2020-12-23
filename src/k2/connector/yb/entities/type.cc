@@ -96,6 +96,8 @@ namespace sql {
                 return CreatePrimitiveType<DataType::INT32>();
             case DataType::INT64:
                 return CreatePrimitiveType<DataType::INT64>();
+            case DataType::UINT32:
+                return CreatePrimitiveType<DataType::UINT32>();
             case DataType::STRING:
                 return CreatePrimitiveType<DataType::STRING>();
             case DataType::BOOL:
@@ -203,6 +205,7 @@ namespace sql {
             case DataType::INT16: return "smallint";
             case DataType::INT32: return "int";
             case DataType::INT64: return "bigint";
+            case DataType::UINT32: return "uint32";
             case DataType::STRING: return "text";
             case DataType::BOOL: return "boolean";
             case DataType::FLOAT: return "float";

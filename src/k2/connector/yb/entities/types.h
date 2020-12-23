@@ -191,6 +191,24 @@ struct DataTypeTraits<INT64> {
 };
 
 template<>
+struct DataTypeTraits<UINT32> {
+  static const DataType physical_type = UINT32;
+  typedef uint32_t cpp_type;
+
+  static const char *name() {
+    return "uint32";
+  }
+
+  static int Compare(const void *lhs, const void *rhs) {
+    return GenericCompare<UINT32>(lhs, rhs);
+  }
+
+  static const cpp_type* min_value() {
+    return &MathLimits<cpp_type>::kMin;
+  }
+};
+
+template<>
 struct DataTypeTraits<FLOAT> {
   static const DataType physical_type = FLOAT;
   typedef float cpp_type;
