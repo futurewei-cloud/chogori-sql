@@ -4172,7 +4172,7 @@ report_fork_failure_to_client(Port *port, int errnum)
 	} while (rc < 0 && errno == EINTR);
 }
 
-void 
+void
 InitK23siWorker()
 {
 		/* initialize k2 */
@@ -4272,6 +4272,7 @@ InitK23siWorker()
 		argv[argc++] = "--cpo_request_backoff"; argv[argc++] = cpoBackoff;
 		if (NULL != msgChecksum) { argv[argc++] = "--enable_tx_checksum"; argv[argc++] = "true"; }
 		k2_init_func(argc, argv);
+        on_shmem_exit(k2_kill_func, (Datum)0);
     }
 }
 

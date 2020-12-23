@@ -51,6 +51,8 @@ private:
     seastar::future<> _pollWriteQ();
     seastar::future<> _pollUpdateQ();
     seastar::future<> _pollCreateCollectionQ();
+
+    bool _stop = false;
 };
 
 }  // namespace gate

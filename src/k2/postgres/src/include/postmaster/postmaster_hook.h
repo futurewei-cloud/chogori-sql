@@ -11,5 +11,6 @@
  * can use k2 as a backend storage.
  */
 extern void (*k2_init_func)(int, char **);
+extern void (*k2_kill_func)(int, unsigned long);
 
 #endif /* _POSTMASTER_HOOK_H */
