@@ -27,9 +27,9 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
 
-Status SqlCatalogClient::IsInitDbDone(bool* isDone) {  
+Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   GetInitDbRequest request;
-  GetInitDbResponse response = catalog_manager_->IsInitDbDone(request); 
+  GetInitDbResponse response = catalog_manager_->IsInitDbDone(request);
   if(!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to check init_db state due to code $0 and message $1", response.status.code, response.status.errorMessage);
@@ -43,6 +43,11 @@ Status SqlCatalogClient::InitPrimaryCluster()
   return catalog_manager_->InitPrimaryCluster();
 }
 
+Status SqlCatalogClient::FinishInitDB()
+{
+  return catalog_manager_->FinishInitDB();
+}
+
 Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id,
                                  uint32_t namespace_oid,
@@ -50,11 +55,11 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
                                  const std::string& creator_role_name,
                                  const std::optional<uint32_t>& next_pg_oid) {
   CreateNamespaceRequest request {
-    .namespaceName = namespace_name, 
+    .namespaceName = namespace_name,
     .namespaceId = namespace_id,
     .namespaceOid = namespace_oid,
     .sourceNamespaceId = source_namespace_id,
-    .creatorRoleName = creator_role_name, 
+    .creatorRoleName = creator_role_name,
     .nextPgOid = next_pg_oid
    };
   CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
@@ -72,17 +77,17 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to delete namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
-  }                             
+  }
   return Status::OK();
 }
 
 Status SqlCatalogClient::CreateTable(
-    const std::string& namespace_name, 
-    const std::string& table_name, 
-    const PgObjectId& table_id, 
-    PgSchema& schema, 
-    bool is_pg_catalog_table, 
-    bool is_shared_table, 
+    const std::string& namespace_name,
+    const std::string& table_name,
+    const PgObjectId& table_id,
+    PgSchema& schema,
+    bool is_pg_catalog_table,
+    bool is_shared_table,
     bool if_not_exist) {
   CreateTableRequest request {
     .namespaceName = namespace_name,
@@ -94,25 +99,25 @@ Status SqlCatalogClient::CreateTable(
     .isSharedTable = is_shared_table,
     .isNotExist = if_not_exist
   };
-  CreateTableResponse response = catalog_manager_->CreateTable(request);                                 
+  CreateTableResponse response = catalog_manager_->CreateTable(request);
   if (!response.status.IsSucceeded()) {
     return STATUS_SUBSTITUTE(RuntimeError,
-        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name, 
+        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
             response.status.code, response.status.errorMessage);
-  }     
+  }
   return Status::OK();
 }
 
 Status SqlCatalogClient::CreateIndexTable(
-    const std::string& namespace_name, 
-    const std::string& table_name, 
-    const PgObjectId& table_id, 
-    const PgObjectId& base_table_id, 
-    PgSchema& schema, 
-    bool is_unique_index, 
+    const std::string& namespace_name,
+    const std::string& table_name,
+    const PgObjectId& table_id,
+    const PgObjectId& base_table_id,
+    PgSchema& schema,
+    bool is_unique_index,
     bool skip_index_backfill,
-    bool is_pg_catalog_table, 
-    bool is_shared_table, 
+    bool is_pg_catalog_table,
+    bool is_shared_table,
     bool if_not_exist) {
   CreateIndexTableRequest request {
     .namespaceName = namespace_name,
@@ -128,12 +133,12 @@ Status SqlCatalogClient::CreateIndexTable(
     .isSharedTable = is_shared_table,
     .isNotExist = if_not_exist
   };
-  CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);                                 
+  CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
   if (!response.status.IsSucceeded()) {
     return STATUS_SUBSTITUTE(RuntimeError,
-        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name, 
+        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
             response.status.code, response.status.errorMessage);
-  }     
+  }
   return Status::OK();
 }
 
@@ -146,7 +151,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to delete table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
-  }   
+  }
   return Status::OK();
 }
 
@@ -159,12 +164,12 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to delete index $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
-  }   
+  }
   *base_table_oid = response.baseIndexTableOid;
   // TODO: add wait logic once we refactor the catalog manager APIs to be asynchronous for state/response
   return Status::OK();
-} 
-   
+}
+
 Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table) {
   GetTableSchemaRequest request {
     .namespaceOid = database_oid,
@@ -174,29 +179,29 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
-  } 
+  }
 
   table->swap(response.tableInfo);
   return Status::OK();
 }
 
 Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
-                                  const uint32_t next_oid, 
+                                  const uint32_t next_oid,
                                   const uint32_t count,
-                                  uint32_t* begin_oid, 
+                                  uint32_t* begin_oid,
                                   uint32_t* end_oid) {
   ReservePgOidsRequest request {
     .namespaceId = GetPgsqlNamespaceId(database_oid),
     .nextOid = next_oid,
     .count = count
-  };   
+  };
   ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
   if (!response.status.IsSucceeded()) {
      return STATUS_SUBSTITUTE(RuntimeError,
          "Failed to reserve PG Oids for database $0 due to code $1 and message $2", database_oid, response.status.code, response.status.errorMessage);
-  }        
+  }
   *begin_oid = response.beginOid;
-  *end_oid = response.endOid;                        
+  *end_oid = response.endOid;
   return Status::OK();
 }
 
@@ -210,8 +215,8 @@ Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
   *pg_catalog_version = response.catalogVersion;
 
   return Status::OK();
-}    
- 
+}
+
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg

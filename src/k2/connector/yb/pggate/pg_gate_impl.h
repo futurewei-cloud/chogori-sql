@@ -132,6 +132,8 @@ class PgGateApiImpl {
   //------------------------------------------------------------------------------------------------
   CHECKED_STATUS PGInitPrimaryCluster();
 
+  CHECKED_STATUS PGFinishInitDB();
+
   //------------------------------------------------------------------------------------------------
   // Connect database. Switch the connected database to the given "database_name".
   CHECKED_STATUS ConnectDatabase(const char *database_name);
@@ -193,7 +195,7 @@ class PgGateApiImpl {
                                         YBCPgTypeEntity **types, uint64_t *data);
 
   CHECKED_STATUS ExecCreateTable(PgStatement *handle);
-  
+
   CHECKED_STATUS NewAlterTable(const PgObjectId& table_id,
                                PgStatement **handle);
 

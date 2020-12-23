@@ -85,6 +85,11 @@ K2InitPGCluster()
 	HandleYBStatus(K2PGInitPrimaryCluster());
 }
 
+void
+K2FinishInitDB()
+{
+	HandleYBStatus(K2PGFinishInitDB());
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Database Functions. */
