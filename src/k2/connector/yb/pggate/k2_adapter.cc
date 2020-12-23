@@ -409,7 +409,9 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
             .retentionPeriod = k2::Duration(1h) * 90 * 24  //TODO: get this from config or from param in
         },
         .clusterEndpoints = std::move(endpoints),
-        .rangeEnds = std::move(rangeEnds)};
+        .rangeEnds = std::move(rangeEnds)
+    };
+
     return k23si_->createCollection(std::move(createCollectionReq));
 }
 
@@ -469,6 +471,7 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     // TODO: read from configuration/env files
     options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
     options.priority = k2::dto::TxnPriority::Medium;
+    options.syncFinalize = true;
     return k23si_->beginTxn(options);
 }
 
