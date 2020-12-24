@@ -276,6 +276,8 @@ namespace catalog {
 
         Status InitPrimaryCluster();
 
+        Status FinishInitDB();
+
         GetInitDbResponse IsInitDbDone(const GetInitDbRequest& request);
 
         GetCatalogVersionResponse GetCatalogVersion(const GetCatalogVersionRequest& request);

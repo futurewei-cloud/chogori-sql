@@ -36,6 +36,8 @@
 /* K2 Cluster Fuctions -------------------------------------------------------------------------- */
 extern void K2InitPGCluster();
 
+extern void K2FinishInitDB();
+
 /*  Database Functions -------------------------------------------------------------------------- */
 
 extern void YBCCreateDatabase(

@@ -36,7 +36,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-    
+
 using yb::Status;
 using k2pg::gate::PgObjectId;
 using k2pg::gate::PgOid;
@@ -52,6 +52,8 @@ class SqlCatalogClient {
 
     CHECKED_STATUS InitPrimaryCluster();
 
+    CHECKED_STATUS FinishInitDB();
+
     // Create a new namespace with the given name.
     CHECKED_STATUS CreateNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id,
@@ -59,35 +61,35 @@ class SqlCatalogClient {
                                 const std::string& source_namespace_id,
                                 const std::string& creator_role_name,
                                 const std::optional<uint32_t>& next_pg_oid = std::nullopt);
-                                        
+
     // Delete namespace with the given name.
     CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id);
 
-    CHECKED_STATUS CreateTable(const std::string& namespace_name, 
-                            const std::string& table_name, 
-                            const PgObjectId& table_id, 
-                            PgSchema& schema, 
-                            bool is_pg_catalog_table, 
-                            bool is_shared_table, 
+    CHECKED_STATUS CreateTable(const std::string& namespace_name,
+                            const std::string& table_name,
+                            const PgObjectId& table_id,
+                            PgSchema& schema,
+                            bool is_pg_catalog_table,
+                            bool is_shared_table,
                             bool if_not_exist);
 
-    CHECKED_STATUS CreateIndexTable(const std::string& namespace_name, 
-                            const std::string& table_name, 
-                            const PgObjectId& table_id, 
-                            const PgObjectId& base_table_id, 
-                            PgSchema& schema, 
-                            bool is_unique_index, 
+    CHECKED_STATUS CreateIndexTable(const std::string& namespace_name,
+                            const std::string& table_name,
+                            const PgObjectId& table_id,
+                            const PgObjectId& base_table_id,
+                            PgSchema& schema,
+                            bool is_unique_index,
                             bool skip_index_backfill,
-                            bool is_pg_catalog_table, 
-                            bool is_shared_table, 
+                            bool is_pg_catalog_table,
+                            bool is_shared_table,
                             bool if_not_exist);
 
     // Delete the specified table.
     // Set 'wait' to true if the call must wait for the table to be fully deleted before returning.
-    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait = true);  
+    CHECKED_STATUS DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait = true);
 
-    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait = true);  
+    CHECKED_STATUS DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait = true);
 
     CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table);
 
@@ -104,7 +106,7 @@ class SqlCatalogClient {
 
     CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
-    private:  
+    private:
     std::shared_ptr<SqlCatalogManager> catalog_manager_;
 };
 
@@ -112,4 +114,4 @@ class SqlCatalogClient {
 }  // namespace sql
 }  // namespace k2pg
 
-#endif //CHOGORI_SQL_CATALOG_CLIENT_H    
+#endif //CHOGORI_SQL_CATALOG_CLIENT_H

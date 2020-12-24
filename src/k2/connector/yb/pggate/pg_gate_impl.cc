@@ -64,7 +64,7 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
       k2_adapter_(CreateK2Adapter()),
       catalog_manager_(CreateCatalogManager()),
       catalog_client_(CreateCatalogClient()),
-      pg_callbacks_(callbacks), 
+      pg_callbacks_(callbacks),
       pg_txn_handler_(new PgTxnHandler(k2_adapter_)) {
   // Setup type mapping.
   for (int idx = 0; idx < count; idx++) {
@@ -228,6 +228,11 @@ Status PgGateApiImpl::PGInitPrimaryCluster()
   return pg_session_->InitPrimaryCluster();
 }
 
+Status PgGateApiImpl::PGFinishInitDB()
+{
+  return pg_session_->FinishInitDB();
+}
+
 //--------------------------------------------------------------------------------------------------
 
 Status PgGateApiImpl::ConnectDatabase(const char *database_name) {
@@ -350,7 +355,7 @@ Status PgGateApiImpl::CreateTableAddSplitRow(PgStatement *handle, int num_cols,
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  // do nothing here since we don't support pre-split table  
+  // do nothing here since we don't support pre-split table
   return Status::OK();
 }
 
@@ -518,7 +523,7 @@ Status PgGateApiImpl::SetCatalogCacheVersion(PgStatement *handle, uint64_t catal
 
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
-  
+
 // Index --------------------------------------------------------------------------------------------
 
 Status PgGateApiImpl::NewCreateIndex(const char *database_name,
@@ -556,9 +561,9 @@ Status PgGateApiImpl::CreateIndexAddSplitRow(PgStatement *handle, int num_cols,
   SCHECK(PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX),
       InvalidArgument,
       "Invalid statement handle");
-  
-  // do nothing here since we don't support pre-split table  
-  return Status::OK();    
+
+  // do nothing here since we don't support pre-split table
+  return Status::OK();
 }
 
 Status PgGateApiImpl::ExecCreateIndex(PgStatement *handle) {
@@ -1009,7 +1014,7 @@ Status PgGateApiImpl::EnterSeparateDdlTxnMode() {
   RETURN_NOT_OK(pg_session_->FlushBufferedOperations());
   return pg_txn_handler_->EnterSeparateDdlTxnMode();
 }
-  
+
 Status PgGateApiImpl::ExitSeparateDdlTxnMode(bool success) {
   // Flush all buffered operations as ddl txn use its own transaction session.
   if (success) {

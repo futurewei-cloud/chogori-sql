@@ -140,6 +140,8 @@ class PgSession {
 
   CHECKED_STATUS InitPrimaryCluster();
 
+  CHECKED_STATUS FinishInitDB();
+
   CHECKED_STATUS ConnectDatabase(const std::string& database_name);
 
   CHECKED_STATUS CreateDatabase(const std::string& database_name,
@@ -151,10 +153,10 @@ class PgSession {
 
   CHECKED_STATUS RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to);
 
-  CHECKED_STATUS CreateTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id, 
+  CHECKED_STATUS CreateTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id,
     PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
-  CHECKED_STATUS CreateIndexTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id, 
+  CHECKED_STATUS CreateIndexTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id,
     const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
@@ -224,9 +226,9 @@ class PgSession {
   Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_id);
 
   void InvalidateTableCache(const PgObjectId& table_id);
-      
+
   // Check if initdb has already been run before. Needed to make initdb idempotent.
-  Result<bool> IsInitDbDone();   
+  Result<bool> IsInitDbDone();
 
   // Returns the local catalog version stored in shared memory, or an error if
   // the shared memory has not been initialized (e.g. in initdb).
@@ -265,7 +267,7 @@ class PgSession {
   CHECKED_STATUS ResetOperationsBuffering();
 
   // Flush all pending buffered operations. Buffering mode remain unchanged.
-  // This would be called when PG commits a transaction and it needs to flush all buffered operations 
+  // This would be called when PG commits a transaction and it needs to flush all buffered operations
   // at that point of time.
   CHECKED_STATUS FlushBufferedOperations();
   // Drop all pending buffered operations. Buffering mode remain unchanged.

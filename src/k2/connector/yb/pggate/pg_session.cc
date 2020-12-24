@@ -101,6 +101,11 @@ Status PgSession::InitPrimaryCluster()
   return catalog_client_->InitPrimaryCluster();
 }
 
+Status PgSession::FinishInitDB()
+{
+  return catalog_client_->FinishInitDB();
+}
+
 Status PgSession::ConnectDatabase(const string& database_name) {
   connected_database_ = database_name;
   return Status::OK();

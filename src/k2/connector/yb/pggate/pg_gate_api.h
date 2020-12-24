@@ -104,6 +104,8 @@ YBCStatus YBCDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid);
 // K2 InitPrimaryCluster
 YBCStatus K2PGInitPrimaryCluster();
 
+YBCStatus K2PGFinishInitDB();
+
 // Create database.
 YBCStatus YBCPgNewCreateDatabase(const char *database_name,
                                  YBCPgOid database_oid,

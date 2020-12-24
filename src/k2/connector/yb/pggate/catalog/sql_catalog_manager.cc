@@ -56,7 +56,6 @@ namespace catalog {
         GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(ci_context, cluster_id_);
         if (ciresp.status.IsSucceeded()) {
             if (ciresp.clusterInfo != nullptr) {
-                CHECK(ciresp.clusterInfo->IsInitdbDone());
                 init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
                 catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
                 LOG(INFO) << "Loaded cluster info record succeeded";
@@ -122,7 +121,6 @@ namespace catalog {
         LOG(INFO) << "SQL CatalogManager initialize primary Cluster!";
 
         CHECK(!initted_.load(std::memory_order_relaxed));
-        CHECK(!init_db_done_.load(std::memory_order_relaxed));
 
         // step 1/4 create the SKV collection for the primary
         RStatus rs = namespace_info_handler_->CreateSKVCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
@@ -137,7 +135,7 @@ namespace catalog {
 
         // step 2/4 Init Cluster info, including create the SKVSchema in the primary cluster's SKVCollection for cluster_info and insert current cluster info into
         //      Note: Initialize cluster info's init_db column with TRUE
-        ClusterInfo cluster_info(cluster_id_, catalog_version_, true /*init_db_done*/);
+        ClusterInfo cluster_info(cluster_id_, catalog_version_, false /*init_db_done*/);
 
         InitClusterInfoResult initCIRes = cluster_info_handler_->InitClusterInfo(init_context, cluster_info);
         if (initCIRes.status.IsSucceeded()) {
@@ -165,7 +163,6 @@ namespace catalog {
         {
             // check things are ready
             CHECK(initted_.load(std::memory_order_relaxed));
-            CHECK(init_db_done_.load(std::memory_order_relaxed));
             LOG(INFO) << "SQL CatalogManager successfully initialized primary Cluster!";
         }
         else
@@ -174,6 +171,51 @@ namespace catalog {
         }
 
         return status;
+    }
+
+    Status SqlCatalogManager::FinishInitDB()
+    {
+        LOG(INFO) << "Setting initDbDone to be true...";
+        if (!init_db_done_) {
+            std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
+            // check the latest cluster info on SKV
+            GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
+            if (!result.status.IsSucceeded()) {
+                context->Abort();
+                LOG(ERROR) << "Cannot read cluster info record on SKV due to " << result.status.errorMessage;
+                return STATUS_FORMAT(IOError, "Cannot read cluster info record on SKV due to error code $0 and message $1",
+                    result.status.code, result.status.errorMessage);
+            }
+            if (result.clusterInfo == nullptr) {
+                context->Abort();
+                LOG(ERROR) << "Cluster info record is empty on SKV";
+                return STATUS(IOError, "Cluster info record is empty on SKV");
+            }
+
+            if (result.clusterInfo->IsInitdbDone()) {
+                context->Commit();
+                init_db_done_.store(true, std::memory_order_relaxed);
+                LOG(INFO) << "InitDbDone is already true on SKV";
+                return Status::OK();
+            }
+
+            LOG(INFO) << "Updating cluster info with initDbDone to be true";
+            std::shared_ptr<ClusterInfo> new_cluster_info = result.clusterInfo;
+            new_cluster_info->SetInitdbDone(true);
+            UpdateClusterInfoResult update_result = cluster_info_handler_->UpdateClusterInfo(context, *new_cluster_info.get());
+            if (!update_result.status.IsSucceeded()) {
+                context->Abort();
+                LOG(ERROR) << "Failed to update cluster info due to " << update_result.status.errorMessage;
+                return STATUS_FORMAT(IOError, "Failed to update cluster info due to error code $0 and message $1",
+                    update_result.status.code, update_result.status.errorMessage);
+            }
+            context->Commit();
+            init_db_done_.store(true, std::memory_order_relaxed);
+            LOG(INFO) << "Set initDbDone to be true successfully";
+        } else {
+            LOG(INFO) << "InitDb is true already";
+        }
+        return Status::OK();
     }
 
     GetInitDbResponse SqlCatalogManager::IsInitDbDone(const GetInitDbRequest& request) {

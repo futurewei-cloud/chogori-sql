@@ -525,7 +525,7 @@ BootstrapModeMain(void)
 	if (IsYugaByteEnabled())
 	{
 		K2InitPGCluster();
-		
+
 		YBCCreateDatabase(TemplateDbOid,
 		                  "template1",
 		                  InvalidOid,
@@ -549,7 +549,11 @@ BootstrapModeMain(void)
 		 */
 		RelationMapFinishBootstrap();
 	}
-
+	if (IsYugaByteEnabled())
+	{
+		// set initDbDone to be true on K2 SKV
+		K2FinishInitDB();
+	}
 	/* Clean up and exit */
 	cleanup();
 	proc_exit(0);
