@@ -591,7 +591,7 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
 }
 
 k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collection_name, std::shared_ptr<TableInfo> table) {
-    k2::dto::SKVRecord record;
+    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
     // TableId
     record.serializeNext<k2::String>(table->table_id());
     // TableName
@@ -619,7 +619,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
 }
 
 k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collection_name, const IndexInfo& index, bool is_sys_table, int32_t next_column_id) {
-    k2::dto::SKVRecord record;
+    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
     // TableId
     record.serializeNext<k2::String>(index.table_id());
     // TableName
@@ -651,7 +651,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnRecords(std::
     for (std::size_t i = 0; i != table->schema().columns().size(); ++i) {
         ColumnSchema col_schema = table->schema().columns()[i];
         int32_t column_id = table->schema().column_ids()[i];
-        k2::dto::SKVRecord record;
+        k2::dto::SKVRecord record(collection_name, tablecolumn_schema_ptr_);
         // TableId
         record.serializeNext<k2::String>(table->table_id());
         // ColumnId
@@ -686,7 +686,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
         }
         const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
 
-        k2::dto::SKVRecord record;
+        k2::dto::SKVRecord record(collection_name, indexcolumn_schema_ptr_);
         // TableId
         record.serializeNext<k2::String>(index.table_id());
         // ColumnId
