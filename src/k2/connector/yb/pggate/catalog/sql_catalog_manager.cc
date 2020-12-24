@@ -180,20 +180,28 @@ namespace catalog {
             std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
             // check the latest cluster info on SKV
             GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
-            std::shared_ptr<ClusterInfo> new_cluster_info = nullptr;
-            if (result.status.IsSucceeded() && result.clusterInfo != nullptr) {
-                if (result.clusterInfo->IsInitdbDone()) {
-                    context->Commit();
-                    init_db_done_.store(true, std::memory_order_relaxed);
-                    LOG(INFO) << "InitDbDone is already true on SKV";
-                    return Status::OK();
-                }
-                new_cluster_info = result.clusterInfo;
-                new_cluster_info->SetInitdbDone(true);
-            } else {
-                new_cluster_info = std::make_shared<ClusterInfo>(cluster_id_, catalog_version_, true /*init_db_done*/);
+            if (!result.status.IsSucceeded()) {
+                context->Abort();
+                LOG(ERROR) << "Cannot read cluster info record on SKV due to " << result.status.errorMessage;
+                return STATUS_FORMAT(IOError, "Cannot read cluster info record on SKV due to error code $0 and message $1",
+                    result.status.code, result.status.errorMessage);
             }
+            if (result.clusterInfo == nullptr) {
+                context->Abort();
+                LOG(ERROR) << "Cluster info record is empty on SKV";
+                return STATUS(IOError, "Cluster info record is empty on SKV");
+            }
+
+            if (result.clusterInfo->IsInitdbDone()) {
+                context->Commit();
+                init_db_done_.store(true, std::memory_order_relaxed);
+                LOG(INFO) << "InitDbDone is already true on SKV";
+                return Status::OK();
+            }
+
             LOG(INFO) << "Updating cluster info with initDbDone to be true";
+            std::shared_ptr<ClusterInfo> new_cluster_info = result.clusterInfo;
+            new_cluster_info->SetInitdbDone(true);
             UpdateClusterInfoResult update_result = cluster_info_handler_->UpdateClusterInfo(context, *new_cluster_info.get());
             if (!update_result.status.IsSucceeded()) {
                 context->Abort();
