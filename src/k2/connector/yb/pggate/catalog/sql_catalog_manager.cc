@@ -522,7 +522,7 @@ namespace catalog {
         Schema table_schema = std::move(request.schema);
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
-                table_info->table_id(), request.tableName, table_schema);
+                table_id, request.tableName, table_schema);
         new_table_info->set_pg_oid(request.tableOid);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
