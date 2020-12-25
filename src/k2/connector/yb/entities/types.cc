@@ -68,11 +68,14 @@ class TypeInfoResolver {
 
  private:
   TypeInfoResolver() {
+    AddMapping<UINT8>();
     AddMapping<INT8>();
+    AddMapping<UINT16>();
     AddMapping<INT16>();
-    AddMapping<INT32>();
-    AddMapping<INT64>();
     AddMapping<UINT32>();
+    AddMapping<INT32>();
+    AddMapping<UINT64>();
+    AddMapping<INT64>();
     AddMapping<VARINT>();
     AddMapping<TIMESTAMP>();
     AddMapping<DATE>();

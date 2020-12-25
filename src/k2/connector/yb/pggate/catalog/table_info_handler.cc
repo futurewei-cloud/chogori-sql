@@ -721,14 +721,26 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
 k2::dto::FieldType TableInfoHandler::ToK2Type(std::shared_ptr<SQLType> type) {
     k2::dto::FieldType field_type = k2::dto::FieldType::NOT_KNOWN;
     switch (type->id()) {
+        case DataType::UINT8: {
+            field_type = k2::dto::FieldType::INT16T;
+        } break;
         case DataType::INT8: {
             field_type = k2::dto::FieldType::INT16T;
+        } break;
+        case DataType::UINT16: {
+            field_type = k2::dto::FieldType::INT32T;
         } break;
         case DataType::INT16: {
             field_type = k2::dto::FieldType::INT16T;
         } break;
+        case DataType::UINT32: {
+            field_type = k2::dto::FieldType::INT64T;
+        } break;
         case DataType::INT32: {
             field_type = k2::dto::FieldType::INT32T;
+        } break;
+        case DataType::UINT64: {
+            field_type = k2::dto::FieldType::INT64T;
         } break;
         case DataType::INT64: {
             field_type = k2::dto::FieldType::INT64T;

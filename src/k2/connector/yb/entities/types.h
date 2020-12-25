@@ -120,6 +120,23 @@ static int GenericCompare(const void *lhs, const void *rhs) {
 }
 
 template<>
+struct DataTypeTraits<UINT8> {
+  static const DataType physical_type = UINT8;
+  typedef uint8_t cpp_type;
+  static const char *name() {
+    return "uint8";
+  }
+
+  static int Compare(const void *lhs, const void *rhs) {
+    return GenericCompare<UINT8>(lhs, rhs);
+  }
+
+  static const cpp_type* min_value() {
+    return &MathLimits<cpp_type>::kMin;
+  }
+};
+
+template<>
 struct DataTypeTraits<INT8> {
   static const DataType physical_type = INT8;
   typedef int8_t cpp_type;
@@ -130,6 +147,23 @@ struct DataTypeTraits<INT8> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<INT8>(lhs, rhs);
+  }
+
+  static const cpp_type* min_value() {
+    return &MathLimits<cpp_type>::kMin;
+  }
+};
+
+template<>
+struct DataTypeTraits<UINT16> {
+  static const DataType physical_type = UINT16;
+  typedef uint16_t cpp_type;
+  static const char *name() {
+    return "uint16";
+  }
+
+  static int Compare(const void *lhs, const void *rhs) {
+    return GenericCompare<UINT16>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -156,6 +190,24 @@ struct DataTypeTraits<INT16> {
 };
 
 template<>
+struct DataTypeTraits<UINT32> {
+  static const DataType physical_type = UINT32;
+  typedef uint32_t cpp_type;
+
+  static const char *name() {
+    return "uint32";
+  }
+
+  static int Compare(const void *lhs, const void *rhs) {
+    return GenericCompare<UINT32>(lhs, rhs);
+  }
+
+  static const cpp_type* min_value() {
+    return &MathLimits<cpp_type>::kMin;
+  }
+};
+
+template<>
 struct DataTypeTraits<INT32> {
   static const DataType physical_type = INT32;
   typedef int32_t cpp_type;
@@ -173,6 +225,23 @@ struct DataTypeTraits<INT32> {
 };
 
 template<>
+struct DataTypeTraits<UINT64> {
+  static const DataType physical_type = UINT64;
+  typedef uint64_t cpp_type;
+  static const char *name() {
+    return "uint64";
+  }
+
+  static int Compare(const void *lhs, const void *rhs) {
+    return GenericCompare<UINT64>(lhs, rhs);
+  }
+
+  static const cpp_type* min_value() {
+    return &MathLimits<cpp_type>::kMin;
+  }
+};
+
+template<>
 struct DataTypeTraits<INT64> {
   static const DataType physical_type = INT64;
   typedef int64_t cpp_type;
@@ -183,24 +252,6 @@ struct DataTypeTraits<INT64> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<INT64>(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
-};
-
-template<>
-struct DataTypeTraits<UINT32> {
-  static const DataType physical_type = UINT32;
-  typedef uint32_t cpp_type;
-
-  static const char *name() {
-    return "uint32";
-  }
-
-  static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<UINT32>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
