@@ -468,9 +468,27 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
 
 std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
     // same as the above except that send multiple requests and need to handle multiple futures from SKV
-    // but only return a single future to this method caller
-    // TODO: add implementation
-    throw std::logic_error("Not implemented yet");
+    // but only return a single future to this method caller. Return Status will be OK if the BatchExec
+    // itself is sucessful, regardless of any failures of then individual ops
+
+    // This only works if the Exec calls are executed in order by the threadpool, otherwise we could
+    // deadlock if the waiting thread below is executed first
+    auto op_futures = std::make_shared<std::vector<std::future<Status>>>();
+    for (const std::shared_ptr<PgOpTemplate>& op : ops) {
+        op_futures->emplace_back(Exec(k23SITxn, op));
+    }
+
+    auto prom = std::make_shared<std::promise<Status>>();
+    auto result = prom->get_future();
+    threadPool_.enqueue([op_futures, prom] () {
+        for (const std::future<Status>& op : *op_futures) {
+            op.wait();
+        }
+
+        prom->set_value(Status());
+    });
+
+    return result;
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
