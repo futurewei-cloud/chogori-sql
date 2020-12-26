@@ -571,6 +571,7 @@ namespace catalog {
 
         // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
+        LOG(INFO) << "Create or update table id: " << table_id << ", name: " << request.tableName;
         CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, new_table_info->namespace_id(), new_table_info);
         if (result.status.IsSucceeded()) {
             // commit transaction
@@ -586,6 +587,7 @@ namespace catalog {
         } else {
             // abort the transaction
             context->Abort();
+            LOG(ERROR) << "Failed to create table " << new_table_info->table_id() << " due to " << result.status.errorMessage;
             response.status = std::move(result.status);
         }
 
@@ -974,7 +976,7 @@ namespace catalog {
     }
 
     RStatus SqlCatalogManager::UpdateCatalogVersion(std::shared_ptr<SessionTransactionContext> context, uint64_t new_version) {
-        std::lock_guard<simple_spinlock> l(lock_);
+        std::lock_guard<std::mutex> l(lock_);
         // compare new_version with the local version
         uint64_t local_catalog_version = catalog_version_.load(std::memory_order_acquire);
         LOG(INFO) << "Local catalog version: " << local_catalog_version << ". new version: " << new_version;
@@ -998,7 +1000,7 @@ namespace catalog {
 
     // update namespace caches
     void SqlCatalogManager::UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos) {
-        std::lock_guard<simple_spinlock> l(lock_);
+        std::lock_guard<std::mutex> l(lock_);
         namespace_id_map_.clear();
         namespace_name_map_.clear();
         for (auto ns_ptr : namespace_infos) {
@@ -1009,7 +1011,7 @@ namespace catalog {
 
     // update table caches
     void SqlCatalogManager::UpdateTableCache(std::shared_ptr<TableInfo> table_info) {
-        std::lock_guard<simple_spinlock> l(lock_);
+        std::lock_guard<std::mutex> l(lock_);
         table_id_map_[table_info->table_id()] = table_info;
         // TODO: add logic to remove table with old name if rename table is called
         TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
@@ -1020,7 +1022,7 @@ namespace catalog {
 
     // remove table info from table cache and its related indexes from index cache
     void SqlCatalogManager::ClearTableCache(std::shared_ptr<TableInfo> table_info) {
-        std::lock_guard<simple_spinlock> l(lock_);
+        std::lock_guard<std::mutex> l(lock_);
         ClearIndexCacheForTable(table_info->table_id());
         table_id_map_.erase(table_info->table_id());
         TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
@@ -1029,7 +1031,6 @@ namespace catalog {
 
     // clear index infos for a table in the index cache
     void SqlCatalogManager::ClearIndexCacheForTable(std::string table_id) {
-        std::lock_guard<simple_spinlock> l(lock_);
         std::vector<std::string> index_ids;
         for (std::pair<std::string, std::shared_ptr<IndexInfo>> pair : index_id_map_) {
             // first find all indexes that belong to the table
@@ -1044,7 +1045,6 @@ namespace catalog {
     }
 
     void SqlCatalogManager::UpdateIndexCacheForTable(std::shared_ptr<TableInfo> table_info) {
-        std::lock_guard<simple_spinlock> l(lock_);
         // clear existing index informaton first
         ClearIndexCacheForTable(table_info->table_id());
         // add the new indexes to the index cache

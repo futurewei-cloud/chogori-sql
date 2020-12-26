@@ -431,8 +431,10 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
     //   c) set the value for future
     switch (op->type()) {
         case PgOpTemplate::WRITE:
+            K2INFO("Executing writing operation");
             return handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
         case PgOpTemplate::READ:
+            K2INFO("Executing reading operation");
             return handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
         default:
           throw new std::logic_error("Unsupported op template type");
