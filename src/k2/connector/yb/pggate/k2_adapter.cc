@@ -429,6 +429,7 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
     //   a) populate the response object in op
     //   b) populate the data field in op as result set
     //   c) set the value for future
+    op->allocateResponse();
     switch (op->type()) {
         case PgOpTemplate::WRITE:
             K2INFO("Executing writing operation");
