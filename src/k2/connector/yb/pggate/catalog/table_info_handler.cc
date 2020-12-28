@@ -505,6 +505,7 @@ void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> 
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::shared_ptr<TableInfo> table) {
+    LOG(INFO) << "Deriving SKV schema for table " << table->table_id();
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = table->table_id();
     schema->version = table->schema().version();
@@ -554,6 +555,7 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
+    LOG(INFO) << "Deriving SKV schema for index " << index_info.table_id();
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
@@ -721,14 +723,26 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
 k2::dto::FieldType TableInfoHandler::ToK2Type(std::shared_ptr<SQLType> type) {
     k2::dto::FieldType field_type = k2::dto::FieldType::NOT_KNOWN;
     switch (type->id()) {
+        case DataType::UINT8: {
+            field_type = k2::dto::FieldType::INT64T;
+        } break;
         case DataType::INT8: {
-            field_type = k2::dto::FieldType::INT16T;
+            field_type = k2::dto::FieldType::INT64T;
+        } break;
+        case DataType::UINT16: {
+            field_type = k2::dto::FieldType::INT64T;
         } break;
         case DataType::INT16: {
-            field_type = k2::dto::FieldType::INT16T;
+            field_type = k2::dto::FieldType::INT64T;
+        } break;
+        case DataType::UINT32: {
+            field_type = k2::dto::FieldType::INT64T;
         } break;
         case DataType::INT32: {
-            field_type = k2::dto::FieldType::INT32T;
+            field_type = k2::dto::FieldType::INT64T;
+        } break;
+        case DataType::UINT64: {
+            field_type = k2::dto::FieldType::INT64T;
         } break;
         case DataType::INT64: {
             field_type = k2::dto::FieldType::INT64T;

@@ -113,6 +113,32 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
+    case YB_YQL_DATA_TYPE_UINT8:
+      if (!is_null) {
+        uint8_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
+      }
+      break;
+
+    case YB_YQL_DATA_TYPE_UINT16:
+      if (!is_null) {
+        uint16_t value;
+        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_ = ValueType::INT;
+        data_ = new Data();
+        data_->int_val_ = value;
+        null_value_ = false;
+      } else {
+        null_value_ = true;
+      }
+      break;
+
     case YB_YQL_DATA_TYPE_UINT64:
       if (!is_null) {
         uint64_t value;
@@ -239,8 +265,6 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
     case YB_YQL_DATA_TYPE_DATE: // Not used for PG storage
     case YB_YQL_DATA_TYPE_TIME: // Not used for PG storage
     case YB_YQL_DATA_TYPE_JSONB:
-    case YB_YQL_DATA_TYPE_UINT8:
-    case YB_YQL_DATA_TYPE_UINT16:
     default:
       LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
   }
@@ -259,7 +283,7 @@ SqlValue* SqlValue::Clone() const {
         case ValueType::SLICE:
             return CopySlice(data_->slice_val_);
         default:
-            LOG(FATAL) << "Invalid type " << type_;            
+            LOG(FATAL) << "Invalid type " << type_;
   }
 }
 
@@ -270,17 +294,17 @@ SqlValue* SqlValue::CopySlice(Slice s) {
 
   return new SqlValue(slice_val);
 }
-  
+
 void SqlValue::set_bool_value(bool value, bool is_null) {
     if(is_null) {
         Clear();
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::BOOL;
         data_->bool_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -290,10 +314,10 @@ void SqlValue::set_int8_value(int8_t value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::INT;
         data_->int_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -303,10 +327,10 @@ void SqlValue::set_int16_value(int16_t value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::INT;
         data_->int_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -316,10 +340,10 @@ void SqlValue::set_int32_value(int32_t value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::INT;
         data_->int_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -329,10 +353,10 @@ void SqlValue::set_int64_value(int64_t value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::INT;
         data_->int_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -342,10 +366,10 @@ void SqlValue::set_float_value(float value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::FLOAT;
         data_->float_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -355,10 +379,10 @@ void SqlValue::set_double_value(double value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::DOUBLE;
         data_->double_val_ = value;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -368,12 +392,12 @@ void SqlValue::set_string_value(const char *value, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::SLICE;
         size_t bytes = std::strlen(value);
         Slice s(value, bytes);
         data_->slice_val_ = s;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 
@@ -383,11 +407,11 @@ void SqlValue::set_binary_value(const char *value, size_t bytes, bool is_null) {
     } else {
         if (data_ == nullptr) {
             data_ = new Data();
-        } 
+        }
         type_ = ValueType::SLICE;
         Slice s(value, bytes);
         data_->slice_val_ = s;
-        null_value_ = false;    
+        null_value_ = false;
     }
 }
 

@@ -88,16 +88,22 @@ namespace sql {
                 return CreatePrimitiveType<DataType::UNKNOWN_DATA>();
             case DataType::NULL_VALUE_TYPE:
                 return CreatePrimitiveType<DataType::NULL_VALUE_TYPE>();
+            case DataType::UINT8:
+                return CreatePrimitiveType<DataType::UINT8>();
             case DataType::INT8:
                 return CreatePrimitiveType<DataType::INT8>();
+            case DataType::UINT16:
+                return CreatePrimitiveType<DataType::UINT16>();
             case DataType::INT16:
                 return CreatePrimitiveType<DataType::INT16>();
-            case DataType::INT32:
-                return CreatePrimitiveType<DataType::INT32>();
-            case DataType::INT64:
-                return CreatePrimitiveType<DataType::INT64>();
             case DataType::UINT32:
                 return CreatePrimitiveType<DataType::UINT32>();
+            case DataType::INT32:
+                return CreatePrimitiveType<DataType::INT32>();
+            case DataType::UINT64:
+                return CreatePrimitiveType<DataType::UINT64>();
+            case DataType::INT64:
+                return CreatePrimitiveType<DataType::INT64>();
             case DataType::STRING:
                 return CreatePrimitiveType<DataType::STRING>();
             case DataType::BOOL:

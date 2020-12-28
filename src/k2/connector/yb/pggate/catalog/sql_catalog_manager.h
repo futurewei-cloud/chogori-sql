@@ -307,7 +307,7 @@ namespace catalog {
     protected:
         std::atomic<bool> initted_{false};
 
-        mutable simple_spinlock lock_;
+        mutable std::mutex lock_;
 
         RStatus UpdateCatalogVersion(std::shared_ptr<SessionTransactionContext> context, uint64_t new_version);
 

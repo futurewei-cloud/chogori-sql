@@ -57,7 +57,10 @@ namespace sql {
         DATE = 23,
         TIME = 24,
         JSONB = 25,
+        UINT8 = 100,
+        UINT16 = 101,
         UINT32 = 102,
+        UINT64 = 103
     } DataType;
 
 }  // namespace sql
