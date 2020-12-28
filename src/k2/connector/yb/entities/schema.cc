@@ -306,29 +306,13 @@ namespace sql {
         table_properties_ = schema.table_properties_;
     }
 
-    Status SchemaBuilder::AddKeyColumn(const string& name, const shared_ptr<SQLType>& type) {
-        return AddColumn(ColumnSchema(name, type), /* is_nullable */ true);
-    }
-
-    Status SchemaBuilder::AddKeyColumn(const string& name, DataType type) {
-        return AddColumn(ColumnSchema(name, SQLType::Create(type)), /* is_nullable */ true);
-    }
-
-    Status SchemaBuilder::AddHashKeyColumn(const string& name, const shared_ptr<SQLType>& type) {
-        return AddColumn(ColumnSchema(name, type, false, true), true);
-    }
-
-    Status SchemaBuilder::AddHashKeyColumn(const string& name, DataType type) {
-        return AddColumn(ColumnSchema(name, SQLType::Create(type), false, true), true);
-    }
-
     Status SchemaBuilder::AddColumn(const string& name,
                                     const std::shared_ptr<SQLType>& type,
                                     bool is_nullable,
                                     bool is_key,
                                     int32_t order,
                                     ColumnSchema::SortingType sorting_type) {
-        return AddColumn(ColumnSchema(name, type, is_nullable, is_key, order, sorting_type), false);
+        return AddColumn(ColumnSchema(name, type, is_nullable, is_key, /*is_partition*/ false, order, sorting_type), is_key);
     }
 
     Status SchemaBuilder::RemoveColumn(const string& name) {
