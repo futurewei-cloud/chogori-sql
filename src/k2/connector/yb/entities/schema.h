@@ -118,11 +118,11 @@ namespace sql {
 
         ColumnSchema(string name,
                 const std::shared_ptr<SQLType>& type,
-                bool is_nullable = false,
-                bool is_primary = false,
-                bool is_partition = false,
-                int32_t order = 0,
-                SortingType sorting_type = SortingType::kNotSpecified)
+                bool is_nullable,
+                bool is_primary,
+                bool is_partition,
+                int32_t order,
+                SortingType sorting_type)
             : name_(std::move(name)),
             type_(type),
             is_nullable_(is_nullable),
@@ -135,11 +135,11 @@ namespace sql {
         // convenience constructor for creating columns with simple (non-parametric) data types
         ColumnSchema(string name,
                 DataType type,
-                bool is_nullable = false,
-                bool is_primary = false,
-                bool is_partition = false,
-                int32_t order = 0,
-                SortingType sorting_type = SortingType::kNotSpecified)
+                bool is_nullable,
+                bool is_primary,
+                bool is_partition,
+                int32_t order,
+                SortingType sorting_type)
             : ColumnSchema(name, SQLType::Create(type), is_nullable, is_primary, is_partition, order, sorting_type) {
         }
 
@@ -229,11 +229,11 @@ namespace sql {
 
         private:
         friend class SchemaBuilder;
-  
+
         void set_name(const std::string& name) {
             name_ = name;
         }
-        
+
         std::string name_;
         std::shared_ptr<SQLType> type_;
         bool is_nullable_;
@@ -634,7 +634,7 @@ namespace sql {
         void SetTableProperties(TableProperties& table_properties) {
             table_properties_ = table_properties;
         }
-        
+
         Schema Build() const {
             return Schema(cols_, col_ids_, num_key_columns_, table_properties_);
         }
@@ -642,16 +642,6 @@ namespace sql {
         Schema BuildWithoutIds() const {
             return Schema(cols_, num_key_columns_, table_properties_);
         }
-
-        // assumes type is allowed in primary key -- this should be checked before getting here
-        // using DataType since primary key columns only support elementary types
-        CHECKED_STATUS AddKeyColumn(const std::string& name, const std::shared_ptr<SQLType>& type);
-        CHECKED_STATUS AddKeyColumn(const std::string& name, DataType type);
-
-        // assumes type is allowed in hash key -- this should be checked before getting here
-        // using DataType since hash key columns only support elementary types
-        CHECKED_STATUS AddHashKeyColumn(const std::string& name, const std::shared_ptr<SQLType>& type);
-        CHECKED_STATUS AddHashKeyColumn(const std::string& name, DataType type);
 
         CHECKED_STATUS AddColumn(const ColumnSchema& column, bool is_key);
 
