@@ -48,10 +48,13 @@
 
 #include "yb/pggate/pg_dml.h"
 #include "yb/pggate/pg_select.h"
+#include "yb/common/enums.h"
+
 namespace k2pg {
 namespace gate {
 
 using namespace k2pg::sql;
+using yb::to_underlying;
 
 PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id)
     : PgStatement(std::move(pg_session)), table_id_(table_id) {
@@ -351,9 +354,30 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 }
 
 Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
-  // TODO: generate the row id by calling K2 Adapter to use SKV client to
-  // generate the id in string format from the primary keys
-  throw std::logic_error("Not implemented yet");
+  vector<std::shared_ptr<SqlValue>> values;
+  auto attrs_end = attrs + nattrs;
+  for (const auto& c : target_desc_->columns()) {
+    for (auto attr = attrs; attr != attrs_end; ++attr) {
+      if (attr->attr_num == c.attr_num()) {
+        if (!c.desc()->is_primary()) {
+          return STATUS_SUBSTITUTE(InvalidArgument, "Attribute number $0 not a primary attribute",
+                                   attr->attr_num);
+        }
+
+        if (attr->attr_num == to_underlying(PgSystemAttrNum::kYBRowId)) {
+          // generate new rowid for kYBRowId column when no primary keys are defined
+          std::string row_id = std::move(pg_session()->GenerateNewRowid());
+          Slice s(row_id.data(), row_id.size());
+          std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(s);
+          values.push_back(value);
+        } else {
+          std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(attr->type_entity, attr->datum, false);
+          values.push_back(value);
+        }
+      }
+    }
+  }
+  return pg_session_->GetRowId(bind_desc_->table_name().namespace_id, bind_desc_->table_name().table_id, bind_desc_->SchemaVersion(), values);
 }
 
 bool PgDml::has_aggregate_targets() {

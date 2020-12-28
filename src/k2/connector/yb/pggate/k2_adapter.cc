@@ -465,6 +465,27 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     return key.partitionKey;
 }
 
+std::string K2Adapter::GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(namespace_id, table_id, schema_version);
+    k2::GetSchemaResult schema_result = schema_f.get();
+    if (!schema_result.status.is2xxOK()) {
+        throw std::runtime_error("Failed to get schema for " + table_id + " in " + namespace_id + " due to " + schema_result.status.message.c_str());
+    }
+    std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
+    k2::dto::SKVRecord record(namespace_id, schema);
+
+    // Serialize key data into SKVRecord
+    record.serializeNext<k2::String>(table_id);
+    record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+    for (std::shared_ptr<SqlValue> value : key_values) {
+        K2Adapter::SerializeValueToSKVRecord(*(value.get()), record);
+    }
+
+    k2::dto::Key key = record.getKey();
+    // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
+    return key.partitionKey;
+}
+
 std::future<K23SITxn> K2Adapter::beginTransaction() {
     k2::K2TxnOptions options{};
     // use default values for now

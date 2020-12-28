@@ -64,6 +64,8 @@ class K2Adapter {
 
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
 
+  std::string GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values);
+
   std::future<K23SITxn> beginTransaction();
 
   private:
