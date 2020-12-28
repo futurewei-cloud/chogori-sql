@@ -325,6 +325,7 @@ namespace gate {
         virtual bool read_only() const = 0;
 
         SqlOpResponse& response() { return *response_; }
+        void allocateResponse() { response_ = std::make_unique<SqlOpResponse>(); }
 
         std::vector<k2::dto::SKVRecord>&& rows_data() { return std::move(rows_data_); }
 

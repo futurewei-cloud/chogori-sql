@@ -96,9 +96,6 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(desc_.is_partition() || desc_.is_primary())
-            << "Only primary columns are allocated by AllocKeyBind()";
-
         bind_var_ = std::make_shared<SqlOpExpr>();
         write_req->key_column_values.push_back(bind_var_);
       }
@@ -152,9 +149,6 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(desc_.is_partition() || desc_.is_primary())
-            << "Only primary columns are allocated by AllocKeyBind()";
-
         bind_var_ = std::make_shared<SqlOpExpr>();
         read_req->key_column_values.push_back(bind_var_);
       }

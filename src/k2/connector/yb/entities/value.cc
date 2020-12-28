@@ -271,6 +271,10 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
 }
 
 SqlValue* SqlValue::Clone() const {
+   if (null_value_) {
+     return new SqlValue(type_, nullptr);
+   }
+
    switch (type_) {
         case ValueType::BOOL:
             return new SqlValue(data_->bool_val_);
