@@ -318,6 +318,15 @@ class PgSession {
 
   CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id);
 
+  // Generate a new random and unique rowid. It is a v4 UUID.
+  string GenerateNewRowid() {
+    return rowid_generator_.Next(true /* binary_id */);
+  }
+
+  std::string GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    return k2_adapter_->GetRowId(namespace_id, table_id, schema_version, key_values);
+  }
+
   private:
   // Helper class to run multiple operations on single session.
   // This class allows to keep implementation of RunAsync template method simple

@@ -198,7 +198,7 @@ class PgDml : public PgStatement {
   // the DML statement being executed.
   // - For primary key binding, "bind_desc_" is the descriptor of the main table as we don't have
   //   a separated primary-index table.
-  // - For secondary key binding, "bind_desc_" is the descriptor of teh secondary index table.
+  // - For secondary key binding, "bind_desc_" is the descriptor of the secondary index table.
   //   The bound values will be used to read base_ybctid which is then used to read actual data
   //   from the main table.
   std::shared_ptr<PgTableDesc> bind_desc_;

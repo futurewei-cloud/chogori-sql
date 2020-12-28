@@ -96,8 +96,12 @@ class PgTableDesc {
   bool IsTransactional() const;
 
   int GetPartitionCount() const;
-  
-  protected:   
+
+  uint32_t SchemaVersion() const {
+    return table_->schema().version();
+  };
+
+  protected:
   std::unique_ptr<PgWriteOpTemplate> NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id);
 
   private:
