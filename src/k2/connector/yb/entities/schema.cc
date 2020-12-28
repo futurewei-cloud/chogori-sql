@@ -312,7 +312,7 @@ namespace sql {
                                     bool is_key,
                                     int32_t order,
                                     ColumnSchema::SortingType sorting_type) {
-        return AddColumn(ColumnSchema(name, type, is_nullable, is_key, false, order, sorting_type), is_key);
+        return AddColumn(ColumnSchema(name, type, is_nullable, is_key, /*is_partition*/ false, order, sorting_type), is_key);
     }
 
     Status SchemaBuilder::RemoveColumn(const string& name) {
