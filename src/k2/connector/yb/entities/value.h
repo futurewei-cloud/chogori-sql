@@ -106,6 +106,8 @@ public:
     os << "{type: " << type_ << ", isNull: " << null_value_ << ", value: ";
     if (null_value_) {
         os << "NULL";
+    } else if (data_ == nullptr) {
+        os << "NULL Value";
     } else {
         switch (type_) {
             case ValueType::BOOL: {

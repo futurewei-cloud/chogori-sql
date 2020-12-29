@@ -25,12 +25,12 @@ namespace gate {
         os << "(SqlOpExpr: type: " << type_ << ", expr: ";
         switch(type_) {
             case ExprType::VALUE: {
-                os << value_->ToString();
+                os << (value_ == nullptr ? "NULL" : value_->ToString());
             } break;
             case ExprType::LIST_VALUES: {
                 os << "[";
-                for (auto& value : values_) {
-                    os << value->ToString() << ", ";
+                for (auto value : values_) {
+                    os << (value_ == nullptr ? "NULL" : value_->ToString()) << ", ";
                 }
                 os << "]";
             } break;
