@@ -113,7 +113,9 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
   bool missing_primary_key = false;
 
   // Either ybctid or primary key must be present.
-  if (!ybctid_bind_) {
+  // always use regular binding for INSERT
+  if (stmt_op() == StmtOp::STMT_INSERT || !ybctid_bind_) {
+    LOG(INFO) << "Checking missing primary keys for regular key binding";
     // Remove empty binds from key list.
     auto key_iter = write_req_->key_column_values.begin();
     while (key_iter != write_req_->key_column_values.end()) {
@@ -125,6 +127,7 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
       }
     }
   } else {
+    LOG(INFO) << "Clearing key column values for ybctid binding";
     write_req_->key_column_values.clear();
   }
 

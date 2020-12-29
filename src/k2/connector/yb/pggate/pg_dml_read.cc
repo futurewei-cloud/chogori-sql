@@ -161,6 +161,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
+    LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
     ybctid_bind_ = true;
   }
 
@@ -275,6 +276,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
+        LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
         ybctid_bind_ = true;
       }
     }
@@ -305,6 +307,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
+        LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
         ybctid_bind_ = true;
       }
     }
