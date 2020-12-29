@@ -123,6 +123,7 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
     }
   }
 
+  LOG(INFO) << "Deleting empty primary binds and found missing primary key: " << miss_key_columns;
   // if one of the primary keys is not bound, we need to use full scan without passing key values
   if (miss_key_columns) {
     LOG(INFO) << "Full scan is needed";
@@ -133,6 +134,7 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
 }
 
 Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
+  LOG(INFO) << "Binding column " << attr_num << " for EQUAL condition";
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondEq(attr_num, attr_value);
@@ -166,6 +168,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end) {
+  LOG(INFO) << "Binding column " << attr_num << " for BETWEEN condition";
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
@@ -224,6 +227,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 }
 
 Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **attr_values) {
+  LOG(INFO) << "Binding column " << attr_num << " for IN condition";
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondIn(attr_num, n_attr_values, attr_values);
