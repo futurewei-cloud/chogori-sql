@@ -181,6 +181,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
     // YBC logic uses a virtual column ybctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
+    LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
     ybctid_bind_ = true;
   }
 
