@@ -94,7 +94,7 @@ namespace k2pg
 
     std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req)
     {
-      if (bind_var_ == nullptr)
+      if (is_primary() && bind_var_ == nullptr)
       {
         LOG(INFO) << "Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request";
         bind_var_ = std::make_shared<SqlOpExpr>();
@@ -150,7 +150,7 @@ namespace k2pg
 
     std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpReadRequest> read_req)
     {
-      if (bind_var_ == nullptr)
+      if (is_primary() && bind_var_ == nullptr)
       {
         LOG(INFO) << "Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request";
         bind_var_ = std::make_shared<SqlOpExpr>();

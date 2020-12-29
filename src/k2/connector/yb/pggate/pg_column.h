@@ -169,9 +169,13 @@ class PgColumn {
   const ColumnDesc *desc() const {
     return &desc_;
   }
-    
+
   const string& attr_name() const {
     return desc_.name();
+  }
+
+  bool is_primary() const {
+    return desc_.is_primary();
   }
 
   std::shared_ptr<SqlOpExpr> bind_var() {
