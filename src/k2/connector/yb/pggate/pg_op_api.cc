@@ -30,7 +30,7 @@ namespace gate {
             case ExprType::LIST_VALUES: {
                 os << "[";
                 for (auto value : values_) {
-                    os << (value_ == nullptr ? "NULL" : value_->ToString()) << ", ";
+                    os << (value == nullptr ? "NULL" : value->ToString()) << ", ";
                 }
                 os << "]";
             } break;
@@ -44,7 +44,7 @@ namespace gate {
                 os << id_;
             } break;
             case ExprType::CONDITION: {
-                os << condition_->ToString();
+                os << (condition_ == nullptr ? "NULL" : condition_->ToString());
             } break;
             default: os << "UNKNOWN";
         }
@@ -126,7 +126,7 @@ namespace gate {
         }
         os << ", operands: [";
         for (auto operand : operands_) {
-            os << operand->ToString() << ", ";
+            os << (operand == nullptr ? "NULL" : operand->ToString()) << ", ";
         }
         os << "])";
         return os.str();

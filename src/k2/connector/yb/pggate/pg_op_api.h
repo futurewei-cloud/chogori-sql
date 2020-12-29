@@ -202,7 +202,7 @@ namespace gate {
 
         std::string ToString() {
             std::ostringstream os;
-            os << "(ColumnValue: id: " << column_id << ", expr: " << expr->ToString() << ")";
+            os << "(ColumnValue: id: " << column_id << ", expr: " << (expr == nullptr ? "NULL" : expr->ToString()) << ")";
             return os.str();
         }
     };

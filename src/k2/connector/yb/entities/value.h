@@ -107,7 +107,7 @@ public:
     if (null_value_) {
         os << "NULL";
     } else if (data_ == nullptr) {
-        os << "NULL Value";
+        os << "NULL Data";
     } else {
         switch (type_) {
             case ValueType::BOOL: {
@@ -123,7 +123,7 @@ public:
                 os << data_->double_val_;
             } break;
             case ValueType::SLICE: {
-                os << data_->slice_val_;
+                os << data_->slice_val_.ToDebugString(120);
             } break;
             default: {
                 os << "Unknown";

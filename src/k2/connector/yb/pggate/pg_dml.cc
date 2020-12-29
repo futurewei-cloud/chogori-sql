@@ -387,7 +387,9 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
       }
     }
   }
-  return pg_session_->GetRowId(bind_desc_->table_name().namespace_id, bind_desc_->table_name().table_id, bind_desc_->SchemaVersion(), values);
+  // secondary index query does not have bind_desc_
+  std::shared_ptr<PgTableDesc> table_schema = (bind_desc_ == nullptr) ? target_desc_ : bind_desc_;
+  return pg_session_->GetRowId(table_schema->table_name().namespace_id, table_schema->table_name().table_id, table_schema->SchemaVersion(), values);
 }
 
 bool PgDml::has_aggregate_targets() {
