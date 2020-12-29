@@ -20,6 +20,117 @@
 
 namespace k2pg {
 namespace gate {
+    std::string SqlOpExpr::ToString() {
+        std::ostringstream os;
+        os << "(SqlOpExpr: type: " << type_ << ", expr: ";
+        switch(type_) {
+            case ExprType::VALUE: {
+                os << (value_ == nullptr ? "NULL" : value_->ToString());
+            } break;
+            case ExprType::LIST_VALUES: {
+                os << "[";
+                for (auto value : values_) {
+                    os << (value == nullptr ? "NULL" : value->ToString()) << ", ";
+                }
+                os << "]";
+            } break;
+            case ExprType::COLUMN_ID: {
+                os << id_;
+            } break;
+            case ExprType::BIND_ID: {
+                os << id_;
+            } break;
+            case ExprType::ALIAS_ID: {
+                os << id_;
+            } break;
+            case ExprType::CONDITION: {
+                os << (condition_ == nullptr ? "NULL" : condition_->ToString());
+            } break;
+            default: os << "UNKNOWN";
+        }
+        os << ")";
+        return os.str();
+    }
+
+    std::string SqlOpCondition::ToString() {
+        std::ostringstream os;
+        os << "(SqlOpCondition: op: ";
+        switch(op_) {
+            case PgExpr::Opcode::PG_EXPR_CONSTANT: {
+                os << "PG_EXPR_CONSTANT";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_COLREF: {
+                os << "PG_EXPR_COLREF";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_VARIABLE: {
+                os << "PG_EXPR_VARIABLE";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_NOT: {
+                os << "PG_EXPR_NOT";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_EQ: {
+                os << "PG_EXPR_EQ";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_NE: {
+                os << "PG_EXPR_NE";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_GE: {
+                os << "PG_EXPR_GE";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_GT: {
+                os << "PG_EXPR_GT";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_LE: {
+                os << "PG_EXPR_LE";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_LT: {
+                os << "PG_EXPR_LT";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_EXISTS: {
+                os << "PG_EXPR_EXISTS";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_AND: {
+                os << "PG_EXPR_AND";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_OR: {
+                os << "PG_EXPR_OR";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_IN: {
+                os << "PG_EXPR_IN";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_BETWEEN: {
+                os << "PG_EXPR_BETWEEN";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_AVG: {
+                os << "PG_EXPR_AVG";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_SUM: {
+                os << "PG_EXPR_SUM";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_COUNT: {
+                os << "PG_EXPR_COUNT";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_MAX: {
+                os << "PG_EXPR_MAX";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_MIN: {
+                os << "PG_EXPR_MIN";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_EVAL_EXPR_CALL: {
+                os << "PG_EXPR_EVAL_EXPR_CALL";
+            } break;
+            case PgExpr::Opcode::PG_EXPR_GENERATE_ROWID: {
+                os << "PG_EXPR_GENERATE_ROWID";
+            } break;
+            default: break;
+        }
+        os << ", operands: [";
+        for (auto operand : operands_) {
+            os << (operand == nullptr ? "NULL" : operand->ToString()) << ", ";
+        }
+        os << "])";
+        return os.str();
+    }
 
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();

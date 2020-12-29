@@ -107,6 +107,8 @@ class PgExpr {
 
     virtual ~PgExpr();
 
+    virtual std::string ToString() = 0;
+
     Opcode opcode() const {
         return opcode_;
     }
@@ -186,6 +188,12 @@ class PgConstant : public PgExpr {
       return &value_;
   }
 
+  std::string ToString() override {
+    std::ostringstream os;
+    os << "(PgConst: " << value_.ToString() << ")";
+    return os.str();
+  }
+
   private:
   SqlValue value_;
 };
@@ -213,6 +221,12 @@ class PgColumnRef : public PgExpr {
 
   bool is_ybbasetid() const override;
 
+  std::string ToString() override {
+    std::ostringstream os;
+    os << "(PgRef: attr_name: " << attr_name_ << ", attr_num: " << attr_num_ << ")";
+    return os.str();
+  }
+
  private:
   int attr_num_;
   std::string attr_name_;
@@ -232,6 +246,16 @@ class PgOperator : public PgExpr {
 
   const std::vector<PgExpr*> & getArgs() const {
       return args_;
+  }
+
+  std::string ToString() override {
+      std::ostringstream os;
+      os << "(PgOperator: opname: " << opname_ << ", args_num: " << args_.size() << ", args:[";
+      for (PgExpr* expr : args_) {
+        os << expr->ToString() << ",";
+      }
+      os << "])";
+      return os.str();
   }
 
   private:

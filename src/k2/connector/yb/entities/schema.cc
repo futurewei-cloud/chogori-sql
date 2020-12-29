@@ -77,10 +77,12 @@ namespace sql {
     }
 
     string ColumnSchema::TypeToString() const {
-        return strings::Substitute("$0 $1 $2",
+        return strings::Substitute("$0, $1, $2, $3, $4",
                                    type_info()->name(),
                                    is_nullable_ ? "NULLABLE" : "NOT NULL",
-                                   is_partition_ ? "PARTITION KEY" : "NOT A PARTITION KEY");
+                                   is_primary_ ? "PRIMARY KEY" : "NOT A PRIMARY KEY",
+                                   is_partition_ ? "PARTITION KEY" : "NOT A PARTITION KEY",
+                                   order_);
     }
 
     void TableProperties::Reset() {

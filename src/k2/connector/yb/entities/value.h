@@ -40,12 +40,12 @@ struct Data {
         double double_val_;
     };
     Slice slice_val_;
-};  
+};
 
 class SqlValue {
 public:
   enum ValueType {
-      BOOL,  
+      BOOL,
       INT,
       FLOAT,
       DOUBLE,
@@ -101,6 +101,39 @@ public:
   // Construct a SQLValue by copying the value of the given Slice.
   static SqlValue* CopySlice(Slice s);
 
+  std::string ToString() {
+    std::ostringstream os;
+    os << "{type: " << type_ << ", isNull: " << null_value_ << ", value: ";
+    if (null_value_) {
+        os << "NULL";
+    } else if (data_ == nullptr) {
+        os << "NULL Data";
+    } else {
+        switch (type_) {
+            case ValueType::BOOL: {
+                os << data_->bool_val_;
+            } break;
+            case ValueType::INT: {
+                os << data_->int_val_;
+            } break;
+            case ValueType::FLOAT: {
+                os << data_->float_val_;
+            } break;
+            case ValueType::DOUBLE: {
+                os << data_->double_val_;
+            } break;
+            case ValueType::SLICE: {
+                os << data_->slice_val_.ToDebugString(120);
+            } break;
+            default: {
+                os << "Unknown";
+            } break;
+        }
+    }
+    os << "}";
+    return os.str();
+  }
+
   bool IsNull() const {
       return null_value_;
   }
@@ -109,7 +142,7 @@ public:
       return type_ == ValueType::SLICE;
   }
 
-  void set_bool_value(bool value, bool is_null); 
+  void set_bool_value(bool value, bool is_null);
   void set_int8_value(int8_t value, bool is_null);
   void set_int16_value(int16_t value, bool is_null);
   void set_int32_value(int32_t value, bool is_null);
@@ -124,7 +157,7 @@ public:
   ValueType type_;
   Data* data_;
 
-  private: 
+  private:
   void Clear();
 
   bool null_value_ = true;

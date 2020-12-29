@@ -91,6 +91,7 @@ Status PgDml::AppendTarget(PgExpr *target) {
 }
 
 Status PgDml::AppendTargetVar(PgExpr *target) {
+  LOG(INFO) << "Append target " << target->ToString();
   // Append to targets_.
   targets_.push_back(target);
 
@@ -153,6 +154,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 
   // Find column to bind.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
+  LOG(INFO) << "Bind column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << attr_value->ToString();
 
   // Alloc the expression variable.
   std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
@@ -186,6 +188,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateBindVars() {
+  LOG(INFO) << "Updating bind variables";
   for (const auto &entry : expr_binds_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -207,6 +210,7 @@ Status PgDml::BindTable() {
 Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   // Find column from targeted table.
   PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
+  LOG(INFO) << "Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << attr_value->ToString();
 
   // Alloc the expression.
   std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();
@@ -236,6 +240,7 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateAssignVars() {
+  LOG(INFO) << "Updating assigned PgExpr to SqlOpExpr";
   for (const auto &entry : expr_assigns_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -250,6 +255,7 @@ Status PgDml::ClearBinds() {
 }
 
 Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
+  LOG(INFO) << "Fetching tuple";
   // Each isnulls and values correspond (in order) to columns from the table schema.
   // Initialize to nulls for any columns not present in result.
   if (isnulls) {
@@ -274,11 +280,13 @@ Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns
 }
 
 Result<bool> PgDml::FetchDataFromServer() {
+  LOG(INFO) << "Fetch data from SKV";
   // Get the rowsets from sql operator.
   RETURN_NOT_OK(sql_op_->GetResult(&rowsets_));
 
   // Check if EOF is reached.
   if (rowsets_.empty()) {
+    LOG(INFO) << "Result set is empty";
     // Process the secondary index to find the next WHERE condition.
     //   DML(Table) WHERE ybctid IN (SELECT base_ybctid FROM IndexTable),
     //   The nested query would return many rows each of which yields different result-set.
@@ -304,6 +312,7 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
     return false;
   }
 
+  LOG(INFO) << "Processing secondary index request";
   // Execute query in PgGate.
   // If index query is not yet executed, run it.
   if (!secondary_index_query_->is_executed()) {
@@ -325,6 +334,7 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
 }
 
 Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
+  LOG(INFO) << "Get next row of pg tuple";
   for (auto rowset_iter = rowsets_.begin(); rowset_iter != rowsets_.end();) {
     // Check if the rowset has any data.
     auto& rowset = *rowset_iter;
@@ -377,7 +387,9 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
       }
     }
   }
-  return pg_session_->GetRowId(bind_desc_->table_name().namespace_id, bind_desc_->table_name().table_id, bind_desc_->SchemaVersion(), values);
+  // secondary index query does not have bind_desc_
+  std::shared_ptr<PgTableDesc> table_schema = (bind_desc_ == nullptr) ? target_desc_ : bind_desc_;
+  return pg_session_->GetRowId(table_schema->table_name().namespace_id, table_schema->table_name().table_id, table_schema->SchemaVersion(), values);
 }
 
 bool PgDml::has_aggregate_targets() {
@@ -423,6 +435,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
       expr_var->setCondition(op_cond);
     }
   }
+  LOG(INFO) << "Finished binding PgExpr " << target->ToString() << " to " << expr_var->ToString();
 
   return Status::OK();
 }

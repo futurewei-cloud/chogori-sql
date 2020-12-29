@@ -104,7 +104,7 @@ Status PgDmlWrite::Exec(bool force_non_bufferable) {
     // Save the number of rows affected by the op.
     rows_affected_count_ = VERIFY_RESULT(sql_op_->GetRowsAffectedCount());
   }
-  
+
   return Status::OK();
 }
 
@@ -128,6 +128,7 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
     write_req_->key_column_values.clear();
   }
 
+  LOG(INFO) << "Deleting empty primary binds and found missing primary key: " << missing_primary_key;
   // Check for missing key.  This is okay when binding the whole table (for colocated truncate).
   if (missing_primary_key && !bind_table_) {
     return STATUS(InvalidArgument, "Primary key must be fully specified for modifying table");

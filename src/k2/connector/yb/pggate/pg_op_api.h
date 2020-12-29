@@ -152,6 +152,8 @@ namespace gate {
             return values_;
         }
 
+        std::string ToString();
+
         private:
         ExprType type_;
         std::shared_ptr<SqlValue> value_;
@@ -181,6 +183,8 @@ namespace gate {
             return operands_;
         }
 
+        std::string ToString();
+
         private:
         PgExpr::Opcode op_;
         std::vector<std::shared_ptr<SqlOpExpr>> operands_;
@@ -195,6 +199,12 @@ namespace gate {
 
         int column_id;
         std::shared_ptr<SqlOpExpr> expr;
+
+        std::string ToString() {
+            std::ostringstream os;
+            os << "(ColumnValue: id: " << column_id << ", expr: " << (expr == nullptr ? "NULL" : expr->ToString()) << ")";
+            return os.str();
+        }
     };
 
     struct SqlOpPagingState {

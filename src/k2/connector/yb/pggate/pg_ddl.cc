@@ -112,7 +112,7 @@ Status PgAlterDatabase::Exec() {
 }
 
 Status PgAlterDatabase::RenameDatabase(const std::string& new_name) {
-  rename_to_ = new_name;  
+  rename_to_ = new_name;
   return Status::OK();
 }
 
@@ -186,6 +186,8 @@ Status PgCreateTable::Exec() {
 
   // Construct schema.
   PgSchema schema = schema_builder_.Build();
+  LOG(INFO) << "Created schema for namespace_id: " << namespace_id_ << ", namespace_name: " << namespace_name_
+    << ", table_id: " << table_id_ << ", table_name: " << table_name_ << ", schema: " << schema.ToString();
 
   // Create table.
   const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema,
@@ -347,7 +349,7 @@ Status PgCreateIndex::Exec() {
   if (!ybbasectid_added_) {
     RETURN_NOT_OK(AddYBbasectidColumn());
   }
-   
+
   TableProperties table_properties;
   // always use transaction for create table
   table_properties.SetTransactional(true);
@@ -375,7 +377,7 @@ Status PgCreateIndex::Exec() {
   }
 
   pg_session_->InvalidateTableCache(base_table_id_);
-  return Status::OK(); 
+  return Status::OK();
 }
 
 //--------------------------------------------------------------------------------------------------
