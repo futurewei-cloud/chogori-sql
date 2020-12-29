@@ -400,6 +400,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
     PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(col_ref->attr_num()));
     col_ref->set_attr_name(col->attr_name());
     PrepareColumnForRead(col_ref->attr_num(), expr_var);
+    LOG(INFO) << "binding PgExpr " << target->ToString() << " to " << expr_var;
   } else if (target->is_constant()) {
     // PgConstant
     PgConstant *col_const = static_cast<PgConstant *>(target);

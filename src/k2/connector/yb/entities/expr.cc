@@ -52,7 +52,7 @@
 
 namespace k2pg {
 namespace sql {
-   
+
 using std::string;
 using std::make_shared;
 using yb::Status;
