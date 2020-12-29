@@ -493,9 +493,8 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     k2::K2TxnOptions options{};
     // use default values for now
     // TODO: read from configuration/env files
-    options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
-    options.priority = k2::dto::TxnPriority::Medium;
-    options.syncFinalize = true;
+    //options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
+    //options.priority = k2::dto::TxnPriority::Medium;
     return k23si_->beginTxn(options);
 }
 
