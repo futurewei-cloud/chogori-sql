@@ -55,7 +55,7 @@ public:
   SqlValue(ValueType type, Data* data) {
       type_ = type;
       data_ = data;
-      null_value_ = data_ != nullptr;
+      null_value_ = (data_ == nullptr);
   }
 
   SqlValue(bool b) {
