@@ -568,7 +568,6 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
 std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                          std::vector<ColumnValue>& values) {
     std::vector<uint32_t> fieldsForUpdate;
-    uint32_t nextIndex = record.schema->partitionKeyFields.size() + record.schema->rangeKeyFields.size();
 
     std::sort(values.begin(), values.end(), [] (const ColumnValue& a, const ColumnValue& b) {
         return a.column_id < b.column_id; }
@@ -582,9 +581,8 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
         // Assumes field ids need to be offset for the implicit tableID and indexID SKV fields
         uint32_t skvIndex = column.column_id + SKV_FIELD_OFFSET;
 
-        while (nextIndex != skvIndex) {
+        while (record.fieldCursor != skvIndex) {
             record.skipNext();
-            ++nextIndex;
         }
 
         // TODO support update on key fields
