@@ -8,7 +8,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #include "k2_config.h"
-#include <k2/common/Log.h>
+#include "k2_includes.h"
 
 #include <stdlib.h>
 

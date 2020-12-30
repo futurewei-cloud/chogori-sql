@@ -21,7 +21,6 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 #include "k23si_gate.h"
-#include <k2/dto/Collection.h>
 #include "k23si_queue_defs.h"
 
 namespace k2pg {
@@ -64,7 +63,7 @@ std::future<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateReq
     return result;
 }
 
-std::future<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& collectionName, 
+std::future<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& collectionName,
                                                             const k2::String& schemaName) {
     ScanReadCreateRequest cr{.collectionName = collectionName, .schemaName = schemaName, .prom = {}};
 

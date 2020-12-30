@@ -28,7 +28,8 @@ Copyright(c) 2020 Futurewei Cloud
 //
 
 #pragma once
-#include <k2/module/k23si/client/k23si_client.h>
+#include "k2_includes.h"
+
 #include <future>
 
 namespace k2pg {
@@ -61,12 +62,12 @@ public:
     std::future<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
 
     // Writes a partial update (e.g. SQL UPDATE) into K2.
-    // fieldsToUpdate are the indexes of the fields to change, key may be empty in which case the key is 
+    // fieldsToUpdate are the indexes of the fields to change, key may be empty in which case the key is
     // generated from the SKVRecord or filled in with a previously cached value
     // The result future is eventually satisfied with the result of the update
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::PartialUpdateResult> partialUpdate(k2::dto::SKVRecord&& rec, 
-                                                       std::vector<uint32_t> fieldsForUpdate, 
+    std::future<k2::PartialUpdateResult> partialUpdate(k2::dto::SKVRecord&& rec,
+                                                       std::vector<uint32_t> fieldsForUpdate,
                                                        std::string key="");
 
     // Ends the transaction. The transaction can be either committed or aborted.
