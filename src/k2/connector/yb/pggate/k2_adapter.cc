@@ -136,6 +136,10 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
 // this method processes the given top-level condition and sets the start/end boundaries based on the condition
 Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
                            k2::dto::SKVRecord& start, k2::dto::SKVRecord& end) {
+    if (!condition_expr) {
+        return Status::OK();
+    }
+
     // the top level condition must be AND
     if (condition_expr->getOp() != PgExpr::Opcode::PG_EXPR_AND) {
         const char* msg = "Only AND top-level condition is supported in condition expression";
@@ -205,7 +209,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         std::shared_ptr<k2::Query> scan = nullptr;
 
-        if (request->paging_state->query) {
+        if (request->paging_state && request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
             // TODO this secondary index request seems like a yb-only optimization and so should be safe to ignore
@@ -493,7 +497,8 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     k2::K2TxnOptions options{};
     // use default values for now
     // TODO: read from configuration/env files
-    //options.deadline = k2::Duration(default_client_read_write_timeout_ms * 1ms);
+    // Actual partition request deadline is min of this and command line option
+    options.deadline = k2::Duration(30s);
     //options.priority = k2::dto::TxnPriority::Medium;
     return k23si_->beginTxn(options);
 }
