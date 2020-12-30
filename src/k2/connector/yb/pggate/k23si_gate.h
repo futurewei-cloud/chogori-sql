@@ -28,7 +28,8 @@ Copyright(c) 2020 Futurewei Cloud
 //
 
 #pragma once
-#include <k2/module/k23si/client/k23si_client.h>
+#include "k2_includes.h"
+
 #include "k23si_txn.h"
 #include "k23si_queue_defs.h"
 #include <future>

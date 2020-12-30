@@ -15,9 +15,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_K2_ADAPTER_H
-#define CHOGORI_GATE_K2_ADAPTER_H
-
+#pragma once
+#include "k2_includes.h"
 #include <boost/function.hpp>
 
 #include "yb/common/concurrent/async_util.h"
@@ -29,7 +28,6 @@
 #include "yb/pggate/pg_env.h"
 
 #include "thread_pool.h"
-
 
 namespace k2pg {
 namespace gate {
@@ -97,5 +95,3 @@ class K2Adapter {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_K2_ADAPTER_H

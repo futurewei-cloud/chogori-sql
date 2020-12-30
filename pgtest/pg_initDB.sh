@@ -20,6 +20,8 @@ export K2_CONFIG_FILE=/build/pgtest/k2config.json
 export CPODIR=/tmp/___cpo_dir
 export EPS="tcp+k2rpc://0.0.0.0:10000"
 export PERSISTENCE=tcp+k2rpc://0.0.0.0:12001
+export GLOG_logtostderr=1 # log all to stderr
+export GLOG_v=5 #
 
 mkdir -p pgroot/data
 /build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data -d

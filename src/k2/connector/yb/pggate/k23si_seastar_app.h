@@ -20,10 +20,8 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#include <k2/appbase/AppEssentials.h>
-#include <k2/appbase/Appbase.h>
-#include <k2/module/k23si/client/k23si_client.h>
+#pragma once
+#include "k2_includes.h"
 
 namespace k2pg {
 namespace gate {

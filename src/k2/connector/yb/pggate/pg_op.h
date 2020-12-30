@@ -68,7 +68,7 @@
 #include "yb/pggate/pg_tabledesc.h"
 #include "yb/pggate/pg_op_api.h"
 
-#include <k2/dto/SKVRecord.h>
+#include "k2_includes.h"
 
 namespace k2pg {
 namespace gate {

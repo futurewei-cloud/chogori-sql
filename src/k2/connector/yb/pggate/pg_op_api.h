@@ -32,8 +32,7 @@
 
 #include "yb/pggate/pg_tuple.h"
 
-#include <k2/dto/SKVRecord.h>
-#include <k2/module/k23si/client/k23si_client.h>
+#include "k2_includes.h"
 
 namespace k2pg {
 namespace gate {
