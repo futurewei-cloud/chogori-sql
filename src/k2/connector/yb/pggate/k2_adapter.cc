@@ -506,19 +506,19 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
     switch (value.type_) {
         case SqlValue::ValueType::BOOL:
-            record.serializeNext<bool>(value.data_->bool_val_);
+            record.serializeNext<bool>(value.data_.bool_val_);
             break;
         case SqlValue::ValueType::INT:
-            record.serializeNext<int64_t>(value.data_->int_val_);
+            record.serializeNext<int64_t>(value.data_.int_val_);
             break;
         case SqlValue::ValueType::FLOAT:
-            record.serializeNext<float>(value.data_->float_val_);
+            record.serializeNext<float>(value.data_.float_val_);
             break;
         case SqlValue::ValueType::DOUBLE:
-            record.serializeNext<double>(value.data_->double_val_);
+            record.serializeNext<double>(value.data_.double_val_);
             break;
         case SqlValue::ValueType::SLICE:
-            record.serializeNext<k2::String>(k2::String(value.data_->slice_val_.ToBuffer()));
+            record.serializeNext<k2::String>(k2::String(value.data_.slice_val_));
             break;
         default:
             throw std::logic_error("Unknown SqlValue type");
@@ -607,7 +607,7 @@ std::string K2Adapter::YBCTIDToString(T& request) {
         throw std::logic_error("ybctid_column_value value is not a Slice");
     }
 
-    return value->data_->slice_val_.ToBuffer();
+    return value->data_.slice_val_;
 }
 
 

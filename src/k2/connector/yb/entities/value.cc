@@ -29,225 +29,149 @@
 namespace k2pg {
 namespace sql {
 
-using yb::Slice;
-
-SqlValue::~SqlValue() {
-    Clear();
-}
-
 void SqlValue::Clear() {
-    if (data_) {
-        if (type_ == ValueType::SLICE) {
-            delete[] data_->slice_val_.data();
-        }
-        delete data_;
-        data_ = nullptr;
-    }
     null_value_ = true;
 }
 
 SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null) {
+  null_value_ = is_null;
+
  switch (type_entity->yb_type) {
     case YB_YQL_DATA_TYPE_INT8:
+      type_ = ValueType::INT;
       if (!is_null) {
         int8_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_INT16:
+      type_ = ValueType::INT;
       if (!is_null) {
         int16_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_INT32:
+      type_ = ValueType::INT;
       if (!is_null) {
         int32_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_INT64:
+      type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_UINT32:
+      type_ = ValueType::INT;
       if (!is_null) {
         uint32_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_UINT8:
+      type_ = ValueType::INT;
       if (!is_null) {
         uint8_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_UINT16:
+      type_ = ValueType::INT;
       if (!is_null) {
         uint16_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_UINT64:
+      type_ = ValueType::INT;
       if (!is_null) {
         uint64_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_STRING:
+      type_ = ValueType::SLICE;
       if (!is_null) {
         char *value;
         int64_t bytes = type_entity->datum_fixed_size;
         type_entity->datum_to_yb(datum, &value, &bytes);
-        type_ = ValueType::SLICE;
-        data_ = new Data();
-        Slice s(value, bytes);
-        data_->slice_val_ = s;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.slice_val_ = std::string(value, bytes);
       }
       break;
 
     case YB_YQL_DATA_TYPE_BOOL:
+      type_ = ValueType::BOOL;
       if (!is_null) {
         bool value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::BOOL;
-        data_ = new Data();
-        data_->bool_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.bool_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_FLOAT:
+      type_ = ValueType::FLOAT;
       if (!is_null) {
         float value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::FLOAT;
-        data_ = new Data();
-        data_->float_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.float_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_DOUBLE:
+      type_ = ValueType::DOUBLE;
       if (!is_null) {
         double value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::DOUBLE;
-        data_ = new Data();
-        data_->double_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.double_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_BINARY:
+      type_ = ValueType::SLICE;
       if (!is_null) {
         uint8_t *value;
         int64_t bytes = type_entity->datum_fixed_size;
         type_entity->datum_to_yb(datum, &value, &bytes);
-        type_ = ValueType::SLICE;
-        data_ = new Data();
-        Slice s(value, bytes);
-        data_->slice_val_ = s;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.slice_val_ = std::string((char*)value, bytes);
       }
       break;
 
     case YB_YQL_DATA_TYPE_TIMESTAMP:
+      type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
         type_entity->datum_to_yb(datum, &value, nullptr);
-        type_ = ValueType::INT;
-        data_ = new Data();
-        data_->int_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.int_val_ = value;
       }
       break;
 
     case YB_YQL_DATA_TYPE_DECIMAL:
+      type_ = ValueType::SLICE;
       if (!is_null) {
         char* plaintext;
         // Calls YBCDatumToDecimalText in ybctype.c
         type_entity->datum_to_yb(datum, &plaintext, nullptr);
-        yb::util::Decimal yb_decimal(plaintext);
-        GStringPiece s(yb_decimal.EncodeToComparable());
-        type_ = ValueType::SLICE;
-        data_ = new Data();
-        Slice value(s);
-        data_->slice_val_ = value;
-        null_value_ = false;
-      } else {
-        null_value_ = true;
+        data_.slice_val_ = std::string(plaintext);
       }
       break;
 
@@ -270,151 +194,100 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
   }
 }
 
-SqlValue* SqlValue::Clone() const {
-   if (null_value_) {
-     return new SqlValue(type_, nullptr);
-   }
-
-   switch (type_) {
-        case ValueType::BOOL:
-            return new SqlValue(data_->bool_val_);
-        case ValueType::INT:
-            return new SqlValue(data_->int_val_);
-        case ValueType::DOUBLE:
-            return new SqlValue(data_->double_val_);
-        case ValueType::FLOAT:
-            return new SqlValue(data_->float_val_);
-        case ValueType::SLICE:
-            return CopySlice(data_->slice_val_);
-        default:
-            LOG(FATAL) << "Invalid type " << type_;
-  }
-}
-
-SqlValue* SqlValue::CopySlice(Slice s) {
+SqlValue* SqlValue::CopySlice(yb::Slice s) {
   auto copy = new uint8_t[s.size()];
   memcpy(copy, s.data(), s.size());
-  auto slice_val = Slice(copy, s.size());
+  auto slice_val = yb::Slice(copy, s.size());
 
   return new SqlValue(slice_val);
 }
 
 void SqlValue::set_bool_value(bool value, bool is_null) {
+    type_ = ValueType::BOOL;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::BOOL;
-        data_->bool_val_ = value;
+        data_.bool_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_int8_value(int8_t value, bool is_null) {
+    type_ = ValueType::INT;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::INT;
-        data_->int_val_ = value;
+        data_.int_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_int16_value(int16_t value, bool is_null) {
+    type_ = ValueType::INT;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::INT;
-        data_->int_val_ = value;
+        data_.int_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_int32_value(int32_t value, bool is_null) {
+    type_ = ValueType::INT;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::INT;
-        data_->int_val_ = value;
+        data_.int_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_int64_value(int64_t value, bool is_null) {
+    type_ = ValueType::INT;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::INT;
-        data_->int_val_ = value;
+        data_.int_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_float_value(float value, bool is_null) {
+    type_ = ValueType::FLOAT;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::FLOAT;
-        data_->float_val_ = value;
+        data_.float_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_double_value(double value, bool is_null) {
+    type_ = ValueType::DOUBLE;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::DOUBLE;
-        data_->double_val_ = value;
+        data_.double_val_ = value;
         null_value_ = false;
     }
 }
 
 void SqlValue::set_string_value(const char *value, bool is_null) {
+    type_ = ValueType::SLICE;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::SLICE;
-        size_t bytes = std::strlen(value);
-        Slice s(value, bytes);
-        data_->slice_val_ = s;
+        data_.slice_val_ = std::string(value);
         null_value_ = false;
     }
 }
 
 void SqlValue::set_binary_value(const char *value, size_t bytes, bool is_null) {
+    type_ = ValueType::SLICE;
     if(is_null) {
         Clear();
     } else {
-        if (data_ == nullptr) {
-            data_ = new Data();
-        }
-        type_ = ValueType::SLICE;
-        Slice s(value, bytes);
-        data_->slice_val_ = s;
+        data_.slice_val_ = std::string(value, bytes);
         null_value_ = false;
     }
 }
