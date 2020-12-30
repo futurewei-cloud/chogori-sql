@@ -708,10 +708,17 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
     case StmtOp::STMT_TRUNCATE:
       {
         auto dml_write = down_cast<PgDmlWrite *>(handle);
-        RETURN_NOT_OK(dml_write->Exec(rows_affected_count != nullptr /* force_non_bufferable */));
+        auto&& status = dml_write->Exec(rows_affected_count != nullptr /* force_non_bufferable */);
+        if (!status.ok()) {
+          LOG(ERROR) << "Dml write failed due to " << status.message();
+          pg_txn_handler_->AbortTransaction();
+          return std::move(status);
+        }
         if (rows_affected_count) {
           *rows_affected_count = dml_write->GetRowsAffectedCount();
         }
+        pg_txn_handler_->CommitTransaction();
+        LOG(INFO) << "Dml write succeeded";
         return Status::OK();
       }
     default:
@@ -895,7 +902,15 @@ Status PgGateApiImpl::ExecSelect(PgStatement *handle, const PgExecParameters *ex
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDmlRead*>(handle)->Exec(exec_params);
+  auto&& status = down_cast<PgDmlRead*>(handle)->Exec(exec_params);
+  if (!status.ok()) {
+    LOG(ERROR) << "Select execution failed due to " << status.message();
+    pg_txn_handler_->AbortTransaction();
+  } else {
+    LOG(INFO) << "Select execution succeeded";
+    pg_txn_handler_->CommitTransaction();
+  }
+  return std::move(status);
 }
 
 // Insert ------------------------------------------------------------------------------------------
@@ -915,7 +930,15 @@ Status PgGateApiImpl::ExecInsert(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgInsert*>(handle)->Exec();
+  auto&& status = down_cast<PgInsert*>(handle)->Exec();
+  if (!status.ok()) {
+    LOG(ERROR) << "Insert execution failed due to " << status.message();
+    pg_txn_handler_->AbortTransaction();
+  } else {
+    LOG(INFO) << "Insert execution succeeded";
+    pg_txn_handler_->CommitTransaction();
+  }
+  return std::move(status);
 }
 
 Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
@@ -954,7 +977,15 @@ Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgUpdate*>(handle)->Exec();
+  auto&& status = down_cast<PgUpdate*>(handle)->Exec();
+  if (!status.ok()) {
+    LOG(ERROR) << "Update execution failed due to " << status.message();
+    pg_txn_handler_->AbortTransaction();
+  } else {
+    LOG(INFO) << "Update execution succeeded";
+    pg_txn_handler_->CommitTransaction();
+  }
+  return std::move(status);
 }
 
 // Delete ------------------------------------------------------------------------------------------
@@ -974,7 +1005,15 @@ Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDelete*>(handle)->Exec();
+  auto&& status = down_cast<PgDelete*>(handle)->Exec();
+  if (!status.ok()) {
+    LOG(ERROR) << "Delete execution failed due to " << status.message();
+    pg_txn_handler_->AbortTransaction();
+  } else {
+    LOG(INFO) << "Delete execution succeeded";
+    pg_txn_handler_->CommitTransaction();
+  }
+  return std::move(status);
 }
 
 Status PgGateApiImpl::BeginTransaction() {
