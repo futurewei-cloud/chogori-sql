@@ -418,7 +418,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
     PgConstant *col_const = static_cast<PgConstant *>(target);
     // the PgExpr *target is accessed by PG as well, need a copy of the value for SKV so that
     // we don't accidentally delete the value that is needed by PG when free the value owned by shared_ptrs.
-    std::shared_ptr<SqlValue> col_val(col_const->getValue()->Clone());
+    auto col_val = std::make_shared<SqlValue>(*(col_const->getValue()));
     expr_var->setValue(col_val);
   } else {
     // PgOperator

@@ -30,8 +30,6 @@
 namespace k2pg {
 namespace sql {
 
-using yb::Slice;
-
 struct Data {
     union {
         bool bool_val_;
@@ -39,7 +37,7 @@ struct Data {
         float float_val_;
         double double_val_;
     };
-    Slice slice_val_;
+    std::string slice_val_;
 };
 
 class SqlValue {
@@ -49,81 +47,73 @@ public:
       INT,
       FLOAT,
       DOUBLE,
-      SLICE
+      SLICE,
+      UNKNOWN
   };
 
-  SqlValue(ValueType type, Data* data) {
-      type_ = type;
-      data_ = data;
-      null_value_ = (data_ == nullptr);
-  }
+  //SqlValue(ValueType type, Data data, bool is_null) {
+  //    type_ = type;
+  //    data_ = data;
+  //    null_value_ = is_null;
+  //}
 
   SqlValue(bool b) {
       type_ = ValueType::BOOL;
-      data_ = new Data();
-      data_->bool_val_ = b;
+      data_.bool_val_ = b;
       null_value_ = false;
   }
 
   SqlValue(int64_t v) {
       type_ = ValueType::INT;
-      data_ = new Data();
-      data_->int_val_ = v;
+      data_.int_val_ = v;
       null_value_ = false;
   }
 
   SqlValue(float f) {
       type_ = ValueType::FLOAT;
-      data_ = new Data();
-      data_->float_val_ = f;
+      data_.float_val_ = f;
       null_value_ = false;
   }
 
   SqlValue(double d) {
       type_ = ValueType::DOUBLE;
-      data_ = new Data();
-      data_->double_val_ = d;
+      data_.double_val_ = d;
       null_value_ = false;
   }
 
-  SqlValue(Slice s) {
+  SqlValue(yb::Slice s) {
       type_ = ValueType::SLICE;
-      data_ = new Data();
-      data_->slice_val_ = s;
+      data_.slice_val_ = std::string(s.cdata(), s.size());
       null_value_ = false;
   }
 
   SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
 
-  // Return a new identical SQLValue object.
-  SqlValue* Clone() const;
+  SqlValue(const SqlValue& val) = default;
 
-  // Construct a SQLValue by copying the value of the given Slice.
-  static SqlValue* CopySlice(Slice s);
+  static SqlValue* CopySlice(yb::Slice s);
 
   std::string ToString() {
     std::ostringstream os;
     os << "{type: " << type_ << ", isNull: " << null_value_ << ", value: ";
     if (null_value_) {
         os << "NULL";
-    } else if (data_ == nullptr) {
-        os << "NULL Data";
     } else {
         switch (type_) {
             case ValueType::BOOL: {
-                os << data_->bool_val_;
+                os << data_.bool_val_;
             } break;
             case ValueType::INT: {
-                os << data_->int_val_;
+                os << data_.int_val_;
             } break;
             case ValueType::FLOAT: {
-                os << data_->float_val_;
+                os << data_.float_val_;
             } break;
             case ValueType::DOUBLE: {
-                os << data_->double_val_;
+                os << data_.double_val_;
             } break;
             case ValueType::SLICE: {
-                os << data_->slice_val_.ToDebugString(120);
+                os << data_.slice_val_;
             } break;
             default: {
                 os << "Unknown";
@@ -152,10 +142,8 @@ public:
   void set_string_value(const char *value, bool is_null);
   void set_binary_value(const char *value, size_t bytes, bool is_null);
 
-  ~SqlValue();
-
-  ValueType type_;
-  Data* data_;
+  ValueType type_ = ValueType::UNKNOWN;
+  Data data_;
 
   private:
   void Clear();
