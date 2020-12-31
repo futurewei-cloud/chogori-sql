@@ -34,7 +34,9 @@ std::future<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
     BeginTxnRequest qr{.opts=txnOpts, .prom={}};
 
     auto result = qr.prom.get_future();
+    K2DEBUG("starting txn: enqueue");
     pushQ(beginTxQ, std::move(qr));
+    K2DEBUG("starting txn: queued");
     return result;
 }
 
@@ -42,7 +44,9 @@ std::future<k2::GetSchemaResult> K23SIGate::getSchema(const k2::String& collecti
     SchemaGetRequest qr{.collectionName = collectionName, .schemaName = schemaName, .schemaVersion = schemaVersion, .prom={}};
 
     auto result = qr.prom.get_future();
+    K2DEBUG("getschema: enqueue");
     pushQ(schemaGetTxQ, std::move(qr));
+    K2DEBUG("getschema: enqueued");
     return result;
 }
 
@@ -50,7 +54,9 @@ std::future<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& co
     SchemaCreateRequest qr{.collectionName = collectionName, .schema = schema, .prom = {}};
 
     auto result = qr.prom.get_future();
+    K2DEBUG("createschema: enqueue");
     pushQ(schemaCreateTxQ, std::move(qr));
+    K2DEBUG("createschema: enqueue");
     return result;
 }
 
@@ -59,7 +65,9 @@ std::future<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateReq
     CollectionCreateRequest req{.ccr = ccr, .prom = {}};
 
     auto result = req.prom.get_future();
+    K2DEBUG("createcollection: enqueue");
     pushQ(collectionCreateTxQ, std::move(req));
+    K2DEBUG("createcollection: enqueued");
     return result;
 }
 
@@ -68,7 +76,9 @@ std::future<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& co
     ScanReadCreateRequest cr{.collectionName = collectionName, .schemaName = schemaName, .prom = {}};
 
     auto result = cr.prom.get_future();
+    K2DEBUG("createscanread: enqueue");
     pushQ(scanReadCreateTxQ, std::move(cr));
+    K2DEBUG("createscanread: enqueued");
     return result;
 }
 

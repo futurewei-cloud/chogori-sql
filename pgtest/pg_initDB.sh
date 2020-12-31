@@ -23,5 +23,6 @@ export PERSISTENCE=tcp+k2rpc://0.0.0.0:12001
 export GLOG_logtostderr=1 # log all to stderr
 export GLOG_v=5 #
 
+rm -rf pgroot/data
 mkdir -p pgroot/data
 /build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data -d
