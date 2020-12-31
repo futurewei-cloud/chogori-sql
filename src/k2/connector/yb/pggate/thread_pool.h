@@ -20,6 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
+#include "k2_includes.h"
 #include <pthread.h>
 
 #include <atomic>
@@ -51,9 +52,12 @@ public:
                         _tasks.pop_front();
                         lock.unlock();
                         try {
+                            K2DEBUG("Running task");
                             task();
+                            K2DEBUG("Task completed");
                         }
                         catch(...) {
+                            K2ERROR("Task threw exception");
                             std::cerr << "Ignoring caught task exception" << std::endl;
                         }
                     } else {

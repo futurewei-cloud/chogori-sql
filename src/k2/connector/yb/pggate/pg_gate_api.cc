@@ -939,7 +939,6 @@ bool YBCGetDisableIndexBackfill() {
 }
 
 bool YBCPgIsYugaByteEnabled() {
-  LOG(INFO) << "PgGateAPI: YBCPgIsYugaByteEnabled " << (api_impl != nullptr);
   return api_impl != nullptr;
 }
 

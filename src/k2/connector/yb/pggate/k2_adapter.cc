@@ -509,7 +509,7 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     // use default values for now
     // TODO: read from configuration/env files
     // Actual partition request deadline is min of this and command line option
-    options.deadline = k2::Duration(30s);
+    options.deadline = k2::Duration(600s);
     //options.priority = k2::dto::TxnPriority::Medium;
     return k23si_->beginTxn(options);
 }
