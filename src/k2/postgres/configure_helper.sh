@@ -15,5 +15,4 @@ export LDFLAGS=$3
 # extra include paths "-Ixxx -Iyyy"
 export CPPFLAGS=$4
 
-rm -f bin/postgres cmakedir/build/src/backend/postgres
 ${1}/configure --prefix=$5
