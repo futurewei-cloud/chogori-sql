@@ -22,6 +22,7 @@ export EPS="tcp+k2rpc://0.0.0.0:10000"
 export PERSISTENCE=tcp+k2rpc://0.0.0.0:12001
 export GLOG_logtostderr=1 # log all to stderr
 export GLOG_v=5 #
+export GLOG_log_dir=/tmp
 
 rm -rf pgroot/data
 mkdir -p pgroot/data

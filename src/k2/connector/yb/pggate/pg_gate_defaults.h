@@ -36,14 +36,14 @@ namespace gate {
     constexpr int32_t default_output_buffer_size = 262144;
 
     // should disable index backfill or not
-    static bool const default_disable_index_backfill = true; 
+    static bool const default_disable_index_backfill = true;
 
-    static const uint64_t default_ysql_prefetch_limit = 4;
+    static const uint64_t default_ysql_prefetch_limit = 1000;
 
     static const uint64_t default_ysql_request_limit = 1;
 
     static const uint64_t default_ysql_select_parallelism = 1;
-    
+
     static const double default_ysql_backward_prefetch_scale_factor = 0.25;
 
     static const int default_session_max_batch_size = 1;
