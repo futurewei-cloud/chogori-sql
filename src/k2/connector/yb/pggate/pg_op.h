@@ -288,6 +288,9 @@ private:
     // Analyze options and pick the appropriate prefetch limit.
     void SetRequestPrefetchLimit();
 
+    // set the global limit on the query
+    void SetRequestTotalLimit();
+
     // Set the row_mark_type field of our read request based on our exec control parameter.
     void SetRowMark();
 

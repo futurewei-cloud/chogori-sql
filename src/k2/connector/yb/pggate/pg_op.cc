@@ -489,7 +489,7 @@ void PgReadOp::ExecuteInit(const PgExecParameters *exec_params) {
     PgOp::ExecuteInit(exec_params);
 
     template_op_->set_return_paging_state(true);
-    SetRequestPrefetchLimit();
+    SetRequestTotalLimit();
     SetRowMark();
     SetReadTime();
 }
@@ -587,6 +587,13 @@ void PgReadOp::SetRequestPrefetchLimit() {
         limit_count = predicted_limit;
         suppress_next_result_prefetching_ = false;
     }
+    req->limit = limit_count;
+}
+
+void PgReadOp::SetRequestTotalLimit() {
+    std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
+    // Use statement LIMIT(count + offset) if it is smaller than the predicted limit.
+    int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
     req->limit = limit_count;
 }
 
