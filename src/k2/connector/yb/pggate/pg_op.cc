@@ -306,9 +306,9 @@ PgOp::PgOp(const std::shared_ptr<PgSession>& pg_session,
                 const std::shared_ptr<PgTableDesc>& table_desc,
                 const PgObjectId& relation_id)
     : pg_session_(pg_session),  table_desc_(table_desc), relation_id_(relation_id) {
-    exec_params_.limit_count = default_ysql_prefetch_limit;
+    exec_params_.limit_count = 0;
     exec_params_.limit_offset = 0;
-    exec_params_.limit_use_default = true;
+    exec_params_.limit_use_default = false;
 }
 
 PgOp::~PgOp() {
@@ -542,7 +542,7 @@ Status PgReadOp::ProcessResponsePagingState() {
             while (innermost_req->index_request != nullptr) {
                     innermost_req = innermost_req->index_request.get();
             }
-            *innermost_req->paging_state = *res.paging_state;
+            innermost_req->paging_state = res.paging_state;
         }
 
         if (has_more_arg) {
@@ -592,8 +592,9 @@ void PgReadOp::SetRequestPrefetchLimit() {
 
 void PgReadOp::SetRequestTotalLimit() {
     std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
-    // Use statement LIMIT(count + offset) if it is smaller than the predicted limit.
+    // Use statement LIMIT(count + offset) for the global limit.
     int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
+    LOG(INFO) << "Set request limit as " << limit_count;
     req->limit = limit_count;
 }
 
