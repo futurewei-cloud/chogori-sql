@@ -21,12 +21,17 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 #include "k2_includes.h"
+#include "k2_config.h"
+
 #include <pthread.h>
 
 #include <atomic>
 #include <deque>
 #include <thread>
 #include <vector>
+
+#include <seastar/core/resource.hh>
+#include <seastar/core/memory.hh>
 
 namespace k2pg {
 class ThreadPool {
@@ -44,6 +49,15 @@ public:
                 if (firstCPUPin >= 0) {
                     pin(i + firstCPUPin);
                 }
+                gate::Config conf;
+                size_t mem = conf()["thread_mem_mb"].get<size_t>();
+                mem *= 1024 * 1024; // to bytes
+                // TODO NUMA and hugepages
+                seastar::resource::memory mem_config{.bytes = mem, .nodeid = 0};
+                std::vector<seastar::resource::memory> mem_configs;
+                mem_configs.emplace_back(mem_config);
+                seastar::memory::configure(std::move(mem_configs), false, false);
+
                 while (!_stop) {
                     std::unique_lock lock(_qMutex);
 

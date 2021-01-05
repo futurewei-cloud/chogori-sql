@@ -8,5 +8,6 @@
             "range_ends": [""],
             "endpoints": ["tcp+k2rpc://127.0.0.1:10001"]
         }
-    }
+    },
+    "thread_mem_mb": 1024
 }
