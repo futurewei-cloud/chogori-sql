@@ -468,8 +468,8 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
 
 std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
     // same as the above except that send multiple requests and need to handle multiple futures from SKV
-    // but only return a single future to this method caller. Return Status will be OK if the BatchExec
-    // itself is sucessful, regardless of any failures of then individual ops
+    // but only return a single future to this method caller. Return Status will be OK all Execs are
+    // successful, otherwise Status will be one of the failed Execs
 
     // This only works if the Exec calls are executed in order by the threadpool, otherwise we could
     // deadlock if the waiting thread below is executed first
@@ -481,11 +481,25 @@ std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, con
     auto prom = std::make_shared<std::promise<Status>>();
     auto result = prom->get_future();
     threadPool_.enqueue([op_futures, prom] () {
-        for (const std::future<Status>& op : *op_futures) {
-            op.wait();
+        Status status = Status::OK();
+        std::exception_ptr e = nullptr;
+
+        for (std::future<Status>& op : *op_futures) {
+            try {
+                Status exec_status = op.get();
+                if (!exec_status.ok()) {
+                    status = std::move(exec_status);
+                }
+            } catch (...) {
+                e = std::current_exception();
+            }
         }
 
-        prom->set_value(Status());
+        if (!e) {
+            prom->set_value(std::move(status));
+        } else {
+            prom->set_exception(e);
+        }
     });
 
     return result;
