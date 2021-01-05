@@ -1135,13 +1135,19 @@ namespace catalog {
                 throw std::runtime_error("Cannot find column with id " + col_id);
             }
             const ColumnSchema& col_schema = index_schema.column(col_idx);
-            std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
-            if (!pair.first) {
-                throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
+            if (col_schema.name().compare("ybuniqueidxkeysuffix") == 0 || col_schema.name().compare("ybidxbasectid") == 0) {
+                // skip checking "ybuniqueidxkeysuffix" and "ybidxbasectid" on base table, which only exist on index table
+                IndexColumn col(col_id, col_schema.name(),  -1);
+                columns.push_back(col);
+            } else {
+                std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
+                if (!pair.first) {
+                    throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
+                }
+                ColumnId indexed_column_id = pair.second;
+                IndexColumn col(col_id, col_schema.name(),  indexed_column_id);
+                columns.push_back(col);
             }
-            ColumnId indexed_column_id = pair.second;
-            IndexColumn col(col_id, col_schema.name(),  indexed_column_id);
-            columns.push_back(col);
         }
         IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
                 is_unique, columns, index_permissions);
