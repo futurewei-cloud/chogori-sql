@@ -576,7 +576,7 @@ namespace catalog {
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
-            LOG(INFO) << "Created table " << new_table_info->table_id() << " successfully";
+            LOG(INFO) << "Created table " << new_table_info->table_id() << " with schema version " << schema_version << " successfully";
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version

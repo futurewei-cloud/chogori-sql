@@ -595,7 +595,8 @@ namespace sql {
 
         TableProperties table_properties_;
 
-        uint32_t version_;
+        // initialie schema version to zero
+        uint32_t version_ = 0;
     };
 
     // Helper used for schema creation/editing.
