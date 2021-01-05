@@ -547,17 +547,16 @@ namespace catalog {
                 // return if the table already exists
                 return response;
             }
-            // increase the schema version by one
-            // TODO: If SQL allows changing or rearranging primary key columns, we can't support that on SKV as
-            // different versions of the same schema. Need to figure out a way to handle this case
-            schema_version = request.schema.version() + 1;
-            table_id = table_info->table_id();
+
+            // return table already present error if table already exists
+            response.status.code = StatusCode::ALREADY_PRESENT;
+            response.status.errorMessage = "Table " + table_id + " has already existed in " + request.namespaceName;
+            return response;
         } else {
             // new table
             schema_version = request.schema.version();
-            if (schema_version == 0) {
-                schema_version++;
-            }
+            CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
+            schema_version++;
             // generate a string format table id based database object oid and table oid
             table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         }
@@ -576,7 +575,7 @@ namespace catalog {
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
-            LOG(INFO) << "Created table " << new_table_info->table_id() << " successfully";
+            LOG(INFO) << "Created table " << new_table_info->table_id() << " with schema version " << schema_version << " successfully";
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version
