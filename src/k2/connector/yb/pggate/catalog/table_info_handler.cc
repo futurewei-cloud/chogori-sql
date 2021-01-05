@@ -363,6 +363,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
         const IndexInfo& index_info) {
     PersistIndexTableResult response;
     k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
+    LOG(INFO) << "Persisting SKV record tablelist_index_record id: " << index_info.table_id() << ", name: " << index_info.table_name();
     RStatus table_status = PersistSKVRecord(context, tablelist_index_record);
     if (!table_status.IsSucceeded()) {
         response.status = std::move(table_status);
@@ -370,6 +371,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
     }
     std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, index_info, table->schema());
     for (auto& index_column_record : index_column_records) {
+        LOG(INFO) << "Persisting SKV record index_column_record id: " << index_info.table_id() << ", name: " << index_info.table_name();
         RStatus index_status = PersistSKVRecord(context, index_column_record);
         if (!index_status.IsSucceeded()) {
             response.status = std::move(index_status);
@@ -565,35 +567,40 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
     for (IndexColumn indexcolumn_schema : index_info.columns()) {
         k2::dto::SchemaField field;
         field.name = indexcolumn_schema.column_name;
-        int column_idx = base_tablecolumn_schema.find_column_by_id(indexcolumn_schema.indexed_column_id);
-        if (column_idx == Schema::kColumnNotFound) {
-            throw std::invalid_argument("Cannot find base column " + indexcolumn_schema.indexed_column_id);
+        if (indexcolumn_schema.indexed_column_id != -1) {
+            int column_idx = base_tablecolumn_schema.find_column_by_id(indexcolumn_schema.indexed_column_id);
+            if (column_idx == Schema::kColumnNotFound) {
+                throw std::invalid_argument("Cannot find base column " + indexcolumn_schema.indexed_column_id);
+            }
+            const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
+            field.type = ToK2Type(col_schema.type());
+            switch (col_schema.sorting_type()) {
+                case ColumnSchema::SortingType::kAscending: {
+                    field.descending = false;
+                    field.nullLast = false;
+                } break;
+                case ColumnSchema::SortingType::kDescending: {
+                    field.descending = true;
+                    field.nullLast = false;
+                } break;
+                case ColumnSchema::SortingType::kAscendingNullsLast: {
+                    field.descending = false;
+                    field.nullLast = true;
+                } break;
+                case ColumnSchema::SortingType::kDescendingNullsLast: {
+                    field.descending = true;
+                    field.nullLast = true;
+                } break;
+                default: break;
+            }
+        } else {
+            // extra index column such as "ybuniqueidxkeysuffix" or "ybidxbasectid"
+            field.type = k2::dto::FieldType::STRING;
         }
-        const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
-        field.type = ToK2Type(col_schema.type());
-        switch (col_schema.sorting_type()) {
-            case ColumnSchema::SortingType::kAscending: {
-                field.descending = false;
-                field.nullLast = false;
-            } break;
-            case ColumnSchema::SortingType::kDescending: {
-                field.descending = true;
-                field.nullLast = false;
-            } break;
-             case ColumnSchema::SortingType::kAscendingNullsLast: {
-                field.descending = false;
-                field.nullLast = true;
-            } break;
-            case ColumnSchema::SortingType::kDescendingNullsLast: {
-                field.descending = true;
-                field.nullLast = true;
-            } break;
-            default: break;
-       }
-       schema->fields.push_back(field);
-       // all index columns should be treated as primary keys
-       schema->partitionKeyFields.push_back(count);
-       count++;
+        schema->fields.push_back(field);
+        // all index columns should be treated as primary keys
+        schema->partitionKeyFields.push_back(count);
+        count++;
     }
 
     return schema;
@@ -687,14 +694,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnRecords(std::
 
 std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::string collection_name, const IndexInfo& index, const Schema& base_tablecolumn_schema) {
     std::vector<k2::dto::SKVRecord> response;
-    int count = 0;
     for (IndexColumn index_column : index.columns()) {
-        int column_idx = base_tablecolumn_schema.find_column_by_id(index_column.indexed_column_id);
-        if (column_idx == Schema::kColumnNotFound) {
-            throw std::invalid_argument("Cannot find base column " + index_column.indexed_column_id);
-        }
-        const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
-
         k2::dto::SKVRecord record(collection_name, indexcolumn_schema_ptr_);
         // TableId
         record.serializeNext<k2::String>(index.table_id());
@@ -702,19 +702,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
         record.serializeNext<int32_t>(index_column.column_id);
         // ColumnName
         record.serializeNext<k2::String>(index_column.column_name);
-        // ColumnType
-        record.serializeNext<int16_t>(col_schema.type()->id());
-        // IsNullable
-        record.serializeNext<bool>(false);
-        // IsPrimary
-        record.serializeNext<bool>(true);
-        // IsPartition
-        record.serializeNext<bool>(true);
-        // Order
-        record.serializeNext<int32_t>(count++);
-        // SortingType
-        record.serializeNext<int16_t>(col_schema.sorting_type());
-
+        // IndexedColumnId
+        record.serializeNext<int32_t>(index_column.indexed_column_id);
         response.push_back(std::move(record));
     }
     return response;
