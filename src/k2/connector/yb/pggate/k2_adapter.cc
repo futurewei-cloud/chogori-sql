@@ -11,7 +11,8 @@
 #include "k2_config.h"
 
 #include "yb/pggate/pg_gate_defaults.h"
-
+#include <seastar/core/resource.hh>
+#include <seastar/core/memory.hh>
 
 namespace k2pg {
 namespace gate {
@@ -20,8 +21,16 @@ using k2::K2TxnOptions;
 
 
 Status K2Adapter::Init() {
-    // TODO: add implementation
     K2INFO("Initialize adapter");
+    Config conf;
+    size_t mem = conf()["thread_mem_mb"].get<size_t>();
+    mem *= 1024 * 1024; // to bytes
+    // TODO NUMA and hugepages
+    seastar::resource::memory mem_config{.bytes = mem, .nodeid = 0};
+    std::vector<seastar::resource::memory> mem_configs;
+    mem_configs.emplace_back(mem_config);
+    seastar::memory::configure(std::move(mem_configs), false, false);
+
     return Status::OK();
 }
 
