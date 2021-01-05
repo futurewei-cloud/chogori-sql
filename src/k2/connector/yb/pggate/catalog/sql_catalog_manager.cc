@@ -660,15 +660,18 @@ namespace catalog {
                 IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
                     request.schema, request.isUnique, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
+                LOG(INFO) << "Persisting index table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name();
                 // persist the index table metadata to the system catalog SKV tables
                 table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
+                LOG(INFO) << "Persisting index SKV schema id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name();
                 // create a SKV schema to insert the actual index data
                 table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
                 // update the base table with the new index
                 base_table_info->add_secondary_index(index_table_id, new_index_info);
 
+                LOG(INFO) << "Updating cache for table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name();
                 // update table cache
                 UpdateTableCache(base_table_info);
 
@@ -684,13 +687,13 @@ namespace catalog {
                 }
                 response.indexInfo = new_index_info_ptr;
                 response.status.Succeed();
+                LOG(INFO) << "Created index " << request.tableName << " successfully";
             } catch (const std::exception& e) {
                 response.status.code = StatusCode::RUNTIME_ERROR;
                 response.status.errorMessage = e.what();
                 LOG(ERROR) << "Failed to create index " << request.tableName << " due to " << response.status.errorMessage;
            }
         }
-        LOG(INFO) << "Created index " << request.tableName << " successfully";
         return response;
     }
 
