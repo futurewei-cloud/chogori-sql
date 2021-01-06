@@ -293,17 +293,6 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
     return result;
 }
 
-template<typename T>
-void FieldCopy(std::optional<T> field, const k2::String& fieldName, k2::dto::SKVRecord& dest) {
-    (void) fieldName;
-
-    if (!field.has_value()) {
-        dest.skipNext();
-    } else {
-        dest.serializeNext<T>(*field);
-    }
-}
-
 // Get system columns' values from this batch.
 // Currently, we only have ybctids, but there could be more.
 Status PgOpResult::ProcessSystemColumns() {
@@ -312,12 +301,7 @@ Status PgOpResult::ProcessSystemColumns() {
     }
     syscol_processed_ = true;
     for (auto& rec: data_) {
-        // Copy so we can recreate keys
-        k2::dto::SKVRecord copyRec(rec.collectionName, rec.schema);
-        FOR_EACH_RECORD_FIELD(rec, FieldCopy, copyRec);
-        rec.seekField(0);
-
-        ybctid_strings_.push_back(copyRec.getKey().partitionKey);
+        ybctid_strings_.push_back(K2Adapter::GetRowIdFromReadRecord(rec));
         ybctids_.emplace_back(ybctid_strings_.back().c_str(), ybctid_strings_.back().size());
     }
     return Status::OK();
