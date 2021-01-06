@@ -52,6 +52,7 @@
 #include "yb/pggate/pg_op.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/catalog/sql_catalog_defaults.h" // for the table/index name constants
+#include "yb/common/ybc-internal.h"
 #include <string>
 
 namespace k2pg {
@@ -257,10 +258,12 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data) : data_(std::move(data)) {
+    ProcessSystemColumns();
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data, std::list<int64_t>&& row_orders):
     data_(std::move(data)), row_orders_(move(row_orders)) {
+    ProcessSystemColumns();
 }
 
 PgOpResult::~PgOpResult() {
@@ -273,8 +276,12 @@ int64_t PgOpResult::NextRowOrder() {
 // Get the postgres tuple from this batch.
 Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
     Status result;
+    K2ASSERT(syscol_processed_, "System columns have not been processed yet");
     FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result);
-
+    if (pg_tuple->syscols()) {
+        auto& ybctid_str = ybctid_strings_[nextToConsume_];
+        pg_tuple->syscols()->ybctid = (uint8_t*)yb::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
+    }
     if (row_orders_.size()) {
         *row_order = row_orders_.front();
         row_orders_.pop_front();
@@ -540,7 +547,7 @@ Status PgReadOp::ProcessResponsePagingState() {
             // the read operator that is operated first and feeds data to other queries.
             SqlOpReadRequest *innermost_req = req.get();
             while (innermost_req->index_request != nullptr) {
-                    innermost_req = innermost_req->index_request.get();
+                innermost_req = innermost_req->index_request.get();
             }
             innermost_req->paging_state = res.paging_state;
         }
