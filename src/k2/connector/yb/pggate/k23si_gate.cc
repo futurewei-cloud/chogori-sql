@@ -36,7 +36,6 @@ std::future<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
     auto result = qr.prom.get_future();
     K2DEBUG("starting txn: enqueue");
     pushQ(beginTxQ, std::move(qr));
-    K2DEBUG("starting txn: queued");
     return result;
 }
 
@@ -44,9 +43,8 @@ std::future<k2::GetSchemaResult> K23SIGate::getSchema(const k2::String& collecti
     SchemaGetRequest qr{.collectionName = collectionName, .schemaName = schemaName, .schemaVersion = schemaVersion, .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("getschema: enqueue");
+    K2DEBUG("get schema: collname=" << escape(collectionName) << ", schema=" << escape(schemaName) << ", schemaVersion=" << schemaVersion);
     pushQ(schemaGetTxQ, std::move(qr));
-    K2DEBUG("getschema: enqueued");
     return result;
 }
 
@@ -54,20 +52,18 @@ std::future<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& co
     SchemaCreateRequest qr{.collectionName = collectionName, .schema = schema, .prom = {}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("createschema: enqueue");
+    K2DEBUG("create schema: collname=" << escape(collectionName) << ", schema=" << escape(schema.name) << ", raw=" << schema);
     pushQ(schemaCreateTxQ, std::move(qr));
-    K2DEBUG("createschema: enqueue");
     return result;
 }
 
 std::future<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateRequest&& ccr)
 {
-    CollectionCreateRequest req{.ccr = ccr, .prom = {}};
+    CollectionCreateRequest req{.ccr = std::move(ccr), .prom = {}};
 
     auto result = req.prom.get_future();
-    K2DEBUG("createcollection: enqueue");
+    K2DEBUG("create collection: cname=" << escape(ccr.metadata.name));
     pushQ(collectionCreateTxQ, std::move(req));
-    K2DEBUG("createcollection: enqueued");
     return result;
 }
 
@@ -76,9 +72,8 @@ std::future<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& co
     ScanReadCreateRequest cr{.collectionName = collectionName, .schemaName = schemaName, .prom = {}};
 
     auto result = cr.prom.get_future();
-    K2DEBUG("createscanread: enqueue");
+    K2DEBUG("create scanread: coll=" << escape(collectionName) << ", schema=" << escape(schemaName));
     pushQ(scanReadCreateTxQ, std::move(cr));
-    K2DEBUG("createscanread: enqueued");
     return result;
 }
 

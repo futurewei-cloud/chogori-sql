@@ -11,3 +11,31 @@
 #include <k2/dto/SKVRecord.h>
 #include <k2/module/k23si/client/k23si_client.h>
 #include <k2/tso/client/tso_clientlib.h>
+#include <sstream>
+#include <string>
+
+namespace k2 {
+    inline std::string escape(const char* data, size_t size) {
+        std::ostringstream os;
+        for (int i = 0; i < size; ++i) {
+            if (std::isprint(data[i])) {
+                if (data[i] == '/') {
+                    os << '/';
+                }
+                os << data[i];
+            }
+            else {
+                os << "/x" << std::to_string(data[i]);
+            }
+        }
+        return os.str();
+    }
+
+    inline std::string escape(const std::string& str) {
+        return escape(str.data(), str.size());
+    }
+
+    inline std::string escape(const String& str) {
+        return escape(str.data(), str.size());
+    }
+}
