@@ -125,7 +125,7 @@ TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttr
             break;
         }
         default:
-            LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+            K2ERROR("Internal error: unsupported type " << type_entity->yb_type);
             return STATUS(InternalError, "unsupported type for user column");
     }
     return Status::OK();
@@ -149,7 +149,7 @@ TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, cons
             std::string serialized_decimal(field.value().c_str(), field.value().size());
             Decimal yb_decimal;
             if (!yb_decimal.DecodeFromComparable(serialized_decimal).ok()) {
-                LOG(FATAL) << "Failed to deserialize DECIMAL from " << serialized_decimal;
+                K2ERROR("Failed to deserialize DECIMAL from " << serialized_decimal);
                 return STATUS(InternalError, "failed to deserialize DECIMAL");
             }
             auto plaintext = yb_decimal.ToString();
@@ -158,7 +158,7 @@ TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, cons
             break;
         }
         default:
-            LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+            K2ERROR("Internal error: unsupported type " << type_entity->yb_type);
             return STATUS(InternalError, "unsupported type for user column");
     }
     return Status::OK();
@@ -227,7 +227,7 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
             result = Status::OK();
         }
         else {
-            LOG(DFATAL) << "Encountered field " << fieldName << ", without target reference";
+            K2ERROR("Encountered field " << fieldName << ", without target reference");
             result = STATUS(InternalError, "Encountered field without target reference");
         }
         return;
@@ -282,6 +282,7 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
         pg_tuple->syscols()->ybctid = (uint8_t*)yb::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
     }
+    K2DEBUG("wrote tuple ybctid=" << k2::escape(ybctid_strings_[nextToConsume_]));
     if (row_orders_.size()) {
         *row_order = row_orders_.front();
         row_orders_.pop_front();
@@ -322,7 +323,7 @@ PgOp::~PgOp() {
     // Wait for result in case request was sent.
     // Operation can be part of transaction it is necessary to complete it before transaction commit.
     if (response_.InProgress()) {
-        LOG(INFO) << "Waiting for in progress response ";
+        K2DEBUG("Waiting for in progress response ");
         __attribute__((unused)) auto status = response_.GetStatus();
     }
 }
@@ -454,7 +455,7 @@ Result<std::list<PgOpResult>> PgOp::ProcessResponse(const Status& status) {
 }
 
 Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {
-    LOG(INFO) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
+    K2DEBUG("Received response for request " << this);
 
     // Check for errors reported by storage server.
     for (int op_index = 0; op_index < active_op_count_; op_index++) {
@@ -601,7 +602,7 @@ void PgReadOp::SetRequestTotalLimit() {
     std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
     // Use statement LIMIT(count + offset) for the global limit.
     int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
-    LOG(INFO) << "Set request limit as " << limit_count;
+    K2DEBUG("Set request limit as " << limit_count);
     req->limit = limit_count;
 }
 
@@ -649,7 +650,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
 
     // End execution and return result.
     end_of_data_ = true;
-    LOG(INFO) << __PRETTY_FUNCTION__ << ": Received response for request " << this;
+    K2DEBUG("Received response for request " << this);
     return result;
 }
 
@@ -666,7 +667,7 @@ Status PgWriteOp::CreateRequests() {
     request_population_completed_ = true;
 
     // Log non buffered request.
-    VLOG_IF(1, response_.InProgress()) << __PRETTY_FUNCTION__ << ": Sending request for " << this;
+    K2DEBUG(response_.InProgress() << ": Sending request for " << this);
     return Status::OK();
 }
 
