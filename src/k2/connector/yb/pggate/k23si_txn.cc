@@ -34,9 +34,8 @@ std::future<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     EndTxnRequest qr{.mtr=_mtr, .shouldCommit = shouldCommit, .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("endtxn: enqueue");
+    K2DEBUG("endtxn: " << qr.mtr);
     pushQ(endTxQ, std::move(qr));
-    K2DEBUG("endtxn: enqueued");
     return result;
 }
 
@@ -45,9 +44,12 @@ std::future<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query
     ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
 
     auto result = sr.prom.get_future();
-    K2DEBUG("scanread: enqueue");
+    K2DEBUG("scanread: "
+            << ", query-start-pk=" << escape(query->startScanRecord.getPartitionKey())
+            << ", query-start-rk=" << escape(query->startScanRecord.getRangeKey())
+            << ", query-end-pk=" << escape(query->endScanRecord.getPartitionKey())
+            << ", query-end-rk=" << escape(query->endScanRecord.getRangeKey()))
     pushQ(scanReadTxQ, std::move(sr));
-    K2DEBUG("scanread: enqueued");
     return result;
 }
 
@@ -55,9 +57,13 @@ std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .key=k2::dto::Key(), .collectionName="", .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("read: enqueue");
+    K2DEBUG("read: mtr=" << qr.mtr
+                         << ", coll=" << escape(qr.record.collectionName)
+                         << ", schema-name=" << escape(qr.record.schema->name)
+                         << ", schema-version=" << qr.record.schema->version
+                         << ", key-pk=" << escape(qr.record.getPartitionKey())
+                         << ", key-rk=" << escape(qr.record.getRangeKey()));
     pushQ(readTxQ, std::move(qr));
-    K2DEBUG("read: enqueued");
     return result;
 }
 
@@ -66,9 +72,12 @@ std::future<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std:
                     .collectionName=std::move(collectionName), .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("read: enqueue");
+
+    K2DEBUG("read: mtr=" << qr.mtr
+                         << ", coll=" << escape(qr.collectionName)
+                         << ", key-pk=" << escape(qr.key.partitionKey)
+                         << ", key-rk=" << escape(qr.key.rangeKey));
     pushQ(readTxQ, std::move(qr));
-    K2DEBUG("read: enqueued");
     return result;
 }
 
@@ -76,9 +85,15 @@ std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool 
     WriteRequest qr{.mtr = _mtr, .erase=erase, .rejectIfExists=rejectIfExists, .record=std::move(rec), .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("write: enqueue");
+
+    K2DEBUG("write: mtr=" << qr.mtr
+                          << ", erase=" << qr.erase << ", reject=" << qr.rejectIfExists
+                          << ", coll=" << escape(qr.record.collectionName)
+                          << ", schema-name=" << escape(qr.record.schema->name)
+                          << ", schema-version=" << qr.record.schema->version
+                          << ", key-pk=" << escape(qr.record.getPartitionKey())
+                          << ", key-rk=" << escape(qr.record.getRangeKey()));
     pushQ(writeTxQ, std::move(qr));
-    K2DEBUG("write: enqueued");
     return result;
 }
 
@@ -96,9 +111,16 @@ std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
                      .key=std::move(key), .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("partialupdate: enqueue");
+
+    K2DEBUG("partial write: mtr=" << qr.mtr
+                          << ", coll=" << escape(qr.record.collectionName)
+                          << ", schema-name=" << escape(qr.record.schema->name)
+                          << ", schema-version=" << qr.record.schema->version
+                          << ", key-pk=" << escape(qr.record.getPartitionKey())
+                          << ", key-rk=" << escape(qr.record.getRangeKey())
+                          << ", kkey-pk=" << escape(qr.key.partitionKey)
+                          << ", kkey-rk=" << escape(qr.key.rangeKey));
     pushQ(updateTxQ, std::move(qr));
-    K2DEBUG("partialupdate: enqueued");
     return result;
 }
 
