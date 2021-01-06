@@ -40,6 +40,32 @@ Status K2Adapter::Shutdown() {
     return Status::OK();
 }
 
+template<typename T>
+void FieldCopy(std::optional<T> field, const k2::String& fieldName, k2::dto::SKVRecord& dest) {
+    (void) fieldName;
+
+    if (!field.has_value()) {
+        dest.skipNext();
+    } else {
+        dest.serializeNext<T>(*field);
+    }
+}
+
+// A RowId can't be created directly from returned record from a read/scan request
+// because the key fields weren't serialized directly. This function copies them to a
+// a new record and gets the RowId
+std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
+    k2::dto::SKVRecord copyRec(record.collectionName, record.schema);
+
+    record.seekField(0);
+    for (int i=0; i < record.schema->partitionKeyFields.size(); ++i) {
+        DO_ON_NEXT_RECORD_FIELD(record, FieldCopy, copyRec);
+    }
+    record.seekField(0);
+
+    return copyRec.getKey().partitionKey;
+}
+
 // this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
 // didBranch: output param. If this condition causes a branch (e.g. it has some sort of inequality),
 // then we set the didBranch output param so that the top-level processor knows that we can't build
@@ -243,17 +269,27 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->setReverseDirection(!request->is_forward_scan);
 
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
-            /*
+            // Projections must include key fields so that ybctid/rowid can be created from the resulting
+            // record
+            for (uint32_t keyIdx : schema->partitionKeyFields) {
+                scan->addProjection(schema->fields[keyIdx].name);
+            }
             for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
                 if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
                     prom->set_exception(std::make_exception_ptr(std::logic_error("Non-projection type in read targets")));
                     return;
                 }
-                k2::String& fieldName = schema->fields[target->getId()+SKV_FIELD_OFFSET].name;
+
+                uint32_t idx = target->getId()+SKV_FIELD_OFFSET;
+                // Skip key fields which were already added above
+                if (idx < schema->partitionKeyFields.size()) {
+                    continue;
+                }
+
+                k2::String& fieldName = schema->fields[idx].name;
                 scan->addProjection(fieldName);
                 K2DEBUG("Projection added for: " << k2::escape(fieldName));
             }
-            }*/
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
             auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
