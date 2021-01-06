@@ -32,7 +32,7 @@ namespace catalog {
 ClusterInfo::ClusterInfo() {
 };
 
-ClusterInfo::ClusterInfo(string cluster_id, uint64_t catalog_version, bool initdb_done) : 
+ClusterInfo::ClusterInfo(string cluster_id, uint64_t catalog_version, bool initdb_done) :
     cluster_id_(cluster_id), catalog_version_(catalog_version), initdb_done_(initdb_done) {
 };
 
@@ -56,10 +56,10 @@ void SessionTransactionContext::EndTransaction(bool should_commit) {
     std::future<k2::EndResult> txn_result_future = txn_->endTxn(should_commit);
     k2::EndResult txn_result = txn_result_future.get();
     if (!txn_result.status.is2xxOK()) {
-        LOG(FATAL) << "Failed to commit transaction due to error code " << txn_result.status.code
-                << " and message: " << txn_result.status.message;
-        throw std::runtime_error("Failed to end transaction, should_commit: " + should_commit);                                 
-    }   
+        K2ERROR("Failed to commit transaction due to error code " << txn_result.status.code
+                << " and message: " << txn_result.status.message);
+        throw std::runtime_error("Failed to end transaction, should_commit: " + should_commit);
+    }
 }
 
 } // namespace catalog

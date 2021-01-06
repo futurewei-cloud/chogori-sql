@@ -47,35 +47,35 @@ TableInfoHandler::~TableInfoHandler() {
 CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name) {
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
-    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_;
+    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_);
     CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr_);
     if (!result.status.IsSucceeded()) {
-        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_
-            << " due to " << result.status.errorMessage;
+        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_
+            << " due to " << result.status.errorMessage);
         response.status = std::move(result.status);
         return response;
     }
 
-    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_;
+    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_);
     result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr_);
     if (!result.status.IsSucceeded()) {
-        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_
-            << " due to " << result.status.errorMessage;
+        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_
+            << " due to " << result.status.errorMessage);
         response.status = std::move(result.status);
         return response;
     }
 
-    LOG(INFO) << "Creating SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_;
+    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_);
     result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr_);
      if (!result.status.IsSucceeded()) {
-        LOG(ERROR) << "Failed to create SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_
-            << " due to " << result.status.errorMessage;
+        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_
+            << " due to " << result.status.errorMessage);
         response.status = std::move(result.status);
         return response;
     }
 
     response.status.Succeed();
-    LOG(INFO) << "Created SKV schema for system tables successfully";
+    K2DEBUG("Created SKV schema for system tables successfully");
     return response;
 }
 
@@ -87,18 +87,18 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Ses
     CheckSysTableResult response;
     // TODO: double check if this check is valid for schema
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        LOG(INFO) << "Table " << schema_name << " does not exist in " << collection_name;
+        K2DEBUG("Table " << schema_name << " does not exist in " << collection_name);
         // create the table schema since it does not exist
-        LOG(INFO) << "Creating SKV schema " << schema_name << " in " << collection_name;
+        K2DEBUG("Creating SKV schema " << schema_name << " in " << collection_name);
         RStatus schema_result = CreateSKVSchema(collection_name, schema);
         if (!schema_result.IsSucceeded()) {
-            LOG(ERROR) << "Failed to create SKV schema " << schema_name << " in " << collection_name << " due to " << schema_result.errorMessage;
+            K2ERROR("Failed to create SKV schema " << schema_name << " in " << collection_name << " due to " << schema_result.errorMessage);
             response.status = std::move(schema_result);
             return response;
         }
-        LOG(INFO) << "Created SKV schema " << schema_name << " in " << collection_name;
+        K2DEBUG("Created SKV schema " << schema_name << " in " << collection_name);
     } else {
-        LOG(WARNING) << "SKV schema " << schema_name << " already exists in " << collection_name;
+        K2WARN("SKV schema " << schema_name << " already exists in " << collection_name);
     }
     response.status.Succeed();
     return response;
@@ -171,8 +171,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(namespace_id, tablehead_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message;
+        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message);
         std::ostringstream oss;
         oss << "Failed to create scan read for " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << create_result.status.message;
         response.status.code = StatusCode::INTERNAL_ERROR;
@@ -192,8 +192,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            LOG(ERROR) << "Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message;
+            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message);
             std::ostringstream oss;
             oss << "Failed to scan " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << query_result.status.message;
             response.status.code = StatusCode::INTERNAL_ERROR;
@@ -363,7 +363,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
         const IndexInfo& index_info) {
     PersistIndexTableResult response;
     k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
-    LOG(INFO) << "Persisting SKV record tablelist_index_record id: " << index_info.table_id() << ", name: " << index_info.table_name();
+    K2DEBUG("Persisting SKV record tablelist_index_record id: " << index_info.table_id() << ", name: " << index_info.table_name());
     RStatus table_status = PersistSKVRecord(context, tablelist_index_record);
     if (!table_status.IsSucceeded()) {
         response.status = std::move(table_status);
@@ -371,7 +371,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
     }
     std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, index_info, table->schema());
     for (auto& index_column_record : index_column_records) {
-        LOG(INFO) << "Persisting SKV record index_column_record id: " << index_info.table_id() << ", name: " << index_info.table_name();
+        K2DEBUG("Persisting SKV record index_column_record id: " << index_info.table_id() << ", name: " << index_info.table_name());
         RStatus index_status = PersistSKVRecord(context, index_column_record);
         if (!index_status.IsSucceeded()) {
             response.status = std::move(index_status);
@@ -507,7 +507,7 @@ void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> 
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::shared_ptr<TableInfo> table) {
-    LOG(INFO) << "Deriving SKV schema for table " << table->table_id();
+    K2DEBUG("Deriving SKV schema for table " << table->table_id());
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = table->table_id();
     schema->version = table->schema().version();
@@ -557,7 +557,7 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
-    LOG(INFO) << "Deriving SKV schema for index " << index_info.table_id();
+    K2DEBUG("Deriving SKV schema for index " << index_info.table_id());
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
@@ -821,8 +821,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message;
+        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message);
         std::ostringstream oss;
         oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
@@ -841,8 +841,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            LOG(ERROR) << "Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message;
+            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message);
             std::ostringstream oss;
             oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << query_result.status.message;
             throw std::runtime_error(oss.str());
@@ -863,8 +863,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message;
+        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message);
         std::ostringstream oss;
         oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
@@ -883,8 +883,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            LOG(ERROR) << "Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message;
+            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message);
             std::ostringstream oss;
             oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
             throw std::runtime_error(oss.str());
@@ -905,8 +905,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message;
+        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
+            << " and message: " << create_result.status.message);
         std::ostringstream oss;
         oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
@@ -925,8 +925,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            LOG(ERROR) << "Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message;
+            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
+                << " and message: " << query_result.status.message);
             std::ostringstream oss;
             oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
             throw std::runtime_error(oss.str());

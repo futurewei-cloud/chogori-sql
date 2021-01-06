@@ -288,6 +288,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
 
                 k2::String& fieldName = schema->fields[idx].name;
                 scan->addProjection(fieldName);
+                K2DEBUG("Projection added for: " << k2::escape(fieldName));
             }
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
@@ -423,24 +424,6 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
 {
     K2INFO("Create collection: name=" << collection_name << ", ns=" << nsName);
     Config conf;
-    auto c = conf()["create_collections"];
-    K2INFO(c);
-    auto ns = c[nsName];
-    LOG(INFO) << ">>> " << ns;
-    auto re = ns["range_ends"];
-    LOG(INFO) << ">>> " << re;
-    auto ep = ns["endpoints"];
-    LOG(INFO) << ">>> " << ep;
-    /*
-    {
-        "create_collections": {
-            "coll_1": {
-                "range_ends": [""],
-                "endpoints": [""]
-            }
-        }
-    }
-    */
 
     // Working around json conversion to/from k2::String which uses b64
     std::vector<std::string> stdRangeEnds = conf()["create_collections"][nsName]["range_ends"];
@@ -595,24 +578,30 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
     if (value.IsNull()) {
+        K2DEBUG("null value for field: " << record.schema->fields[record.fieldCursor])
         record.skipNext();
         return;
     }
 
     switch (value.type_) {
         case SqlValue::ValueType::BOOL:
+            K2DEBUG("bool value for field: " << record.schema->fields[record.fieldCursor])
             record.serializeNext<bool>(value.data_.bool_val_);
             break;
         case SqlValue::ValueType::INT:
+            K2DEBUG("int value for field: " << record.schema->fields[record.fieldCursor])
             record.serializeNext<int64_t>(value.data_.int_val_);
             break;
         case SqlValue::ValueType::FLOAT:
+            K2DEBUG("float value for field: " << record.schema->fields[record.fieldCursor])
             record.serializeNext<float>(value.data_.float_val_);
             break;
         case SqlValue::ValueType::DOUBLE:
+            K2DEBUG("double value for field: " << record.schema->fields[record.fieldCursor])
             record.serializeNext<double>(value.data_.double_val_);
             break;
         case SqlValue::ValueType::SLICE:
+            K2DEBUG("slice value for field: " << record.schema->fields[record.fieldCursor])
             record.serializeNext<k2::String>(k2::String(value.data_.slice_val_));
             break;
         default:

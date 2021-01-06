@@ -70,15 +70,15 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<Session
     std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        LOG(INFO) << "Cluster info record does not exist";
+        K2DEBUG("Cluster info record does not exist");
         response.clusterInfo = nullptr;
         response.status.Succeed();
         return response;
     }
 
     if (!read_result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to read SKV record due to error code " << read_result.status.code
-            << " and message: " << read_result.status.message;
+       K2ERROR("Failed to read SKV record due to error code " << read_result.status.code
+            << " and message: " << read_result.status.message);
         response.status.code = StatusCode::INTERNAL_ERROR;
         response.status.errorMessage = read_result.status.message;
         return response;
