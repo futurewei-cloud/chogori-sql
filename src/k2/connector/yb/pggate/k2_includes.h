@@ -19,13 +19,13 @@ namespace k2 {
         std::ostringstream os;
         for (int i = 0; i < size; ++i) {
             if (std::isprint(data[i])) {
-                if (data[i] == '/') {
-                    os << '/';
+                if (data[i] == '_') {
+                    os << '_';
                 }
                 os << data[i];
             }
             else {
-                os << "/x" << std::to_string(data[i]);
+                os << "_" << std::to_string(data[i]) << "_";
             }
         }
         return os.str();
