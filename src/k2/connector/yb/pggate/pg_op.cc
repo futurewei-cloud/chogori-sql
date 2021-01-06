@@ -258,10 +258,12 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data) : data_(std::move(data)) {
+    ProcessSystemColumns();
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data, std::list<int64_t>&& row_orders):
     data_(std::move(data)), row_orders_(move(row_orders)) {
+    ProcessSystemColumns();
 }
 
 PgOpResult::~PgOpResult() {
@@ -274,6 +276,7 @@ int64_t PgOpResult::NextRowOrder() {
 // Get the postgres tuple from this batch.
 Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
     Status result;
+    K2ASSERT(syscol_processed_, "System columns have not been processed yet");
     FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result);
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
