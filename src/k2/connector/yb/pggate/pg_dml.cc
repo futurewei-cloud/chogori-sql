@@ -211,7 +211,7 @@ Status PgDml::BindTable() {
 Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   // Find column from targeted table.
   PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
-  LOG(INFO) << "Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << attr_value->ToString();
+  LOG(INFO) << "Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << k2::escape(attr_value->ToString());
 
   // Alloc the expression.
   std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();

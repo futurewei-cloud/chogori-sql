@@ -303,6 +303,7 @@ Status PgOpResult::ProcessSystemColumns() {
     for (auto& rec: data_) {
         ybctid_strings_.push_back(K2Adapter::GetRowIdFromReadRecord(rec));
         ybctids_.emplace_back(ybctid_strings_.back().c_str(), ybctid_strings_.back().size());
+        K2DEBUG("Generated ybctid " << k2::escape(ybctid_strings_.back()));
     }
     return Status::OK();
 }
