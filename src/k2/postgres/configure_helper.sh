@@ -14,5 +14,7 @@ export LIBS=$2
 export LDFLAGS=$3
 # extra include paths "-Ixxx -Iyyy"
 export CPPFLAGS=$4
+export CFLAGS="-ggdb -Og -g3 -fno-omit-frame-pointer"
 
-${1}/configure --prefix=$5
+
+${1}/configure --enable-cassert --enable-debug --prefix=$5

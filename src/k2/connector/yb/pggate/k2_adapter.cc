@@ -243,6 +243,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->setReverseDirection(!request->is_forward_scan);
 
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
+            /*
             for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
                 if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
                     prom->set_exception(std::make_exception_ptr(std::logic_error("Non-projection type in read targets")));
@@ -252,6 +253,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 scan->addProjection(fieldName);
                 K2DEBUG("Projection added for: " << k2::escape(fieldName));
             }
+            }*/
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
             auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
