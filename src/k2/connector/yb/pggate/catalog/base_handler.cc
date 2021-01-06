@@ -38,9 +38,9 @@ RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_pt
     RStatus response;
     auto result = k2_adapter_->CreateSchema(collection_name, schema).get();
     if (!result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to create SKV schema for " << schema->name << "in" << collection_name
+        K2ERROR("Failed to create SKV schema for " << schema->name << "in" << collection_name
             << " due to error code " << result.status.code
-            << " and message: " << result.status.message;
+            << " and message: " << result.status.message);
         response.code = StatusCode::INTERNAL_ERROR;
         response.errorMessage = std::move(result.status.message);
     } else {
@@ -73,10 +73,10 @@ RStatus BaseHandler::SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionCon
     RStatus response;
     auto result = context->GetTxn()->write(std::move(record), isDelete).get();
     if (!result.status.is2xxOK()) {
-        LOG(ERROR) << "Failed to " << (isDelete ? "Delete" : "Save")
+        K2ERROR("Failed to " << (isDelete ? "Delete" : "Save")
             <<" SKV record "
             << " due to error code " << result.status.code
-            << " and message: " << result.status.message;
+            << " and message: " << result.status.message);
         response.code = StatusCode::INTERNAL_ERROR;
         response.errorMessage = std::move(result.status.message);
     } else {

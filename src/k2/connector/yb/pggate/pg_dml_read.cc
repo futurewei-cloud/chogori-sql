@@ -97,7 +97,7 @@ std::shared_ptr<SqlOpExpr> PgDmlRead::AllocTargetVar() {
 // Allocate column expression.
 std::shared_ptr<SqlOpExpr> PgDmlRead::AllocColumnAssignVar(PgColumn *col) {
   // SELECT statement should not have an assign expression (SET clause).
-  LOG(FATAL) << "Pure virtual function is being call";
+  K2ASSERT(false, "Pure virtual function is being call");
   return nullptr;
 }
 
@@ -123,10 +123,10 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
     }
   }
 
-  LOG(INFO) << "Deleting empty primary binds and found missing primary key: " << miss_key_columns;
+  K2DEBUG("Deleting empty primary binds and found missing primary key: " << miss_key_columns);
   // if one of the primary keys is not bound, we need to use full scan without passing key values
   if (miss_key_columns) {
-    LOG(INFO) << "Full scan is needed";
+    K2DEBUG("Full scan is needed");
     read_req_->key_column_values.clear();
   }
 
@@ -134,7 +134,7 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
 }
 
 Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
-  LOG(INFO) << "Binding column " << attr_num << " for EQUAL condition";
+  K2DEBUG("Binding column " << attr_num << " for EQUAL condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondEq(attr_num, attr_value);
@@ -161,7 +161,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
-    LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
+    K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
     ybctid_bind_ = true;
   }
 
@@ -169,7 +169,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end) {
-  LOG(INFO) << "Binding column " << attr_num << " for BETWEEN condition";
+  K2DEBUG("Binding column " << attr_num << " for BETWEEN condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
@@ -228,7 +228,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 }
 
 Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **attr_values) {
-  LOG(INFO) << "Binding column " << attr_num << " for IN condition";
+  K2DEBUG("Binding column " << attr_num << " for IN condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondIn(attr_num, n_attr_values, attr_values);
@@ -247,8 +247,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
       bind_var = AllocColumnBindVar(col);
     } else {
       if (expr_binds_.find(bind_var) != expr_binds_.end()) {
-        LOG(WARNING) << strings::Substitute("Column $0 is already bound to another value.",
-                                            attr_num);
+        K2WARN("Column " << attr_num << " is already bound to another value.");
       }
     }
 
@@ -276,7 +275,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
+        K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
         ybctid_bind_ = true;
       }
     }
@@ -307,7 +306,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        LOG(INFO) << "kYBTupleId was bound and ybctid_bind_ is set as true";
+        K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
         ybctid_bind_ = true;
       }
     }

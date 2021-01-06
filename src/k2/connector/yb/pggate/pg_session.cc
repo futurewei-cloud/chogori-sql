@@ -415,22 +415,22 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
- LOG(INFO) << "Loading table descriptor for " << table_id;
+ K2DEBUG("Loading table descriptor for " << table_id);
   const TableId yb_table_id = table_id.GetPgTableId();
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(yb_table_id);
   if (cached_table == table_cache_.end()) {
-    LOG(INFO) << "Table cache MISS: " << table_id;
+    K2DEBUG("Table cache MISS: " << table_id);
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
     if (!s.ok()) {
-      LOG(ERROR) << "LoadTable: Server returns an error: " << s;
+      K2ERROR("LoadTable: Server returns an error: " << s);
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
                            table_id.object_oid, table_id.database_oid, s.ToUserMessage());
     }
     table_cache_[yb_table_id] = table;
   } else {
-    LOG(INFO) << "Table cache HIT: " << table_id;
+    K2DEBUG("Table cache HIT: " << table_id);
     table = cached_table->second;
   }
 

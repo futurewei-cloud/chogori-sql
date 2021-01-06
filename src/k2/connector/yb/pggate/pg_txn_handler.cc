@@ -37,14 +37,14 @@ PgTxnHandler::~PgTxnHandler() {
     std::future<k2::EndResult> result_future = txn_->endTxn(false);
     k2::EndResult result = result_future.get();
     if (!result.status.is2xxOK()) {
-      LOG(FATAL) << "In progress transaction abortion failed due to: " << result.status.message;
+      K2ERROR("In progress transaction abortion failed due to: " << result.status.message);
     }
   }
   ResetTransaction();
 }
 
 Status PgTxnHandler::BeginTransaction() {
-  LOG(INFO) << "BeginTransaction: txn_in_progress_=" << txn_in_progress_;
+  K2DEBUG("BeginTransaction: txn_in_progress_=" << txn_in_progress_);
   if (txn_in_progress_) {
     return STATUS(IllegalState, "Transaction is already in progress");
   }
@@ -74,26 +74,26 @@ Status PgTxnHandler::RestartTransaction() {
 
 Status PgTxnHandler::CommitTransaction() {
   if (!txn_in_progress_) {
-    LOG(INFO) << "No transaction in progress, nothing to commit.";
+    K2DEBUG("No transaction in progress, nothing to commit.");
     return Status::OK();
   }
 
   if (txn_ != nullptr && read_only_) {
-    LOG(INFO) << "This was a read-only transaction, nothing to commit.";
+    K2DEBUG("This was a read-only transaction, nothing to commit.");
     ResetTransaction();
     return Status::OK();
   }
 
-  LOG(INFO) << "Committing transaction.";
+  K2DEBUG("Committing transaction.");
   // Use synchronous call for now until PG supports additional state check after this call
   std::future<k2::EndResult> result_future = txn_->endTxn(true);
   k2::EndResult result = result_future.get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
-   LOG(ERROR) << "Transaction commit failed";
+   K2WARN("Transaction commit failed");
    return STATUS_FORMAT(RuntimeError, "Transaction commit failed with error code $0 and message $1", result.status.code, result.status.message);
   }
-  LOG(INFO) << "Transaction commit succeeded";
+  K2DEBUG("Transaction commit succeeded");
   return Status::OK();
 }
 

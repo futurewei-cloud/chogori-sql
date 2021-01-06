@@ -115,7 +115,7 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
   // Either ybctid or primary key must be present.
   // always use regular binding for INSERT
   if (stmt_op() == StmtOp::STMT_INSERT || !ybctid_bind_) {
-    LOG(INFO) << "Checking missing primary keys for regular key binding";
+    K2DEBUG("Checking missing primary keys for regular key binding");
     // Remove empty binds from key list.
     auto key_iter = write_req_->key_column_values.begin();
     while (key_iter != write_req_->key_column_values.end()) {
@@ -127,11 +127,11 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
       }
     }
   } else {
-    LOG(INFO) << "Clearing key column values for ybctid binding";
+    K2DEBUG("Clearing key column values for ybctid binding");
     write_req_->key_column_values.clear();
   }
 
-  LOG(INFO) << "Deleting empty primary binds and found missing primary key: " << missing_primary_key;
+  K2DEBUG("Deleting empty primary binds and found missing primary key: " << missing_primary_key);
   // Check for missing key.  This is okay when binding the whole table (for colocated truncate).
   if (missing_primary_key && !bind_table_) {
     return STATUS(InvalidArgument, "Primary key must be fully specified for modifying table");
