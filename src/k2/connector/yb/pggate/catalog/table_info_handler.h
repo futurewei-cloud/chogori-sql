@@ -97,6 +97,11 @@ struct GeBaseTableIdResult {
     std::string baseTableId;
 };
 
+struct TableOrIndexResult {
+    RStatus status;
+    bool isIndex;
+};
+
 class TableInfoHandler : public BaseHandler {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
@@ -109,6 +114,8 @@ class TableInfoHandler : public BaseHandler {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablehead,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
+                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
+                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::STRING, "TableName", false, false},
                 {k2::dto::FieldType::INT64T, "TableOid", false, false},
@@ -120,7 +127,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::INT16T, "IndexPermission", false, false},
                 {k2::dto::FieldType::INT32T, "NextColumnId", false, false},
                 {k2::dto::FieldType::INT32T, "SchemaVersion", false, false}},
-        .partitionKeyFields = std::vector<uint32_t> { 0 },
+        .partitionKeyFields = std::vector<uint32_t> { 0, 1, 2},
         .rangeKeyFields = std::vector<uint32_t> {}
     };
 
@@ -129,6 +136,8 @@ class TableInfoHandler : public BaseHandler {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablecolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
+                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
+                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
@@ -138,8 +147,8 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::BOOL, "IsPartition", false, false},
                 {k2::dto::FieldType::INT32T, "Order", false, false},
                 {k2::dto::FieldType::INT16T, "SortingType", false, false}},
-        .partitionKeyFields = std::vector<uint32_t> { 0 , 1},
-        .rangeKeyFields = std::vector<uint32_t> {}
+        .partitionKeyFields = std::vector<uint32_t> { 0 , 1, 2},
+        .rangeKeyFields = std::vector<uint32_t> {3}
     };
 
     // schema to store index column schema information
@@ -147,12 +156,14 @@ class TableInfoHandler : public BaseHandler {
         .name = CatalogConsts::skv_schema_name_sys_catalog_indexcolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
+                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
+                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
                 {k2::dto::FieldType::INT32T, "IndexedColumnId", false, false}},
-        .partitionKeyFields = std::vector<uint32_t> { 0, 1 },
-        .rangeKeyFields = std::vector<uint32_t> {}
+        .partitionKeyFields = std::vector<uint32_t> { 0, 1, 2},
+        .rangeKeyFields = std::vector<uint32_t> {3}
     };
 
     CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name);
@@ -194,6 +205,8 @@ class TableInfoHandler : public BaseHandler {
     DeleteIndexResult DeleteIndexData(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,  std::string& index_id);
 
     GeBaseTableIdResult GeBaseTableId(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string index_id);
+
+    TableOrIndexResult IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id);
 
     private:
     CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name,

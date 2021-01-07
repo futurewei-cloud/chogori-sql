@@ -624,6 +624,7 @@ namespace catalog {
         }
 
         if (base_table_info == nullptr) {
+            context->Abort();
             // cannot find the base table
             K2ERROR("Cannot find base table " << base_table_id << " for index " << request.tableName);
             response.status.code = StatusCode::NOT_FOUND;
@@ -642,6 +643,7 @@ namespace catalog {
                     const IndexInfo& index_info = itr->second;
                     response.indexInfo = std::make_shared<IndexInfo>(index_info);
                     response.status.Succeed();
+                    context->Commit();
                     return response;
                 } else {
                     // BUGBUG: change to alter index instead of recreating one here
@@ -702,13 +704,14 @@ namespace catalog {
     }
 
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
-        K2DEBUG("Get table schema ns oid: " << request.namespaceOid << ", table oid: " << request.tableOid);
         GetTableSchemaResponse response;
         // generate table id from namespace oid and table oid
         std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        K2DEBUG("Get table schema ns oid: " << request.namespaceOid << ", table oid: " << request.tableOid << ", table id: " << table_id);
         // check the table schema from cache
         std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_id);
         if (table_info != nullptr) {
+            K2DEBUG("Returned cached table schema name: " << table_info->table_name() << ", id: " << table_info->table_id() << " successfully");
             response.tableInfo = table_info;
             response.status.Succeed();
             return response;
@@ -725,29 +728,88 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // fetch the table from SKV
-        GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+        TableOrIndexResult is_index_result = table_info_handler_->IsIndexTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
                 table_id);
-        if (!table_result.status.IsSucceeded()) {
+        if (!is_index_result.status.IsSucceeded()) {
             context->Abort();
-            response.status = std::move(table_result.status);
+            K2ERROR("Failed to check table " << table_id << " in ns " << namespace_info->GetNamespaceId() << " due to " << is_index_result.status.errorMessage);
+            response.status = std::move(is_index_result.status);
             response.tableInfo = nullptr;
             return response;
         }
+        if (!is_index_result.isIndex) {
+            K2DEBUG("Fetching table schema " << table_id << " in ns " << namespace_info->GetNamespaceId());
+            // the table id belongs to a table
+            GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+                table_id);
+            if (!table_result.status.IsSucceeded()) {
+                context->Abort();
+                K2ERROR("Failed to check table " << table_id << " in ns " << namespace_info->GetNamespaceId() << " due to " << table_result.status.errorMessage);
+                response.status = std::move(table_result.status);
+                response.tableInfo = nullptr;
+                return response;
+            }
+            if (table_result.tableInfo == nullptr) {
+                context->Commit();
+                K2ERROR("Failed to find table " << table_id << " in ns " << namespace_info->GetNamespaceId());
+                response.status.code = StatusCode::NOT_FOUND;
+                response.status.errorMessage = "Cannot find table " + table_id;
+                response.tableInfo = nullptr;
+                return response;
+            }
 
-        if (table_result.tableInfo == nullptr) {
+            response.tableInfo = table_result.tableInfo;
+            context->Commit();
+            response.status.Succeed();
+            // update table cache
+            UpdateTableCache(response.tableInfo);
+            K2DEBUG("Returned schema for table name: " << response.tableInfo->table_name() << ", id: " << response.tableInfo->table_id() << " successfully");
+            return response;
+        }
+
+        // Check the index table
+        std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_id);
+        std::string base_table_id;
+        if (index_ptr == nullptr) {
+            // not founnd in cache, try to check the base table id from SKV
+            GeBaseTableIdResult table_id_result = table_info_handler_->GeBaseTableId(context, namespace_info->GetNamespaceId(), table_id);
+            if (!table_id_result.status.IsSucceeded()) {
+                context->Abort();
+                K2ERROR("Failed to check base table id for index " << table_id << " in ns " << namespace_info->GetNamespaceId() << " due to " << table_id_result.status.errorMessage);
+                response.status = std::move(table_id_result.status);
+                response.tableInfo = nullptr;
+                return response;
+            }
+            base_table_id = table_id_result.baseTableId;
+        } else {
+            base_table_id = index_ptr->indexed_table_id();
+        }
+
+        if (base_table_id.empty()) {
+            // cannot find the id as either a table id or an index id
             context->Abort();
+            K2ERROR("Failed to find base table id for index " << table_id << " in ns " << namespace_info->GetNamespaceId());
             response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find table " + table_id;
+            response.status.errorMessage = "Cannot find base table for index " + table_id;
             response.tableInfo = nullptr;
             return response;
         }
 
+        K2DEBUG("Fetching base table schema " << base_table_id << " for index " << table_id << " in ns " << namespace_info->GetNamespaceId());
+        GetTableResult base_table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+                base_table_id);
+        if (!base_table_result.status.IsSucceeded()) {
+            context->Abort();
+            response.status = std::move(base_table_result.status);
+            response.tableInfo = nullptr;
+            return response;
+        }
         context->Commit();
         response.status.Succeed();
-        response.tableInfo = table_result.tableInfo;
+        response.tableInfo = base_table_result.tableInfo;
         // update table cache
-        UpdateTableCache(table_result.tableInfo);
-        K2DEBUG("Returned schema for table name: " << response.tableInfo->table_name() << ", id: " << response.tableInfo->table_id() << " successfully");
+        UpdateTableCache(response.tableInfo);
+        K2DEBUG("Returned base table schema id: " << base_table_id << ", name: " << response.tableInfo->table_name() << " for index: " << table_id << " successfully");
         return response;
     }
 

@@ -123,6 +123,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
 }
 
 GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id) {
+    K2DEBUG("Fetch table schema ns id: " << namespace_id << " ns name: " << namespace_name << ", table id: " << table_id);
     GetTableResult response;
     // use namespace_id, not namespace_name as the collection name
     // in this we could implement rename database easily by sticking to the same namespace_id
@@ -204,6 +205,10 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         if (!query_result.records.empty()) {
             for (k2::dto::SKVRecord& record : query_result.records) {
                 // deserialize table head
+                // SchemaTableId
+                record.skipNext();
+                // SchemaIndexId
+                record.skipNext();
                 // TableId
                 std::string table_id = record.deserializeNext<k2::String>().value();
                 // TableName
@@ -467,6 +472,10 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
     try {
         // exception would be thrown if the record could not be found
         k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
+        // SchemaTableId
+        index_head.skipNext();
+        // SchemaIndexId
+        index_head.skipNext();
         // TableId
         index_head.skipNext();
         // TableName
@@ -483,7 +492,39 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
         index_head.skipNext();
         // IndexedTableId
         response.baseTableId = index_head.deserializeNext<k2::String>().value();
-    }catch (const std::exception& e) {
+        response.status.Succeed();
+    } catch (const std::exception& e) {
+        response.status.code = StatusCode::RUNTIME_ERROR;
+        response.status.errorMessage = e.what();
+    }
+
+    return response;
+}
+
+TableOrIndexResult TableInfoHandler::IsIndexTable(std::shared_ptr<SessionTransactionContext> context,
+        std::string namespace_id, std::string namespace_name, std::string table_id)
+{
+    TableOrIndexResult response;
+    try {
+        k2::dto::SKVRecord record = FetchTableHeadSKVRecord(context, namespace_id, table_id);
+        // SchemaTableId
+        record.skipNext();
+        // SchemaIndexId
+        record.skipNext();
+        // TableId
+        record.skipNext();
+        // TableName
+        record.skipNext();
+        // TableOid
+        record.skipNext();
+        // IsSysTable
+        record.skipNext();
+        // IsTransactional
+        record.skipNext();
+        // IsIndex
+        response.isIndex = record.deserializeNext<bool>().value();
+        response.status.Succeed();
+    } catch (const std::exception& e) {
         response.status.code = StatusCode::RUNTIME_ERROR;
         response.status.errorMessage = e.what();
     }
@@ -608,6 +649,10 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
 
 k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collection_name, std::shared_ptr<TableInfo> table) {
     k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
+    // SchemaTableId
+    record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    record.serializeNext<k2::String>("");
     // TableId
     record.serializeNext<k2::String>(table->table_id());
     // TableName
@@ -636,6 +681,10 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
 
 k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collection_name, const IndexInfo& index, bool is_sys_table, int32_t next_column_id) {
     k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
+    // SchemaTableId
+    record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    record.serializeNext<k2::String>("");
     // TableId
     record.serializeNext<k2::String>(index.table_id());
     // TableName
@@ -668,6 +717,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnRecords(std::
         ColumnSchema col_schema = table->schema().columns()[i];
         int32_t column_id = table->schema().column_ids()[i];
         k2::dto::SKVRecord record(collection_name, tablecolumn_schema_ptr_);
+        // SchemaTableId
+        record.serializeNext<k2::String>(tablecolumn_schema_ptr_->name);
+        // SchemaIndexId
+        record.serializeNext<k2::String>("");
         // TableId
         record.serializeNext<k2::String>(table->table_id());
         // ColumnId
@@ -696,6 +749,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
     std::vector<k2::dto::SKVRecord> response;
     for (IndexColumn index_column : index.columns()) {
         k2::dto::SKVRecord record(collection_name, indexcolumn_schema_ptr_);
+        // SchemaTableId
+        record.serializeNext<k2::String>(indexcolumn_schema_ptr_->name);
+        // SchemaIndexId
+        record.serializeNext<k2::String>("");
         // TableId
         record.serializeNext<k2::String>(index.table_id());
         // ColumnId
@@ -946,6 +1003,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
 std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespace_id, std::string namespace_name,
         k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns) {
     // deserialize table head
+    // SchemaTableId
+    table_head.skipNext();
+    // SchemaIndexId
+    table_head.skipNext();
     // TableId
     std::string table_id = table_head.deserializeNext<k2::String>().value();
     // TableName
@@ -980,6 +1041,10 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
     vector<ColumnId> ids;
     // deserialize table columns
     for (auto& column : table_columns) {
+        // SchemaTableId
+        column.skipNext();
+        // SchemaIndexId
+        column.skipNext();
         // TableId
         std::string tb_id = column.deserializeNext<k2::String>().value();
         // ColumnId
@@ -1016,6 +1081,10 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
 
 IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, k2::dto::SKVRecord& index_head) {
     // deserialize index head
+    // SchemaTableId
+    index_head.skipNext();
+    // SchemaIndexId
+    index_head.skipNext();
     // TableId
     std::string table_id = index_head.deserializeNext<k2::String>().value();
     // TableName
@@ -1048,6 +1117,10 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     // deserialize index columns
     std::vector<IndexColumn> columns;
     for (auto& column : index_columns) {
+        // SchemaTableId
+        column.skipNext();
+        // SchemaIndexId
+        column.skipNext();
         // TableId
         std::string tb_id = column.deserializeNext<k2::String>().value();
         // ColumnId
