@@ -119,6 +119,7 @@ namespace k2pg
           if (bind_var_ == nullptr)
           {
             bind_var_ = std::make_shared<SqlOpExpr>();
+            write_req->ybctid_column_value = bind_var_;
           }
         }
         else
@@ -176,6 +177,7 @@ namespace k2pg
           if (bind_var_ == nullptr)
           {
             bind_var_ = std::make_shared<SqlOpExpr>();
+            read_req->ybctid_column_value = bind_var_;
           }
         } else {
           K2ERROR("Binds for other columns are not allowed");

@@ -78,7 +78,7 @@ class K2Adapter {
                            std::shared_ptr<std::promise<Status>> prom);
 
   template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
-  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request);
+  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request, bool ignoreYBCTID=false);
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);

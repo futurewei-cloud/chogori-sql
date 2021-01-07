@@ -359,6 +359,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     auto result = prom->get_future();
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
+        try {
         std::shared_ptr<SqlOpWriteRequest> writeRequest = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -367,7 +368,8 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             throw std::logic_error("Targets, where, and condition expressions are not supported for write");
         }
 
-        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest);
+        bool ignoreYBCTID = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE;
+        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, ignoreYBCTID);
         if (!status.ok()) {
             response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
             response.rows_affected_count = 0;
@@ -407,6 +409,10 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToYBStatus(writeStatus));
+        } catch (const std::exception& e) {
+            K2WARN("Throw in handlewrite: " << e.what());
+            prom->set_exception(std::current_exception());
+        }
     });
 
     return result;
@@ -610,7 +616,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 }
 
 template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request) {
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool ignoreYBCTID) {
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
@@ -623,10 +629,8 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
     k2::dto::SKVRecord record(request.namespace_id, schema);
 
-    if (request.ybctid_column_value) {
+    if (request.ybctid_column_value && !ignoreYBCTID) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields
-        record.skipNext(); // For table name
-        record.skipNext(); // For index id
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
             record.skipNext();
@@ -683,11 +687,13 @@ std::string K2Adapter::YBCTIDToString(T& request) {
     }
 
     if (!request.ybctid_column_value->isValueType()) {
+        K2WARN("ybctid_column_value value is not a Slice");
         throw std::logic_error("Non value type in ybctid_column_value");
     }
 
     std::shared_ptr<SqlValue> value = request.ybctid_column_value->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
+        K2WARN("ybctid_column_value value is not a Slice");
         throw std::logic_error("ybctid_column_value value is not a Slice");
     }
 
