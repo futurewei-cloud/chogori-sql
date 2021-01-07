@@ -271,8 +271,10 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
             // Projections must include key fields so that ybctid/rowid can be created from the resulting
             // record
-            for (uint32_t keyIdx : schema->partitionKeyFields) {
-                scan->addProjection(schema->fields[keyIdx].name);
+            if (request->targets.size()) {
+                for (uint32_t keyIdx : schema->partitionKeyFields) {
+                    scan->addProjection(schema->fields[keyIdx].name);
+                }
             }
             for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
                 if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
