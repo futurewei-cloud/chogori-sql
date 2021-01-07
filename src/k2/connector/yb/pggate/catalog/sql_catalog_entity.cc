@@ -46,6 +46,7 @@ SessionTransactionContext::SessionTransactionContext(std::shared_ptr<K23SITxn> t
 
 SessionTransactionContext::~SessionTransactionContext() {
     if (!finished_) {
+        K2ERROR("Session is not ended");
         // abort the transaction if it has been committed or aborted
         EndTransaction(false);
         finished_ = true;

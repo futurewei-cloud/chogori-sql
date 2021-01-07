@@ -115,10 +115,10 @@ namespace k2pg
         K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
         {
-          bind_var_ = write_req->ybctid_column_value;
-          if (bind_var_ == nullptr)
+          if (write_req->ybctid_column_value == nullptr)
           {
             bind_var_ = std::make_shared<SqlOpExpr>();
+            write_req->ybctid_column_value = bind_var_;
           }
         }
         else
@@ -172,10 +172,10 @@ namespace k2pg
 
         K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-          bind_var_ = read_req->ybctid_column_value;
-          if (bind_var_ == nullptr)
+          if (read_req->ybctid_column_value == nullptr)
           {
             bind_var_ = std::make_shared<SqlOpExpr>();
+            read_req->ybctid_column_value = bind_var_;
           }
         } else {
           K2ERROR("Binds for other columns are not allowed");

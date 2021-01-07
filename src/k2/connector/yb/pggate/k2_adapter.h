@@ -61,7 +61,7 @@ class K2Adapter {
   std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
 
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
-
+  static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
   std::string GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values);
 
   std::future<K23SITxn> beginTransaction();
@@ -78,7 +78,7 @@ class K2Adapter {
                            std::shared_ptr<std::promise<Status>> prom);
 
   template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
-  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request);
+  std::pair<k2::dto::SKVRecord, Status> MakeSKVRecordWithKeysSerialized(T& request, bool ignoreYBCTID=false);
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);

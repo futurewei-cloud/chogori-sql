@@ -40,6 +40,32 @@ Status K2Adapter::Shutdown() {
     return Status::OK();
 }
 
+template<typename T>
+void FieldCopy(std::optional<T> field, const k2::String& fieldName, k2::dto::SKVRecord& dest) {
+    (void) fieldName;
+
+    if (!field.has_value()) {
+        dest.skipNext();
+    } else {
+        dest.serializeNext<T>(*field);
+    }
+}
+
+// A RowId can't be created directly from returned record from a read/scan request
+// because the key fields weren't serialized directly. This function copies them to a
+// a new record and gets the RowId
+std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
+    k2::dto::SKVRecord copyRec(record.collectionName, record.schema);
+
+    record.seekField(0);
+    for (int i=0; i < record.schema->partitionKeyFields.size(); ++i) {
+        DO_ON_NEXT_RECORD_FIELD(record, FieldCopy, copyRec);
+    }
+    record.seekField(0);
+
+    return copyRec.getKey().partitionKey;
+}
+
 // this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
 // didBranch: output param. If this condition causes a branch (e.g. it has some sort of inequality),
 // then we set the didBranch output param so that the top-level processor knows that we can't build
@@ -243,12 +269,24 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->setReverseDirection(!request->is_forward_scan);
 
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
+            // Projections must include key fields so that ybctid/rowid can be created from the resulting
+            // record
+            for (uint32_t keyIdx : schema->partitionKeyFields) {
+                scan->addProjection(schema->fields[keyIdx].name);
+            }
             for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
                 if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
                     prom->set_exception(std::make_exception_ptr(std::logic_error("Non-projection type in read targets")));
                     return;
                 }
-                k2::String& fieldName = schema->fields[target->getId()+SKV_FIELD_OFFSET].name;
+
+                uint32_t idx = target->getId()+SKV_FIELD_OFFSET;
+                // Skip key fields which were already added above
+                if (idx < schema->partitionKeyFields.size()) {
+                    continue;
+                }
+
+                k2::String& fieldName = schema->fields[idx].name;
                 scan->addProjection(fieldName);
                 K2DEBUG("Projection added for: " << k2::escape(fieldName));
             }
@@ -321,6 +359,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     auto result = prom->get_future();
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
+        try {
         std::shared_ptr<SqlOpWriteRequest> writeRequest = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -329,7 +368,8 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             throw std::logic_error("Targets, where, and condition expressions are not supported for write");
         }
 
-        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest);
+        bool ignoreYBCTID = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE;
+        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, ignoreYBCTID);
         if (!status.ok()) {
             response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
             response.rows_affected_count = 0;
@@ -369,6 +409,10 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToYBStatus(writeStatus));
+        } catch (const std::exception& e) {
+            K2WARN("Throw in handlewrite: " << e.what());
+            prom->set_exception(std::current_exception());
+        }
     });
 
     return result;
@@ -572,7 +616,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 }
 
 template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request) {
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool ignoreYBCTID) {
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
@@ -585,10 +629,8 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
     k2::dto::SKVRecord record(request.namespace_id, schema);
 
-    if (request.ybctid_column_value) {
+    if (request.ybctid_column_value && !ignoreYBCTID) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields
-        record.skipNext(); // For table name
-        record.skipNext(); // For index id
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
             record.skipNext();
@@ -645,11 +687,13 @@ std::string K2Adapter::YBCTIDToString(T& request) {
     }
 
     if (!request.ybctid_column_value->isValueType()) {
+        K2WARN("ybctid_column_value value is not a Slice");
         throw std::logic_error("Non value type in ybctid_column_value");
     }
 
     std::shared_ptr<SqlValue> value = request.ybctid_column_value->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
+        K2WARN("ybctid_column_value value is not a Slice");
         throw std::logic_error("ybctid_column_value value is not a Slice");
     }
 

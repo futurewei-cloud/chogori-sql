@@ -687,12 +687,16 @@ namespace catalog {
                 }
                 response.indexInfo = new_index_info_ptr;
                 response.status.Succeed();
-                K2DEBUG("Created index " << request.tableName << " successfully");
+                context->Commit();
+                K2DEBUG("Created index id: " << new_index_info.table_id() << ", name: " << request.tableName << " successfully");
             } catch (const std::exception& e) {
+                context->Abort();
                 response.status.code = StatusCode::RUNTIME_ERROR;
                 response.status.errorMessage = e.what();
                 K2ERROR("Failed to create index " << request.tableName << " due to " << response.status.errorMessage);
            }
+        } else {
+            context->Commit();
         }
         return response;
     }
