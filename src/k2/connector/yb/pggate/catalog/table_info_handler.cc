@@ -565,7 +565,6 @@ void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> 
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::shared_ptr<TableInfo> table) {
-    K2DEBUG("Deriving SKV schema for table " << table->table_id());
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = table->table_id();
     schema->version = table->schema().version();
@@ -615,7 +614,6 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
 }
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
-    K2DEBUG("Deriving SKV schema for index " << index_info.table_id());
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
@@ -692,7 +690,6 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
     record.serializeNext<int32_t>(table->next_column_id());
     // SchemaVersion
     record.serializeNext<int32_t>(table->schema().version());
-    K2DEBUG("Deriving Tablehead record for table " << table->table_id() << ", IsIndex: false");
     return record;
 }
 
@@ -724,7 +721,6 @@ k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collectio
     record.serializeNext<int32_t>(next_column_id);
     // SchemaVersion
     record.serializeNext<int32_t>(index.version());
-    K2DEBUG("Deriving Tablehead record for index " << index.table_id() << ", IsIndex: true");
 
     return record;
 }
