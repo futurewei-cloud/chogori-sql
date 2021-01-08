@@ -244,6 +244,8 @@ class TableInfoHandler : public BaseHandler {
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
+    k2::dto::SKVRecord buildRangeRecord(const std::string collection_name, std::shared_ptr<k2::dto::Schema> schema_ptr_, std::optional<std::string> table_id);
+
     std::string tablehead_schema_name_;
     std::string tablecolumn_schema_name_;
     std::string indexcolumn_schema_name_;

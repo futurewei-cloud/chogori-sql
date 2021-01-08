@@ -189,20 +189,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
     values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), {});
     query->setFilterExpression(std::move(filterExpr));
-
-    k2::dto::SKVRecord start_record(namespace_id, tablehead_schema_ptr_);
-    // SchemaTableId
-    start_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
-    // SchemaIndexId
-    start_record.serializeNext<k2::String>("");
-    query->startScanRecord = std::move(start_record);
-
-    k2::dto::SKVRecord end_record(namespace_id, tablehead_schema_ptr_);
-    // SchemaTableId
-    end_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
-    // SchemaIndexId
-    end_record.serializeNext<k2::String>("");
-    query->endScanRecord = std::move(end_record);
+    query->startScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
+    query->endScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -913,20 +901,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-
-    k2::dto::SKVRecord start_record(collection_name, tablehead_schema_ptr_);
-    // SchemaTableId
-    start_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
-    // SchemaIndexId
-    start_record.serializeNext<k2::String>("");
-    query->startScanRecord = std::move(start_record);
-
-    k2::dto::SKVRecord end_record(collection_name, tablehead_schema_ptr_);
-    // SchemaTableId
-    end_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
-    // SchemaIndexId
-    end_record.serializeNext<k2::String>("");
-    query->endScanRecord = std::move(end_record);
+    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
+    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
     do {
         K2DEBUG("Fetching Tablehead SKV records for indexes on base table " << base_table_id);
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
@@ -970,24 +946,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-
-    k2::dto::SKVRecord start_record(collection_name, tablecolumn_schema_ptr_);
-    // SchemaTableId
-    start_record.serializeNext<k2::String>(tablecolumn_schema_ptr_->name);
-    // SchemaIndexId
-    start_record.serializeNext<k2::String>("");
-    // TableId
-    start_record.serializeNext<k2::String>(table_id);
-    query->startScanRecord = std::move(start_record);
-
-    k2::dto::SKVRecord end_record(collection_name, tablecolumn_schema_ptr_);
-    // SchemaTableId
-    end_record.serializeNext<k2::String>(tablecolumn_schema_ptr_->name);
-    // SchemaIndexId
-    end_record.serializeNext<k2::String>("");
-    // TableId
-    end_record.serializeNext<k2::String>(table_id);
-    query->endScanRecord = std::move(end_record);
+    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
+    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -1030,24 +990,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-
-    k2::dto::SKVRecord start_record(collection_name, indexcolumn_schema_ptr_);
-    // SchemaTableId
-    start_record.serializeNext<k2::String>(indexcolumn_schema_ptr_->name);
-    // SchemaIndexId
-    start_record.serializeNext<k2::String>("");
-    // TableId
-    start_record.serializeNext<k2::String>(table_id);
-    query->startScanRecord = std::move(start_record);
-
-    k2::dto::SKVRecord end_record(collection_name, indexcolumn_schema_ptr_);
-    // SchemaTableId
-    end_record.serializeNext<k2::String>(indexcolumn_schema_ptr_->name);
-     // SchemaIndexId
-    end_record.serializeNext<k2::String>("");
-    // TableId
-    end_record.serializeNext<k2::String>(table_id);
-    query->endScanRecord = std::move(end_record);
+    query->startScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
+    query->endScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -1206,6 +1150,18 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
 
     IndexInfo index_info(table_id, table_name, table_oid, indexed_table_id, version, is_unique, columns, index_perm);
     return index_info;
+}
+
+k2::dto::SKVRecord TableInfoHandler::buildRangeRecord(const std::string collection_name, std::shared_ptr<k2::dto::Schema> schema_ptr_, std::optional<std::string> table_id) {
+    k2::dto::SKVRecord record(collection_name, schema_ptr_);
+    // SchemaTableId
+    record.serializeNext<k2::String>(schema_ptr_->name);
+    // SchemaIndexId
+    record.serializeNext<k2::String>("");
+    if (table_id != std::nullopt) {
+        record.serializeNext<k2::String>(table_id.value());
+    }
+    return record;
 }
 
 } // namespace catalog
