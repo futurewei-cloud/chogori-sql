@@ -951,9 +951,9 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
         }
 
         if (!query_result.records.empty()) {
-            std::copy(make_move_iterator(query_result.records.begin()),
-                make_move_iterator(query_result.records.end()),
-                records.begin());
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                records.push_back(std::move(record));
+            }
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
