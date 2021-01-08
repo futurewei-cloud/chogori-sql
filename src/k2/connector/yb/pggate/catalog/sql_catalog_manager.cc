@@ -632,7 +632,6 @@ namespace catalog {
             return response;
         }
 
-        bool need_create_index = false;
         if (base_table_info->has_secondary_indexes()) {
             const IndexMap& index_map = base_table_info->secondary_indexes();
             const auto itr = index_map.find(index_table_id);
@@ -646,59 +645,54 @@ namespace catalog {
                     context->Commit();
                     return response;
                 } else {
-                    // BUGBUG: change to alter index instead of recreating one here
-                    need_create_index = true;
+                    context->Commit();
+                    // return index already present error if index already exists
+                    response.status.code = StatusCode::ALREADY_PRESENT;
+                    response.status.errorMessage = "Index " + index_table_id + " has already existed in ns " + namespace_info->GetNamespaceId();
+                    return response;
                 }
-            } else {
-                need_create_index = true;
             }
-        } else {
-            need_create_index = true;
         }
 
-        if (need_create_index) {
-            try {
-                // use default index permission, could be customized by user/api
-                IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
+        try {
+            // use default index permission, could be customized by user/api
+            IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
                     request.schema, request.isUnique, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
-                K2DEBUG("Persisting index table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
-                // persist the index table metadata to the system catalog SKV tables
-                table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+            K2DEBUG("Persisting index table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
+            // persist the index table metadata to the system catalog SKV tables
+            table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
-                K2DEBUG("Persisting index SKV schema id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
-                // create a SKV schema to insert the actual index data
-                table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+            K2DEBUG("Persisting index SKV schema id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
+            // create a SKV schema to insert the actual index data
+            table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
-                // update the base table with the new index
-                base_table_info->add_secondary_index(index_table_id, new_index_info);
+            // update the base table with the new index
+            base_table_info->add_secondary_index(index_table_id, new_index_info);
 
-                K2DEBUG("Updating cache for table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
-                // update table cache
-                UpdateTableCache(base_table_info);
+            K2DEBUG("Updating cache for table id: " << new_index_info.table_id() << ", name: " << new_index_info.table_name());
+            // update table cache
+            UpdateTableCache(base_table_info);
 
-                // update index cache
-                std::shared_ptr<IndexInfo> new_index_info_ptr = std::make_shared<IndexInfo>(new_index_info);
-                AddIndexCache(new_index_info_ptr);
+            // update index cache
+            std::shared_ptr<IndexInfo> new_index_info_ptr = std::make_shared<IndexInfo>(new_index_info);
+            AddIndexCache(new_index_info_ptr);
 
-                // increase catalog version
-                IncreaseCatalogVersion();
+            // increase catalog version
+            IncreaseCatalogVersion();
 
-                if (!request.skipIndexBackfill) {
-                    // TODO: add logic to backfill the index
-                }
-                response.indexInfo = new_index_info_ptr;
-                response.status.Succeed();
-                context->Commit();
-                K2DEBUG("Created index id: " << new_index_info.table_id() << ", name: " << request.tableName << " successfully");
-            } catch (const std::exception& e) {
-                context->Abort();
-                response.status.code = StatusCode::RUNTIME_ERROR;
-                response.status.errorMessage = e.what();
-                K2ERROR("Failed to create index " << request.tableName << " due to " << response.status.errorMessage);
-           }
-        } else {
+            if (!request.skipIndexBackfill) {
+                // TODO: add logic to backfill the index
+            }
             context->Commit();
+            response.indexInfo = new_index_info_ptr;
+            response.status.Succeed();
+            K2DEBUG("Created index id: " << new_index_info.table_id() << ", name: " << request.tableName << " successfully");
+        } catch (const std::exception& e) {
+            context->Abort();
+            response.status.code = StatusCode::RUNTIME_ERROR;
+            response.status.errorMessage = e.what();
+            K2ERROR("Failed to create index " << request.tableName << " due to " << response.status.errorMessage);
         }
         return response;
     }
@@ -728,8 +722,8 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // fetch the table from SKV
-        TableOrIndexResult is_index_result = table_info_handler_->IsIndexTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
-                table_id);
+        K2DEBUG("Checking if table " << table_id << " is an index or not");
+        TableOrIndexResult is_index_result = table_info_handler_->IsIndexTable(context, namespace_info->GetNamespaceId(), table_id);
         if (!is_index_result.status.IsSucceeded()) {
             context->Abort();
             K2ERROR("Failed to check table " << table_id << " in ns " << namespace_info->GetNamespaceId() << " due to " << is_index_result.status.errorMessage);
@@ -768,6 +762,7 @@ namespace catalog {
         }
 
         // Check the index table
+        K2DEBUG("Fetching table schema for index " << table_id << " in ns " << namespace_info->GetNamespaceId());
         std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_id);
         std::string base_table_id;
         if (index_ptr == nullptr) {

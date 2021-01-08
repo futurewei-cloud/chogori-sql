@@ -501,8 +501,7 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
     return response;
 }
 
-TableOrIndexResult TableInfoHandler::IsIndexTable(std::shared_ptr<SessionTransactionContext> context,
-        std::string namespace_id, std::string namespace_name, std::string table_id)
+TableOrIndexResult TableInfoHandler::IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string table_id)
 {
     TableOrIndexResult response;
     try {
@@ -859,7 +858,11 @@ DataType TableInfoHandler::ToSqlType(k2::dto::FieldType type) {
 
 k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string table_id) {
     k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
-    // table_id is the primary key
+    // SchemaTableId
+    record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    record.serializeNext<k2::String>("");
+    // table_id
     record.serializeNext<k2::String>(table_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> result = result_future.get();
@@ -883,7 +886,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
         std::ostringstream oss;
         oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
-  }
+    }
 
     std::vector<k2::dto::SKVRecord> records;
     std::shared_ptr<k2::Query> query = create_result.query;

@@ -206,7 +206,7 @@ class TableInfoHandler : public BaseHandler {
 
     GeBaseTableIdResult GeBaseTableId(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string index_id);
 
-    TableOrIndexResult IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id);
+    TableOrIndexResult IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string table_id);
 
     private:
     CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name,
