@@ -688,7 +688,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
     record.serializeNext<int32_t>(table->next_column_id());
     // SchemaVersion
     record.serializeNext<int32_t>(table->schema().version());
-
+    K2DEBUG("Deriving Tablehead record for table " << table->table_id() << ", IsIndex: false");
     return record;
 }
 
@@ -720,6 +720,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collectio
     record.serializeNext<int32_t>(next_column_id);
     // SchemaVersion
     record.serializeNext<int32_t>(index.version());
+    K2DEBUG("Deriving Tablehead record for index " << index.table_id() << ", IsIndex: true");
 
     return record;
 }
@@ -878,6 +879,7 @@ k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<Ses
     record.serializeNext<k2::String>("");
     // table_id
     record.serializeNext<k2::String>(table_id);
+    K2DEBUG("Fetching Tablehead SKV record for table " << table_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> result = result_future.get();
     // TODO: add error handling and retry logic in catalog manager
@@ -926,6 +928,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     end_record.serializeNext<k2::String>("");
     query->endScanRecord = std::move(end_record);
     do {
+        K2DEBUG("Fetching Tablehead SKV records for indexes on base table " << base_table_id);
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
