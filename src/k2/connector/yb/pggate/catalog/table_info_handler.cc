@@ -220,15 +220,15 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
             for (k2::dto::SKVRecord& record : query_result.records) {
                 // deserialize table head
                 // SchemaTableId
-                record.skipNext();
+                record.deserializeNext<k2::String>();
                 // SchemaIndexId
-                record.skipNext();
+                record.deserializeNext<k2::String>();
                 // TableId
                 std::string table_id = record.deserializeNext<k2::String>().value();
                 // TableName
-                record.skipNext();
+                record.deserializeNext<k2::String>();
                 // TableOid
-                record.skipNext();
+                record.deserializeNext<int64_t>();
                 // IsSysTable
                 bool is_sys_table = record.deserializeNext<bool>().value();
                 if (isSysTableIncluded) {
@@ -408,6 +408,10 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<SessionT
     std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, collection_name, table->table_id());
     if (!index_records.empty()) {
         for (auto& record : index_records) {
+            // SchemaTableId
+            record.deserializeNext<k2::String>();
+            // SchemaIndexId
+            record.deserializeNext<k2::String>();
             // get table id for the index
             std::string index_id = record.deserializeNext<k2::String>().value();
             // delete index columns and the index head
@@ -487,23 +491,23 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
         // exception would be thrown if the record could not be found
         k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
         // SchemaTableId
-        index_head.skipNext();
+        index_head.deserializeNext<k2::String>();
         // SchemaIndexId
-        index_head.skipNext();
+        index_head.deserializeNext<k2::String>();
         // TableId
-        index_head.skipNext();
+        index_head.deserializeNext<k2::String>();
         // TableName
-        index_head.skipNext();
+        index_head.deserializeNext<k2::String>();
         // TableOid
-        index_head.skipNext();
+        index_head.deserializeNext<int64_t>();
         // IsSysTable
-        index_head.skipNext();
+        index_head.deserializeNext<bool>();
         // IsTransactional
-        index_head.skipNext();
+        index_head.deserializeNext<bool>();
         // IsIndex
-        index_head.skipNext();
+        index_head.deserializeNext<bool>();
         // IsUnique
-        index_head.skipNext();
+        index_head.deserializeNext<bool>();
         // IndexedTableId
         response.baseTableId = index_head.deserializeNext<k2::String>().value();
         response.status.Succeed();
@@ -521,19 +525,19 @@ TableOrIndexResult TableInfoHandler::IsIndexTable(std::shared_ptr<SessionTransac
     try {
         k2::dto::SKVRecord record = FetchTableHeadSKVRecord(context, namespace_id, table_id);
         // SchemaTableId
-        record.skipNext();
+        record.deserializeNext<k2::String>();
         // SchemaIndexId
-        record.skipNext();
+        record.deserializeNext<k2::String>();
         // TableId
-        record.skipNext();
+        record.deserializeNext<k2::String>();
         // TableName
-        record.skipNext();
+        record.deserializeNext<k2::String>();
         // TableOid
-        record.skipNext();
+        record.deserializeNext<int64_t>();
         // IsSysTable
-        record.skipNext();
+        record.deserializeNext<bool>();
         // IsTransactional
-        record.skipNext();
+        record.deserializeNext<bool>();
         // IsIndex
         response.isIndex = record.deserializeNext<bool>().value();
         response.status.Succeed();
@@ -1074,9 +1078,9 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
         k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns) {
     // deserialize table head
     // SchemaTableId
-    table_head.skipNext();
+    table_head.deserializeNext<k2::String>();
     // SchemaIndexId
-    table_head.skipNext();
+    table_head.deserializeNext<k2::String>();
     // TableId
     std::string table_id = table_head.deserializeNext<k2::String>().value();
     // TableName
@@ -1093,11 +1097,11 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
         throw std::runtime_error("Table " + table_id + " should not be an index");
     }
     // IsUnique
-    table_head.skipNext();
+    table_head.deserializeNext<bool>();
     // IndexedTableId
-    table_head.skipNext();
+    table_head.deserializeNext<k2::String>();
     // IndexPermission
-    table_head.skipNext();
+    table_head.deserializeNext<int16_t>();
     // NextColumnId
     int32_t next_column_id = table_head.deserializeNext<int32_t>().value();
      // SchemaVersion
@@ -1112,9 +1116,9 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
     // deserialize table columns
     for (auto& column : table_columns) {
         // SchemaTableId
-        column.skipNext();
+        column.deserializeNext<k2::String>();
         // SchemaIndexId
-        column.skipNext();
+        column.deserializeNext<k2::String>();
         // TableId
         std::string tb_id = column.deserializeNext<k2::String>().value();
         // ColumnId
@@ -1152,9 +1156,9 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
 IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, k2::dto::SKVRecord& index_head) {
     // deserialize index head
     // SchemaTableId
-    index_head.skipNext();
+    index_head.deserializeNext<k2::String>();
     // SchemaIndexId
-    index_head.skipNext();
+    index_head.deserializeNext<k2::String>();
     // TableId
     std::string table_id = index_head.deserializeNext<k2::String>().value();
     // TableName
@@ -1162,9 +1166,9 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     // TableOid
     uint32_t table_oid = index_head.deserializeNext<int64_t>().value();
     // IsSysTable
-    index_head.skipNext();
+    index_head.deserializeNext<bool>();
     // IsTransactional
-    index_head.skipNext();
+    index_head.deserializeNext<bool>();
     // IsIndex
     bool is_index = index_head.deserializeNext<bool>().value();
     if (!is_index) {
@@ -1177,7 +1181,7 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     // IndexPermission
     IndexPermissions index_perm = static_cast<IndexPermissions>(index_head.deserializeNext<int16_t>().value());
     // NextColumnId
-    index_head.skipNext();
+    index_head.deserializeNext<int32_t>();
     // SchemaVersion
     uint32_t version = index_head.deserializeNext<int32_t>().value();
 
@@ -1188,9 +1192,9 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     std::vector<IndexColumn> columns;
     for (auto& column : index_columns) {
         // SchemaTableId
-        column.skipNext();
+        column.deserializeNext<k2::String>();
         // SchemaIndexId
-        column.skipNext();
+        column.deserializeNext<k2::String>();
         // TableId
         std::string tb_id = column.deserializeNext<k2::String>().value();
         // ColumnId
