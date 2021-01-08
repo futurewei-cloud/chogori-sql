@@ -189,6 +189,20 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
     values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), {});
     query->setFilterExpression(std::move(filterExpr));
+
+    k2::dto::SKVRecord start_record(namespace_id, tablehead_schema_ptr_);
+    // SchemaTableId
+    start_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    start_record.serializeNext<k2::String>("");
+    query->startScanRecord = std::move(start_record);
+
+    k2::dto::SKVRecord end_record(namespace_id, tablehead_schema_ptr_);
+    // SchemaTableId
+    end_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    end_record.serializeNext<k2::String>("");
+    query->endScanRecord = std::move(end_record);
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -897,6 +911,20 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
+
+    k2::dto::SKVRecord start_record(collection_name, tablehead_schema_ptr_);
+    // SchemaTableId
+    start_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    start_record.serializeNext<k2::String>("");
+    query->startScanRecord = std::move(start_record);
+
+    k2::dto::SKVRecord end_record(collection_name, tablehead_schema_ptr_);
+    // SchemaTableId
+    end_record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    // SchemaIndexId
+    end_record.serializeNext<k2::String>("");
+    query->endScanRecord = std::move(end_record);
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -928,7 +956,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
         std::ostringstream oss;
         oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
-   }
+    }
 
     std::vector<k2::dto::SKVRecord> records;
     auto& query = create_result.query;
@@ -939,6 +967,24 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
+
+    k2::dto::SKVRecord start_record(collection_name, tablecolumn_schema_ptr_);
+    // SchemaTableId
+    start_record.serializeNext<k2::String>(tablecolumn_schema_ptr_->name);
+    // SchemaIndexId
+    start_record.serializeNext<k2::String>("");
+    // TableId
+    start_record.serializeNext<k2::String>(table_id);
+    query->startScanRecord = std::move(start_record);
+
+    k2::dto::SKVRecord end_record(collection_name, tablecolumn_schema_ptr_);
+    // SchemaTableId
+    end_record.serializeNext<k2::String>(tablecolumn_schema_ptr_->name);
+    // SchemaIndexId
+    end_record.serializeNext<k2::String>("");
+    // TableId
+    end_record.serializeNext<k2::String>(table_id);
+    query->endScanRecord = std::move(end_record);
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -970,7 +1016,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
         std::ostringstream oss;
         oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
         throw std::runtime_error(oss.str());
-   }
+    }
 
     std::vector<k2::dto::SKVRecord> records;
     std::shared_ptr<k2::Query> query = create_result.query;
@@ -981,6 +1027,24 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
+
+    k2::dto::SKVRecord start_record(collection_name, indexcolumn_schema_ptr_);
+    // SchemaTableId
+    start_record.serializeNext<k2::String>(indexcolumn_schema_ptr_->name);
+    // SchemaIndexId
+    start_record.serializeNext<k2::String>("");
+    // TableId
+    start_record.serializeNext<k2::String>(table_id);
+    query->startScanRecord = std::move(start_record);
+
+    k2::dto::SKVRecord end_record(collection_name, indexcolumn_schema_ptr_);
+    // SchemaTableId
+    end_record.serializeNext<k2::String>(indexcolumn_schema_ptr_->name);
+     // SchemaIndexId
+    end_record.serializeNext<k2::String>("");
+    // TableId
+    end_record.serializeNext<k2::String>(table_id);
+    query->endScanRecord = std::move(end_record);
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
