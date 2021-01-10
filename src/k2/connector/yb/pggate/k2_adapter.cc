@@ -408,7 +408,9 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             response.rows_affected_count = 0;
             response.error_message = writeStatus.message;
             // TODO pg_error_code or txn_error_code in response?
+            K2ERROR("K2 write failed due to " << response.error_message);
         }
+        K2DEBUG("K2 write status: " << writeStatus);
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToYBStatus(writeStatus));
         } catch (const std::exception& e) {

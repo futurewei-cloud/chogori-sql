@@ -60,16 +60,21 @@ using yb::Result;
 using yb::Status;
 using k2pg::sql::TableIdentifier;
 using k2pg::sql::TableInfo;
+using k2pg::sql::IndexInfo;
 
 // This class can be used to describe any reference of a column.
 class PgTableDesc {
  public:
   explicit PgTableDesc(std::shared_ptr<TableInfo> pg_table);
 
-  const TableIdentifier& table_name() const;
+  explicit PgTableDesc(const IndexInfo& index_info, const std::string& namespace_id, bool is_transactional);
 
-  const std::shared_ptr<TableInfo> table() const {
-    return table_;
+  const std::string& namespace_id() const {
+    return namespace_id_;
+  }
+
+  const std::string& table_id() {
+    return table_id_;
   }
 
   static int ToPgAttrNum(const string &attr_name, int attr_num);
@@ -78,9 +83,17 @@ class PgTableDesc {
     return columns_;
   }
 
-  const size_t num_hash_key_columns() const;
-  const size_t num_key_columns() const;
-  const size_t num_columns() const;
+  const size_t num_hash_key_columns() const {
+    return hash_column_num_;
+  }
+
+  const size_t num_key_columns() const {
+    return key_column_num_;
+  }
+
+  const size_t num_columns() const {
+    return columns_.size();
+  }
 
   // Methods to initialize the templates for different SQL operations
   std::unique_ptr<PgReadOpTemplate> NewPgsqlSelect(const string& client_id, int64_t stmt_id);
@@ -93,20 +106,33 @@ class PgTableDesc {
 
   CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
-  bool IsTransactional() const;
-
-  int GetPartitionCount() const;
-
-  uint32_t SchemaVersion() const {
-    return table_->schema().version();
+  bool IsTransactional() const {
+    return transactional_;
   };
 
+  int GetPartitionCount() const {
+    // TODO:  Assume 1 partition for now until we add logic to expose k2 storage partition counts
+    return 1;
+  }
+
+  uint32_t SchemaVersion() const {
+    return schema_version_;
+  };
+
+  bool is_index() {
+    return is_index_;
+  }
   protected:
   std::unique_ptr<PgWriteOpTemplate> NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id);
 
   private:
-  std::shared_ptr<TableInfo> table_;
-
+  bool is_index_;
+  std::string namespace_id_;
+  std::string table_id_;
+  uint32_t schema_version_;
+  bool transactional_;
+  size_t hash_column_num_;
+  size_t key_column_num_;
   std::vector<PgColumn> columns_;
   std::unordered_map<int, size_t> attr_num_map_; // Attr number to column index map.
 

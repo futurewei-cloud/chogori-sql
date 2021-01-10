@@ -51,7 +51,16 @@
 namespace k2pg {
 namespace gate {
 
-PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table) {
+using k2pg::sql::Schema;
+using k2pg::sql::ColumnSchema;
+using k2pg::sql::PgSystemAttrNum;
+
+PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false),
+    namespace_id_(pg_table->namespace_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
+    transactional_(pg_table->schema().table_properties().is_transactional()),
+    hash_column_num_(pg_table->schema().num_hash_key_columns()), key_column_num_(pg_table->schema().num_key_columns())
+{
+  // create PgTableDesc from a table
   const auto& schema = pg_table->schema();
   const int num_columns = schema.num_columns();
   columns_.resize(num_columns);
@@ -70,10 +79,48 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : table_(pg_table)
                col.type(),
                col.sorting_type());
     attr_num_map_[col.order()] = idx;
+    K2DEBUG("Table attr_num_map: [" << col.order() << "] = " << idx << " for id: " << schema.column_id(idx) << ", name: " << col.name());
   }
 
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
+
+  K2DEBUG("PgTableDesc table_id: " << table_id_ << ", ns_id: " << namespace_id_ << ", schema_version: " << schema_version_
+      << ", hash_columns: " << hash_column_num_ << ", key_columns: " << key_column_num_
+      << ", columns: " << columns_.size() << ", transactional: " << transactional_);
+}
+
+PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespace_id, bool is_transactional) : is_index_(true),
+    namespace_id_(namespace_id), table_id_(index_info.table_id()), schema_version_(index_info.version()), transactional_(is_transactional),
+    hash_column_num_(index_info.hash_column_count()), key_column_num_(index_info.key_column_count())
+{
+  // create PgTableDesc from an index
+  const int num_columns = index_info.num_columns();
+  columns_.resize(num_columns);
+  for (size_t idx = 0; idx < num_columns; idx++) {
+    // Find the column descriptor.
+    const auto& col = index_info.column(idx);
+
+    // create map by attr_num instead of the default id
+    ColumnDesc *desc = columns_[idx].desc();
+    desc->Init(idx,
+               col.column_id,
+               col.column_name,
+               col.is_hash,
+               col.is_hash || col.is_range,
+               col.order /* attr_num */,
+               SQLType::Create(col.type),
+               col.sorting_type);
+    attr_num_map_[col.order] = idx;
+    K2DEBUG("Table attr_num_map: [" << col.order << "] = " << idx << " for id: " << col.column_id << ", name: " << col.column_name);
+  }
+
+  // Create virtual columns.
+  column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
+
+  K2DEBUG("PgTableDesc table_id: " << table_id_ << ", ns_id: " << namespace_id_ << ", schema_version: " << schema_version_
+      << ", hash_columns: " << hash_column_num_ << ", key_columns: " << key_column_num_
+      << ", columns: " << columns_.size() << ", transactional: " << transactional_);
 }
 
 Result<PgColumn *> PgTableDesc::FindColumn(int attr_num) {
@@ -104,54 +151,29 @@ Status PgTableDesc::GetColumnInfo(int16_t attr_number, bool *is_primary, bool *i
   return Status::OK();
 }
 
-bool PgTableDesc::IsTransactional() const {
-  return table_->schema().table_properties().is_transactional();
-}
-
-int PgTableDesc::GetPartitionCount() const {
-  // TODO:  Assume 1 partition for now until we add logic to expose k2 storage partition counts
-  return 1;
-}
-
-const TableIdentifier& PgTableDesc::table_name() const {
-  return table_->table_identifier();
-}
-
-const size_t PgTableDesc::num_hash_key_columns() const {
-  return table_->schema().num_hash_key_columns();
-}
-
-const size_t PgTableDesc::num_key_columns() const {
-  return table_->schema().num_key_columns();
-}
-
-const size_t PgTableDesc::num_columns() const {
-  return table_->schema().num_columns();
-}
-
 std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& client_id, int64_t stmt_id) {
-  std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>(table_);
+  std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>();
   std::shared_ptr<SqlOpReadRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_id = table_->namespace_id();
-  req->table_id = table_->table_id();
-  req->schema_version = table_->schema().version();
+  req->namespace_id = namespace_id_;
+  req->table_id = table_id_;
+  req->schema_version = schema_version_;
   req->stmt_id = stmt_id;
 
-  return op;        
+  return op;
 }
 
 std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteRequest::StmtType stmt_type, const string& client_id, int64_t stmt_id) {
-  std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>(table_);
+  std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>();
   std::shared_ptr<SqlOpWriteRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_id = table_->namespace_id();
-  req->table_id = table_->table_id();
-  req->schema_version = table_->schema().version();
+  req->namespace_id = namespace_id_;
+  req->table_id = table_id_;
+  req->schema_version = schema_version_;
   req->stmt_id = stmt_id;
   req->stmt_type = stmt_type;
 
-  return op;   
+  return op;
 }
 
 std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlInsert(const string& client_id, int64_t stmt_id) {

@@ -78,20 +78,34 @@ namespace k2pg {
         };
 
         struct IndexColumn {
-            ColumnId column_id;         // Column id in the index table.
-            std::string column_name;    // Column name in the index table - colexpr.MangledName().
-            ColumnId indexed_column_id; // Corresponding column id in indexed table.
-            std::shared_ptr<PgExpr> colexpr = nullptr;     // Index expression.
+            ColumnId column_id;             // Column id in the index table.
+            std::string column_name;        // Column name in the index table - colexpr.MangledName().
+            DataType type;                  // data type
+            bool is_nullable;               // can be null or not
+            bool is_hash;                   // is hash key
+            bool is_range;                  // is range key
+            int32_t order;                  // attr_num
+            ColumnSchema::SortingType sorting_type;       // sort type
+            ColumnId indexed_column_id;      // Corresponding column id in indexed table.
+            std::shared_ptr<PgExpr> colexpr = nullptr;    // Index expression.
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
+                DataType in_type, bool in_is_nullable, bool in_is_hash, bool in_is_range,
+                int32_t in_order, ColumnSchema::SortingType in_sorting_type,
                 ColumnId in_indexed_column_id, std::shared_ptr<PgExpr> in_colexpr)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
+                    type(in_type), is_nullable(in_is_nullable), is_hash(in_is_hash),
+                    is_range(in_is_range), order(in_order), sorting_type(in_sorting_type),
                     indexed_column_id(in_indexed_column_id), colexpr(in_colexpr) {
             }
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
+                DataType in_type, bool in_is_nullable, bool in_is_hash, bool in_is_range,
+                int32_t in_order, ColumnSchema::SortingType in_sorting_type,
                 ColumnId in_indexed_column_id)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
+                    type(in_type), is_nullable(in_is_nullable), is_hash(in_is_hash),
+                    is_range(in_is_range), order(in_order), sorting_type(in_sorting_type),
                     indexed_column_id(in_indexed_column_id) {
             }
         };
@@ -118,12 +132,12 @@ namespace k2pg {
                 index_permissions_(index_permissions) {
             }
 
-            explicit IndexInfo(TableId table_id, 
-                std::string table_name, 
+            explicit IndexInfo(TableId table_id,
+                std::string table_name,
                 uint32_t pg_oid,
-                TableId indexed_table_id, 
+                TableId indexed_table_id,
                 uint32_t schema_version,
-                bool is_unique, 
+                bool is_unique,
                 std::vector<IndexColumn> columns,
                 IndexPermissions index_permissions)
                 : table_id_(std::move(table_id)),
@@ -133,11 +147,14 @@ namespace k2pg {
                     schema_version_(schema_version),
                     is_unique_(is_unique),
                     columns_(std::move(columns)),
-                    // All the index columns are primary keys and we don't manage range keys in PG gate, as a result, 
-                    // we treat all primary keys  as the (hash) partition keys. 
-                    hash_column_count_(columns_.size()),
-                    range_column_count_(0),
                     index_permissions_(index_permissions) {
+                    for (IndexColumn& column : columns) {
+                        if (column.is_hash) {
+                            hash_column_count_++;
+                        } else if (column.is_range) {
+                            range_column_count_++;
+                        }
+                    }
             }
 
             const TableId& table_id() const {
@@ -151,7 +168,7 @@ namespace k2pg {
             const uint32_t pg_oid() const {
                 return pg_oid_;
             }
-            
+
             const TableId& indexed_table_id() const {
                 return indexed_table_id_;
             }
@@ -170,6 +187,10 @@ namespace k2pg {
 
             const IndexColumn& column(const size_t idx) const {
                 return columns_[idx];
+            }
+
+            size_t num_columns() const {
+                return columns_.size();
             }
 
             size_t hash_column_count() const {
@@ -238,8 +259,8 @@ namespace k2pg {
             const uint32_t schema_version_ = 0; // Index table's schema version.
             const bool is_unique_ = false;      // Whether this is a unique index.
             const std::vector<IndexColumn> columns_; // Index columns.
-            const size_t hash_column_count_ = 0;     // Number of hash columns in the index.
-            const size_t range_column_count_ = 0;    // Number of range columns in the index.
+            size_t hash_column_count_ = 0;     // Number of hash columns in the index.
+            size_t range_column_count_ = 0;    // Number of range columns in the index.
             const std::vector<ColumnId> indexed_hash_column_ids_;  // Hash column ids in the indexed table.
             const std::vector<ColumnId> indexed_range_column_ids_; // Range column ids in the indexed table.
             const IndexPermissions index_permissions_ = INDEX_PERM_READ_WRITE_AND_DELETE;

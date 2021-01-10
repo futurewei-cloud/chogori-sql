@@ -48,7 +48,6 @@ namespace gate {
     using k2pg::sql::PgOperator;
     using k2pg::sql::RowMarkType;
     using k2pg::sql::SqlValue;
-    using k2pg::sql::TableInfo;
     using k2pg::sql::TableName;
     using k2pg::sql::TableId;
 
@@ -325,7 +324,7 @@ namespace gate {
             READ,
         };
 
-        explicit PgOpTemplate(const std::shared_ptr<TableInfo>& table);
+        explicit PgOpTemplate();
 
         ~PgOpTemplate();
 
@@ -342,7 +341,8 @@ namespace gate {
         std::vector<k2::dto::SKVRecord>* mutable_rows_data() { return &rows_data_; }
 
         bool IsTransactional() const {
-            return table_->schema().table_properties().is_transactional();
+            // use transaction for all K2 operations
+            return true;
         }
 
         bool succeeded() const {
@@ -361,12 +361,7 @@ namespace gate {
             is_active_ = val;
         }
 
-        std::shared_ptr<TableInfo> getTable() {
-            return table_;
-        }
-
         protected:
-        std::shared_ptr<TableInfo> table_;
         std::unique_ptr<SqlOpResponse> response_;
         std::vector<k2::dto::SKVRecord> rows_data_;
         bool is_active_ = true;
@@ -374,7 +369,7 @@ namespace gate {
 
     class PgWriteOpTemplate : public PgOpTemplate {
         public:
-        explicit PgWriteOpTemplate(const std::shared_ptr<TableInfo>& table);
+        explicit PgWriteOpTemplate();
 
         ~PgWriteOpTemplate();
 
@@ -407,7 +402,7 @@ namespace gate {
 
     class PgReadOpTemplate : public PgOpTemplate {
         public:
-        explicit PgReadOpTemplate(const std::shared_ptr<TableInfo>& table);
+        explicit PgReadOpTemplate();
 
         ~PgReadOpTemplate() {};
 

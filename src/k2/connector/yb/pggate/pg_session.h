@@ -371,7 +371,7 @@ class PgSession {
   // A transaction handler allowing to begin/abort/commit transactions.
   std::shared_ptr<PgTxnHandler> pg_txn_handler_;
 
-  std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
+  std::unordered_map<TableId, std::shared_ptr<PgTableDesc>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
 
   // Should write operations be buffered?

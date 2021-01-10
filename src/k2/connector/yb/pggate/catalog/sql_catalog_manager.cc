@@ -535,9 +535,9 @@ namespace catalog {
             response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
             return response;
         }
+
         // check if the Table has already existed or not
         std::shared_ptr<TableInfo> table_info = GetCachedTableInfoByName(namespace_info->GetNamespaceId(), request.tableName);
-        uint32_t schema_version = 0;
         std::string table_id;
         if (table_info != nullptr) {
             // only create table when it does not exist
@@ -551,15 +551,16 @@ namespace catalog {
             // return table already present error if table already exists
             response.status.code = StatusCode::ALREADY_PRESENT;
             response.status.errorMessage = "Table " + table_id + " has already existed in " + request.namespaceName;
+            K2ERROR(response.status.errorMessage);
             return response;
-        } else {
-            // new table
-            schema_version = request.schema.version();
-            CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
-            schema_version++;
-            // generate a string format table id based database object oid and table oid
-            table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         }
+
+        // new table
+        uint32_t schema_version = request.schema.version();
+        CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
+        schema_version++;
+        // generate a string format table id based database object oid and table oid
+        table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         Schema table_schema = std::move(request.schema);
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
@@ -649,6 +650,7 @@ namespace catalog {
                     // return index already present error if index already exists
                     response.status.code = StatusCode::ALREADY_PRESENT;
                     response.status.errorMessage = "Index " + index_table_id + " has already existed in ns " + namespace_info->GetNamespaceId();
+                    K2ERROR(response.status.errorMessage);
                     return response;
                 }
             }
@@ -1199,19 +1201,19 @@ namespace catalog {
                 throw std::runtime_error("Cannot find column with id " + col_id);
             }
             const ColumnSchema& col_schema = index_schema.column(col_idx);
-            if (col_schema.name().compare("ybuniqueidxkeysuffix") == 0 || col_schema.name().compare("ybidxbasectid") == 0) {
+            int32_t indexed_column_id = -1;
+            if (col_schema.name().compare("ybuniqueidxkeysuffix") != 0 && col_schema.name().compare("ybidxbasectid") != 0) {
                 // skip checking "ybuniqueidxkeysuffix" and "ybidxbasectid" on base table, which only exist on index table
-                IndexColumn col(col_id, col_schema.name(),  -1);
-                columns.push_back(col);
-            } else {
                 std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
                 if (!pair.first) {
                     throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
                 }
-                ColumnId indexed_column_id = pair.second;
-                IndexColumn col(col_id, col_schema.name(),  indexed_column_id);
-                columns.push_back(col);
+                indexed_column_id = pair.second;
             }
+            // TODO: fix hash key and range key
+            IndexColumn col(col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_nullable(),
+                    col_schema.is_primary(), col_schema.is_partition(), col_schema.order(), col_schema.sorting_type(), indexed_column_id);
+            columns.push_back(col);
         }
         IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
                 is_unique, columns, index_permissions);
