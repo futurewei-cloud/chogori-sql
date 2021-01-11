@@ -144,7 +144,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::INT16T, "ColumnType", false, false},
                 {k2::dto::FieldType::BOOL, "IsNullable", false, false},
                 {k2::dto::FieldType::BOOL, "IsPrimary", false, false},
-                {k2::dto::FieldType::BOOL, "IsPartition", false, false},
+                {k2::dto::FieldType::BOOL, "IsHash", false, false},
                 {k2::dto::FieldType::INT32T, "Order", false, false},
                 {k2::dto::FieldType::INT16T, "SortingType", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0 , 1, 2},

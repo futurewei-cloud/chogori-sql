@@ -109,7 +109,7 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(!desc_.is_partition() && !desc_.is_primary())
+        DCHECK(!desc_.is_hash() && !desc_.is_primary())
             << "Binds for primary columns should have already been allocated by AllocKeyBind()";
 
         K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
@@ -167,7 +167,7 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(!desc_.is_partition() && !desc_.is_primary())
+        DCHECK(!desc_.is_hash() && !desc_.is_primary())
             << "Binds for primary columns should have already been allocated by AllocKeyBind()";
 
         K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");

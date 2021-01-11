@@ -143,7 +143,7 @@ Status PgTableDesc::GetColumnInfo(int16_t attr_number, bool *is_primary, bool *i
   if (itr != attr_num_map_.end()) {
     const ColumnDesc* desc = columns_[itr->second].desc();
     *is_primary = desc->is_primary();
-    *is_hash = desc->is_partition();
+    *is_hash = desc->is_hash();
   } else {
     *is_primary = false;
     *is_hash = false;

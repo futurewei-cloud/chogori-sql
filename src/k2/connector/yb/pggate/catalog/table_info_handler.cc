@@ -735,8 +735,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnRecords(std::
         record.serializeNext<bool>(col_schema.is_nullable());
         // IsPrimary
         record.serializeNext<bool>(col_schema.is_primary());
-        // IsPartition
-        record.serializeNext<bool>(col_schema.is_partition());
+        // IsHash
+        record.serializeNext<bool>(col_schema.is_hash());
         // Order
         record.serializeNext<int32_t>(col_schema.order());
         // SortingType
@@ -1083,13 +1083,13 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
         bool is_nullable = column.deserializeNext<bool>().value();
         // IsPrimary
         bool is_primary = column.deserializeNext<bool>().value();
-        // IsPartition
-        bool is_partition = column.deserializeNext<bool>().value();
+        // IsHash
+        bool is_hash = column.deserializeNext<bool>().value();
         // Order
         int32 col_order = column.deserializeNext<int32_t>().value();
         // SortingType
         int16_t sorting_type = column.deserializeNext<int16_t>().value();
-        ColumnSchema col_schema(col_name, static_cast<DataType>(col_type), is_nullable, is_primary, is_partition,
+        ColumnSchema col_schema(col_name, static_cast<DataType>(col_type), is_nullable, is_primary, is_hash,
                 col_order, static_cast<ColumnSchema::SortingType>(sorting_type));
         cols.push_back(std::move(col_schema));
         ids.push_back(col_id);

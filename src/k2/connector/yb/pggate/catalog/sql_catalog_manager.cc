@@ -1212,7 +1212,7 @@ namespace catalog {
             }
             // TODO: fix hash key and range key
             IndexColumn col(col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_nullable(),
-                    col_schema.is_primary(), col_schema.is_partition(), col_schema.order(), col_schema.sorting_type(), indexed_column_id);
+                    col_schema.is_primary(), col_schema.is_hash(), col_schema.order(), col_schema.sorting_type(), indexed_column_id);
             columns.push_back(col);
         }
         IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
