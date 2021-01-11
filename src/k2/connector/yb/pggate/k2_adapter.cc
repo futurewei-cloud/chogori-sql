@@ -268,6 +268,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan = scan_create_result.query;
             scan->setReverseDirection(!request->is_forward_scan);
 
+            /*
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
             // Projections must include key fields so that ybctid/rowid can be created from the resulting
             // record
@@ -288,10 +289,14 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                     continue;
                 }
 
+                if (target->getId() == -8) {
+                    continue;
+                }
+
                 k2::String& fieldName = schema->fields[idx].name;
                 scan->addProjection(fieldName);
                 K2DEBUG("Projection added for: " << k2::escape(fieldName));
-            }
+            }*/
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
             auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
