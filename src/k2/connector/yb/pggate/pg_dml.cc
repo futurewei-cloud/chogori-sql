@@ -123,7 +123,7 @@ Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> targ
   PgColumn *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
 
   if (target_var)
-    target_var->setColumnId(pg_col->id());
+    target_var->setColumnId(pg_col->id(), pg_col->attr_name());
 
   // Mark non-virtual column for writing
   if (!pg_col->is_virtual_column()) {
@@ -134,7 +134,7 @@ Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> targ
 }
 
 Status PgDml::PrepareColumnForWrite(PgColumn *pg_col, std::shared_ptr<SqlOpExpr> assign_var) {
-  assign_var->setColumnId(pg_col->id());
+  assign_var->setColumnId(pg_col->id(), pg_col->attr_name());
 
   // Mark non-virtual column for writing.
   if (!pg_col->is_virtual_column()) {
