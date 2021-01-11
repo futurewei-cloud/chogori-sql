@@ -159,19 +159,19 @@ namespace gate {
        return std::make_unique<SqlOpWriteRequest>(*this);
     }
 
-    PgOpTemplate::PgOpTemplate(const std::shared_ptr<TableInfo>& table)  : table_(table) {
+    PgOpTemplate::PgOpTemplate() {
     }
 
     PgOpTemplate::~PgOpTemplate() {}
 
-    PgWriteOpTemplate::PgWriteOpTemplate(const shared_ptr<TableInfo>& table)
-            : PgOpTemplate(table), write_request_(new SqlOpWriteRequest()) {
+    PgWriteOpTemplate::PgWriteOpTemplate()
+            : PgOpTemplate(), write_request_(new SqlOpWriteRequest()) {
     }
 
     PgWriteOpTemplate::~PgWriteOpTemplate() {}
 
     bool PgWriteOpTemplate::IsTransactional() const {
-        return !is_single_row_txn_ && table_->schema().table_properties().is_transactional();
+        return !is_single_row_txn_;
     }
 
     std::string PgWriteOpTemplate::ToString() const {
@@ -179,15 +179,15 @@ namespace gate {
     }
 
     std::unique_ptr<PgWriteOpTemplate> PgWriteOpTemplate::DeepCopy() {
-        std::unique_ptr<PgWriteOpTemplate> result = std::make_unique<PgWriteOpTemplate>(table_);
+        std::unique_ptr<PgWriteOpTemplate> result = std::make_unique<PgWriteOpTemplate>();
         result->set_active(is_active());
         result->write_request_ = write_request_->clone();
         result->is_single_row_txn_ = is_single_row_txn_;
         return result;
     }
 
-    PgReadOpTemplate::PgReadOpTemplate(const shared_ptr<TableInfo>& table)
-        : PgOpTemplate(table), read_request_(new SqlOpReadRequest()) {
+    PgReadOpTemplate::PgReadOpTemplate()
+        : PgOpTemplate(), read_request_(new SqlOpReadRequest()) {
     }
 
     std::string PgReadOpTemplate::ToString() const {
@@ -195,7 +195,7 @@ namespace gate {
     }
 
     std::unique_ptr<PgReadOpTemplate> PgReadOpTemplate::DeepCopy() {
-        std::unique_ptr<PgReadOpTemplate> result = std::make_unique<PgReadOpTemplate>(table_);
+        std::unique_ptr<PgReadOpTemplate> result = std::make_unique<PgReadOpTemplate>();
         result->set_active(is_active());
         result->read_request_ = read_request_->clone();
         return result;

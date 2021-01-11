@@ -120,14 +120,14 @@ namespace sql {
                 const std::shared_ptr<SQLType>& type,
                 bool is_nullable,
                 bool is_primary,
-                bool is_partition,
+                bool is_hash,
                 int32_t order,
                 SortingType sorting_type)
             : name_(std::move(name)),
             type_(type),
             is_nullable_(is_nullable),
             is_primary_(is_primary),
-            is_partition_(is_partition),
+            is_hash_(is_hash),
             order_(order),
             sorting_type_(sorting_type) {
         }
@@ -137,10 +137,10 @@ namespace sql {
                 DataType type,
                 bool is_nullable,
                 bool is_primary,
-                bool is_partition,
+                bool is_hash,
                 int32_t order,
                 SortingType sorting_type)
-            : ColumnSchema(name, SQLType::Create(type), is_nullable, is_primary, is_partition, order, sorting_type) {
+            : ColumnSchema(name, SQLType::Create(type), is_nullable, is_primary, is_hash, order, sorting_type) {
         }
 
         const std::shared_ptr<SQLType>& type() const {
@@ -156,11 +156,11 @@ namespace sql {
         }
 
         bool is_key() const {
-            return is_partition_ || is_primary_;
+            return is_hash_ || is_primary_;
         }
 
-        bool is_partition() const {
-            return is_partition_;
+        bool is_hash() const {
+            return is_hash_;
         }
 
         bool is_primary() const {
@@ -214,7 +214,7 @@ namespace sql {
         bool EqualsType(const ColumnSchema &other) const {
             return is_nullable_ == other.is_nullable_ &&
                    is_primary_ == other.is_primary_ &&
-                   is_partition_ == other.is_partition_ &&
+                   is_hash_ == other.is_hash_ &&
                    sorting_type_ == other.sorting_type_ &&
                    type_info()->type() == other.type_info()->type();
         }
@@ -238,7 +238,7 @@ namespace sql {
         std::shared_ptr<SQLType> type_;
         bool is_nullable_;
         bool is_primary_;
-        bool is_partition_;
+        bool is_hash_;
         int32_t order_;
         SortingType sorting_type_;
     };

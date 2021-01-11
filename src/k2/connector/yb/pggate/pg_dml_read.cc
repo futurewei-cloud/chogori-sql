@@ -181,7 +181,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
   // Find column.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
 
-  CHECK(!col->desc()->is_partition()) << "This method cannot be used for binding partition column!";
+  CHECK(!col->desc()->is_hash()) << "This method cannot be used for binding hash column!";
 
   // Alloc the doc condition
   std::shared_ptr<SqlOpCondition> condition_expr_var = AllocColumnBindConditionExprVar(col);
@@ -240,7 +240,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
   // Find column.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
 
-  if (col->desc()->is_partition()) {
+  if (col->desc()->is_hash()) {
     // Alloc the expression variable.
     std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
     if (bind_var == nullptr) {

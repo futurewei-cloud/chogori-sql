@@ -44,6 +44,7 @@ RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_pt
         response.code = StatusCode::INTERNAL_ERROR;
         response.errorMessage = std::move(result.status.message);
     } else {
+        K2DEBUG("Created SKV Schema for " << schema->name << " in ns " << collection_name << " as: " << (*schema.get()))
         response.Succeed();
     }
     return response;

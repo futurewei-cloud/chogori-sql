@@ -74,7 +74,7 @@ class ColumnDesc {
   void Init(int index,
             int id,
             string name,
-            bool is_partition,
+            bool is_hash,
             bool is_primary,
             int32_t attr_num,
             const std::shared_ptr<SQLType>& sql_type,
@@ -82,7 +82,7 @@ class ColumnDesc {
     index_ = index,
     id_ = id;
     name_ = name;
-    is_partition_ = is_partition;
+    is_hash_ = is_hash;
     is_primary_ = is_primary;
     attr_num_ = attr_num;
     sql_type_ = sql_type;
@@ -105,8 +105,8 @@ class ColumnDesc {
     return name_;
   }
 
-  bool is_partition() const {
-    return is_partition_;
+  bool is_hash() const {
+    return is_hash_;
   }
 
   bool is_primary() const {
@@ -129,7 +129,7 @@ class ColumnDesc {
   int index_ = -1;
   int id_ = -1;
   string name_;
-  bool is_partition_ = false;
+  bool is_hash_ = false;
   bool is_primary_ = false;
   int32_t attr_num_ = -1;
   std::shared_ptr<SQLType> sql_type_;

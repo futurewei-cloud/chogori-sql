@@ -415,11 +415,11 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
- K2DEBUG("Loading table descriptor for " << table_id);
-  const TableId yb_table_id = table_id.GetPgTableId();
+  const TableId t_table_id = table_id.GetPgTableId();
+  K2DEBUG("Loading table descriptor for " << table_id << ", id: " << t_table_id);
   std::shared_ptr<TableInfo> table;
 
-  auto cached_table = table_cache_.find(yb_table_id);
+  auto cached_table = table_cache_.find(t_table_id);
   if (cached_table == table_cache_.end()) {
     K2DEBUG("Table cache MISS: " << table_id);
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
@@ -428,13 +428,27 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
                            table_id.object_oid, table_id.database_oid, s.ToUserMessage());
     }
-    table_cache_[yb_table_id] = table;
+    table_cache_[t_table_id] = table;
   } else {
     K2DEBUG("Table cache HIT: " << table_id);
     table = cached_table->second;
   }
 
-  return std::make_shared<PgTableDesc>(table);
+  // check if the t_table_id is for a table or an index
+  if (table->table_id().compare(t_table_id) == 0) {
+    // a table
+    return std::make_shared<PgTableDesc>(table);
+  }
+
+  // an index
+  const auto itr = table->secondary_indexes().find(t_table_id);
+  if (itr == table->secondary_indexes().end()) {
+    K2ERROR("Cannot find index with id " << t_table_id);
+    return STATUS_FORMAT(NotFound, "Cannot find index $0 in database $1",
+                         t_table_id, table->namespace_id());
+  }
+
+  return std::make_shared<PgTableDesc>(itr->second, table->namespace_id(), table->schema().table_properties().is_transactional());
 }
 
 Result<bool> PgSession::IsInitDbDone() {

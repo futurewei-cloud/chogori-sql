@@ -81,7 +81,7 @@ namespace sql {
                                    type_info()->name(),
                                    is_nullable_ ? "NULLABLE" : "NOT NULL",
                                    is_primary_ ? "PRIMARY KEY" : "NOT A PRIMARY KEY",
-                                   is_partition_ ? "PARTITION KEY" : "NOT A PARTITION KEY",
+                                   is_hash_ ? "HASH KEY" : "NOT A HASH KEY",
                                    order_);
     }
 
