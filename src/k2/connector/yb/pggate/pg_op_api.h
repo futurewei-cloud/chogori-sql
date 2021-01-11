@@ -97,9 +97,10 @@ namespace gate {
             value_ = value;
         }
 
-        void setColumnId(int32_t id) {
+        void setColumnId(int32_t id, std::string col_name) {
             type_ = ExprType::COLUMN_ID;
             id_ = id;
+            attr_name_ = std::move(col_name);
         }
 
         void setBindId(int32_t id) {
@@ -142,6 +143,10 @@ namespace gate {
             return id_;
         }
 
+        std::string getName() {
+            return attr_name_;
+        }
+
         std::shared_ptr<SqlOpCondition> getCondition() {
             return condition_;
         }
@@ -158,6 +163,7 @@ namespace gate {
         std::vector<std::shared_ptr<SqlValue>> values_;
         std::shared_ptr<SqlOpCondition> condition_;
         int32_t id_;
+        std::string attr_name_;
     };
 
     class SqlOpCondition {
