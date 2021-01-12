@@ -50,12 +50,10 @@ void YBCDestroyPgGate() {
 }
 
 YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env) {
-  K2DEBUG("PgGateAPI: YBCPgCreateEnv");
   return ToYBCStatus(api_impl->CreateEnv(pg_env));
 }
 
 YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env) {
-  K2DEBUG("PgGateAPI: YBCPgDestroyEnv");
   return ToYBCStatus(api_impl->DestroyEnv(pg_env));
 }
 
@@ -74,42 +72,35 @@ YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name) {
 //   Postgres operations are done, associated YugaByte memory context (YBCPgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
 YBCPgMemctx YBCPgCreateMemctx() {
-  K2DEBUG("PgGateAPI: YBCPgCreateMemctx");
   return api_impl->CreateMemctx();
 }
 
 YBCStatus YBCPgDestroyMemctx(YBCPgMemctx memctx) {
-  K2DEBUG("PgGateAPI: YBCPgDestroyMemctx");
   return ToYBCStatus(api_impl->DestroyMemctx(memctx));
 }
 
 YBCStatus YBCPgResetMemctx(YBCPgMemctx memctx) {
-  K2DEBUG("PgGateAPI: YBCPgResetMemctx");
   return ToYBCStatus(api_impl->ResetMemctx(memctx));
 }
 
 // Invalidate the sessions table cache.
 YBCStatus YBCPgInvalidateCache() {
-  K2DEBUG("PgGateAPI: YBCPgInvalidateCache");
   return ToYBCStatus(api_impl->InvalidateCache());
 }
 
 // Clear all values and expressions that were bound to the given statement.
 YBCStatus YBCPgClearBinds(YBCPgStatement handle) {
-  K2DEBUG("PgGateAPI: YBCPgClearBind");
   return ToYBCStatus(api_impl->ClearBinds(handle));
 }
 
 // Check if initdb has been already run.
 YBCStatus YBCPgIsInitDbDone(bool* initdb_done) {
-  K2DEBUG("PgGateAPI: YBCPgIsInitDbDone");
   return ExtractValueFromResult(api_impl->IsInitDbDone(), initdb_done);
 }
 
 // Sets catalog_version to the local tserver's catalog version stored in shared
 // memory, or an error if the shared memory has not been initialized (e.g. in initdb).
 YBCStatus YBCGetSharedCatalogVersion(uint64_t* catalog_version) {
-  K2DEBUG("PgGateAPI: YBCGetSharedCatalogVersion");
   return ExtractValueFromResult(api_impl->GetSharedCatalogVersion(), catalog_version);
 }
 
@@ -139,7 +130,6 @@ YBCStatus YBCPgConnectDatabase(const char *database_name) {
 
 // Get whether the given database is colocated.
 YBCStatus YBCPgIsDatabaseColocated(const YBCPgOid database_oid, bool *colocated) {
-  K2DEBUG("PgGateAPI: YBCPgIsDatabaseColocated");
   *colocated = false;
   return YBCStatusOK();
 }
@@ -202,7 +192,6 @@ YBCStatus YBCPgReserveOids(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgGetCatalogMasterVersion(uint64_t *version) {
-  K2DEBUG("PgGateAPI: YBCPgGetCatalogMasterVersion");
   return ToYBCStatus(api_impl->GetCatalogMasterVersion(version));
 }
 
@@ -210,12 +199,10 @@ void YBCPgInvalidateTableCache(
     const YBCPgOid database_oid,
     const YBCPgOid table_oid) {
   const PgObjectId table_id(database_oid, table_oid);
-  K2DEBUG("PgGateAPI: YBCPgInvalidateTableCache" << database_oid << ", " << table_oid);
   api_impl->InvalidateTableCache(table_id);
 }
 
 YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_id) {
-  K2DEBUG("PgGateAPI: YBCPgInvalidateTableCacheByTableId " << table_id);
   if (table_id == NULL) {
     return ToYBCStatus(STATUS(InvalidArgument, "table_id is null"));
   }
@@ -301,13 +288,12 @@ YBCStatus YBCPgNewCreateTable(const char *database_name,
 YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first) {
-  K2DEBUG("PgGateAPI: YBCPgCreateTableAddColumn " << attr_name);
+  K2DEBUG("PgGateAPI: YBCPgCreateTableAddColumn (name: " << attr_name << ", order: " << attr_num << ", is_hash: " << is_hash << ", is_range: " << is_range << ")");
   return ToYBCStatus(api_impl->CreateTableAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
 
 YBCStatus YBCPgCreateTableSetNumTablets(YBCPgStatement handle, int32_t num_tablets) {
-  K2DEBUG("PgGateAPI: YBCPgCreateTableSetNumTablets");
   // no-op for setting up num_tablets
   // TODO: remove this api from PG
   return YBCStatusOK();
@@ -315,12 +301,10 @@ YBCStatus YBCPgCreateTableSetNumTablets(YBCPgStatement handle, int32_t num_table
 
 YBCStatus YBCPgCreateTableAddSplitRow(YBCPgStatement handle, int num_cols,
                                         YBCPgTypeEntity **types, uint64_t *data) {
-  K2DEBUG("PgGateAPI: YBCPgCreateTableAddSplitRow " << num_cols);
   return ToYBCStatus(api_impl->CreateTableAddSplitRow(handle, num_cols, types, data));
 }
 
 YBCStatus YBCPgExecCreateTable(YBCPgStatement handle) {
-  K2DEBUG("PgGateAPI: YBCPgExecCreateTable");
   return ToYBCStatus(api_impl->ExecCreateTable(handle));
 }
 
@@ -356,7 +340,6 @@ YBCStatus YBCPgAlterTableRenameTable(YBCPgStatement handle, const char *db_name,
 }
 
 YBCStatus YBCPgExecAlterTable(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecAlterTable ");
   return ToYBCStatus(api_impl->ExecAlterTable(handle));
 }
 
@@ -370,7 +353,6 @@ YBCStatus YBCPgNewDropTable(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecDropTable(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecDropTable");
   return ToYBCStatus(api_impl->ExecDropTable(handle));
 }
 
@@ -382,14 +364,12 @@ YBCStatus YBCPgNewTruncateTable(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecTruncateTable(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecTruncateTable");
   return YBCStatusOK();
 }
 
 YBCStatus YBCPgGetTableDesc(YBCPgOid database_oid,
                             YBCPgOid table_oid,
                             YBCPgTableDesc *handle) {
-  K2DEBUG("PgGateAPI: YBCPgGetTableDesc " << database_oid << table_oid);
   const PgObjectId table_id(database_oid, table_oid);
   return ToYBCStatus(api_impl->GetTableDesc(table_id, handle));
 }
@@ -398,13 +378,11 @@ YBCStatus YBCPgGetColumnInfo(YBCPgTableDesc table_desc,
                              int16_t attr_number,
                              bool *is_primary,
                              bool *is_hash) {
-  K2DEBUG("PgGateAPI: YBCPgGetTableDesc " << attr_number);
   return ToYBCStatus(api_impl->GetColumnInfo(table_desc, attr_number, is_primary, is_hash));
 }
 
 YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
                                   YBCPgTableProperties *properties){
-  K2DEBUG("PgGateAPI: YBCPgGetTableProperties");
   CHECK_NOTNULL(properties)->num_tablets = table_desc->num_hash_key_columns();
   properties->num_hash_key_columns = table_desc->num_hash_key_columns();
   properties->is_colocated = false;
@@ -412,24 +390,20 @@ YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
 }
 
 YBCStatus YBCPgDmlModifiesRow(YBCPgStatement handle, bool *modifies_row){
-  K2DEBUG("PgGateAPI: YBCPgDmlModifiesRow");
   return ToYBCStatus(api_impl->DmlModifiesRow(handle, modifies_row));
 }
 
 YBCStatus YBCPgSetIsSysCatalogVersionChange(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgSetIsSysCatalogVersionChange");
   return ToYBCStatus(api_impl->SetIsSysCatalogVersionChange(handle));
 }
 
 YBCStatus YBCPgSetCatalogCacheVersion(YBCPgStatement handle, uint64_t catalog_cache_version){
-  K2DEBUG("PgGateAPI: YBCPgSetCatalogCacheVersion " << catalog_cache_version);
   return ToYBCStatus(api_impl->SetCatalogCacheVersion(handle, catalog_cache_version));
 }
 
 YBCStatus YBCPgIsTableColocated(const YBCPgOid database_oid,
                                 const YBCPgOid table_oid,
                                 bool *colocated) {
-  K2DEBUG("PgGateAPI: YBCPgIsTableColocated");
   *colocated = false;
   return YBCStatusOK();
 }
@@ -462,24 +436,21 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
 YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first){
-  K2DEBUG("PgGateAPI: YBCPgCreateIndexAddColumn " << attr_name << ", " << attr_num);
+  K2DEBUG("PgGateAPI: YBCPgCreateIndexAddColumn (name: " << attr_name << ", order: " << attr_num << ", is_hash: " << is_hash << ", is_range: " << is_range << ")");
   return ToYBCStatus(api_impl->CreateIndexAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
 
 YBCStatus YBCPgCreateIndexSetNumTablets(YBCPgStatement handle, int32_t num_tablets){
-  K2DEBUG("PgGateAPI: YBCPgCreateIndexSetNumTablets");
   return YBCStatusOK();
 }
 
 YBCStatus YBCPgCreateIndexAddSplitRow(YBCPgStatement handle, int num_cols,
                                       YBCPgTypeEntity **types, uint64_t *data){
-  K2DEBUG("PgGateAPI: YBCPgCreateIndexAddSplitRow");
   return ToYBCStatus(api_impl->CreateIndexAddSplitRow(handle, num_cols, types, data));
 }
 
 YBCStatus YBCPgExecCreateIndex(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecCreateIndex");
   return ToYBCStatus(api_impl->ExecCreateIndex(handle));
 }
 
@@ -493,7 +464,6 @@ YBCStatus YBCPgNewDropIndex(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecDropIndex(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecDropIndex");
   return ToYBCStatus(api_impl->ExecDropIndex(handle));
 }
 
@@ -536,7 +506,6 @@ YBCStatus YBCPgAsyncUpdateIndexPermissions(
 // - SELECT target_expr1, target_expr2, ...
 // - INSERT / UPDATE / DELETE ... RETURNING target_expr1, target_expr2, ...
 YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target){
-  K2DEBUG("PgGateAPI: YBCPgDmlAppendTarget");
   return ToYBCStatus(api_impl->DmlAppendTarget(handle, target));
 }
 
@@ -565,30 +534,25 @@ YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target){
 //   The index-scan will use the bind to find base-ybctid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
 YBCStatus YBCPgDmlBindColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value){
-  K2DEBUG("PgGateAPI: YBCPgDmlBindColumn " << attr_num);
   return ToYBCStatus(api_impl->DmlBindColumn(handle, attr_num, attr_value));
 }
 
 YBCStatus YBCPgDmlBindColumnCondEq(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value){
-  K2DEBUG("PgGateAPI: YBCPgDmlBindColumnCondEq " << attr_num);
   return ToYBCStatus(api_impl->DmlBindColumnCondEq(handle, attr_num, attr_value));
 }
 
 YBCStatus YBCPgDmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value,
     YBCPgExpr attr_value_end){
-  K2DEBUG("PgGateAPI: YBCPgDmlBindColumnCondBetween " << attr_num);
   return ToYBCStatus(api_impl->DmlBindColumnCondBetween(handle, attr_num, attr_value, attr_value_end));
 }
 
 YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
     YBCPgExpr *attr_values){
-  K2DEBUG("PgGateAPI: YBCPgDmlBindColumnCondIn " << attr_num);
   return ToYBCStatus(api_impl->DmlBindColumnCondIn(handle, attr_num, n_attr_values, attr_values));
 }
 
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
 YBCStatus YBCPgDmlBindTable(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgDmlBindTable");
   return ToYBCStatus(api_impl->DmlBindTable(handle));
 }
 
@@ -596,7 +560,6 @@ YBCStatus YBCPgDmlBindTable(YBCPgStatement handle){
 YBCStatus YBCPgDmlAssignColumn(YBCPgStatement handle,
                                int attr_num,
                                YBCPgExpr attr_value){
-  K2DEBUG("PgGateAPI: YBCPgDmlAssignColumn " << attr_num);
   return ToYBCStatus(api_impl->DmlAssignColumn(handle, attr_num, attr_value));
 }
 
@@ -604,20 +567,17 @@ YBCStatus YBCPgDmlAssignColumn(YBCPgStatement handle,
 // by YBCPgDmlBindColumn().
 YBCStatus YBCPgDmlFetch(YBCPgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
                         YBCPgSysColumns *syscols, bool *has_data){
-  K2DEBUG("PgGateAPI: YBCPgDmlFetch " << natts);
   return ToYBCStatus(api_impl->DmlFetch(handle, natts, values, isnulls, syscols, has_data));
 }
 
 // Utility method that checks stmt type and calls either exec insert, update, or delete internally.
 YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_count){
-  K2DEBUG("PgGateAPI: YBCPgDmlExecWriteOp");
   return ToYBCStatus(api_impl->DmlExecWriteOp(handle, rows_affected_count));
 }
 
 // This function returns the tuple id (ybctid) of a Postgres tuple.
 YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid){
-  K2DEBUG("PgGateAPI: YBCPgDmlBuildYBTupleId " << nattrs);
   return ToYBCStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, ybctid));
 }
 
@@ -634,27 +594,22 @@ YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDesc
 
 // Buffer write operations.
 void YBCPgStartOperationsBuffering() {
-  K2DEBUG("PgGateAPI: YBCPgStartOperationsBuffering");
   api_impl->StartOperationsBuffering();
 }
 
 YBCStatus YBCPgStopOperationsBuffering() {
-  K2DEBUG("PgGateAPI: YBCPgStopOperationsBuffering");
   return ToYBCStatus(api_impl->StopOperationsBuffering());
 }
 
 YBCStatus YBCPgResetOperationsBuffering() {
-  K2DEBUG("PgGateAPI: YBCPgResetOperationsBuffering");
   return ToYBCStatus(api_impl->ResetOperationsBuffering());
 }
 
 YBCStatus YBCPgFlushBufferedOperations() {
-  K2DEBUG("PgGateAPI: YBCPgFlushBufferedOperations");
   return ToYBCStatus(api_impl->FlushBufferedOperations());
 }
 
 void YBCPgDropBufferedOperations() {
-  K2DEBUG("PgGateAPI: YBCPgDropBufferedOperations");
   api_impl->DropBufferedOperations();
 }
 
@@ -671,17 +626,14 @@ YBCStatus YBCPgNewInsert(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecInsert(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecInsert");
   return ToYBCStatus(api_impl->ExecInsert(handle));
 }
 
 YBCStatus YBCPgInsertStmtSetUpsertMode(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgInsertStmtSetUpsertMode");
   return ToYBCStatus(api_impl->InsertStmtSetUpsertMode(handle));
 }
 
 YBCStatus YBCPgInsertStmtSetWriteTime(YBCPgStatement handle, const uint64_t write_time){
-  K2DEBUG("PgGateAPI: YBCPgInsertStmtSetWriteTime " << write_time);
   return ToYBCStatus(api_impl->InsertStmtSetWriteTime(handle, write_time));
 }
 
@@ -696,7 +648,6 @@ YBCStatus YBCPgNewUpdate(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecUpdate(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecUpdate");
   return ToYBCStatus(api_impl->ExecUpdate(handle));
 }
 
@@ -711,7 +662,6 @@ YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecDelete(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecDelete");
   return ToYBCStatus(api_impl->ExecDelete(handle));
 }
 
@@ -725,7 +675,6 @@ YBCStatus YBCPgNewTruncateColocated(YBCPgOid database_oid,
 }
 
 YBCStatus YBCPgExecTruncateColocated(YBCPgStatement handle){
-  K2DEBUG("PgGateAPI: YBCPgExecTruncateColocated");
   return YBCStatusOK();
 }
 
@@ -743,12 +692,10 @@ YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
 
 // Set forward/backward scan direction.
 YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan){
-  K2DEBUG("PgGateAPI: YBCPgSetForwardScan " << is_forward_scan);
   return ToYBCStatus(api_impl->SetForwardScan(handle, is_forward_scan));
 }
 
 YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params){
-  K2DEBUG("PgGateAPI: YBCPgExecSelect");
   return ToYBCStatus(api_impl->ExecSelect(handle, exec_params));
 }
 
@@ -805,57 +752,47 @@ YBCStatus YBCPgExitSeparateDdlTxnMode(bool success){
 // Column references.
 YBCStatus YBCPgNewColumnRef(YBCPgStatement stmt, int attr_num, const YBCPgTypeEntity *type_entity,
                             const YBCPgTypeAttrs *type_attrs, YBCPgExpr *expr_handle){
-  K2DEBUG("PgGateAPI: YBCPgNewColumnRef " << attr_num);
   return ToYBCStatus(api_impl->NewColumnRef(stmt, attr_num, type_entity, type_attrs, expr_handle));
 }
 
 // Constant expressions.
 YBCStatus YBCPgNewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, YBCPgExpr *expr_handle){
-  K2DEBUG("PgGateAPI: YBCPgNewConstant " << datum << ", " << is_null);
   return ToYBCStatus(api_impl->NewConstant(stmt, type_entity, datum, is_null, expr_handle));
 }
 
 YBCStatus YBCPgNewConstantOp(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, YBCPgExpr *expr_handle, bool is_gt){
-  K2DEBUG("PgGateAPI: YBCPgNewConstantOp " << datum << ", " << is_null << ", " << is_gt);
   return ToYBCStatus(api_impl->NewConstantOp(stmt, type_entity, datum, is_null, expr_handle, is_gt));
 }
 
 // The following update functions only work for constants.
 // Overwriting the constant expression with new value.
 YBCStatus YBCPgUpdateConstInt2(YBCPgExpr expr, int16_t value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstInt2 " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstInt4(YBCPgExpr expr, int32_t value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstInt4 " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstInt8(YBCPgExpr expr, int64_t value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstInt8 " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstFloat4(YBCPgExpr expr, float value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstFloat4 " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstFloat8(YBCPgExpr expr, double value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstFloat8 " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstText(YBCPgExpr expr, const char *value, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstText " << value << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
 YBCStatus YBCPgUpdateConstChar(YBCPgExpr expr, const char *value, int64_t bytes, bool is_null){
-  K2DEBUG("PgGateAPI: YBCPgUpdateConstChar " << value << ", " << bytes << ", " << is_null);
   return ToYBCStatus(api_impl->UpdateConstant(expr, value, bytes, is_null));
 }
 
@@ -863,31 +800,26 @@ YBCStatus YBCPgUpdateConstChar(YBCPgExpr expr, const char *value, int64_t bytes,
 YBCStatus YBCPgNewOperator(YBCPgStatement stmt, const char *opname,
                            const YBCPgTypeEntity *type_entity,
                            YBCPgExpr *op_handle){
-  K2DEBUG("PgGateAPI: YBCPgNewOperator " << opname);
   return ToYBCStatus(api_impl->NewOperator(stmt, opname, type_entity, op_handle));
 }
 
 YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg){
-  K2DEBUG("PgGateAPI: YBCPgOperatorAppendArg");
   return ToYBCStatus(api_impl->OperatorAppendArg(op_handle, arg));
 }
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
 bool YBCForeignKeyReferenceExists(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size) {
-  K2DEBUG("PgGateAPI: YBCForeignKeyReferenceExists " << table_id);
   return api_impl->ForeignKeyReferenceExists(table_id, std::string(ybctid, ybctid_size));
 }
 
 // Add an entry to foreign key reference cache.
 YBCStatus YBCCacheForeignKeyReference(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size){
-  K2DEBUG("PgGateAPI: YBCCacheForeignKeyReference " << table_id);
   return ToYBCStatus(api_impl->CacheForeignKeyReference(table_id, std::string(ybctid, ybctid_size)));
 }
 
 // Delete an entry from foreign key reference cache.
 YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_id, uint64_t ybctid){
-  K2DEBUG("PgGateAPI: YBCPgDeleteFromForeignKeyReferenceCache " << table_id << ", " << ybctid);
   char *value;
   int64_t bytes;
   const YBCPgTypeEntity *type_entity = api_impl->FindTypeEntity(kPgByteArrayOid);
@@ -896,12 +828,10 @@ YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_id, uint64_t yb
 }
 
 void ClearForeignKeyReferenceCache() {
-  K2DEBUG("PgGateAPI: ClearForeignKeyReferenceCache");
   api_impl->ClearForeignKeyReferenceCache();
 }
 
 bool YBCIsInitDbModeEnvVarSet() {
-  K2DEBUG("PgGateAPI: YBCIsInitDbModeEnvVarSet");
   static bool cached_value = false;
   static bool cached = false;
 
@@ -916,24 +846,20 @@ bool YBCIsInitDbModeEnvVarSet() {
 
 // This is called by initdb. Used to customize some behavior.
 void YBCInitFlags() {
-  K2DEBUG("PgGateAPI: YBCInitFlags");
 }
 
 // Retrieves value of ysql_max_read_restart_attempts gflag
 int32_t YBCGetMaxReadRestartAttempts() {
-  K2DEBUG("PgGateAPI: YBCGetMaxReadRestartAttempts");
   return default_max_read_restart_attempts;
 }
 
 // Retrieves value of ysql_output_buffer_size gflag
 int32_t YBCGetOutputBufferSize() {
-  K2DEBUG("PgGateAPI: YBCGetOutputBufferSize");
   return default_output_buffer_size;
 }
 
 // Retrieve value of ysql_disable_index_backfill gflag.
 bool YBCGetDisableIndexBackfill() {
-  K2DEBUG("PgGateAPI: YBCGetDisableIndexBackfill");
   return default_disable_index_backfill;
 }
 
@@ -943,7 +869,6 @@ bool YBCPgIsYugaByteEnabled() {
 
 // Sets the specified timeout in the rpc service.
 void YBCSetTimeout(int timeout_ms, void* extra) {
-  K2DEBUG("PgGateAPI: YBCSetTimeout " << timeout_ms);
   if (timeout_ms <= 0) {
     // The timeout is not valid. Use the default GFLAG value.
     return;
@@ -956,57 +881,46 @@ void YBCSetTimeout(int timeout_ms, void* extra) {
 // Thread-Local variables.
 
 void* YBCPgGetThreadLocalCurrentMemoryContext() {
-  K2DEBUG("PgGateAPI: YBCPgGetThreadLocalCurrentMemoryContext");
   return PgGetThreadLocalCurrentMemoryContext();
 }
 
 void* YBCPgSetThreadLocalCurrentMemoryContext(void *memctx) {
-  K2DEBUG("PgGateAPI: YBCPgSetThreadLocalCurrentMemoryContext");
   return PgSetThreadLocalCurrentMemoryContext(memctx);
 }
 
 void YBCPgResetCurrentMemCtxThreadLocalVars() {
-  K2DEBUG("PgGateAPI: YBCPgResetCurrentMemCtxThreadLocalVars");
   PgResetCurrentMemCtxThreadLocalVars();
 }
 
 void* YBCPgGetThreadLocalStrTokPtr() {
-  K2DEBUG("PgGateAPI: YBCPgGetThreadLocalStrTokPtr");
   return PgGetThreadLocalStrTokPtr();
 }
 
 void YBCPgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr) {
-  K2DEBUG("PgGateAPI: YBCPgSetThreadLocalStrTokPtr " << new_pg_strtok_ptr);
   PgSetThreadLocalStrTokPtr(new_pg_strtok_ptr);
 }
 
 void* YBCPgSetThreadLocalJumpBuffer(void* new_buffer) {
-  K2DEBUG("PgGateAPI: YBCPgSetThreadLocalJumpBuffer");
   return PgSetThreadLocalJumpBuffer(new_buffer);
 }
 
 void* YBCPgGetThreadLocalJumpBuffer() {
-  K2DEBUG("PgGateAPI: YBCPgGetThreadLocalJumpBuffer");
   return PgGetThreadLocalJumpBuffer();
 }
 
 void YBCPgSetThreadLocalErrMsg(const void* new_msg) {
-  K2DEBUG("PgGateAPI: YBCPgSetThreadLocalErrMsg " << new_msg);
   PgSetThreadLocalErrMsg(new_msg);
 }
 
 const void* YBCPgGetThreadLocalErrMsg() {
-  K2DEBUG("PgGateAPI: YBCPgGetThreadLocalErrMsg");
   return PgGetThreadLocalErrMsg();
 }
 
 const YBCPgTypeEntity *YBCPgFindTypeEntity(int type_oid) {
-  K2DEBUG("PgGateAPI: YBCPgFindTypeEntity " << type_oid);
   return api_impl->FindTypeEntity(type_oid);
 }
 
 YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
-  K2DEBUG("PgGateAPI: YBCPgGetType");
   if (type_entity) {
     return type_entity->yb_type;
   }
@@ -1014,7 +928,6 @@ YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
 }
 
 bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {
-  K2DEBUG("PgGateAPI: YBCPgAllowForPrimaryKey");
   if (type_entity) {
     return type_entity->allow_for_primary_key;
   }
@@ -1022,11 +935,9 @@ bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {
 }
 
 void YBCAssignTransactionPriorityLowerBound(double newval, void* extra) {
-  K2DEBUG("PgGateAPI: YBCAssignTransactionPriorityLowerBound " << newval);
 }
 
 void YBCAssignTransactionPriorityUpperBound(double newval, void* extra) {
-  K2DEBUG("PgGateAPI: YBCAssignTransactionPriorityUpperBound " << newval);
 }
 
 // the following APIs are called by pg_dump.c only

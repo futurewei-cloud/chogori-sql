@@ -195,7 +195,6 @@ namespace catalog {
             if (result.clusterInfo->IsInitdbDone()) {
                 context->Commit();
                 init_db_done_.store(true, std::memory_order_relaxed);
-                K2DEBUG("InitDbDone is already true on SKV");
                 return Status::OK();
             }
 

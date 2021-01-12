@@ -134,7 +134,6 @@ Status PgDmlRead::DeleteEmptyPrimaryBinds() {
 }
 
 Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
-  K2DEBUG("Binding column " << attr_num << " for EQUAL condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondEq(attr_num, attr_value);
@@ -161,7 +160,6 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
-    K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
     ybctid_bind_ = true;
   }
 
@@ -169,7 +167,6 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr *attr_value_end) {
-  K2DEBUG("Binding column " << attr_num << " for BETWEEN condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
@@ -228,7 +225,6 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 }
 
 Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **attr_values) {
-  K2DEBUG("Binding column " << attr_num << " for IN condition");
   if (secondary_index_query_) {
     // Bind by secondary key.
     return secondary_index_query_->BindColumnCondIn(attr_num, n_attr_values, attr_values);
@@ -275,7 +271,6 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
         ybctid_bind_ = true;
       }
     }
@@ -306,7 +301,6 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
 
       if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
         CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
         ybctid_bind_ = true;
       }
     }

@@ -416,12 +416,10 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
   const TableId t_table_id = table_id.GetPgTableId();
-  K2DEBUG("Loading table descriptor for " << table_id << ", id: " << t_table_id);
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(t_table_id);
   if (cached_table == table_cache_.end()) {
-    K2DEBUG("Table cache MISS: " << table_id);
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
     if (!s.ok()) {
       K2ERROR("LoadTable: Server returns an error: " << s);
@@ -430,7 +428,6 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
     }
     table_cache_[t_table_id] = table;
   } else {
-    K2DEBUG("Table cache HIT: " << table_id);
     table = cached_table->second;
   }
 

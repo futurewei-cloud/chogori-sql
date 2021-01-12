@@ -91,7 +91,6 @@ Status PgDml::AppendTarget(PgExpr *target) {
 }
 
 Status PgDml::AppendTargetVar(PgExpr *target) {
-  K2DEBUG("Append target " << target->ToString());
   // Append to targets_.
   targets_.push_back(target);
 
@@ -154,7 +153,6 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 
   // Find column to bind.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
-  K2DEBUG("Bind column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << k2::escape(attr_value->ToString()));
 
   // Alloc the expression variable.
   std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
@@ -181,7 +179,6 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
     // YBC logic uses a virtual column ybctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
-    K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
     ybctid_bind_ = true;
   }
 
@@ -189,7 +186,6 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateBindVars() {
-  K2DEBUG("Updating bind variables");
   for (const auto &entry : expr_binds_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -211,7 +207,6 @@ Status PgDml::BindTable() {
 Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   // Find column from targeted table.
   PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
-  K2DEBUG("Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << k2::escape(attr_value->ToString()));
 
   // Alloc the expression.
   std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();
@@ -241,7 +236,6 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateAssignVars() {
-  K2DEBUG("Updating assigned PgExpr to SqlOpExpr");
   for (const auto &entry : expr_assigns_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -281,7 +275,6 @@ Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns
 }
 
 Result<bool> PgDml::FetchDataFromServer() {
-  K2DEBUG("Fetch data from SKV");
   // Get the rowsets from sql operator.
   RETURN_NOT_OK(sql_op_->GetResult(&rowsets_));
 
@@ -436,7 +429,6 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
       expr_var->setCondition(op_cond);
     }
   }
-  K2DEBUG("Finished binding PgExpr " << target->ToString() << " to " << expr_var->ToString());
 
   return Status::OK();
 }

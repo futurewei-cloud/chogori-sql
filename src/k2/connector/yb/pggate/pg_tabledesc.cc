@@ -79,15 +79,10 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
                col.type(),
                col.sorting_type());
     attr_num_map_[col.order()] = idx;
-    K2DEBUG("Table attr_num_map: [" << col.order() << "] = " << idx << " for id: " << schema.column_id(idx) << ", name: " << col.name());
   }
 
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
-
-  K2DEBUG("PgTableDesc table_id: " << table_id_ << ", ns_id: " << namespace_id_ << ", schema_version: " << schema_version_
-      << ", hash_columns: " << hash_column_num_ << ", key_columns: " << key_column_num_
-      << ", columns: " << columns_.size() << ", transactional: " << transactional_);
 }
 
 PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespace_id, bool is_transactional) : is_index_(true),
@@ -112,15 +107,10 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespa
                SQLType::Create(col.type),
                col.sorting_type);
     attr_num_map_[col.order] = idx;
-    K2DEBUG("Table attr_num_map: [" << col.order << "] = " << idx << " for id: " << col.column_id << ", name: " << col.column_name);
   }
 
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
-
-  K2DEBUG("PgTableDesc table_id: " << table_id_ << ", ns_id: " << namespace_id_ << ", schema_version: " << schema_version_
-      << ", hash_columns: " << hash_column_num_ << ", key_columns: " << key_column_num_
-      << ", columns: " << columns_.size() << ", transactional: " << transactional_);
 }
 
 Result<PgColumn *> PgTableDesc::FindColumn(int attr_num) {

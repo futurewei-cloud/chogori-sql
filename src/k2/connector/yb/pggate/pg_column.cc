@@ -97,7 +97,6 @@ namespace k2pg
     {
       if (is_primary() && bind_var_ == nullptr)
       {
-        K2DEBUG("Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
         bind_var_ = std::make_shared<SqlOpExpr>();
         write_req->key_column_values.push_back(bind_var_);
       }
@@ -112,7 +111,6 @@ namespace k2pg
         DCHECK(!desc_.is_hash() && !desc_.is_primary())
             << "Binds for primary columns should have already been allocated by AllocKeyBind()";
 
-        K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
         {
           if (write_req->ybctid_column_value == nullptr)
@@ -138,7 +136,6 @@ namespace k2pg
     {
       if (assign_var_ == nullptr)
       {
-        K2DEBUG("Allocating assign SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
         ColumnValue col;
         col.column_id = id();
         col.expr = std::make_shared<SqlOpExpr>();
@@ -153,7 +150,6 @@ namespace k2pg
     {
       if (is_primary() && bind_var_ == nullptr)
       {
-        K2DEBUG("Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
         bind_var_ = std::make_shared<SqlOpExpr>();
         read_req->key_column_values.push_back(bind_var_);
       }
@@ -170,7 +166,6 @@ namespace k2pg
         DCHECK(!desc_.is_hash() && !desc_.is_primary())
             << "Binds for primary columns should have already been allocated by AllocKeyBind()";
 
-        K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
           if (read_req->ybctid_column_value == nullptr)
           {
@@ -187,7 +182,6 @@ namespace k2pg
 
     std::shared_ptr<SqlOpCondition> PgColumn::AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req)
     {
-      K2DEBUG("Allocating binding SqlOpCondition for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
       if (bind_condition_expr_var_ == nullptr)
       {
         if (read_req->condition_expr == nullptr) {
