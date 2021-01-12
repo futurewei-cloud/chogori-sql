@@ -8,6 +8,8 @@
 extern "C" {
 std::thread k2thread;
 
+static bool inited = false;
+
 static void
 killK2App(int, unsigned long) {
     pthread_kill(k2thread.native_handle(), SIGINT);
@@ -16,7 +18,13 @@ killK2App(int, unsigned long) {
 
 // this function initializes the K2 client library and hooks it up with the k2 pg connector
 void startK2App(int argc, char** argv) {
+    if (inited) {
+        K2INFO("Skipping creating PG-K2 thread because it was already created");
+        return;
+    }
+
     K2INFO("Creating PG-K2 thread");
+    inited = true;
 
     char** argvN = (char**)malloc(argc*sizeof(char*));
     assert(argvN != NULL);
