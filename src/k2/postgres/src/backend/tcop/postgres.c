@@ -4291,6 +4291,8 @@ PostgresMain(int argc, char *argv[],
 			 const char *dbname,
 			 const char *username)
 {
+	InitK23siWorker();
+
 	// TODO(neil) Once we have our system DB, remove the following code.
 	// It is a hack to help us getting by for now.
 	for (int i = 0; i < argc; i++) {
