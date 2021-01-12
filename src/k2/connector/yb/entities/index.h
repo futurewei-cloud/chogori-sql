@@ -148,7 +148,7 @@ namespace k2pg {
                     is_unique_(is_unique),
                     columns_(std::move(columns)),
                     index_permissions_(index_permissions) {
-                    for (IndexColumn& column : columns) {
+                    for (auto& column : columns_) {
                         if (column.is_hash) {
                             hash_column_count_++;
                         } else if (column.is_range) {

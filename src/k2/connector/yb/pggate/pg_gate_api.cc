@@ -301,7 +301,7 @@ YBCStatus YBCPgNewCreateTable(const char *database_name,
 YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first) {
-  K2DEBUG("PgGateAPI: YBCPgCreateTableAddColumn " << attr_name);
+  K2DEBUG("PgGateAPI: YBCPgCreateTableAddColumn (name: " << attr_name << ", order: " << attr_num << ", is_hash: " << is_hash << ", is_range: " << is_range << ")");
   return ToYBCStatus(api_impl->CreateTableAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
@@ -462,7 +462,7 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
 YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first){
-  K2DEBUG("PgGateAPI: YBCPgCreateIndexAddColumn " << attr_name << ", " << attr_num);
+  K2DEBUG("PgGateAPI: YBCPgCreateIndexAddColumn (name: " << attr_name << ", order: " << attr_num << ", is_hash: " << is_hash << ", is_range: " << is_range << ")");
   return ToYBCStatus(api_impl->CreateIndexAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }

@@ -1210,9 +1210,15 @@ namespace catalog {
                 }
                 indexed_column_id = pair.second;
             }
-            // TODO: fix hash key and range key
+            K2DEBUG("Index column id: " << col_id << ", name: " << col_schema.name() << ", type: " << col_schema.type()->id() << ", is_primary "
+                << col_schema.is_primary() << ", is_hash: " << col_schema.is_hash() << ", order: " << col_schema.order());
+            // TODO: change all Table schema and index schema to use is_hash and is_range directly instead of is_primary
+            bool is_range = false;
+            if (col_schema.is_primary() && !col_schema.is_hash()) {
+                is_range = true;
+            }
             IndexColumn col(col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_nullable(),
-                    col_schema.is_primary(), col_schema.is_hash(), col_schema.order(), col_schema.sorting_type(), indexed_column_id);
+                    col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), indexed_column_id);
             columns.push_back(col);
         }
         IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
