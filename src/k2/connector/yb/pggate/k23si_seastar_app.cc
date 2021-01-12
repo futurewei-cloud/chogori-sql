@@ -151,17 +151,28 @@ seastar::future<> PGK2Client::_pollReadQ() {
             return seastar::make_ready_future();
         }
 
-        K2INFO("Read..." << req.key);
+        try {
         if (!req.key.partitionKey.empty()) {
             return fiter->second.read(std::move(req.key), std::move(req.collectionName))
             .then([this, &req](auto&& readResult) {
                 req.prom.set_value(std::move(readResult));
+            })
+            .handle_exception([&req] (auto&& e) {
+                req.prom.set_exception(e);
             });
         }
         return fiter->second.read(std::move(req.record))
             .then([this, &req](auto&& readResult) {
                 req.prom.set_value(std::move(readResult));
+            })
+            .handle_exception([&req] (auto&& e) {
+                req.prom.set_exception(e);
             });
+        } catch (const std::exception& e) {
+            K2WARN("Throw in pollRead: " << e.what());
+            req.prom.set_exception(std::current_exception());
+            return seastar::make_ready_future<>();
+        }
     });
 }
 
@@ -187,10 +198,19 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
             req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
+        try {
         return fiter->second.query(*req.query)
             .then([this, &req](auto&& queryResult) {
                 req.prom.set_value(std::move(queryResult));
+            })
+            .handle_exception([&req] (auto&& e) {
+                req.prom.set_exception(e);
             });
+        } catch (const std::exception& e) {
+            K2WARN("Throw in pollScanRead: " << e.what());
+            req.prom.set_exception(std::current_exception());
+            return seastar::make_ready_future<>();
+        }
     });
 }
 

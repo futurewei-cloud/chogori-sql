@@ -233,6 +233,8 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
     auto result = prom->get_future();
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
+        try {
+
         std::shared_ptr<SqlOpReadRequest> request = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -361,6 +363,11 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         response.status = K2StatusToPGStatus(scan_result.status);
         prom->set_value(K2StatusToYBStatus(scan_result.status));
+
+        } catch (const std::exception& e) {
+            K2WARN("Throw in handleReadOp: " << e.what());
+            prom->set_exception(std::current_exception());
+        }
     });
 
     return result;
@@ -373,6 +380,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
         try {
+
         std::shared_ptr<SqlOpWriteRequest> writeRequest = op->request();
         SqlOpResponse& response = op->response();
         response.skipped = false;
@@ -424,6 +432,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         K2DEBUG("K2 write status: " << writeStatus);
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToYBStatus(writeStatus));
+
         } catch (const std::exception& e) {
             K2WARN("Throw in handlewrite: " << e.what());
             prom->set_exception(std::current_exception());
