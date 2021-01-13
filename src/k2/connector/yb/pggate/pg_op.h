@@ -166,12 +166,7 @@ public:
     CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
     Result<int32_t> GetRowsAffectedCount() const;
 
-    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
-        // TODO: implement the logic to create new operations by providing a given list of row ids, i.e., ybctids
-        // This is tracked by the following issue:
-        //      https://github.com/futurewei-cloud/chogori-sql/issues/31
-        return Status::OK();
-    }
+    virtual CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) = 0;
 
 protected:
     // Populate Protobuf requests using the collected informtion for this DocDB operator.
@@ -285,6 +280,11 @@ private:
     // Reset pgsql operators before reusing them with new arguments / inputs from Postgres.
     CHECKED_STATUS ResetInactivePgsqlOps();
 
+    // initialize op by partitions
+    CHECKED_STATUS InitializeRowIdOperators();
+
+    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) override;
+
     // Analyze options and pick the appropriate prefetch limit.
     void SetRequestPrefetchLimit();
 
@@ -335,6 +335,8 @@ private:
 
     // Create requests using template_op (write_op).
     CHECKED_STATUS CreateRequests() override;
+
+    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) override;
 
     // Get WRITE operator for a specific operator index in pgsql_ops_.
     PgWriteOpTemplate *GetWriteOp(int op_index) {

@@ -529,6 +529,52 @@ Status PgReadOp::CreateRequests() {
     return Status::OK();
 }
 
+Status PgReadOp::InitializeRowIdOperators() {
+    // we only support one partition for now
+    // keep this logic so that we could support multiple partitions in the future
+    int op_count = table_desc_->GetPartitionCount();
+
+    if (batch_row_orders_.size() == 0) {
+        // First batch:
+        // - Create operators.
+        // - Allocate row orders for each tablet server.
+        // - Protobuf fields in requests are not yet set so not needed to be cleared.
+        RETURN_NOT_OK(ClonePgsqlOps(op_count));
+        batch_row_orders_.resize(op_count);
+    } else {
+        // Second and later batches: Reuse all state variables.
+        // - Clear row orders for this batch to be set later.
+        // - Clear protobuf fields ybctids and others before reusing them in this batch.
+        RETURN_NOT_OK(ResetInactivePgsqlOps());
+    }
+    return Status::OK();
+}
+
+Status PgReadOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
+    // This function is called only when ybctids were returned from INDEX, for example,
+    //    SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX);
+
+    RETURN_NOT_OK(InitializeRowIdOperators());
+    // Begin a batch of ybctids.
+    end_of_data_ = false;
+
+    // we only have one partition so far
+    PgReadOpTemplate *read_op = GetReadOp(0);
+    read_op->set_active(true);
+    std::shared_ptr<SqlOpReadRequest> request = read_op->request();
+    // populate ybctid values.
+    for (const Slice& ybctid : ybctids) {
+        // use one batch for now, could split into multiple batches later for optimization
+        request->ybctid_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(ybctid)));
+    }
+
+    // Done creating request
+    MoveInactiveOpsOutside();
+    request_population_completed_ = true;
+
+    return Status::OK();
+}
+
 Status PgReadOp::ProcessResponsePagingState() {
     // For each read_op, set up its request for the next batch of data or make it in-active.
     bool has_more_data = false;
@@ -652,6 +698,10 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
     end_of_data_ = true;
     K2DEBUG("Received response for request " << this);
     return result;
+}
+
+Status PgWriteOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
+    return STATUS(NotSupported, "PopulateDmlByRowIdOps() is not supported for PgWriteOp");
 }
 
 Status PgWriteOp::CreateRequests() {
