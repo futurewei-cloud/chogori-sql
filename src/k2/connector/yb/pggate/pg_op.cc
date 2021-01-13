@@ -562,11 +562,14 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
     PgReadOpTemplate *read_op = GetReadOp(0);
     read_op->set_active(true);
     std::shared_ptr<SqlOpReadRequest> request = read_op->request();
+
     // populate ybctid values.
+    request->ybctid_column_values.clear();
     for (const Slice& ybctid : ybctids) {
         // use one batch for now, could split into multiple batches later for optimization
         request->ybctid_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(ybctid)));
     }
+    K2DEBUG("Populated " << request->ybctid_column_values.size() << " ybctids in op read request for table " << request->table_id);
 
     // Done creating request
     MoveInactiveOpsOutside();

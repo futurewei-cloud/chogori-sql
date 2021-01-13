@@ -225,7 +225,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
             status = std::move(read.status);
         } else {
             // If any read failed, abort and fail the batch
-            K2ERROR("Failed to read for " << YBCTIDToString(ybctid_column_value) << " due to " << read.status.message);
+            K2ERROR("Failed to read for " << k2::escape(YBCTIDToString(ybctid_column_value)) << " due to " << read.status.message);
             status = std::move(read.status);
             break;
         }
