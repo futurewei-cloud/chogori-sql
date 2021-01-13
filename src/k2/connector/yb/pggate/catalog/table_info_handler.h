@@ -232,7 +232,7 @@ class TableInfoHandler : public BaseHandler {
 
     std::vector<k2::dto::SKVRecord> DeriveIndexColumnRecords(std::string collection_name, const IndexInfo& index, const Schema& base_tablecolumn_schema);
 
-    k2::dto::FieldType ToK2Type(std::shared_ptr<SQLType> type);
+    k2::dto::FieldType ToK2Type(DataType type);
 
     DataType ToSqlType(k2::dto::FieldType type);
 
