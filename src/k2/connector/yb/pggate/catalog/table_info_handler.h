@@ -222,7 +222,7 @@ class TableInfoHandler : public BaseHandler {
 
     std::vector<std::shared_ptr<k2::dto::Schema>> DeriveIndexSchemas(std::shared_ptr<TableInfo> table);
 
-    std::shared_ptr<k2::dto::Schema> DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema);
+    std::shared_ptr<k2::dto::Schema> DeriveIndexSchema(const IndexInfo& index_info);
 
     k2::dto::SKVRecord DeriveTableHeadRecord(std::string collection_name, std::shared_ptr<TableInfo> table);
 

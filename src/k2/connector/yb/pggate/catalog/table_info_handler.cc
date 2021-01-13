@@ -331,7 +331,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::
 CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info) {
     CreateUpdateSKVSchemaResult response;
-    std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info, table->schema());
+    std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info);
     response.status = CreateSKVSchema(collection_name, index_schema);
     return response;
 }
@@ -596,12 +596,12 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
     std::vector<std::shared_ptr<k2::dto::Schema>> response;
     const IndexMap& index_map = table->secondary_indexes();
     for (const auto& pair : index_map) {
-        response.push_back(DeriveIndexSchema(pair.second, table->schema()));
+        response.push_back(DeriveIndexSchema(pair.second));
     }
     return response;
 }
 
-std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
+std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
