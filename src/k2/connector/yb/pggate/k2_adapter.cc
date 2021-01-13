@@ -322,9 +322,8 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             }
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
-            bool existYbctids = request->ybctid_column_values.size() > 0;
-            auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request, existYbctids);
-            auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request, existYbctids);
+            auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request, false);
+            auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request, false);
 
             if (!startStatus.ok() || !endStatus.ok()) {
                 // An error here means the schema could not be retrieved, which shouldn't happen
