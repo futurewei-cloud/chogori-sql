@@ -331,7 +331,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::
 CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info) {
     CreateUpdateSKVSchemaResult response;
-    std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info, table->schema());
+    std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info);
     response.status = CreateSKVSchema(collection_name, index_schema);
     return response;
 }
@@ -561,7 +561,7 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVTableSchema(std::sha
     uint32_t count = 2;
     for (ColumnSchema col_schema : table->schema().columns()) {
         k2::dto::SchemaField field;
-        field.type = ToK2Type(col_schema.type());
+        field.type = ToK2Type(col_schema.type()->id());
         field.name = col_schema.name();
         switch (col_schema.sorting_type()) {
             case ColumnSchema::SortingType::kAscending: {
@@ -596,12 +596,12 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
     std::vector<std::shared_ptr<k2::dto::Schema>> response;
     const IndexMap& index_map = table->secondary_indexes();
     for (const auto& pair : index_map) {
-        response.push_back(DeriveIndexSchema(pair.second, table->schema()));
+        response.push_back(DeriveIndexSchema(pair.second));
     }
     return response;
 }
 
-std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info, const Schema& base_tablecolumn_schema) {
+std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
     schema->name = index_info.table_id();
     schema->version = index_info.version();
@@ -611,39 +611,31 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
     for (IndexColumn indexcolumn_schema : index_info.columns()) {
         k2::dto::SchemaField field;
         field.name = indexcolumn_schema.column_name;
-        if (indexcolumn_schema.indexed_column_id != -1) {
-            int column_idx = base_tablecolumn_schema.find_column_by_id(indexcolumn_schema.indexed_column_id);
-            if (column_idx == Schema::kColumnNotFound) {
-                throw std::invalid_argument("Cannot find base column " + indexcolumn_schema.indexed_column_id);
-            }
-            const ColumnSchema& col_schema = base_tablecolumn_schema.column(column_idx);
-            field.type = ToK2Type(col_schema.type());
-            switch (col_schema.sorting_type()) {
-                case ColumnSchema::SortingType::kAscending: {
-                    field.descending = false;
-                    field.nullLast = false;
-                } break;
-                case ColumnSchema::SortingType::kDescending: {
-                    field.descending = true;
-                    field.nullLast = false;
-                } break;
-                case ColumnSchema::SortingType::kAscendingNullsLast: {
-                    field.descending = false;
-                    field.nullLast = true;
-                } break;
-                case ColumnSchema::SortingType::kDescendingNullsLast: {
-                    field.descending = true;
-                    field.nullLast = true;
-                } break;
-                default: break;
-            }
-        } else {
-            // extra index column such as "ybuniqueidxkeysuffix" or "ybidxbasectid"
-            field.type = k2::dto::FieldType::STRING;
+        field.type = ToK2Type(indexcolumn_schema.type);
+        switch (indexcolumn_schema.sorting_type) {
+            case ColumnSchema::SortingType::kAscending: {
+                field.descending = false;
+                field.nullLast = false;
+            } break;
+            case ColumnSchema::SortingType::kDescending: {
+                field.descending = true;
+                field.nullLast = false;
+            } break;
+            case ColumnSchema::SortingType::kAscendingNullsLast: {
+                field.descending = false;
+                field.nullLast = true;
+            } break;
+            case ColumnSchema::SortingType::kDescendingNullsLast: {
+                field.descending = true;
+                field.nullLast = true;
+            } break;
+            default: break;
         }
         schema->fields.push_back(field);
-        // all index columns should be treated as primary keys
-        schema->partitionKeyFields.push_back(count);
+        // use the keys from PG as the partition keys
+        if (indexcolumn_schema.is_hash || indexcolumn_schema.is_range) {
+            schema->partitionKeyFields.push_back(count);
+        }
         count++;
     }
 
@@ -780,9 +772,9 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(std::
     return response;
 }
 
-k2::dto::FieldType TableInfoHandler::ToK2Type(std::shared_ptr<SQLType> type) {
+k2::dto::FieldType TableInfoHandler::ToK2Type(DataType type) {
     k2::dto::FieldType field_type = k2::dto::FieldType::NOT_KNOWN;
-    switch (type->id()) {
+    switch (type) {
         case DataType::UINT8: {
             field_type = k2::dto::FieldType::INT64T;
         } break;
@@ -829,7 +821,7 @@ k2::dto::FieldType TableInfoHandler::ToK2Type(std::shared_ptr<SQLType> type) {
             field_type = k2::dto::FieldType::DECIMAL64;
         } break;
         default:
-            throw std::invalid_argument("Unsupported type " + type->id());
+            throw std::invalid_argument("Unsupported type " + type);
     }
     return field_type;
 }
