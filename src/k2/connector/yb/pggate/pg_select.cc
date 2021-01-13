@@ -149,10 +149,8 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
   return Status::OK();
 }
 
-// YBC is using the hidden column ybctid as the row id in a string/binary format
-// we could use the same concept, or we need to calculate the rowid from primary keys
-// in the same way that we build the SKV doc key
-Result<bool> PgSelectIndex::FetchRowIdBatch(std::vector<Slice>& ybctids) {
+// From a index table resut set, get the corresponding base table ybctids (RowIds)
+Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& ybctids) {
   // Keep reading until we get one batch of ybctids or EOF.
   while (!VERIFY_RESULT(GetNextRowIdBatch())) {
     if (!VERIFY_RESULT(FetchDataFromServer())) {
@@ -163,8 +161,13 @@ Result<bool> PgSelectIndex::FetchRowIdBatch(std::vector<Slice>& ybctids) {
 
   // Got the next batch of ybctids.
   DCHECK(!rowsets_.empty());
-  const std::vector<Slice>& selected = rowsets_.front().ybctids();
-  ybctids.insert(std::end(ybctids), std::make_move_iterator(selected.begin()), std::make_move_iterator(selected.end()));
+  for (k2::dto::SKVRecord& record : rowsets_.front().data_) {
+    std::optional<k2::String> baseybctid = record.deserializeFields<k2::String>("ybidxbasectid");
+    if (!baseybctid.has_value()) {
+      CHECK((baseybctid.has_value()) << "baseybctid for index row was null");
+    }
+    ybctids.emplace_back(*baseybctid);
+  }
   return true;
 }
 

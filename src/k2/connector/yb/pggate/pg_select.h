@@ -101,8 +101,8 @@ class PgSelectIndex : public PgDmlRead {
 
   CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
 
-  // The output parameter "ybctids", where ybctid is the hidden column that is used as row id.
-  Result<bool> FetchRowIdBatch(std::vector<Slice>& ybctids);
+  // The output parameter "ybidxbasectid" of index rows
+  Result<bool> FetchBaseRowIdBatch(std::vector<std::string>& ybctids);
 
   // Get next batch of row ids from either PgGate::cache or server.
   Result<bool> GetNextRowIdBatch();
