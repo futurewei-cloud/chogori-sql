@@ -227,9 +227,9 @@ namespace gate {
         TableId table_id;
         // K2 SKV schema version
         uint64_t schema_version;
-        // One of either key_column_values or ybctid_column_value
+        // One of either key_column_values or ybctid_column_values
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
-        std::shared_ptr<SqlOpExpr> ybctid_column_value;
+        std::vector<std::shared_ptr<SqlOpExpr>> ybctid_column_values;
         // For select using local secondary index: this request selects the ybbasectids to fetch the rows
         // in place of the primary key above.
         std::shared_ptr<SqlOpReadRequest> index_request;
