@@ -550,7 +550,7 @@ Status PgReadOp::InitializeRowIdOperators() {
     return Status::OK();
 }
 
-Status PgReadOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
+Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     // This function is called only when ybctids were returned from INDEX, for example,
     //    SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX);
 
@@ -565,7 +565,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
 
     // populate ybctid values.
     request->ybctid_column_values.clear();
-    for (const Slice& ybctid : ybctids) {
+    for (const std::string& ybctid : ybctids) {
         // use one batch for now, could split into multiple batches later for optimization
         request->ybctid_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(ybctid)));
     }
@@ -703,7 +703,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
     return result;
 }
 
-Status PgWriteOp::PopulateDmlByRowIdOps(const vector<Slice>& ybctids) {
+Status PgWriteOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     return STATUS(NotSupported, "PopulateDmlByRowIdOps() is not supported for PgWriteOp");
 }
 

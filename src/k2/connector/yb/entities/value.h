@@ -51,12 +51,6 @@ public:
       UNKNOWN
   };
 
-  //SqlValue(ValueType type, Data data, bool is_null) {
-  //    type_ = type;
-  //    data_ = data;
-  //    null_value_ = is_null;
-  //}
-
   SqlValue(bool b) {
       type_ = ValueType::BOOL;
       data_.bool_val_ = b;
@@ -84,6 +78,12 @@ public:
   SqlValue(yb::Slice s) {
       type_ = ValueType::SLICE;
       data_.slice_val_ = std::string(s.cdata(), s.size());
+      null_value_ = false;
+  }
+
+  SqlValue(std::string s) {
+      type_ = ValueType::SLICE;
+      data_.slice_val_ = std::move(s);
       null_value_ = false;
   }
 

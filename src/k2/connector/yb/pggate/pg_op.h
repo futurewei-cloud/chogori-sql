@@ -137,6 +137,8 @@ private :
 
     PgOpResult(const PgOpResult &) = delete;
     PgOpResult& operator=(const PgOpResult&) = delete;
+
+    friend class PgSelectIndex;
 };
 
 class PgOp : public std::enable_shared_from_this<PgOp> {
@@ -166,7 +168,7 @@ public:
     CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
     Result<int32_t> GetRowsAffectedCount() const;
 
-    virtual CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) = 0;
+    virtual CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) = 0;
 
 protected:
     // Populate Protobuf requests using the collected informtion for this DocDB operator.
@@ -283,7 +285,7 @@ private:
     // initialize op by partitions
     CHECKED_STATUS InitializeRowIdOperators();
 
-    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) override;
+    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) override;
 
     // Analyze options and pick the appropriate prefetch limit.
     void SetRequestPrefetchLimit();
@@ -336,7 +338,7 @@ private:
     // Create requests using template_op (write_op).
     CHECKED_STATUS CreateRequests() override;
 
-    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<Slice>& ybctids) override;
+    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) override;
 
     // Get WRITE operator for a specific operator index in pgsql_ops_.
     PgWriteOpTemplate *GetWriteOp(int op_index) {
