@@ -93,27 +93,26 @@ public:
 
   static SqlValue* CopySlice(yb::Slice s);
 
-  std::string ToString() {
-    std::ostringstream os;
-    os << "{type: " << type_ << ", isNull: " << null_value_ << ", value: ";
-    if (null_value_) {
+  friend std::ostream& operator<<(std::ostream& os, const SqlValue& sql_value) {
+    os << "{type: " << sql_value.type_ << ", isNull: " << sql_value.null_value_ << ", value: ";
+    if (sql_value.null_value_) {
         os << "NULL";
     } else {
-        switch (type_) {
+        switch (sql_value.type_) {
             case ValueType::BOOL: {
-                os << data_.bool_val_;
+                os << sql_value.data_.bool_val_;
             } break;
             case ValueType::INT: {
-                os << data_.int_val_;
+                os << sql_value.data_.int_val_;
             } break;
             case ValueType::FLOAT: {
-                os << data_.float_val_;
+                os << sql_value.data_.float_val_;
             } break;
             case ValueType::DOUBLE: {
-                os << data_.double_val_;
+                os << sql_value.data_.double_val_;
             } break;
             case ValueType::SLICE: {
-                os << data_.slice_val_;
+                os << sql_value.data_.slice_val_;
             } break;
             default: {
                 os << "Unknown";
@@ -121,7 +120,7 @@ public:
         }
     }
     os << "}";
-    return os.str();
+    return os;
   }
 
   bool IsNull() const {

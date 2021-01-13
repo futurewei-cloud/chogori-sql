@@ -91,7 +91,7 @@ Status PgDml::AppendTarget(PgExpr *target) {
 }
 
 Status PgDml::AppendTargetVar(PgExpr *target) {
-  K2DEBUG("Append target " << target->ToString());
+  K2DEBUG("Append target " << (*target));
   // Append to targets_.
   targets_.push_back(target);
 
@@ -154,7 +154,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 
   // Find column to bind.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
-  K2DEBUG("Bind column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << k2::escape(attr_value->ToString()));
+  K2DEBUG("Bind column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << (*attr_value));
 
   // Alloc the expression variable.
   std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
@@ -211,7 +211,7 @@ Status PgDml::BindTable() {
 Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   // Find column from targeted table.
   PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
-  K2DEBUG("Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << k2::escape(attr_value->ToString()));
+  K2DEBUG("Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << (*attr_value));
 
   // Alloc the expression.
   std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();
@@ -436,7 +436,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
       expr_var->setCondition(op_cond);
     }
   }
-  K2DEBUG("Finished binding PgExpr " << target->ToString() << " to " << expr_var->ToString());
+  K2DEBUG("Finished binding PgExpr " << (*target) << " to " << (*expr_var));
 
   return Status::OK();
 }

@@ -253,9 +253,10 @@ namespace sql {
 
         //------------------------------------------------------------------------------------------------
         // Logging supports.
-        const std::string ToString() const;
-        void ToString(std::stringstream& os) const;
         static const std::string ToDataTypeString(const DataType& datatype);
+
+        friend std::ostream& operator<<(std::ostream& os, const DataType& type);
+        friend std::ostream& operator<<(std::ostream& os, const SQLType& sql_type);
 
         //------------------------------------------------------------------------------------------------
         // static methods

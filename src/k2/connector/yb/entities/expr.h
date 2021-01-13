@@ -97,6 +97,34 @@ class PgExpr {
         PG_EXPR_GENERATE_ROWID,
     };
 
+    friend std::ostream& operator<<(std::ostream& os, const Opcode& opcode) {
+        switch(opcode) {
+            case Opcode::PG_EXPR_CONSTANT: return os << "PG_EXPR_CONSTANT";
+            case Opcode::PG_EXPR_COLREF: return os << "PG_EXPR_COLREF";
+            case Opcode::PG_EXPR_VARIABLE: return os << "PG_EXPR_VARIABLE";
+            case Opcode::PG_EXPR_NOT: return os << "PG_EXPR_NOT";
+            case Opcode::PG_EXPR_EQ: return os << "PG_EXPR_EQ";
+            case Opcode::PG_EXPR_NE: return os << "PG_EXPR_NE";
+            case Opcode::PG_EXPR_GE: return os << "PG_EXPR_GE";
+            case Opcode::PG_EXPR_GT: return os << "PG_EXPR_GT";
+            case Opcode::PG_EXPR_LE: return os << "PG_EXPR_LE";
+            case Opcode::PG_EXPR_LT: return os << "PG_EXPR_LT";
+            case Opcode::PG_EXPR_EXISTS: return os << "PG_EXPR_EXISTS";
+            case Opcode::PG_EXPR_AND: return os << "PG_EXPR_AND";
+            case Opcode::PG_EXPR_OR: return os << "PG_EXPR_OR";
+            case Opcode::PG_EXPR_IN: return os << "PG_EXPR_IN";
+            case Opcode::PG_EXPR_BETWEEN: return os << "PG_EXPR_BETWEEN";
+            case Opcode::PG_EXPR_AVG: return os << "PG_EXPR_AVG";
+            case Opcode::PG_EXPR_SUM: return os << "PG_EXPR_SUM";
+            case Opcode::PG_EXPR_COUNT: return os << "PG_EXPR_COUNT";
+            case Opcode::PG_EXPR_MAX: return os << "PG_EXPR_MAX";
+            case Opcode::PG_EXPR_MIN: return os << "PG_EXPR_MIN";
+            case Opcode::PG_EXPR_EVAL_EXPR_CALL: return os << "PG_EXPR_EVAL_EXPR_CALL";
+            case Opcode::PG_EXPR_GENERATE_ROWID: return os << "PG_EXPR_GENERATE_ROWID";
+            default: return os << "UNKNOWN";
+        }
+    }
+
     typedef std::shared_ptr<PgExpr> SharedPtr;
 
     explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity);
@@ -106,8 +134,6 @@ class PgExpr {
     explicit PgExpr(const char *opname, const YBCPgTypeEntity *type_entity);
 
     virtual ~PgExpr();
-
-    virtual std::string ToString() = 0;
 
     Opcode opcode() const {
         return opcode_;
@@ -155,6 +181,11 @@ class PgExpr {
     static CHECKED_STATUS CheckOperatorName(const char *name);
     static Opcode NameToOpcode(const char *name);
 
+    friend std::ostream& operator<<(std::ostream& os, const PgExpr& expr) {
+      os << "(PgExpr: Opcode: " << expr.opcode_ << ", type: " << expr.type_entity_->yb_type << ")";
+      return os;
+    }
+
     protected:
     Opcode opcode_;
     const PgTypeEntity *type_entity_;
@@ -188,10 +219,9 @@ class PgConstant : public PgExpr {
       return &value_;
   }
 
-  std::string ToString() override {
-    std::ostringstream os;
-    os << "(PgConst: " << value_.ToString() << ")";
-    return os.str();
+  friend std::ostream& operator<<(std::ostream& os, const PgConstant& expr) {
+      os << "(PgConst: " << expr.value_ << ")";
+      return os;
   }
 
   private:
@@ -221,10 +251,9 @@ class PgColumnRef : public PgExpr {
 
   bool is_ybbasetid() const override;
 
-  std::string ToString() override {
-    std::ostringstream os;
-    os << "(PgRef: attr_name: " << attr_name_ << ", attr_num: " << attr_num_ << ")";
-    return os.str();
+  friend std::ostream& operator<<(std::ostream& os, const PgColumnRef& expr) {
+      os << "(PgColumnRef: attr_name: " << expr.attr_name_ << ", attr_num: " << expr.attr_num_ << ")";
+      return os;
   }
 
  private:
@@ -248,14 +277,13 @@ class PgOperator : public PgExpr {
       return args_;
   }
 
-  std::string ToString() override {
-      std::ostringstream os;
-      os << "(PgOperator: opname: " << opname_ << ", args_num: " << args_.size() << ", args:[";
-      for (PgExpr* expr : args_) {
-        os << expr->ToString() << ",";
+  friend std::ostream& operator<<(std::ostream& os, const PgOperator& expr) {
+      os << "(PgOperator: opcode: " << expr.opcode_ << ", opname: " << expr.opname_ << ", args_num: " << expr.args_.size() << ", args:[";
+      for (PgExpr* arg : expr.args_) {
+        os << (*arg) << ",";
       }
       os << "])";
-      return os.str();
+      return os;
   }
 
   private:
