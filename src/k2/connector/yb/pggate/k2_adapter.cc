@@ -215,17 +215,23 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     SqlOpResponse& response = op->response();
 
     k2::Status status;
+    std::vector<std::future<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
         k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(ybctid_column_value), .rangeKey=""};
-        k2::ReadResult<k2::SKVRecord> read = k23SITxn->read(std::move(key), request->namespace_id).get();
+        result_futures.push_back(k23SITxn->read(std::move(key), request->namespace_id));
+    }
 
+    int idx = 0;
+    for (auto& result_future : result_futures) {
+        k2::ReadResult<k2::SKVRecord> read = result_future.get();
         if (read.status.is2xxOK()) {
             op->mutable_rows_data()->emplace_back(std::move(read.value));
             // use the last read response as the batch response
             status = std::move(read.status);
+            idx++;
         } else {
             // If any read failed, abort and fail the batch
-            K2ERROR("Failed to read for " << k2::escape(YBCTIDToString(ybctid_column_value)) << " due to " << read.status.message);
+            K2ERROR("Failed to read for " << k2::escape(YBCTIDToString(request->ybctid_column_values[idx])) << " due to " << read.status.message);
             status = std::move(read.status);
             break;
         }
