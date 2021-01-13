@@ -162,9 +162,9 @@ Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& ybctid
   // Got the next batch of ybctids.
   DCHECK(!rowsets_.empty());
   for (k2::dto::SKVRecord& record : rowsets_.front().data_) {
-    std::optional<k2::String> baseybctid = record.deserializeFields<k2::String>("ybidxbasectid");
+    std::optional<k2::String> baseybctid = record.deserializeField<k2::String>("ybidxbasectid");
     if (!baseybctid.has_value()) {
-      CHECK((baseybctid.has_value()) << "baseybctid for index row was null");
+      CHECK(baseybctid.has_value()) << "baseybctid for index row was null";
     }
     ybctids.emplace_back(*baseybctid);
   }
