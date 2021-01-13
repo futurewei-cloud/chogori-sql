@@ -620,7 +620,7 @@ Status PgReadOp::ResetInactivePgsqlOps() {
     // Clear the existing requests.
     for (int op_index = active_op_count_; op_index < pgsql_ops_.size(); op_index++) {
         std::shared_ptr<SqlOpReadRequest> read_req = GetReadOp(op_index)->request();
-        read_req->ybctid_column_value = nullptr;
+        read_req->ybctid_column_values.clear();
         read_req->paging_state = nullptr;
     }
 

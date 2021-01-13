@@ -207,24 +207,33 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
     return Status::OK();
 }
 
-// Helper function for handleReadOp when ybctid is set in the request
-void K2Adapter::handleSingleKeyRead(std::shared_ptr<K23SITxn> k23SITxn,
+// Helper function for handleReadOp when a vector of ybctids are set in the request
+void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                                     std::shared_ptr<PgReadOpTemplate> op,
                                     std::shared_ptr<std::promise<Status>> prom) {
-
     std::shared_ptr<SqlOpReadRequest> request = op->request();
     SqlOpResponse& response = op->response();
 
-    k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(*request), .rangeKey=""};
-    k2::ReadResult<k2::SKVRecord> read = k23SITxn->read(std::move(key), request->namespace_id).get();
+    k2::Status status;
+    for (auto& ybctid_column_value : request->ybctid_column_values) {
+        k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(ybctid_column_value), .rangeKey=""};
+        k2::ReadResult<k2::SKVRecord> read = k23SITxn->read(std::move(key), request->namespace_id).get();
 
-    response.paging_state = nullptr;
-    if (read.status.is2xxOK()) {
-        op->mutable_rows_data()->emplace_back(std::move(read.value));
+        if (read.status.is2xxOK()) {
+            op->mutable_rows_data()->emplace_back(std::move(read.value));
+            // use the last read response as the batch response
+            status = std::move(read.status);
+        } else {
+            // If any read failed, abort and fail the batch
+            K2ERROR("Failed to read for " << YBCTIDToString(ybctid_column_value) << " due to " << read.status.message);
+            status = std::move(read.status);
+            break;
+        }
     }
 
-    response.status = K2StatusToPGStatus(read.status);
-    prom->set_value(K2StatusToYBStatus(read.status));
+    response.paging_state = nullptr;
+    response.status = K2StatusToPGStatus(status);
+    prom->set_value(K2StatusToYBStatus(status));
 }
 
 std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
@@ -239,9 +248,9 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         SqlOpResponse& response = op->response();
         response.skipped = false;
 
-        if (request->ybctid_column_value) {
+        if (request->ybctid_column_values.size() > 0) {
             // TODO SKV doesn't support ybctid_column_value on query yet so no projection or filtering
-            return handleSingleKeyRead(k23SITxn, op, prom);
+            return handleReadByRowIds(k23SITxn, op, prom);
         }
 
         std::shared_ptr<k2::Query> scan = nullptr;
@@ -402,7 +411,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
         bool rejectIfExists = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
         // UDPATE only
-        std::string cachedKey = YBCTIDToString(*writeRequest); // aka ybctid or rowid
+        std::string cachedKey = YBCTIDToString(writeRequest->ybctid_column_value); // aka ybctid or rowid
 
         // populate the data, fieldsForUpdate is only relevant for UPDATE
         std::vector<ColumnValue>& values = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE
@@ -562,7 +571,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     // in key_column_values in the request
 
     if (request->ybctid_column_value) {
-        return YBCTIDToString(*request);
+        return YBCTIDToString(request->ybctid_column_value);
     }
 
     auto [record, status] = MakeSKVRecordWithKeysSerialized(*request);
@@ -639,8 +648,42 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
     }
 }
 
-template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool ignoreYBCTID) {
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpReadRequest& request, bool ignoreYBCTID) {
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
+                                                                  request.schema_version);
+    // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
+    // cross-thread traffic
+    k2::GetSchemaResult schema_result = schema_f.get();
+    if (!schema_result.status.is2xxOK()) {
+        return std::make_pair(k2::dto::SKVRecord(), K2StatusToYBStatus(schema_result.status));
+    }
+
+    std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
+    k2::dto::SKVRecord record(request.namespace_id, schema);
+
+    if (request.ybctid_column_values.size() > 0 && !ignoreYBCTID) {
+        // Using a pre-stored and pre-serialized key, just need to skip key fields
+        // Note, not using range keys for SQL
+        for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
+            record.skipNext();
+        }
+    } else {
+        // Serialize key data into SKVRecord
+        record.serializeNext<k2::String>(request.table_id);
+        record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+        for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
+            if (!expr->isValueType()) {
+                throw std::logic_error("Non value type in key_column_values");
+            }
+
+            K2Adapter::SerializeValueToSKVRecord(*(expr->getValue()), record);
+        }
+    }
+
+    return std::make_pair(std::move(record), Status());
+}
+
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request, bool ignoreYBCTID) {
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
@@ -704,21 +747,20 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
     return fieldsForUpdate;
 }
 
-template <class T> // Either SqlOpWriteRequest or SqlOpReadRequest
-std::string K2Adapter::YBCTIDToString(T& request) {
-    if (!request.ybctid_column_value) {
+std::string K2Adapter::YBCTIDToString(std::shared_ptr<SqlOpExpr> ybctid_column_value) {
+    if (!ybctid_column_value) {
         return "";
     }
 
-    if (!request.ybctid_column_value->isValueType()) {
+    if (!ybctid_column_value->isValueType()) {
         K2WARN("ybctid_column_value value is not a Slice");
-        throw std::logic_error("Non value type in ybctid_column_value");
+        throw std::invalid_argument("Non value type in ybctid_column_value");
     }
 
-    std::shared_ptr<SqlValue> value = request.ybctid_column_value->getValue();
+    std::shared_ptr<SqlValue> value = ybctid_column_value->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
         K2WARN("ybctid_column_value value is not a Slice");
-        throw std::logic_error("ybctid_column_value value is not a Slice");
+        throw std::invalid_argument("ybctid_column_value value is not a Slice");
     }
 
     return value->data_.slice_val_;

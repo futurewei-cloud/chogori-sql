@@ -140,7 +140,8 @@ namespace gate {
        newRequest->table_id = table_id;
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;
-       newRequest->ybctid_column_value = ybctid_column_value;
+       // copy for now, should we just use a new empty vector?
+       newRequest->ybctid_column_values = ybctid_column_values;
        newRequest->targets = targets;
        newRequest->where_expr = where_expr;
        newRequest->condition_expr = condition_expr;
