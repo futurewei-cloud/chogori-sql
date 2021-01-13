@@ -86,8 +86,8 @@ Status PgSelect::Prepare() {
   PrepareBinds();
 
   // Preparation complete.
-  sql_op_ = sql_op;  
-  
+  sql_op_ = sql_op;
+
   return Status::OK();
 }
 
@@ -99,7 +99,7 @@ Status PgSelect::PrepareSecondaryIndex() {
 
   // Prepare subquery. When index_req is not null, it is part of 'this' SELECT request. When it
   // is nullptr, the subquery will create its own sql_op_ to run a separate read request.
-  return secondary_index_query_->PrepareSubquery(nullptr); 
+  return secondary_index_query_->PrepareSubquery(nullptr);
 }
 
 PgSelectIndex::PgSelectIndex(std::shared_ptr<PgSession> pg_session,
@@ -150,7 +150,7 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
 }
 
 // YBC is using the hidden column ybctid as the row id in a string/binary format
-// we could use the same concept, or we need to calculate the rowid from primary keys 
+// we could use the same concept, or we need to calculate the rowid from primary keys
 // in the same way that we build the SKV doc key
 Result<bool> PgSelectIndex::FetchRowIdBatch(std::vector<Slice>& ybctids) {
   // Keep reading until we get one batch of ybctids or EOF.

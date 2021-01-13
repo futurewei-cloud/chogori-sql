@@ -316,8 +316,9 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             }
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
-            auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request);
-            auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request);
+            bool existYbctids = request->ybctid_column_values.size() > 0;
+            auto [startRecord, startStatus] = MakeSKVRecordWithKeysSerialized(*request, existYbctids);
+            auto [endRecord, endStatus] = MakeSKVRecordWithKeysSerialized(*request, existYbctids);
 
             if (!startStatus.ok() || !endStatus.ok()) {
                 // An error here means the schema could not be retrieved, which shouldn't happen
@@ -399,7 +400,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
 
         bool ignoreYBCTID = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE;
-        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, ignoreYBCTID);
+        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, writeRequest->ybctid_column_value != nullptr, ignoreYBCTID);
         if (!status.ok()) {
             response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
             response.rows_affected_count = 0;
@@ -574,7 +575,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
         return YBCTIDToString(request->ybctid_column_value);
     }
 
-    auto [record, status] = MakeSKVRecordWithKeysSerialized(*request);
+    auto [record, status] = MakeSKVRecordWithKeysSerialized(*request, request->ybctid_column_value != nullptr);
     if (!status.ok()) {
         throw std::runtime_error("MakeSKVRecordWithKeysSerialized failed for GetRowId");
     }
@@ -648,7 +649,8 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
     }
 }
 
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpReadRequest& request, bool ignoreYBCTID) {
+template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
+std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool existYbctids, bool ignoreYBCTID) {
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
@@ -661,7 +663,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
     k2::dto::SKVRecord record(request.namespace_id, schema);
 
-    if (request.ybctid_column_values.size() > 0 && !ignoreYBCTID) {
+    if (existYbctids && !ignoreYBCTID) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
@@ -682,42 +684,6 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
 
     return std::make_pair(std::move(record), Status());
 }
-
-std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(SqlOpWriteRequest& request, bool ignoreYBCTID) {
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
-                                                                  request.schema_version);
-    // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
-    // cross-thread traffic
-    k2::GetSchemaResult schema_result = schema_f.get();
-    if (!schema_result.status.is2xxOK()) {
-        return std::make_pair(k2::dto::SKVRecord(), K2StatusToYBStatus(schema_result.status));
-    }
-
-    std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
-    k2::dto::SKVRecord record(request.namespace_id, schema);
-
-    if (request.ybctid_column_value && !ignoreYBCTID) {
-        // Using a pre-stored and pre-serialized key, just need to skip key fields
-        // Note, not using range keys for SQL
-        for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
-            record.skipNext();
-        }
-    } else {
-        // Serialize key data into SKVRecord
-        record.serializeNext<k2::String>(request.table_id);
-        record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
-        for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
-            if (!expr->isValueType()) {
-                throw std::logic_error("Non value type in key_column_values");
-            }
-
-            K2Adapter::SerializeValueToSKVRecord(*(expr->getValue()), record);
-        }
-    }
-
-    return std::make_pair(std::move(record), Status());
-}
-
 // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
 std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                          std::vector<ColumnValue>& values) {
