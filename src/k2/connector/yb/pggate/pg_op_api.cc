@@ -20,116 +20,61 @@
 
 namespace k2pg {
 namespace gate {
-    std::string SqlOpExpr::ToString() {
-        std::ostringstream os;
-        os << "(SqlOpExpr: type: " << type_ << ", expr: ";
-        switch(type_) {
-            case ExprType::VALUE: {
-                os << (value_ == nullptr ? "NULL" : value_->ToString());
+    std::ostream& operator<<(std::ostream& os, const SqlOpExpr& expr) {
+        os << "(SqlOpExpr: type: " << expr.type_ << ", expr: ";
+        switch(expr.type_) {
+            case SqlOpExpr::ExprType::VALUE: {
+                if (expr.value_ == nullptr) {
+                    os << "NULL";
+                } else {
+                    os << (*expr.value_.get());
+                }
             } break;
-            case ExprType::LIST_VALUES: {
+            case SqlOpExpr::ExprType::LIST_VALUES: {
                 os << "[";
-                for (auto value : values_) {
-                    os << (value == nullptr ? "NULL" : value->ToString()) << ", ";
+                for (auto value : expr.values_) {
+                    if (value == nullptr) {
+                        os << "NULL, ";
+                    } else {
+                        os << (*value.get()) << ", ";
+                    }
                 }
                 os << "]";
             } break;
-            case ExprType::COLUMN_ID: {
-                os << id_;
+            case SqlOpExpr::ExprType::COLUMN_ID: {
+                os << "id: " << expr.id_ << ", name: " << expr.attr_name_;
             } break;
-            case ExprType::BIND_ID: {
-                os << id_;
+            case SqlOpExpr::ExprType::BIND_ID: {
+                os << expr.id_;
             } break;
-            case ExprType::ALIAS_ID: {
-                os << id_;
+            case SqlOpExpr::ExprType::ALIAS_ID: {
+                os << expr.id_;
             } break;
-            case ExprType::CONDITION: {
-                os << (condition_ == nullptr ? "NULL" : condition_->ToString());
+            case SqlOpExpr::ExprType::CONDITION: {
+                if (expr.condition_ == nullptr) {
+                    os << "NULL";
+                } else {
+                    os << (*expr.condition_.get());
+                }
             } break;
             default: os << "UNKNOWN";
         }
         os << ")";
-        return os.str();
+        return os;
     }
 
-    std::string SqlOpCondition::ToString() {
-        std::ostringstream os;
-        os << "(SqlOpCondition: op: ";
-        switch(op_) {
-            case PgExpr::Opcode::PG_EXPR_CONSTANT: {
-                os << "PG_EXPR_CONSTANT";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_COLREF: {
-                os << "PG_EXPR_COLREF";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_VARIABLE: {
-                os << "PG_EXPR_VARIABLE";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_NOT: {
-                os << "PG_EXPR_NOT";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_EQ: {
-                os << "PG_EXPR_EQ";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_NE: {
-                os << "PG_EXPR_NE";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_GE: {
-                os << "PG_EXPR_GE";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_GT: {
-                os << "PG_EXPR_GT";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_LE: {
-                os << "PG_EXPR_LE";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_LT: {
-                os << "PG_EXPR_LT";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_EXISTS: {
-                os << "PG_EXPR_EXISTS";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_AND: {
-                os << "PG_EXPR_AND";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_OR: {
-                os << "PG_EXPR_OR";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_IN: {
-                os << "PG_EXPR_IN";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_BETWEEN: {
-                os << "PG_EXPR_BETWEEN";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_AVG: {
-                os << "PG_EXPR_AVG";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_SUM: {
-                os << "PG_EXPR_SUM";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_COUNT: {
-                os << "PG_EXPR_COUNT";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_MAX: {
-                os << "PG_EXPR_MAX";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_MIN: {
-                os << "PG_EXPR_MIN";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_EVAL_EXPR_CALL: {
-                os << "PG_EXPR_EVAL_EXPR_CALL";
-            } break;
-            case PgExpr::Opcode::PG_EXPR_GENERATE_ROWID: {
-                os << "PG_EXPR_GENERATE_ROWID";
-            } break;
-            default: break;
-        }
+    std::ostream& operator<<(std::ostream& os, const SqlOpCondition& cond) {
+        os << "(SqlOpCondition: op: " << cond.op_;
         os << ", operands: [";
-        for (auto operand : operands_) {
-            os << (operand == nullptr ? "NULL" : operand->ToString()) << ", ";
+        for (auto operand : cond.operands_) {
+            if (operand == nullptr) {
+                os << "NULL, ";
+            } else {
+                os << (*operand.get()) << ", ";
+            }
         }
         os << "])";
-        return os.str();
+        return os;
     }
 
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {

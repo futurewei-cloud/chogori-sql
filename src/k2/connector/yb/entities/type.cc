@@ -239,24 +239,53 @@ namespace sql {
         return "Undefined Type";
     }
 
-    const string SQLType::ToString() const {
-        std::stringstream ss;
-        ToString(ss);
-        return ss.str();
+    std::ostream& operator<<(std::ostream& os, const DataType& data_type) {
+         switch (data_type) {
+            case DataType::UNKNOWN_DATA: return os << "unknown";
+            case DataType::NULL_VALUE_TYPE: return os << "anytype";
+            case DataType::INT8: return os << "tinyint";
+            case DataType::INT16: return os << "smallint";
+            case DataType::INT32: return os << "int";
+            case DataType::INT64: return os << "bigint";
+            case DataType::UINT32: return os << "uint32";
+            case DataType::STRING: return os << "text";
+            case DataType::BOOL: return os << "boolean";
+            case DataType::FLOAT: return os << "float";
+            case DataType::DOUBLE: return os << "double";
+            case DataType::BINARY: return os << "blob";
+            case DataType::TIMESTAMP: return os << "timestamp";
+            case DataType::DECIMAL: return os << "decimal";
+            case DataType::VARINT: return os << "varint";
+            case DataType::INET: return os << "inet";
+            case DataType::JSONB: return os << "jsonb";
+            case DataType::LIST: return os << "list";
+            case DataType::MAP: return os << "map";
+            case DataType::SET: return os << "set";
+            case DataType::UUID: return os << "uuid";
+            case DataType::TIMEUUID: return os << "timeuuid";
+            case DataType::TUPLE: return os << "tuple";
+            case DataType::TYPEARGS: return os << "typeargs";
+            case DataType::FROZEN: return os << "frozen";
+            case DataType::USER_DEFINED_TYPE: return os << "user_defined_type";
+            case DataType::DATE: return os << "date";
+            case DataType::TIME: return os << "time";
+            default: return os << "unknown";
+        }
     }
 
-    void SQLType::ToString(std::stringstream& os) const {
-        os << SQLType::ToDataTypeString(id_);
-        if (!params_.empty()) {
+    std::ostream& operator<<(std::ostream& os, const SQLType& sql_type) {
+        os << sql_type.id_;
+        if (!sql_type.params_.empty()) {
             os << "<";
-            for (int i = 0; i < params_.size(); i++) {
+            for (int i = 0; i < sql_type.params_.size(); i++) {
                 if (i > 0) {
                     os << ", ";
                 }
-                params_[i]->ToString(os);
+                os << (*sql_type.params_[i].get());
             }
             os << ">";
         }
+        return os;
     }
 }  // namespace sql
 }  // namespace k2pg

@@ -65,6 +65,7 @@ namespace gate {
             ALIAS_ID,
             CONDITION,
         };
+
         friend std::ostream& operator<<(std::ostream& os, const ExprType& expr) {
             switch(expr) {
                 case ExprType::VALUE: return os << "VALUE";
@@ -155,7 +156,7 @@ namespace gate {
             return values_;
         }
 
-        std::string ToString();
+        friend std::ostream& operator<<(std::ostream& os, const SqlOpExpr& expr);
 
         private:
         ExprType type_;
@@ -187,7 +188,7 @@ namespace gate {
             return operands_;
         }
 
-        std::string ToString();
+        friend std::ostream& operator<<(std::ostream& os, const SqlOpCondition& cond);
 
         private:
         PgExpr::Opcode op_;
@@ -204,10 +205,14 @@ namespace gate {
         int column_id;
         std::shared_ptr<SqlOpExpr> expr;
 
-        std::string ToString() {
-            std::ostringstream os;
-            os << "(ColumnValue: id: " << column_id << ", expr: " << (expr == nullptr ? "NULL" : expr->ToString()) << ")";
-            return os.str();
+        friend std::ostream& operator<<(std::ostream& os, const ColumnValue& value) {
+            os << "(ColumnValue: id: " << value.column_id << ", expr: ";
+            if (value.expr == nullptr) {
+                os << "NULL)";
+            } else {
+                os << (*value.expr.get()) << ")";
+            }
+            return os;
         }
     };
 
