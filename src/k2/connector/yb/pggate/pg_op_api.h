@@ -65,7 +65,7 @@ namespace gate {
             ALIAS_ID,
             CONDITION,
         };
-        
+
         friend std::ostream& operator<<(std::ostream& os, const ExprType& expr) {
             switch(expr) {
                 case ExprType::VALUE: return os << "VALUE";
@@ -210,7 +210,7 @@ namespace gate {
             if (value.expr == nullptr) {
                 os << "NULL)";
             } else {
-                os << value.expr << ")";
+                os << (*value.expr.get()) << ")";
             }
             return os;
         }
