@@ -512,6 +512,7 @@ Result<std::list<PgOpResult>> PgReadOp::ProcessResponseImpl() {
 
     // Process paging state and check status.
     RETURN_NOT_OK(ProcessResponsePagingState());
+    K2DEBUG("ProcessResponseImpl for ReadOp with result size: " << result.size());
     return result;
 }
 
@@ -579,6 +580,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
 }
 
 Status PgReadOp::ProcessResponsePagingState() {
+    K2DEBUG("Processing response paging state...");
     // For each read_op, set up its request for the next batch of data or make it in-active.
     bool has_more_data = false;
     int32_t send_count = std::min(parallelism_level_, active_op_count_);
@@ -600,10 +602,14 @@ Status PgReadOp::ProcessResponsePagingState() {
                 innermost_req = innermost_req->index_request.get();
             }
             innermost_req->paging_state = res.paging_state;
+            K2DEBUG("Updated paging state for innermost request for table " << innermost_req->table_id << ", paging state null? " << (innermost_req->paging_state == nullptr));
+        } else {
+            K2DEBUG("Response paging state is null for table " << read_op->request()->table_id);
         }
 
         if (has_more_arg) {
             has_more_data = true;
+            K2DEBUG("has_more_arg -> has_more_data = true");
         } else {
             read_op->set_active(false);
         }
@@ -613,10 +619,12 @@ Status PgReadOp::ProcessResponsePagingState() {
         // Move inactive ops to the end of pgsql_ops_ to make room for new set of arguments.
         MoveInactiveOpsOutside();
         end_of_data_ = false;
+        K2DEBUG("end_of_data = false with has_more_data: " << has_more_data << ", send_count: " << send_count);
     } else {
         // There should be no active op left in queue.
         active_op_count_ = 0;
         end_of_data_ = request_population_completed_;
+        K2DEBUG("active_op_count: 0, end_of_data: " << end_of_data_);
     }
 
     return Status::OK();
@@ -699,7 +707,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
 
     // End execution and return result.
     end_of_data_ = true;
-    K2DEBUG("Received response for request " << this);
+    K2DEBUG("Received response for WriteOp request " << this << ", result size: " << result.size());
     return result;
 }
 
