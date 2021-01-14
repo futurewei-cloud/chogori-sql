@@ -238,6 +238,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     }
 
     response.paging_state = nullptr;
+    K2DEBUG("handleReadByRowIds set response paging state to null for read op" << op->request()->table_id);
     response.status = K2StatusToPGStatus(status);
     prom->set_value(K2StatusToYBStatus(status));
 }
