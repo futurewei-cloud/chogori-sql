@@ -349,6 +349,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
     if (!end_of_data_) {
         // Send request now in case prefetching was suppressed.
         if (suppress_next_result_prefetching_ && !response_.InProgress()) {
+            K2DEBUG("suppress_next_result_prefetching_: " << suppress_next_result_prefetching_ << " send request...");
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
@@ -358,12 +359,16 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
         // In case ProcessResponse doesn't fail with an error
         // it should return non empty rows and/or set end_of_data_.
         DCHECK(!rows.empty() || end_of_data_);
+        K2DEBUG("GetResult rows: " << rows.size() << ", end_of_data_: " << end_of_data_);
         rowsets->splice(rowsets->end(), rows);
         // Prefetch next portion of data if needed.
         if (!(end_of_data_ || suppress_next_result_prefetching_)) {
+            K2DEBUG("Not done, end_of_data_: " << end_of_data_ << ", suppress_next_result_prefetching_: " << suppress_next_result_prefetching_ << "continue sending request...");
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
+    } else {
+        K2DEBUG("Done, GetResult end_of_data_: " << end_of_data_);
     }
 
     return Status::OK();
@@ -619,7 +624,7 @@ Status PgReadOp::ProcessResponsePagingState() {
         // Move inactive ops to the end of pgsql_ops_ to make room for new set of arguments.
         MoveInactiveOpsOutside();
         end_of_data_ = false;
-        K2DEBUG("end_of_data = false with has_more_data: " << has_more_data << ", send_count: " << send_count);
+        K2DEBUG("end_of_data = false with has_more_data: " << has_more_data << ", send_count: " << send_count << ", active_op_count: " << active_op_count_);
     } else {
         // There should be no active op left in queue.
         active_op_count_ = 0;
@@ -728,7 +733,7 @@ Status PgWriteOp::CreateRequests() {
     request_population_completed_ = true;
 
     // Log non buffered request.
-    K2DEBUG(response_.InProgress() << ": Sending request for " << this);
+    K2DEBUG(response_.InProgress() << ": Sending write request for " << this);
     return Status::OK();
 }
 
