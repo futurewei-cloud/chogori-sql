@@ -630,7 +630,6 @@ Status PgReadOp::ProcessResponsePagingState() {
         // There should be no active op left in queue.
         active_op_count_ = 0;
         end_of_data_ = request_population_completed_;
-        template_op_->request()-> paging_state = nullptr;
         K2DEBUG("active_op_count: 0, end_of_data: " << end_of_data_);
     }
 

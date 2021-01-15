@@ -8,7 +8,7 @@ export YB_PG_TRANSACTIONS_ENABLED=1
 
 export K2_CPO_ADDRESS=tcp+k2rpc://0.0.0.0:9000
 export K2_TSO_ADDRESS=tcp+k2rpc://0.0.0.0:13000
-export K2_PG_CORES=7
+export K2_PG_CORES=1
 
 #export K2_PG_CORES="1 2 4 10"
 
