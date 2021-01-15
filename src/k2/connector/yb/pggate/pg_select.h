@@ -102,10 +102,7 @@ class PgSelectIndex : public PgDmlRead {
   CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // The output parameter "ybidxbasectid" of index rows
-  Result<bool> FetchBaseRowIdBatch(std::vector<std::string>& ybctids);
-
-  // Get next batch of row ids from either PgGate::cache or server.
-  Result<bool> GetNextRowIdBatch();
+  Result<bool> FetchBaseRowIdBatch(std::vector<std::string>& baseRowIds);
 
   void set_is_executed(bool value) {
     is_executed_ = value;
@@ -116,6 +113,10 @@ class PgSelectIndex : public PgDmlRead {
   }
 
  private:
+
+   // check if we have local cached BaseRowId result.
+  Result<bool> HasBaseRowIdBatch();
+
   // This secondary query should be executed just one time.
   bool is_executed_ = false;
 };

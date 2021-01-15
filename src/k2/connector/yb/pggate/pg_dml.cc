@@ -313,11 +313,12 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
     return false;
   }
 
-  K2DEBUG("Processing secondary index request");
+  K2DEBUG("Processing secondary index request, has_sql_op: " << has_sql_op());
   // Execute query in PgGate.
   // If index query is not yet executed, run it.
   if (!secondary_index_query_->is_executed()) {
     secondary_index_query_->set_is_executed(true);
+    K2DEBUG("Exec secondary_index_query_");
     RETURN_NOT_OK(secondary_index_query_->Exec(exec_params));
   }
 

@@ -238,6 +238,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     }
 
     response.paging_state = nullptr;
+    K2DEBUG("handleReadByRowIds set response paging state to null for read op" << op->request()->table_id);
     response.status = K2StatusToPGStatus(status);
     prom->set_value(K2StatusToYBStatus(status));
 }
@@ -365,13 +366,16 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         k2::QueryResult scan_result = k23SITxn->scanRead(scan).get();
         if (scan->isDone()) {
             response.paging_state = nullptr;
+            K2DEBUG("Scan is done, set response paging state to null for request " << request->table_id);
         } else if (request->paging_state) {
             response.paging_state = request->paging_state;
             response.paging_state->total_num_rows_read += scan_result.records.size();
+            K2DEBUG("Request paging state is null? " << (request->paging_state == nullptr) << " for request " << request->table_id);
         } else {
             response.paging_state = std::make_shared<SqlOpPagingState>();
             response.paging_state->query = scan;
             response.paging_state->total_num_rows_read += scan_result.records.size();
+            K2DEBUG("Created paging state for request " << request->table_id << ", total rows read: " << response.paging_state->total_num_rows_read);
         }
 
         *(op->mutable_rows_data()) = std::move(scan_result.records);
