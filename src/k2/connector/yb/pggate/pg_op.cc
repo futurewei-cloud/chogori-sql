@@ -349,6 +349,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
     if (!end_of_data_) {
         // Send request now in case prefetching was suppressed.
         if (suppress_next_result_prefetching_ && !response_.InProgress()) {
+            K2DEBUG("On spot sending request as supress prefesiong is true");
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
@@ -361,6 +362,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
         rowsets->splice(rowsets->end(), rows);
         // Prefetch next portion of data if needed.
         if (!(end_of_data_ || suppress_next_result_prefetching_)) {
+            K2DEBUG("prefetching sending request as supress prefesiong is " <<suppress_next_result_prefetching_ << " and end_of_data_ is " << end_of_data_);
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
@@ -424,6 +426,7 @@ void PgOp::MoveInactiveOpsOutside() {
 Status PgOp::SendRequest(bool force_non_bufferable) {
     DCHECK(exec_status_.ok());
     DCHECK(!response_.InProgress());
+    DCHECK(!end_of_data_);
     exec_status_ = SendRequestImpl(force_non_bufferable);
     return exec_status_;
 }
@@ -624,6 +627,7 @@ Status PgReadOp::ProcessResponsePagingState() {
         // There should be no active op left in queue.
         active_op_count_ = 0;
         end_of_data_ = request_population_completed_;
+        template_op_->request()-> paging_state = nullptr;
         K2DEBUG("active_op_count: 0, end_of_data: " << end_of_data_);
     }
 
@@ -648,6 +652,7 @@ void PgReadOp::SetRequestPrefetchLimit() {
     // Use statement LIMIT(count + offset) if it is smaller than the predicted limit.
     int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
     suppress_next_result_prefetching_ = true;
+    K2DEBUG("suppress_next_result_prefetching_ set to true.");
     if (exec_params_.limit_use_default || limit_count > predicted_limit) {
         limit_count = predicted_limit;
         suppress_next_result_prefetching_ = false;

@@ -72,6 +72,7 @@ Status PgSelect::Prepare() {
     // Create secondary index query.
     secondary_index_query_ =
       std::make_shared<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
+    K2DEBUG("new secondary_index_query_ created.");
   }
 
   // Allocate READ requests to send to storage layer.
@@ -97,6 +98,8 @@ Status PgSelect::PrepareSecondaryIndex() {
     return Status::OK();
   }
 
+  K2DEBUG("secondary_index_query_ preparing as subquery.");
+
   // Prepare subquery. When index_req is not null, it is part of 'this' SELECT request. When it
   // is nullptr, the subquery will create its own sql_op_ to run a separate read request.
   return secondary_index_query_->PrepareSubquery(nullptr);
@@ -115,6 +118,7 @@ PgSelectIndex::~PgSelectIndex() {
 Status PgSelectIndex::Prepare() {
   // We get here only if this is an IndexOnly scan.
   CHECK(prepare_params_.index_only_scan) << "Unexpected IndexOnly scan type";
+  K2DEBUG("PgSelectIndex preparing as indexOnly scan.");
   return PrepareQuery(nullptr);
 }
 
@@ -122,6 +126,7 @@ Status PgSelectIndex::PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req
   // We get here if this is an SecondaryIndex scan.
   CHECK(prepare_params_.use_secondary_index && !prepare_params_.index_only_scan)
     << "Unexpected Index scan type";
+  K2DEBUG("PgSelectIndex preparing as secondary index subquery.");
   return PrepareQuery(read_req);
 }
 
@@ -138,6 +143,7 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
     read_req_ = read_req;
     read_req_->table_id = index_id_.GetPgTableId();
     sql_op_ = nullptr;
+    K2DEBUG("PgSelectIndex prepared as secondary index subquery. sql_op_ is null. read_req pagestate is null 1 or 0?" << (!(read_req_->paging_state) ? 1:0 ));
   } else {
     auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
     read_req_ = read_op->request();
@@ -151,14 +157,18 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
 
 // From a index table resut set, get the corresponding base table ybctids (RowIds)
 Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& ybctids) {
+  K2DEBUG("FetchBaseRowIdBatch, rowset size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
+
   // Keep reading until we get one batch of ybctids or EOF.
   while (!VERIFY_RESULT(GetNextRowIdBatch())) {
+    K2DEBUG("GetNextRowIdBatch returned nothing, trying FetchDataFromServer.");
     if (!VERIFY_RESULT(FetchDataFromServer())) {
       // Server returns no more rows.
       return false;
     }
   }
 
+  // TODO: currently just consume the first PgOpResult inside rowsets_, need to process all of them once we support more than one
   // Got the next batch of ybctids.
   DCHECK(!rowsets_.empty());
   for (k2::dto::SKVRecord& record : rowsets_.front().data_) {
@@ -168,6 +178,10 @@ Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& ybctid
     }
     ybctids.emplace_back(*baseybctid);
   }
+  // we just consumed front entry inside rowsets_, erase it.
+  rowsets_.erase(rowsets_.begin());
+
+  K2DEBUG("Exiting FetchBaseRowIdBatch, rowset size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
   return true;
 }
 

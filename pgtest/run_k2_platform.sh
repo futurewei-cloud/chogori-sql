@@ -8,7 +8,7 @@ export YB_PG_TRANSACTIONS_ENABLED=1
 
 export K2_CPO_ADDRESS=tcp+k2rpc://0.0.0.0:9000
 export K2_TSO_ADDRESS=tcp+k2rpc://0.0.0.0:13000
-export K2_PG_CORES=1
+export K2_PG_CORES=7
 
 #export K2_PG_CORES="1 2 4 10"
 
@@ -25,7 +25,7 @@ rm -rf ${CPODIR}
 export PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 --heartbeat_deadline=10s &
+cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 --heartbeat_deadline=30s &
 cpo_child_pid=$!
 
 # start nodepool
