@@ -294,6 +294,26 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
     return result;
 }
 
+// For secondary index read result, where the caller need to get all base row's ybctid
+void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
+    if (!is_eof())
+    {
+        for (k2::dto::SKVRecord& record : data_) {
+            std::optional<k2::String> baseybctid = record.deserializeField<k2::String>("ybidxbasectid");
+    
+            if (!baseybctid.has_value()) {
+                CHECK(baseybctid.has_value()) << "ybidxbasectid for index row was null";
+            }
+            baseRowIds.emplace_back(*baseybctid);
+            ++nextToConsume_;
+        }
+    }
+    else
+    {
+        K2ASSERT(false, "BugBug try to get baseRowIdBatch from empty index result!");
+    }
+}
+
 // Get system columns' values from this batch.
 // Currently, we only have ybctids, but there could be more.
 Status PgOpResult::ProcessSystemColumns() {

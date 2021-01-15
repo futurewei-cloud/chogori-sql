@@ -111,6 +111,9 @@ public:
         return ybctids_;
     }
 
+    // For secondary index read result, where the caller need to get a batch of base row's Id/ybctid
+    void GetBaseRowIdBatch(std::vector<std::string>& baseRowIdBatch);
+
 private:
 
     // Data selected from k2 storage.

@@ -156,42 +156,35 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
 }
 
 // From a index table resut set, get the corresponding base table ybctids (RowIds)
-Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& ybctids) {
-  K2DEBUG("FetchBaseRowIdBatch, rowset size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
+Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
+  K2DEBUG("FetchBaseRowIdBatch, next batch size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
 
   // Keep reading until we get one batch of ybctids or EOF.
-  while (!VERIFY_RESULT(GetNextRowIdBatch())) {
-    K2DEBUG("GetNextRowIdBatch returned nothing, trying FetchDataFromServer.");
+  while (!VERIFY_RESULT(HasBaseRowIdBatch())) {
+    K2DEBUG("FetchBaseRowIdBatch has nothing cached, trying FetchDataFromServer.");
     if (!VERIFY_RESULT(FetchDataFromServer())) {
       // Server returns no more rows.
       return false;
     }
   }
 
-  // TODO: currently just consume the first PgOpResult inside rowsets_, need to process all of them once we support more than one
-  // Got the next batch of ybctids.
-  DCHECK(!rowsets_.empty());
-  for (k2::dto::SKVRecord& record : rowsets_.front().data_) {
-    std::optional<k2::String> baseybctid = record.deserializeField<k2::String>("ybidxbasectid");
-    if (!baseybctid.has_value()) {
-      CHECK(baseybctid.has_value()) << "baseybctid for index row was null";
-    }
-    ybctids.emplace_back(*baseybctid);
-  }
-  // we just consumed front entry inside rowsets_, erase it.
-  rowsets_.erase(rowsets_.begin());
+  // Got the next batch of baseCtids.
+  DCHECK(!rowsets_.empty() && !rowsets_.front().is_eof());
+  rowsets_.front().GetBaseRowIdBatch(baseRowIds);
 
-  K2DEBUG("Exiting FetchBaseRowIdBatch, rowset size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
+  // we should consumed all first batch in rowsets, erase it now.
+  DCHECK(rowsets_.front().is_eof());
+  rowsets_.pop_front();
+
+  K2DEBUG("Exiting FetchBaseRowIdBatch, next batch size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
   return true;
 }
 
-Result<bool> PgSelectIndex::GetNextRowIdBatch() {
+Result<bool> PgSelectIndex::HasBaseRowIdBatch() {
   for (auto rowset_iter = rowsets_.begin(); rowset_iter != rowsets_.end();) {
     if (rowset_iter->is_eof()) {
       rowset_iter = rowsets_.erase(rowset_iter);
     } else {
-      // Write all found rows to ybctid array.
-      RETURN_NOT_OK(rowset_iter->ProcessSystemColumns());
       return true;
     }
   }
