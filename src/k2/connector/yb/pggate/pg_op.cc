@@ -278,6 +278,7 @@ int64_t PgOpResult::NextRowOrder() {
 // Get the postgres tuple from this batch.
 Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
     Status result;
+    K2ASSERT(targets_by_name.size() > 0, "targets should not be empty");
     K2ASSERT(syscol_processed_, "System columns have not been processed yet");
     int32_t num = 0;
     FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result, &num);
