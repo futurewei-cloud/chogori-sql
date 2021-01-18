@@ -626,13 +626,11 @@ Status PgReadOp::ProcessResponsePagingState() {
         auto& res = read_op->response();
         // Check for completion.
         bool has_more_arg = false;
+        read_op->request()->paging_state = res.paging_state;
         if (res.paging_state != nullptr) {
             has_more_arg = true;
-            auto req = read_op->request();
-            req->paging_state = res.paging_state;
-            K2DEBUG("Updated paging state for request for table " << req->table_id << ", paging state null? " << (res.paging_state == nullptr));
+            K2DEBUG("Updated paging state for request for table " << read_op->request()->table_id);
         } else {
-            read_op->request()->paging_state = res.paging_state;
             K2DEBUG("Response paging state is null for table " << read_op->request()->table_id);
         }
 
