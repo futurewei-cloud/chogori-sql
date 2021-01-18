@@ -339,7 +339,7 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
     // Note: For SysTable, sql_op_ === null, IndexScan doesn't send separate request.
     if (sql_op_) {
       K2DEBUG("PgDmlRead executing sql_op_, secondary_index_query_ is null? 1 or 0 " << (!secondary_index_query_ ? 1 :0));
-      SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute()), RequestSent::kTrue, IllegalState,
+      SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute(true)), RequestSent::kTrue, IllegalState,
                 "YSQL read operation was not sent");
     }
   }

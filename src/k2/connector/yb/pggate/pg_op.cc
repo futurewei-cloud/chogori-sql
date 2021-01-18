@@ -219,17 +219,17 @@ Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field
 }
 
 template<typename T>
-void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result) {
+void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result, int32_t* num) {
+    K2DEBUG("Parsing field " << fieldName << " in targets_by_name map with size: " << targets_by_name.size());
     auto iter = targets_by_name.find(fieldName.c_str());
     if (iter == targets_by_name.end()) {
         if (k2pg::sql::catalog::CatalogConsts::TABLE_ID_COLUMN_NAME == fieldName.c_str() ||
             k2pg::sql::catalog::CatalogConsts::INDEX_ID_COLUMN_NAME == fieldName.c_str()) {
-            result = Status::OK();
         }
         else {
-            K2ERROR("Encountered field " << fieldName << ", without target reference");
-            result = STATUS(InternalError, "Encountered field without target reference");
+            K2DEBUG("Encountered field " << fieldName << ", without target reference");
         }
+        result = Status::OK();
         return;
     }
     if (!iter->second->is_colref()) {
@@ -255,6 +255,8 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
             result = TranslateUserCol(attr_num-1, target->type_entity(), target->type_attrs(), std::move(field), pg_tuple);
         }
     }
+    (*num)++;
+    K2DEBUG("Parsed field " << fieldName << ", num: " << (*num) << " in targets_by_name map with size: " << targets_by_name.size());
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data) : data_(std::move(data)) {
@@ -277,7 +279,14 @@ int64_t PgOpResult::NextRowOrder() {
 Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
     Status result;
     K2ASSERT(syscol_processed_, "System columns have not been processed yet");
-    FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result);
+    int32_t num = 0;
+    FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result, &num);
+     if (targets_by_name.find("ybctid") != targets_by_name.end()) {
+        // ybctid is a virtual column and won't be in the SKV record
+        num++;
+    }
+    K2ASSERT(num == targets_by_name.size(), "All target columns should be processed: " << num << " != " << targets_by_name.size());
+
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
         pg_tuple->syscols()->ybctid = (uint8_t*)yb::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
@@ -300,7 +309,7 @@ void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
     {
         for (k2::dto::SKVRecord& record : data_) {
             std::optional<k2::String> baseybctid = record.deserializeField<k2::String>("ybidxbasectid");
-    
+
             if (!baseybctid.has_value()) {
                 CHECK(baseybctid.has_value()) << "ybidxbasectid for index row was null";
             }
@@ -447,6 +456,7 @@ void PgOp::MoveInactiveOpsOutside() {
 }
 
 Status PgOp::SendRequest(bool force_non_bufferable) {
+    K2DEBUG("PgOp " << this << " sends request with force_non_bufferable " << force_non_bufferable);
     DCHECK(exec_status_.ok());
     DCHECK(!response_.InProgress());
     DCHECK(!end_of_data_);
@@ -606,7 +616,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
 }
 
 Status PgReadOp::ProcessResponsePagingState() {
-    K2DEBUG("Processing response paging state...");
+    K2DEBUG("Processing response paging state for PgReadOp " << this << " for table " << relation_id_.GetPgTableId());
     // For each read_op, set up its request for the next batch of data or make it in-active.
     bool has_more_data = false;
     int32_t send_count = std::min(parallelism_level_, active_op_count_);
@@ -619,17 +629,10 @@ Status PgReadOp::ProcessResponsePagingState() {
         if (res.paging_state != nullptr) {
             has_more_arg = true;
             auto req = read_op->request();
-
-            // Set up paging state for next request.
-            // A query request can be nested, and paging state belong to the innermost query which is
-            // the read operator that is operated first and feeds data to other queries.
-            SqlOpReadRequest *innermost_req = req.get();
-            while (innermost_req->index_request != nullptr) {
-                innermost_req = innermost_req->index_request.get();
-            }
-            innermost_req->paging_state = res.paging_state;
-            K2DEBUG("Updated paging state for innermost request for table " << innermost_req->table_id << ", paging state null? " << (innermost_req->paging_state == nullptr));
+            req->paging_state = res.paging_state;
+            K2DEBUG("Updated paging state for request for table " << req->table_id << ", paging state null? " << (res.paging_state == nullptr));
         } else {
+            read_op->request()->paging_state = res.paging_state;
             K2DEBUG("Response paging state is null for table " << read_op->request()->table_id);
         }
 
