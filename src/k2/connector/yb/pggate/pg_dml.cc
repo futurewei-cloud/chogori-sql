@@ -256,7 +256,7 @@ Status PgDml::ClearBinds() {
 }
 
 Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
-  K2DEBUG("Fetching tuple");
+  K2DEBUG("Fetching " << natts << " tuples from PgDml for table " << table_id_.GetPgTableId());
   // Each isnulls and values correspond (in order) to columns from the table schema.
   // Initialize to nulls for any columns not present in result.
   if (isnulls) {
@@ -297,7 +297,7 @@ Result<bool> PgDml::FetchDataFromServer() {
     }
 
     // Execute sql_op_ again for the new set of WHERE condition from the nested query.
-    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute()), RequestSent::kTrue, IllegalState,
+    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute(true)), RequestSent::kTrue, IllegalState,
               "SQL read operation was not sent");
 
     // Get the rowsets from sql operator.

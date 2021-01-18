@@ -265,14 +265,6 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (request->paging_state && request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
-            // TODO this secondary index request seems like a yb-only optimization and so should be safe to ignore
-            // while still supporting secondary indices. We'll assert here anyway to see if it triggers a failure
-            if (request->index_request) {
-                K2ERROR("Scan read with index_request is not supported");
-                prom->set_exception(std::make_exception_ptr(std::runtime_error("index request detected")));
-                return;
-            }
-
             std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->namespace_id, request->table_id);
             CreateScanReadResult scan_create_result = scan_f.get();
             if (!scan_create_result.status.is2xxOK()) {

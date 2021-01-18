@@ -158,7 +158,7 @@ public:
     virtual void ExecuteInit(const PgExecParameters *exec_params);
 
     // Execute the op. Return true if the request has been sent and is awaiting the result.
-    virtual Result<RequestSent> Execute(bool force_non_bufferable = false);
+    virtual Result<RequestSent> Execute(bool force_non_bufferable);
 
     // Instruct this sql_op_ to abandon execution and querying data by setting end_of_data_ to 'true'.
     // - This op will not send request to storage layer.
