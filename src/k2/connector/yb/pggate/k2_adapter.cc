@@ -604,6 +604,7 @@ std::string K2Adapter::GetRowId(const std::string& namespace_id, const std::stri
 
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
+    K2DEBUG("Returning row id for table " << table_id << " from SKV partition key: " << k2::escape(key.partitionKey));
     return key.partitionKey;
 }
 

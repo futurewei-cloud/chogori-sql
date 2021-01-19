@@ -54,7 +54,7 @@ namespace gate {
 PgDmlWrite::PgDmlWrite(std::shared_ptr<PgSession> pg_session,
                        const PgObjectId& table_id,
                        const bool is_single_row_txn)
-    : PgDml(std::move(pg_session), table_id), is_single_row_txn_(is_single_row_txn) {
+    : PgDml(pg_session, table_id), is_single_row_txn_(is_single_row_txn) {
 }
 
 PgDmlWrite::~PgDmlWrite() {
@@ -75,7 +75,16 @@ void PgDmlWrite::PrepareColumns() {
   // Assume that the storage layer requires that primary columns must be listed in their created-order,
   // the slots for primary column bind expressions are allocated here in correct order.
   for (PgColumn &col : target_desc_->columns()) {
-    col.AllocKeyBind(write_req_);
+    if (col.attr_num() == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
+      // generate new rowid for kYBRowId column when no primary keys are defined
+      std::string row_id = std::move(pg_session()->GenerateNewRowid());
+      K2DEBUG("Generated new row id " << k2::escape(row_id));
+      col.AllocKeyBindForRowId(write_req_, row_id);
+      // set the row_id bind
+      row_id_bind_.emplace(col.bind_var());
+    } else {
+      col.AllocKeyBind(write_req_);
+    }
   }
 }
 
@@ -115,15 +124,21 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
   // Either ybctid or primary key must be present.
   // always use regular binding for INSERT
   if (stmt_op() == StmtOp::STMT_INSERT || !ybctid_bind_) {
-    K2DEBUG("Checking missing primary keys for regular key binding");
+    K2DEBUG("Checking missing primary keys for regular key binding, stmt op: " << stmt_op() << ", key_column_values size: " << write_req_->key_column_values.size());
     // Remove empty binds from key list.
     auto key_iter = write_req_->key_column_values.begin();
     while (key_iter != write_req_->key_column_values.end()) {
-      if (expr_binds_.find(*key_iter) == expr_binds_.end()) {
-        missing_primary_key = true;
-        key_iter = write_req_->key_column_values.erase(key_iter);
-      } else {
+      if (row_id_bind_.has_value() && row_id_bind_.value() == (*key_iter)) {
+        K2DEBUG("Found RowId column: " << (*(*key_iter).get()));
         key_iter++;
+      } else {
+        if (expr_binds_.find(*key_iter) == expr_binds_.end()) {
+          missing_primary_key = true;
+          K2DEBUG("Missing primary key: " << (*(*key_iter).get()));
+          key_iter = write_req_->key_column_values.erase(key_iter);
+        } else {
+          key_iter++;
+        }
       }
     }
   } else {
