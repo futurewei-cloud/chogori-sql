@@ -105,6 +105,16 @@ namespace k2pg
       return bind_var_;
     }
 
+    std::shared_ptr<SqlOpExpr> PgColumn::AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
+      if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
+        std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(std::move(row_id));
+        bind_var_ = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, value);
+        K2DEBUG("Allocating row id key binding SqlOpExpr " << (*bind_var_.get()) << " for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
+        write_req->key_column_values.push_back(bind_var_);
+      }
+      return bind_var_;
+    }
+
     std::shared_ptr<SqlOpExpr> PgColumn::AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req)
     {
       if (bind_var_ == nullptr)

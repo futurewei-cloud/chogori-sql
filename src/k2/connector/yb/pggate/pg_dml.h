@@ -226,6 +226,7 @@ class PgDml : public PgStatement {
   bool ybctid_bind_ = false;
   std::unordered_map<std::shared_ptr<SqlOpExpr>, PgExpr*> expr_binds_;
   std::unordered_map<std::shared_ptr<SqlOpExpr>, PgExpr*> expr_assigns_;
+  std::optional<std::shared_ptr<SqlOpExpr>> row_id_bind_ = std::nullopt;
 
   // Used for colocated TRUNCATE that doesn't bind any columns.
   // We don't support it for now and just keep it here as a place holder

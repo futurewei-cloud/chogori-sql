@@ -58,14 +58,14 @@ class PgDelete : public PgDmlWrite {
  public:
   // Constructors.
   PgDelete(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id, bool is_single_row_txn)
-      : PgDmlWrite(std::move(pg_session), table_id, is_single_row_txn) {}
+      : PgDmlWrite(pg_session, table_id, is_single_row_txn) {}
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DELETE; }
 
   private:
   std::unique_ptr<PgWriteOpTemplate> AllocWriteOperation() const override {
     return target_desc_->NewPgsqlDelete(client_id_, stmt_id_);
-  } 
+  }
 };
 
 }  // namespace gate

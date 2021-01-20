@@ -200,6 +200,8 @@ class PgConstant : public PgExpr {
   explicit PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool is_null,
       PgExpr::Opcode opcode = PgExpr::Opcode::PG_EXPR_CONSTANT);
 
+  explicit PgConstant(const YBCPgTypeEntity *type_entity, SqlValue value);
+
   // Destructor.
   virtual ~PgConstant();
 

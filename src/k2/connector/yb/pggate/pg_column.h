@@ -150,6 +150,7 @@ class PgColumn {
 
   // Bindings for write requests.
   std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<SqlOpExpr> AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id);
   std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   // Bindings for read requests.
@@ -216,7 +217,7 @@ class PgColumn {
 
   bool is_virtual_column();
 
- private:
+  private:
   ColumnDesc desc_;
 
   // Input binds. For now these are just literal values of the columns.

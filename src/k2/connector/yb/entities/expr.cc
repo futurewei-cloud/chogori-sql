@@ -132,6 +132,10 @@ PgConstant::PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool 
     : PgExpr(opcode, type_entity), value_(type_entity, datum, is_null) {
 }
 
+PgConstant::PgConstant(const YBCPgTypeEntity *type_entity, SqlValue value) : PgExpr(PgExpr::Opcode::PG_EXPR_CONSTANT, type_entity), value_(value) {
+
+}
+
 PgConstant::~PgConstant() {
 }
 

@@ -67,7 +67,7 @@ PgCreateDatabase::PgCreateDatabase(std::shared_ptr<PgSession> pg_session,
                                    const PgOid database_oid,
                                    const PgOid source_database_oid,
                                    const PgOid next_oid)
-    : PgDdl(std::move(pg_session)),
+    : PgDdl(pg_session),
       database_name_(database_name),
       database_oid_(database_oid),
       source_database_oid_(source_database_oid),
