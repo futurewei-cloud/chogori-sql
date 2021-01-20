@@ -365,7 +365,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
   return false;
 }
 
-Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs, const YBCPgTypeEntity *type_entity) {
+Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
   vector<std::shared_ptr<SqlValue>> values;
   auto attrs_end = attrs + nattrs;
   for (auto& c : target_desc_->columns()) {

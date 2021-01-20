@@ -77,7 +77,7 @@ void PgDmlWrite::PrepareColumns() {
   for (PgColumn &col : target_desc_->columns()) {
     if (col.attr_num() == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
       // generate new rowid for kYBRowId column when no primary keys are defined
-      std::string row_id = std::move(pg_session()->GenerateNewRowid());
+      std::string row_id = pg_session()->GenerateNewRowid();
       K2DEBUG("Generated new row id " << k2::escape(row_id));
       col.AllocKeyBindForRowId(write_req_, row_id);
       // set the row_id bind

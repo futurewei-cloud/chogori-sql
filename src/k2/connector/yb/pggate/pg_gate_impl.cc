@@ -694,8 +694,8 @@ Status PgGateApiImpl::DmlFetch(PgStatement *handle, int32_t natts, uint64_t *val
 
 Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                     int32_t nattrs, uint64_t *ybctid) {
+  const string id = VERIFY_RESULT(down_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
   const YBCPgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
-  const string id = VERIFY_RESULT(down_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs, type_entity));
   *ybctid = type_entity->yb_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();
 }
