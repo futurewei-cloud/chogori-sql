@@ -24,26 +24,33 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k23si_seastar_app.h"
 #include "k23si_queue_defs.h"
 #include "k23si_txn.h"
+#include <k2/module/k23si/client/k23si_client.h>
 
 namespace k2pg {
 namespace gate {
 
-PGK2Client::PGK2Client():
-    _client(k2::K23SIClientConfig()) {
-    K2INFO("Ctor");
+PGK2Client::PGK2Client() {
+    K2LOG_I(log::k2ss, "Ctor");
+    _client = new k2::K23SIClient(k2::K23SIClientConfig());
+    _txns = new std::unordered_map<k2::dto::K23SI_MTR, k2::K2TxnHandle>();
+}
+
+PGK2Client::~PGK2Client() {
+    delete _client;
+    delete _txns;
 }
 
 seastar::future<> PGK2Client::gracefulStop() {
-    K2INFO("Stopping");
+    K2LOG_I(log::k2ss, "Stopping");
     _stop = true;
-    return std::move(_poller).then([this] () { return _client.gracefulStop(); });
+    return std::move(_poller).then([this] () { return _client->gracefulStop(); });
 }
 
 seastar::future<> PGK2Client::start() {
-    K2INFO("Starting");
+    K2LOG_I(log::k2ss, "Starting");
     // start polling the request queues only on core 0
     if (seastar::engine().cpu_id() == 0) {
-        K2INFO("Poller starting on CPU 0");
+        K2LOG_I(log::k2ss, "Poller starting");
         _poller = _poller.then([this] {
             return seastar::do_until(
                 [this] {
@@ -55,7 +62,7 @@ seastar::future<> PGK2Client::start() {
             );
         });
     }
-    return _client.start();
+    return _client->start();
 }
 
 // Helper function used to poll a given queue. The given Func visitor is called with each element
@@ -69,7 +76,7 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
     futs.reserve(q.size());
 
     while (!q.empty()) {
-        K2DEBUG("Found op in queue");
+        K2LOG_D(log::k2ss, "Found op in queue");
         futs.push_back(
             seastar::do_with(std::move(q.front()), std::forward<Func>(visitor), [](auto& req, auto& visitor) {
                 return visitor(req)
@@ -84,29 +91,29 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
 
 seastar::future<> PGK2Client::_pollBeginQ() {
     return pollQ(beginTxQ, [this](auto& req) {
-        K2DEBUG("Begin txn...");
+        K2LOG_D(log::k2ss, "Begin txn...");
 
-        return _client.beginTxn(req.opts)
+        return _client->beginTxn(req.opts)
             .then([this, &req](auto&& txn) {
                 req.prom.set_value(K23SITxn(txn.mtr()));  // send a copy to the promise
 
-                _txns[txn.mtr()] = std::move(txn);
+                (*_txns)[txn.mtr()] = std::move(txn);
             });
     });
 }
 
 seastar::future<> PGK2Client::_pollEndQ() {
     return pollQ(endTxQ, [this](auto& req) {
-        K2DEBUG("End txn...");
-        auto fiter = _txns.find(req.mtr);
-        if (fiter == _txns.end()) {
+        K2LOG_D(log::k2ss, "End txn...");
+        auto fiter = _txns->find(req.mtr);
+        if (fiter == _txns->end()) {
             req.prom.set_value(k2::EndResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
 
         return fiter->second.end(req.shouldCommit)
             .then([this, &req](auto&& endResult) {
-                _txns.erase(req.mtr);
+                _txns->erase(req.mtr);
                 req.prom.set_value(std::move(endResult));
             });
     });
@@ -114,8 +121,8 @@ seastar::future<> PGK2Client::_pollEndQ() {
 
 seastar::future<> PGK2Client::_pollSchemaGetQ() {
     return pollQ(schemaGetTxQ, [this](auto& req) {
-        K2DEBUG("Schema get...");
-        return _client.getSchema(req.collectionName, req.schemaName, req.schemaVersion)
+        K2LOG_D(log::k2ss, "Schema get...");
+        return _client->getSchema(req.collectionName, req.schemaName, req.schemaVersion)
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
             });
@@ -124,8 +131,8 @@ seastar::future<> PGK2Client::_pollSchemaGetQ() {
 
 seastar::future<> PGK2Client::_pollSchemaCreateQ() {
     return pollQ(schemaCreateTxQ, [this](auto& req) {
-        K2DEBUG("Schema create...");
-        return _client.createSchema(req.collectionName, req.schema)
+        K2LOG_D(log::k2ss, "Schema create...");
+        return _client->createSchema(req.collectionName, req.schema)
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
             });
@@ -134,8 +141,8 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
 
 seastar::future<> PGK2Client::_pollCreateCollectionQ() {
     return pollQ(collectionCreateTxQ, [this](auto& req) {
-        K2DEBUG("Collection create...");
-        return _client.makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
+        K2LOG_D(log::k2ss, "Collection create...");
+        return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
             .then([this, &req](auto&& result) {
                 req.prom.set_value(std::move(result));
             });
@@ -144,9 +151,9 @@ seastar::future<> PGK2Client::_pollCreateCollectionQ() {
 
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
-        K2DEBUG("Read...");
-        auto fiter = _txns.find(req.mtr);
-        if (fiter == _txns.end()) {
+        K2LOG_D(log::k2ss, "Read...");
+        auto fiter = _txns->find(req.mtr);
+        if (fiter == _txns->end()) {
             req.prom.set_value(k2::ReadResult<k2::dto::SKVRecord>(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::SKVRecord()));
             return seastar::make_ready_future();
         }
@@ -169,7 +176,7 @@ seastar::future<> PGK2Client::_pollReadQ() {
                 req.prom.set_exception(e);
             });
         } catch (const std::exception& e) {
-            K2WARN("Throw in pollRead: " << e.what());
+            K2LOG_W(log::k2ss, "Throw in pollRead: ", e.what());
             req.prom.set_exception(std::current_exception());
             return seastar::make_ready_future<>();
         }
@@ -178,8 +185,8 @@ seastar::future<> PGK2Client::_pollReadQ() {
 
 seastar::future<> PGK2Client::_pollCreateScanReadQ() {
     return pollQ(scanReadCreateTxQ, [this](auto& req) {
-        K2DEBUG("Create scan...");
-        return _client.createQuery(req.collectionName, req.schemaName)
+        K2LOG_D(log::k2ss, "Create scan...");
+        return _client->createQuery(req.collectionName, req.schemaName)
             .then([this, &req](auto&& result) {
                 CreateScanReadResult response {
                     .status = std::move(result.status),
@@ -192,9 +199,9 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
-        K2DEBUG("Scan...");
-        auto fiter = _txns.find(req.mtr);
-        if (fiter == _txns.end()) {
+        K2LOG_D(log::k2ss, "Scan...");
+        auto fiter = _txns->find(req.mtr);
+        if (fiter == _txns->end()) {
             req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
@@ -207,7 +214,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
                 req.prom.set_exception(e);
             });
         } catch (const std::exception& e) {
-            K2WARN("Throw in pollScanRead: " << e.what());
+            K2LOG_W(log::k2ss, "Throw in pollScanRead: ", e.what());
             req.prom.set_exception(std::current_exception());
             return seastar::make_ready_future<>();
         }
@@ -216,9 +223,9 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
 
 seastar::future<> PGK2Client::_pollWriteQ() {
     return pollQ(writeTxQ, [this](auto& req) mutable {
-        K2DEBUG("Write...");
-        auto fiter = _txns.find(req.mtr);
-        if (fiter == _txns.end()) {
+        K2LOG_D(log::k2ss, "Write...");
+        auto fiter = _txns->find(req.mtr);
+        if (fiter == _txns->end()) {
             req.prom.set_value(k2::WriteResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::K23SIWriteResponse{}));
             return seastar::make_ready_future();
         }
@@ -231,7 +238,7 @@ seastar::future<> PGK2Client::_pollWriteQ() {
                 req.prom.set_exception(e);
             });
         } catch (const std::exception& e) {
-            K2WARN("Throw in pollWrite: " << e.what());
+            K2LOG_W(log::k2ss, "Throw in pollWrite: ", e.what());
             req.prom.set_exception(std::current_exception());
             return seastar::make_ready_future<>();
         }
@@ -240,9 +247,9 @@ seastar::future<> PGK2Client::_pollWriteQ() {
 
 seastar::future<> PGK2Client::_pollUpdateQ() {
     return pollQ(updateTxQ, [this](auto& req) mutable {
-        K2DEBUG("Update...");
-        auto fiter = _txns.find(req.mtr);
-        if (fiter == _txns.end()) {
+        K2LOG_D(log::k2ss, "Update...");
+        auto fiter = _txns->find(req.mtr);
+        if (fiter == _txns->end()) {
             req.prom.set_value(k2::PartialUpdateResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }

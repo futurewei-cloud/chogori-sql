@@ -29,6 +29,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 #pragma once
 #include "k2_includes.h"
+#include "k2_log.h"
 
 #include <future>
 

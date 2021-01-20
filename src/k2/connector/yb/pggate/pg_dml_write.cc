@@ -78,7 +78,7 @@ void PgDmlWrite::PrepareColumns() {
     if (col.attr_num() == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
       // generate new rowid for kYBRowId column when no primary keys are defined
       std::string row_id = pg_session()->GenerateNewRowid();
-      K2DEBUG("Generated new row id " << k2::escape(row_id));
+      K2LOG_D(log::pg, "Generated new row id {}", row_id);
       col.AllocKeyBindForRowId(write_req_, row_id);
       // set the row_id bind
       row_id_bind_.emplace(col.bind_var());
@@ -124,17 +124,17 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
   // Either ybctid or primary key must be present.
   // always use regular binding for INSERT
   if (stmt_op() == StmtOp::STMT_INSERT || !ybctid_bind_) {
-    K2DEBUG("Checking missing primary keys for regular key binding, stmt op: " << stmt_op() << ", key_column_values size: " << write_req_->key_column_values.size());
+    K2LOG_D(log::pg, "Checking missing primary keys for regular key binding, stmt op: {}, key_col_vals size: {}", stmt_op(), write_req_->key_column_values.size());
     // Remove empty binds from key list.
     auto key_iter = write_req_->key_column_values.begin();
     while (key_iter != write_req_->key_column_values.end()) {
       if (row_id_bind_.has_value() && row_id_bind_.value() == (*key_iter)) {
-        K2DEBUG("Found RowId column: " << (*(*key_iter).get()));
+        K2LOG_D(log::pg, "Found RowId column: {}", (*(*key_iter).get()));
         key_iter++;
       } else {
         if (expr_binds_.find(*key_iter) == expr_binds_.end()) {
           missing_primary_key = true;
-          K2DEBUG("Missing primary key: " << (*(*key_iter).get()));
+          K2LOG_D(log::pg, "Missing primary key: {}", (*(*key_iter).get()));
           key_iter = write_req_->key_column_values.erase(key_iter);
         } else {
           key_iter++;
@@ -142,11 +142,11 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
       }
     }
   } else {
-    K2DEBUG("Clearing key column values for ybctid binding");
+    K2LOG_D(log::pg, "Clearing key column values for ybctid binding");
     write_req_->key_column_values.clear();
   }
 
-  K2DEBUG("Deleting empty primary binds and found missing primary key: " << missing_primary_key);
+  K2LOG_D(log::pg, "Deleting empty primary binds and found missing primary key: {}", missing_primary_key);
   // Check for missing key.  This is okay when binding the whole table (for colocated truncate).
   if (missing_primary_key && !bind_table_) {
     return STATUS(InvalidArgument, "Primary key must be fully specified for modifying table");

@@ -47,35 +47,32 @@ TableInfoHandler::~TableInfoHandler() {
 CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name) {
     CreateSysTablesResult response;
     // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
-    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_);
+    K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, schema: {}", collection_name, tablehead_schema_name_);
     CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr_);
     if (!result.status.IsSucceeded()) {
-        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << tablehead_schema_name_
-            << " due to " << result.status.errorMessage);
+        K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, schema: {}, due to: {}", collection_name, tablehead_schema_name_, result.status);
         response.status = std::move(result.status);
         return response;
     }
 
-    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_);
+    K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, name: {}", collection_name, tablecolumn_schema_name_);
     result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr_);
     if (!result.status.IsSucceeded()) {
-        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << tablecolumn_schema_name_
-            << " due to " << result.status.errorMessage);
+        K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, name: {}, due to: {}", collection_name, tablecolumn_schema_name_, result.status);
         response.status = std::move(result.status);
         return response;
     }
 
-    K2DEBUG("Creating SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_);
+    K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, name: {}", collection_name, indexcolumn_schema_name_);
     result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr_);
      if (!result.status.IsSucceeded()) {
-        K2ERROR("Failed to create SKV schema for collection: " << collection_name << ", name: " << indexcolumn_schema_name_
-            << " due to " << result.status.errorMessage);
+        K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, name: {}, due to: {}", collection_name, indexcolumn_schema_name_, result.status);
         response.status = std::move(result.status);
         return response;
     }
 
     response.status.Succeed();
-    K2DEBUG("Created SKV schema for system tables successfully");
+    K2LOG_D(log::catalog, "Created SKV schema for system tables successfully");
     return response;
 }
 
@@ -87,18 +84,18 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Ses
     CheckSysTableResult response;
     // TODO: double check if this check is valid for schema
     if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        K2DEBUG("Table " << schema_name << " does not exist in " << collection_name);
+        K2LOG_D(log::catalog, "Table {}, does not exist in {}. Creating...", schema_name, collection_name);
         // create the table schema since it does not exist
-        K2DEBUG("Creating SKV schema " << schema_name << " in " << collection_name);
         RStatus schema_result = CreateSKVSchema(collection_name, schema);
         if (!schema_result.IsSucceeded()) {
-            K2ERROR("Failed to create SKV schema " << schema_name << " in " << collection_name << " due to " << schema_result.errorMessage);
+            K2LOG_E(log::catalog, "Failed to create SKV schema {} in {} due to {}",
+                schema_name, collection_name, schema_result);
             response.status = std::move(schema_result);
             return response;
         }
-        K2DEBUG("Created SKV schema " << schema_name << " in " << collection_name);
+        K2LOG_D(log::catalog, "Created SKV schema {} in {}", schema_name, collection_name);
     } else {
-        K2WARN("SKV schema " << schema_name << " already exists in " << collection_name);
+        K2LOG_W(log::catalog, "SKV schema {} already exists in {}", schema_name, collection_name);
     }
     response.status.Succeed();
     return response;
@@ -123,7 +120,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
 }
 
 GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id) {
-    K2DEBUG("Fetch table schema ns id: " << namespace_id << " ns name: " << namespace_name << ", table id: " << table_id);
+    K2LOG_D(log::catalog, "Fetch table schema ns id: {}, ns name: {}, table id: {}", namespace_id, namespace_name, table_id);
     GetTableResult response;
     // use namespace_id, not namespace_name as the collection name
     // in this we could implement rename database easily by sticking to the same namespace_id
@@ -172,12 +169,9 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(namespace_id, tablehead_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message);
-        std::ostringstream oss;
-        oss << "Failed to create scan read for " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << create_result.status.message;
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(oss.str());
+        K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
+
+        response.status.errorMessage = fmt::format("Failed to create scan read for {} in {} due to {}", tablehead_schema_name_, namespace_id, create_result.status);
         return response;
     }
 
@@ -195,12 +189,10 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message);
-            std::ostringstream oss;
-            oss << "Failed to scan " << tablehead_schema_name_ <<  " in " << namespace_id << " due to " << query_result.status.message;
+            K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
             response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = std::move(oss.str());
+            response.status.errorMessage = fmt::format("Failed to scan {} in {} due to {}",
+            tablehead_schema_name_, namespace_id, query_result.status);
             return response;
         }
 
@@ -370,7 +362,8 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
         const IndexInfo& index_info) {
     PersistIndexTableResult response;
     k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
-    K2DEBUG("Persisting SKV record tablelist_index_record id: " << index_info.table_id() << ", name: " << index_info.table_name());
+    K2LOG_D(log::catalog, "Persisting SKV record tablelist_index_record id: {}, name: {}",
+        index_info.table_id(), index_info.table_name());
     RStatus table_status = PersistSKVRecord(context, tablelist_index_record);
     if (!table_status.IsSucceeded()) {
         response.status = std::move(table_status);
@@ -378,7 +371,8 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<Sess
     }
     std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, index_info, table->schema());
     for (auto& index_column_record : index_column_records) {
-        K2DEBUG("Persisting SKV record index_column_record id: " << index_info.table_id() << ", name: " << index_info.table_name());
+        K2LOG_D(log::catalog, "Persisting SKV record index_column_record id: {}, name: {}",
+            index_info.table_id(), index_info.table_name());
         RStatus index_status = PersistSKVRecord(context, index_column_record);
         if (!index_status.IsSucceeded()) {
             response.status = std::move(index_status);
@@ -663,9 +657,9 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
     // IsUnique (for index)
     record.serializeNext<bool>(false);
     // IndexedTableId
-    record.skipNext();
+    record.serializeNull();
     // IndexPermission
-    record.skipNext();
+    record.serializeNull();
     // NextColumnId
     record.serializeNext<int32_t>(table->next_column_id());
     // SchemaVersion
@@ -855,9 +849,7 @@ DataType TableInfoHandler::ToSqlType(k2::dto::FieldType type) {
             sql_type = DataType::DECIMAL;
         } break;
         default: {
-            std::ostringstream oss;
-            oss << "Unsupported Type: " << type;
-            throw std::invalid_argument(oss.str());
+            throw std::invalid_argument(fmt::format("unsupported type: {}", type));
         }
     }
     return sql_type;
@@ -871,16 +863,16 @@ k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<Ses
     record.serializeNext<k2::String>("");
     // table_id
     record.serializeNext<k2::String>(table_id);
-    K2DEBUG("Fetching Tablehead SKV record for table " << table_id);
+    K2LOG_D(log::catalog, "Fetching Tablehead SKV record for table {}", table_id);
     std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
     k2::ReadResult<k2::dto::SKVRecord> result = result_future.get();
     // TODO: add error handling and retry logic in catalog manager
     if (result.status == k2::dto::K23SIStatus::KeyNotFound) {
         throw std::runtime_error("Cannot find entry " + table_id + " in " + collection_name);
     } else if (!result.status.is2xxOK()) {
-        std::ostringstream oss;
-        oss << "Error fetching entry " << table_id <<  " in " << collection_name << " due to " << result.status.message;
-        throw std::runtime_error(oss.str());
+        throw std::runtime_error(fmt::format("Error fetching entry {} in {} due to {}",
+            table_id, collection_name, result.status
+        ));
     }
     return std::move(result.value);
 }
@@ -889,11 +881,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message);
-        std::ostringstream oss;
-        oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << create_result.status.message;
-        throw std::runtime_error(oss.str());
+        auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
+        base_table_id, collection_name, create_result.status);
+        K2LOG_E(log::catalog, "{}", msg);
+        throw std::runtime_error(msg);
     }
 
     std::vector<k2::dto::SKVRecord> records;
@@ -908,15 +899,14 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     query->startScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
     query->endScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
     do {
-        K2DEBUG("Fetching Tablehead SKV records for indexes on base table " << base_table_id);
+        K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message);
-            std::ostringstream oss;
-            oss << "Failed to create scan read for " << base_table_id <<  " in " << collection_name << " due to " << query_result.status.message;
-            throw std::runtime_error(oss.str());
+            auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
+            base_table_id, collection_name, query_result.status);
+            K2LOG_E(log::catalog, "{}", msg);
+            throw std::runtime_error(msg);
         }
 
         if (!query_result.records.empty()) {
@@ -934,11 +924,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message);
-        std::ostringstream oss;
-        oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
-        throw std::runtime_error(oss.str());
+        auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
+        table_id, collection_name, create_result.status);
+        K2LOG_E(log::catalog, "{}", msg);
+        throw std::runtime_error(msg);
     }
 
     std::vector<k2::dto::SKVRecord> records;
@@ -956,11 +945,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message);
-            std::ostringstream oss;
-            oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
-            throw std::runtime_error(oss.str());
+            auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
+            table_id, collection_name, query_result.status);
+            K2LOG_E(log::catalog, "{}", msg);
+            throw std::runtime_error(msg);
         }
 
         if (!query_result.records.empty()) {
@@ -978,11 +966,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_);
     CreateScanReadResult create_result = create_result_future.get();
     if (!create_result.status.is2xxOK()) {
-        K2ERROR("Failed to create scan read due to error code " << create_result.status.code
-            << " and message: " << create_result.status.message);
-        std::ostringstream oss;
-        oss << "Failed to create scan read for " << table_id <<  " in " << collection_name << " due to " << create_result.status.message;
-        throw std::runtime_error(oss.str());
+        auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
+        table_id, collection_name, create_result.status);
+        K2LOG_E(log::catalog, "{}", msg);
+        throw std::runtime_error(msg);
     }
 
     std::vector<k2::dto::SKVRecord> records;
@@ -1000,11 +987,10 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
         if (!query_result.status.is2xxOK()) {
-            K2ERROR("Failed to run scan read due to error code " << query_result.status.code
-                << " and message: " << query_result.status.message);
-            std::ostringstream oss;
-            oss << "Failed to run scan read for " << table_id <<  " in " << collection_name << " due to " << query_result.status.message;
-            throw std::runtime_error(oss.str());
+            auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
+            table_id, collection_name, query_result.status);
+            K2LOG_E(log::catalog, "{}", msg);
+            throw std::runtime_error(msg);
         }
 
         if (!query_result.records.empty()) {

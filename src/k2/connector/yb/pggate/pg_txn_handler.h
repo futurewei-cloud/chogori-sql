@@ -29,7 +29,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/common/result.h"
 #include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/k2_adapter.h"
-
+#include "k2_log.h"
 namespace k2pg {
 namespace gate {
 
@@ -72,7 +72,7 @@ class PgTxnHandler {
 
   std::shared_ptr<K23SITxn> GetNewTransactionIfNecessary(bool read_only);
 
-  private:  
+  private:
 
   void ResetTransaction();
 
@@ -97,4 +97,4 @@ class PgTxnHandler {
 }  // namespace gate
 }  // namespace k2pg
 
-#endif //CHOGORI_GATE_PG_TXN_HANDLER_H    
+#endif //CHOGORI_GATE_PG_TXN_HANDLER_H

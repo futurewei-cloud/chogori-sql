@@ -66,6 +66,8 @@
 #include "yb/pggate/pg_txn_handler.h"
 #include "yb/pggate/catalog/sql_catalog_client.h"
 
+#include "k2_log.h"
+
 namespace k2pg {
 namespace gate {
 
@@ -101,17 +103,10 @@ class PgSessionAsyncRunResult {
 };
 
 struct PgForeignKeyReference {
-  const uint32_t table_id;
-  const std::string ybctid;
+  uint32_t table_id;
+  std::string ybctid;
 
-  PgForeignKeyReference(uint32_t i_table_id, std::string &&i_ybctid)
-      : table_id(i_table_id), ybctid(i_ybctid) {
-  }
-
-  std::string ToString() const {
-    return Format("{ table_id: $0 ybctid: $1 }",
-                  table_id, ybctid);
-  }
+  K2_DEF_FMT(PgForeignKeyReference, table_id, ybctid);
 };
 
 class RowIdentifier {

@@ -63,6 +63,7 @@
 #include "yb/pggate/pg_column.h"
 #include "yb/pggate/pg_statement.h"
 #include "yb/pggate/pg_op.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

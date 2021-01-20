@@ -96,6 +96,7 @@ and task state checking APIs later by using thread pools.
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
 #include "yb/pggate/catalog/table_info_handler.h"
+#include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {

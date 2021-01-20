@@ -10,6 +10,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

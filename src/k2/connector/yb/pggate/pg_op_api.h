@@ -33,6 +33,7 @@
 #include "yb/pggate/pg_tuple.h"
 
 #include "k2_includes.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {
@@ -57,26 +58,14 @@ namespace gate {
     // TODO: change to use the Expression defined in K2 SKV
     class SqlOpExpr {
         public:
-        enum class ExprType {
+        K2_DEF_ENUM_IC(ExprType,
             VALUE,
             LIST_VALUES,
             COLUMN_ID,
             BIND_ID,
             ALIAS_ID,
-            CONDITION,
-        };
-
-        friend std::ostream& operator<<(std::ostream& os, const ExprType& expr) {
-            switch(expr) {
-                case ExprType::VALUE: return os << "VALUE";
-                case ExprType::LIST_VALUES: return os << "LIST_VALUES";
-                case ExprType::COLUMN_ID: return os << "COLUMN_ID";
-                case ExprType::BIND_ID: return os << "BIND_ID";
-                case ExprType::ALIAS_ID: return os << "ALIAS_ID";
-                case ExprType::CONDITION: return os << "CONDITION";
-                default: return os << "UNKNOWN";
-            }
-        }
+            CONDITION
+        );
 
         SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {
         }

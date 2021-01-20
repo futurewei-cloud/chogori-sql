@@ -25,34 +25,35 @@ Copyright(c) 2020 Futurewei Cloud
 #define CHOGORI_SQL_CATALOG_PERSISTENCE_H
 
 #include <string>
-#include <assert.h>     
+#include <assert.h>
 
 #include "yb/pggate/k23si_txn.h"
+#include "catalog_log.h"
+#include <k2/common/FormattingUtils.h>
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
 
-using std::string;
 using k2pg::gate::K23SITxn;
 // use the pair <namespace_id, table_name> to reference a table
 typedef std::pair<std::string, std::string> TableNameKey;
 
 class ClusterInfo {
-    public: 
+    public:
     ClusterInfo();
 
-    ClusterInfo(string cluster_id, uint64_t catalog_version, bool initdb_done);
+    ClusterInfo(std::string cluster_id, uint64_t catalog_version, bool initdb_done);
 
     ~ClusterInfo();
 
-    void SetClusterId(string cluster_id) {
+    void SetClusterId(std::string cluster_id) {
         cluster_id_ = std::move(cluster_id);
     }
 
-    const string& GetClusterId() {
+    const std::string& GetClusterId() {
         return cluster_id_;
-    } 
+    }
 
     void SetCatalogVersion(uint64_t catalog_version) {
         catalog_version_ = catalog_version;
@@ -70,22 +71,22 @@ class ClusterInfo {
         return initdb_done_;
     }
 
-    private: 
+    private:
     // cluster id, could be randomly generated or from a configuration parameter
     std::string cluster_id_;
 
-    // Right now, the YB logic in PG uses a single global catalog caching version defined in 
+    // Right now, the YB logic in PG uses a single global catalog caching version defined in
     //  src/include/pg_yb_utils.h
     //
     //  extern uint64_t yb_catalog_cache_version;
     //
     // to check if the catalog needs to be refreshed or not. To not break the above caching
     // logic, we need to store the catalog_version as a global variable here.
-    // 
+    //
     // TODO: update both YB logic in PG, PG gate APIs, and catalog manager to be more fine-grained to
     // reduce frequency and/or duration of cache refreshes. One good example is to use a separate
     // catalog version for a database, however, we do need to consider the catalog version change
-    // for shared system tables in PG if we go this path. 
+    // for shared system tables in PG if we go this path.
     //
     // Only certain system catalogs (such as pg_database) are shared.
     uint64_t catalog_version_;
@@ -99,19 +100,19 @@ class NamespaceInfo {
     NamespaceInfo() = default;
     ~NamespaceInfo() = default;
 
-    void SetNamespaceId(string id) {
+    void SetNamespaceId(std::string id) {
         namespace_id_ = std::move(id);
     }
 
-    const string& GetNamespaceId() const {
+    const std::string& GetNamespaceId() const {
         return namespace_id_;
     }
 
-    void SetNamespaceName(string name) {
+    void SetNamespaceName(std::string name) {
         namespace_name_ = std::move(name);
     }
 
-    const string& GetNamespaceName() const {
+    const std::string& GetNamespaceName() const {
         return namespace_name_;
     }
 
@@ -134,10 +135,10 @@ class NamespaceInfo {
 
     private:
     // encoded id, for example, uuid
-    string namespace_id_;
+    std::string namespace_id_;
 
     // name
-    string namespace_name_;
+    std::string namespace_name_;
 
     // object id assigned by PG
     uint32_t namespace_oid_;
@@ -165,39 +166,39 @@ class SessionTransactionContext {
         finished_ = true;
     }
 
-    private: 
+    private:
     void EndTransaction(bool should_commit);
 
     std::shared_ptr<K23SITxn> txn_;
-    bool finished_;   
+    bool finished_;
 };
 
 // mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)
-typedef enum RStatusCode {
-    OK = 0,
-    NOT_FOUND = 1,
-    CORRUPTION = 2,
-    NOT_SUPPORTED = 3,
-    INVALID_ARGUMENT = 4,
-    IO_ERROR = 5,
-    ALREADY_PRESENT = 6,
-    RUNTIME_ERROR = 7,
-    NETWORK_ERROR = 8,
-    ILLEGAL_STATE = 9,
-    NOT_AUTHORIZED = 10,
-    ABORTED = 11,
-    REMOTE_ERROR = 12,
-    SERVICE_UNAVAILABLE = 13,
-    TIMED_OUT = 14,
-    UNINITIALIZED = 15,
-    CONFIGURATION_ERROR = 16,
-    INCOMPLETE = 17,
-    END_OF_FILE = 18,
-    INVALID_COMMAND = 19,
-    QUERY_ERROR = 20,
-    INTERNAL_ERROR = 21,
-    EXPIRED = 22,    
-} StatusCode;
+K2_DEF_ENUM(StatusCode,
+    OK,
+    NOT_FOUND,
+    CORRUPTION,
+    NOT_SUPPORTED,
+    INVALID_ARGUMENT,
+    IO_ERROR,
+    ALREADY_PRESENT,
+    RUNTIME_ERROR,
+    NETWORK_ERROR,
+    ILLEGAL_STATE,
+    NOT_AUTHORIZED,
+    ABORTED,
+    REMOTE_ERROR,
+    SERVICE_UNAVAILABLE,
+    TIMED_OUT,
+    UNINITIALIZED,
+    CONFIGURATION_ERROR,
+    INCOMPLETE,
+    END_OF_FILE,
+    INVALID_COMMAND,
+    QUERY_ERROR,
+    INTERNAL_ERROR,
+    EXPIRED
+);
 
 // response status
 struct RStatus {
@@ -213,7 +214,8 @@ struct RStatus {
 
     bool IsSucceeded() {
         return code == StatusCode::OK;
-    }  
+    }
+    K2_DEF_FMT(RStatus, code, errorMessage);
 };
 
 static const inline RStatus StatusOK{.code = StatusCode::OK, .errorMessage=""};
@@ -222,6 +224,6 @@ static const inline RStatus StatusOK{.code = StatusCode::OK, .errorMessage=""};
 } // namespace sql
 } // namespace k2pg
 
-#endif //CHOGORI_SQL_CATALOG_PERSISTENCE_H    
+#endif //CHOGORI_SQL_CATALOG_PERSISTENCE_H
 
 

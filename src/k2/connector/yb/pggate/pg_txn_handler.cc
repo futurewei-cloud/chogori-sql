@@ -37,14 +37,14 @@ PgTxnHandler::~PgTxnHandler() {
     std::future<k2::EndResult> result_future = txn_->endTxn(false);
     k2::EndResult result = result_future.get();
     if (!result.status.is2xxOK()) {
-      K2ERROR("In progress transaction abortion failed due to: " << result.status.message);
+      K2LOG_E(log::pg, "In progress transaction abortion failed due to: {}", result.status.message);
     }
   }
   ResetTransaction();
 }
 
 Status PgTxnHandler::BeginTransaction() {
-  K2DEBUG("BeginTransaction: txn_in_progress_=" << txn_in_progress_);
+  K2LOG_D(log::pg, "BeginTransaction: txn_in_progress_={}", txn_in_progress_);
   if (txn_in_progress_) {
     return STATUS(IllegalState, "Transaction is already in progress");
   }
@@ -74,26 +74,26 @@ Status PgTxnHandler::RestartTransaction() {
 
 Status PgTxnHandler::CommitTransaction() {
   if (!txn_in_progress_) {
-    K2DEBUG("No transaction in progress, nothing to commit.");
+    K2LOG_D(log::pg, "No transaction in progress, nothing to commit.");
     return Status::OK();
   }
 
   if (txn_ != nullptr && read_only_) {
-    K2DEBUG("This was a read-only transaction, nothing to commit.");
+    K2LOG_D(log::pg, "This was a read-only transaction, nothing to commit.");
     ResetTransaction();
     return Status::OK();
   }
 
-  K2DEBUG("Committing transaction.");
+  K2LOG_D(log::pg, "Committing transaction.");
   // Use synchronous call for now until PG supports additional state check after this call
   std::future<k2::EndResult> result_future = txn_->endTxn(true);
   k2::EndResult result = result_future.get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
-   K2WARN("Transaction commit failed");
+   K2LOG_W(log::pg, "Transaction commit failed due to: {}", result.status);
    return STATUS_FORMAT(RuntimeError, "Transaction commit failed with error code $0 and message $1", result.status.code, result.status.message);
   }
-  K2DEBUG("Transaction commit succeeded");
+  K2LOG_D(log::pg, "Transaction commit succeeded");
   return Status::OK();
 }
 
@@ -111,6 +111,7 @@ Status PgTxnHandler::AbortTransaction() {
   k2::EndResult result = result_future.get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
+    K2LOG_W(log::pg, "Transaction abort failed due to: {}", result.status);
     return STATUS_FORMAT(RuntimeError, "Transaction abort failed with error code $0 and message $1", result.status.code, result.status.message);
   }
   return Status::OK();

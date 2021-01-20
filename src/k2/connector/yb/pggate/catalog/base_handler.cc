@@ -38,13 +38,11 @@ RStatus BaseHandler::CreateSKVSchema(std::string collection_name, std::shared_pt
     RStatus response;
     auto result = k2_adapter_->CreateSchema(collection_name, schema).get();
     if (!result.status.is2xxOK()) {
-        K2ERROR("Failed to create SKV schema for " << schema->name << "in" << collection_name
-            << " due to error code " << result.status.code
-            << " and message: " << result.status.message);
+        K2LOG_E(log::catalog, "Failed to create SKV schema for {} in {}, due to {}", schema->name, collection_name, result.status);
         response.code = StatusCode::INTERNAL_ERROR;
         response.errorMessage = std::move(result.status.message);
     } else {
-        K2DEBUG("Created SKV Schema for " << schema->name << " in ns " << collection_name << " as: " << (*schema.get()))
+        K2LOG_D(log::catalog, "Created SKV Schema for {} in ns {} as: {}", schema->name, collection_name, (*schema.get()))
         response.Succeed();
     }
     return response;
@@ -74,10 +72,7 @@ RStatus BaseHandler::SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionCon
     RStatus response;
     auto result = context->GetTxn()->write(std::move(record), isDelete).get();
     if (!result.status.is2xxOK()) {
-        K2ERROR("Failed to " << (isDelete ? "Delete" : "Save")
-            <<" SKV record "
-            << " due to error code " << result.status.code
-            << " and message: " << result.status.message);
+        K2LOG_E(log::catalog, "Failed to {} SKV record due to {}", (isDelete ? "Delete" : "Save"), result.status);
         response.code = StatusCode::INTERNAL_ERROR;
         response.errorMessage = std::move(result.status.message);
     } else {

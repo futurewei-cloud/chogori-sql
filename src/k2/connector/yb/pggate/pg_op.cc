@@ -125,7 +125,7 @@ TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttr
             break;
         }
         default:
-            K2ERROR("Internal error: unsupported type " << type_entity->yb_type);
+            K2LOG_E(log::pg, "Internal error: unsupported type {}", type_entity->yb_type);
             return STATUS(InternalError, "unsupported type for user column");
     }
     return Status::OK();
@@ -149,7 +149,7 @@ TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, cons
             std::string serialized_decimal(field.value().c_str(), field.value().size());
             Decimal yb_decimal;
             if (!yb_decimal.DecodeFromComparable(serialized_decimal).ok()) {
-                K2ERROR("Failed to deserialize DECIMAL from " << serialized_decimal);
+                K2LOG_E(log::pg, "Failed to deserialize DECIMAL from {}", serialized_decimal);
                 return STATUS(InternalError, "failed to deserialize DECIMAL");
             }
             auto plaintext = yb_decimal.ToString();
@@ -158,7 +158,7 @@ TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, cons
             break;
         }
         default:
-            K2ERROR("Internal error: unsupported type " << type_entity->yb_type);
+            K2LOG_E(log::pg, "Internal error: unsupported type {}", type_entity->yb_type);
             return STATUS(InternalError, "unsupported type for user column");
     }
     return Status::OK();
@@ -220,13 +220,14 @@ Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field
 
 template<typename T>
 void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result, int32_t* num) {
+    K2LOG_D(log::pg, "Parsing field {} in targets_by_name map with size: {}", fieldName, targets_by_name.size());
     auto iter = targets_by_name.find(fieldName.c_str());
     if (iter == targets_by_name.end()) {
         if (k2pg::sql::catalog::CatalogConsts::TABLE_ID_COLUMN_NAME == fieldName.c_str() ||
             k2pg::sql::catalog::CatalogConsts::INDEX_ID_COLUMN_NAME == fieldName.c_str()) {
         }
         else {
-            K2DEBUG("Encountered field " << fieldName << ", without target reference");
+            K2LOG_D(log::pg, "Encountered field {}, without target reference", fieldName);
         }
         result = Status::OK();
         return;
@@ -255,6 +256,8 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
         }
     }
     (*num)++;
+    K2LOG_D(log::pg, "Parsed field {}, num: {} in targets_by_name map with size: {}",
+            fieldName, (*num), targets_by_name.size());
 }
 
 PgOpResult::PgOpResult(std::vector<k2::dto::SKVRecord>&& data) : data_(std::move(data)) {
@@ -276,21 +279,21 @@ int64_t PgOpResult::NextRowOrder() {
 // Get the postgres tuple from this batch.
 Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple *pg_tuple, int64_t *row_order) {
     Status result;
-    K2ASSERT(targets_by_name.size() > 0, "targets should not be empty");
-    K2ASSERT(syscol_processed_, "System columns have not been processed yet");
+    K2ASSERT(log::pg, targets_by_name.size() > 0, "targets should not be empty");
+    K2ASSERT(log::pg, syscol_processed_, "System columns have not been processed yet");
     int32_t num = 0;
     FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result, &num);
      if (targets_by_name.find("ybctid") != targets_by_name.end()) {
         // ybctid is a virtual column and won't be in the SKV record
         num++;
     }
-    K2ASSERT(num == targets_by_name.size(), "All target columns should be processed: " << num << " != " << targets_by_name.size());
+    K2ASSERT(log::pg, num == targets_by_name.size(), "All target columns should be processed: {} != {}", num, targets_by_name.size());
 
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
         pg_tuple->syscols()->ybctid = (uint8_t*)yb::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
     }
-    K2DEBUG("wrote tuple ybctid=" << k2::escape(ybctid_strings_[nextToConsume_]));
+    K2LOG_D(log::pg, "wrote tuple ybctid={}", ybctid_strings_[nextToConsume_]);
     if (row_orders_.size()) {
         *row_order = row_orders_.front();
         row_orders_.pop_front();
@@ -318,7 +321,7 @@ void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
     }
     else
     {
-        K2ASSERT(false, "BugBug try to get baseRowIdBatch from empty index result!");
+        K2ASSERT(log::pg, false, "BugBug try to get baseRowIdBatch from empty index result!");
     }
 }
 
@@ -351,7 +354,7 @@ PgOp::~PgOp() {
     // Wait for result in case request was sent.
     // Operation can be part of transaction it is necessary to complete it before transaction commit.
     if (response_.InProgress()) {
-        K2DEBUG("Waiting for in progress response ");
+        K2LOG_D(log::pg, "Waiting for in progress response");
         __attribute__((unused)) auto status = response_.GetStatus();
     }
 }
@@ -377,7 +380,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
     if (!end_of_data_) {
         // Send request now in case prefetching was suppressed.
         if (suppress_next_result_prefetching_ && !response_.InProgress()) {
-            K2DEBUG("suppress_next_result_prefetching_: " << suppress_next_result_prefetching_ << " send request...");
+            K2LOG_D(log::pg, "suppress_next_result_prefetching_: {} send request...", suppress_next_result_prefetching_);
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
@@ -387,16 +390,18 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
         // In case ProcessResponse doesn't fail with an error
         // it should return non empty rows and/or set end_of_data_.
         DCHECK(!rows.empty() || end_of_data_);
-        K2DEBUG("GetResult rows: " << rows.size() << ", end_of_data_: " << end_of_data_);
+        K2LOG_D(log::pg, "GetResult rows: {}, end_of_data_: {}", rows.size(), end_of_data_);
         rowsets->splice(rowsets->end(), rows);
         // Prefetch next portion of data if needed.
         if (!(end_of_data_ || suppress_next_result_prefetching_)) {
-            K2DEBUG("Not done, end_of_data_: " << end_of_data_ << ", suppress_next_result_prefetching_: " << suppress_next_result_prefetching_ << "continue sending request...");
+            K2LOG_D(log::pg,
+                "Not done, end_of_data_: {}, suppress_next_result_prefetching_:{}, continue sending request...",
+                end_of_data_, suppress_next_result_prefetching_);
             exec_status_ = SendRequest(true /* force_non_bufferable */);
             RETURN_NOT_OK(exec_status_);
         }
     } else {
-        K2DEBUG("Done, GetResult end_of_data_: " << end_of_data_);
+        K2LOG_D(log::pg, "Done, GetResult end_of_data_: {}", end_of_data_);
     }
 
     return Status::OK();
@@ -455,7 +460,7 @@ void PgOp::MoveInactiveOpsOutside() {
 }
 
 Status PgOp::SendRequest(bool force_non_bufferable) {
-    K2DEBUG("PgOp " << this << " sends request with force_non_bufferable " << force_non_bufferable);
+    K2LOG_D(log::pg, "PgOp sends request with force_non_bufferable {}", force_non_bufferable);
     DCHECK(exec_status_.ok());
     DCHECK(!response_.InProgress());
     DCHECK(!end_of_data_);
@@ -490,7 +495,7 @@ Result<std::list<PgOpResult>> PgOp::ProcessResponse(const Status& status) {
 }
 
 Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {
-    K2DEBUG("Received response for request " << this);
+    K2LOG_D(log::pg, "Received response for request");
 
     // Check for errors reported by storage server.
     for (int op_index = 0; op_index < active_op_count_; op_index++) {
@@ -547,7 +552,7 @@ Result<std::list<PgOpResult>> PgReadOp::ProcessResponseImpl() {
 
     // Process paging state and check status.
     RETURN_NOT_OK(ProcessResponsePagingState());
-    K2DEBUG("ProcessResponseImpl for ReadOp with result size: " << result.size());
+    K2LOG_D(log::pg, "ProcessResponseImpl for ReadOp with result size: {}", result.size());
     return result;
 }
 
@@ -605,7 +610,8 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
         // use one batch for now, could split into multiple batches later for optimization
         request->ybctid_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(ybctid)));
     }
-    K2DEBUG("Populated " << request->ybctid_column_values.size() << " ybctids in op read request for table " << request->table_id);
+    K2LOG_D(log::pg, "Populated {} ybctids in op read request for table {}",
+            request->ybctid_column_values.size(), request->table_id);
 
     // Done creating request
     MoveInactiveOpsOutside();
@@ -615,7 +621,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
 }
 
 Status PgReadOp::ProcessResponsePagingState() {
-    K2DEBUG("Processing response paging state for PgReadOp " << this << " for table " << relation_id_.GetPgTableId());
+    K2LOG_D(log::pg, "Processing response paging state for PgReadOp for table {}", relation_id_.GetPgTableId());
     // For each read_op, set up its request for the next batch of data or make it in-active.
     bool has_more_data = false;
     int32_t send_count = std::min(parallelism_level_, active_op_count_);
@@ -628,14 +634,14 @@ Status PgReadOp::ProcessResponsePagingState() {
         read_op->request()->paging_state = res.paging_state;
         if (res.paging_state != nullptr) {
             has_more_arg = true;
-            K2DEBUG("Updated paging state for request for table " << read_op->request()->table_id);
+            K2LOG_D(log::pg, "Updated paging state for request for table {}", read_op->request()->table_id);
         } else {
-            K2DEBUG("Response paging state is null for table " << read_op->request()->table_id);
+            K2LOG_D(log::pg, "Response paging state is null for table {}", read_op->request()->table_id);
         }
 
         if (has_more_arg) {
             has_more_data = true;
-            K2DEBUG("has_more_arg -> has_more_data = true");
+            K2LOG_D(log::pg, "has_more_arg -> has_more_data = true");
         } else {
             read_op->set_active(false);
         }
@@ -645,12 +651,13 @@ Status PgReadOp::ProcessResponsePagingState() {
         // Move inactive ops to the end of pgsql_ops_ to make room for new set of arguments.
         MoveInactiveOpsOutside();
         end_of_data_ = false;
-        K2DEBUG("end_of_data = false with has_more_data: " << has_more_data << ", send_count: " << send_count << ", active_op_count: " << active_op_count_);
+        K2LOG_D(log::pg, "end_of_data = false with has_more_data: {}, send_count: {}, active_op_count: {}",
+                has_more_data, send_count, active_op_count_);
     } else {
         // There should be no active op left in queue.
         active_op_count_ = 0;
         end_of_data_ = request_population_completed_;
-        K2DEBUG("active_op_count: 0, end_of_data: " << end_of_data_);
+        K2LOG_D(log::pg, "active_op_count: 0, end_of_data: {}", end_of_data_);
     }
 
     return Status::OK();
@@ -674,7 +681,7 @@ void PgReadOp::SetRequestPrefetchLimit() {
     // Use statement LIMIT(count + offset) if it is smaller than the predicted limit.
     int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
     suppress_next_result_prefetching_ = true;
-    K2DEBUG("suppress_next_result_prefetching_ set to true.");
+    K2LOG_D(log::pg, "suppress_next_result_prefetching_ set to true.");
     if (exec_params_.limit_use_default || limit_count > predicted_limit) {
         limit_count = predicted_limit;
         suppress_next_result_prefetching_ = false;
@@ -686,7 +693,7 @@ void PgReadOp::SetRequestTotalLimit() {
     std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
     // Use statement LIMIT(count + offset) for the global limit.
     int64_t limit_count = exec_params_.limit_count + exec_params_.limit_offset;
-    K2DEBUG("Set request limit as " << limit_count);
+    K2LOG_D(log::pg, "Set request limit as {}", limit_count);
     req->limit = limit_count;
 }
 
@@ -734,7 +741,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
 
     // End execution and return result.
     end_of_data_ = true;
-    K2DEBUG("Received response for WriteOp request " << this << ", result size: " << result.size());
+    K2LOG_D(log::pg, "Received response for WriteOp request result size: {}", result.size());
     return result;
 }
 
@@ -755,7 +762,7 @@ Status PgWriteOp::CreateRequests() {
     request_population_completed_ = true;
 
     // Log non buffered request.
-    K2DEBUG(response_.InProgress() << ": Sending write request for " << this);
+    K2LOG_D(log::pg, "{}: Sending write request", response_.InProgress());
     return Status::OK();
 }
 

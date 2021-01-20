@@ -58,6 +58,7 @@
 #include "yb/entities/value.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_statement.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

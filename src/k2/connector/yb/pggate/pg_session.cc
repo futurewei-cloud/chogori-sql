@@ -416,21 +416,21 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
   const TableId t_table_id = table_id.GetPgTableId();
-  K2DEBUG("Loading table descriptor for " << table_id << ", id: " << t_table_id);
+  K2LOG_D(log::pg, "Loading table descriptor for {}, id={}", table_id, t_table_id);
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(t_table_id);
   if (cached_table == table_cache_.end()) {
-    K2DEBUG("Table cache MISS: " << table_id);
+    K2LOG_D(log::pg, "Table cache MISS: {}", table_id);
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
     if (!s.ok()) {
-      K2ERROR("LoadTable: Server returns an error: " << s);
+      K2LOG_E(log::pg, "LoadTable: Server returns an error: {}", s);
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
                            table_id.object_oid, table_id.database_oid, s.ToUserMessage());
     }
     table_cache_[t_table_id] = table;
   } else {
-    K2DEBUG("Table cache HIT: " << table_id);
+    K2LOG_D(log::pg, "Table cache HIT: {}", table_id);
     table = cached_table->second;
   }
 
@@ -443,7 +443,7 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
   // an index
   const auto itr = table->secondary_indexes().find(t_table_id);
   if (itr == table->secondary_indexes().end()) {
-    K2ERROR("Cannot find index with id " << t_table_id);
+    K2LOG_E(log::pg, "Cannot find index with id {}", t_table_id);
     return STATUS_FORMAT(NotFound, "Cannot find index $0 in database $1",
                          t_table_id, table->namespace_id());
   }
@@ -477,18 +477,18 @@ size_t hash_value(const PgForeignKeyReference& key) {
 }
 
 bool PgSession::ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  PgForeignKeyReference reference{table_id, std::move(ybctid)};
   return fk_reference_cache_.find(reference) != fk_reference_cache_.end();
 }
 
 Status PgSession::CacheForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  PgForeignKeyReference reference{table_id, std::move(ybctid)};
   fk_reference_cache_.emplace(reference);
   return Status::OK();
 }
 
 Status PgSession::DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference = {table_id, std::move(ybctid)};
+  PgForeignKeyReference reference{table_id, std::move(ybctid)};
   fk_reference_cache_.erase(reference);
   return Status::OK();
 }

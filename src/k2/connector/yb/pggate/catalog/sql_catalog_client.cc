@@ -31,7 +31,7 @@ Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   GetInitDbRequest request;
   GetInitDbResponse response = catalog_manager_->IsInitDbDone(request);
   if(!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to check init_db state due to code $0 and message $1", response.status.code, response.status.errorMessage);
   }
   *isDone = response.isInitDbDone;
@@ -64,7 +64,7 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
    };
   CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to create namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
   }
   return Status::OK();
@@ -75,7 +75,7 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
   DeleteNamespaceRequest request {.namespaceName = namespace_name, .namespaceId = namespace_id};
   DeleteNamespaceResponse response = catalog_manager_->DeleteNamespace(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to delete namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
   }
   return Status::OK();
@@ -101,7 +101,7 @@ Status SqlCatalogClient::CreateTable(
   };
   CreateTableResponse response = catalog_manager_->CreateTable(request);
   if (!response.status.IsSucceeded()) {
-    return STATUS_SUBSTITUTE(RuntimeError,
+    return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
             response.status.code, response.status.errorMessage);
   }
@@ -135,7 +135,7 @@ Status SqlCatalogClient::CreateIndexTable(
   };
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
   if (!response.status.IsSucceeded()) {
-    return STATUS_SUBSTITUTE(RuntimeError,
+    return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
             response.status.code, response.status.errorMessage);
   }
@@ -149,7 +149,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
   };
   DeleteTableResponse response = catalog_manager_->DeleteTable(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to delete table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   }
   return Status::OK();
@@ -162,7 +162,7 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
   };
   DeleteIndexResponse response = catalog_manager_->DeleteIndex(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to delete index $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   }
   *base_table_oid = response.baseIndexTableOid;
@@ -177,7 +177,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   };
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
   }
 
@@ -197,7 +197,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
   };
   ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
   if (!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to reserve PG Oids for database $0 due to code $1 and message $2", database_oid, response.status.code, response.status.errorMessage);
   }
   *begin_oid = response.beginOid;
@@ -209,7 +209,7 @@ Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
   GetCatalogVersionRequest request;
   GetCatalogVersionResponse response = catalog_manager_->GetCatalogVersion(request);
   if(!response.status.IsSucceeded()) {
-     return STATUS_SUBSTITUTE(RuntimeError,
+     return STATUS_FORMAT(RuntimeError,
          "Failed to get catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
   }
   *pg_catalog_version = response.catalogVersion;

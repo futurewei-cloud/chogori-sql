@@ -33,6 +33,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k23si_txn.h"
 #include "k23si_queue_defs.h"
 #include <future>
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {
