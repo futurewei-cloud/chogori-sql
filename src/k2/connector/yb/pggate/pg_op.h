@@ -233,10 +233,8 @@ protected:
     bool request_population_completed_ = false;
 
     // Future object to fetch a response from storage after sending a request.
-    // Object's valid() method returns false in case no request is sent
-    // or sent request was buffered by the session.
     // Only one RunAsync() can be called to sent storage at a time.
-    PgSessionAsyncRunResult response_;
+    std::future<Status> requestAsyncRunResult_;
 
     // Executed row count.
     int32_t rows_affected_count_ = 0;

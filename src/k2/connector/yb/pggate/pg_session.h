@@ -86,20 +86,6 @@ struct BufferableOperation {
 
 typedef std::vector<BufferableOperation> PgsqlOpBuffer;
 
-// This class provides access to run operation's result by reading std::future<Status>
-// and analyzing possible pending errors in GetStatus() method.
-// If GetStatus() method will not be called, possible errors are stored in individual response objects of the template operations.
-class PgSessionAsyncRunResult {
- public:
-  PgSessionAsyncRunResult() = default;
-  PgSessionAsyncRunResult(std::future<Status> future_status);
-  CHECKED_STATUS GetStatus();
-  bool InProgress() const;
-
- private:
-  std::future<Status> future_status_;
-};
-
 struct PgForeignKeyReference {
   const uint32_t table_id;
   const std::string ybctid;
@@ -278,7 +264,7 @@ class PgSession {
   // (shared_ptr<PgReadOpTemplate>, shared_ptr<PgWriteOpTemplate>)
   // without implicitly conversion to shared_ptr<PgReadOpTemplate>.
   // Conversion to shared_ptr<PgOpTemplate> will be done later and result will re-used with move.
-  Result<PgSessionAsyncRunResult> RunAsync(const std::shared_ptr<PgOpTemplate>& op,
+  Result<std::future<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>& op,
                                            const PgObjectId& relation_id,
                                            uint64_t* read_time,
                                            bool force_non_bufferable) {
@@ -286,7 +272,7 @@ class PgSession {
   }
 
   // Run list of given operations to read and write database content.
-  Result<PgSessionAsyncRunResult> RunAsync(const std::vector<std::shared_ptr<PgOpTemplate>>& ops,
+  Result<std::future<Status>> RunAsync(const std::vector<std::shared_ptr<PgOpTemplate>>& ops,
                                            const PgObjectId& relation_id,
                                            uint64_t* read_time,
                                            bool force_non_bufferable) {
@@ -295,7 +281,7 @@ class PgSession {
   }
 
   // Run multiple operations.
-  Result<PgSessionAsyncRunResult> RunAsync(const std::shared_ptr<PgOpTemplate>* op,
+  Result<std::future<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>* op,
                                            size_t ops_count,
                                            const PgObjectId& relation_id,
                                            uint64_t* read_time,
@@ -334,9 +320,9 @@ class PgSession {
   class RunHelper {
    public:
     RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional);
-    Result<PgSessionAsyncRunResult> Flush();
+    Result<std::future<Status>> Flush();
 
-    Result<PgSessionAsyncRunResult> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
+    Result<std::future<Status>> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
