@@ -26,6 +26,7 @@
 #include "yb/common/macros.h"
 #include "yb/common/type/slice.h"
 #include "yb/pggate/pg_gate_typedefs.h"
+#include <k2/common/Common.h>
 
 namespace k2pg {
 namespace sql {
@@ -112,7 +113,7 @@ public:
                 os << sql_value.data_.double_val_;
             } break;
             case ValueType::SLICE: {
-                os << sql_value.data_.slice_val_;
+                os << k2::HexCodec::encode(sql_value.data_.slice_val_);
             } break;
             default: {
                 os << "Unknown";
