@@ -52,6 +52,7 @@
 #include "yb/entities/table.h"
 #include "yb/pggate/pg_column.h"
 #include "yb/pggate/pg_op_api.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

@@ -28,6 +28,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <vector>
 
 #include "yb/pggate/catalog/base_handler.h"
+#include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {

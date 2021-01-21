@@ -72,7 +72,7 @@ Status PgSelect::Prepare() {
     // Create secondary index query.
     secondary_index_query_ =
       std::make_shared<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
-    K2DEBUG("new secondary_index_query_ created.");
+    K2LOG_D(log::pg, "new secondary_index_query_ created.");
   }
 
   // Allocate READ requests to send to storage layer.
@@ -98,7 +98,7 @@ Status PgSelect::PrepareSecondaryIndex() {
     return Status::OK();
   }
 
-  K2DEBUG("secondary_index_query_ preparing as subquery.");
+  K2LOG_D(log::pg, "secondary_index_query_ preparing as subquery.");
 
   // Prepare subquery. When index_req is not null, it is part of 'this' SELECT request. When it
   // is nullptr, the subquery will create its own sql_op_ to run a separate read request.
@@ -118,7 +118,7 @@ PgSelectIndex::~PgSelectIndex() {
 Status PgSelectIndex::Prepare() {
   // We get here only if this is an IndexOnly scan.
   CHECK(prepare_params_.index_only_scan) << "Unexpected IndexOnly scan type";
-  K2DEBUG("PgSelectIndex preparing as indexOnly scan.");
+  K2LOG_D(log::pg, "PgSelectIndex preparing as indexOnly scan.");
   return PrepareQuery(nullptr);
 }
 
@@ -126,7 +126,7 @@ Status PgSelectIndex::PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req
   // We get here if this is an SecondaryIndex scan.
   CHECK(prepare_params_.use_secondary_index && !prepare_params_.index_only_scan)
     << "Unexpected Index scan type";
-  K2DEBUG("PgSelectIndex preparing as secondary index subquery.");
+  K2LOG_D(log::pg, "PgSelectIndex preparing as secondary index subquery.");
   return PrepareQuery(read_req);
 }
 
@@ -143,7 +143,7 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
     read_req_ = read_req;
     read_req_->table_id = index_id_.GetPgTableId();
     sql_op_ = nullptr;
-    K2DEBUG("PgSelectIndex prepared as secondary index subquery. sql_op_ is null. read_req pagestate is null 1 or 0?" << (!(read_req_->paging_state) ? 1:0 ));
+    K2LOG_D(log::pg, "PgSelectIndex prepared as secondary index subquery. sql_op_ is null. read_req pagestate is null 1 or 0? {}", (!(read_req_->paging_state) ? 1:0 ));
   } else {
     auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
     read_req_ = read_op->request();
@@ -157,11 +157,11 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
 
 // From a index table resut set, get the corresponding base table ybctids (RowIds)
 Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
-  K2DEBUG("FetchBaseRowIdBatch, next batch size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
+  K2LOG_D(log::pg, "FetchBaseRowIdBatch, next batch size: {}", (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
 
   // Keep reading until we get one batch of ybctids or EOF.
   while (!VERIFY_RESULT(HasBaseRowIdBatch())) {
-    K2DEBUG("FetchBaseRowIdBatch has nothing cached, trying FetchDataFromServer.");
+    K2LOG_D(log::pg, "FetchBaseRowIdBatch has nothing cached, trying FetchDataFromServer");
     if (!VERIFY_RESULT(FetchDataFromServer())) {
       // Server returns no more rows.
       return false;
@@ -176,7 +176,7 @@ Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& baseRo
   DCHECK(rowsets_.front().is_eof());
   rowsets_.pop_front();
 
-  K2DEBUG("Exiting FetchBaseRowIdBatch, next batch size:" << (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
+  K2LOG_D(log::pg, "Exiting FetchBaseRowIdBatch, next batch size: {}", (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
   return true;
 }
 

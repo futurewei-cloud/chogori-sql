@@ -29,6 +29,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
 #include "yb/pggate/catalog/sql_catalog_entity.h"
 #include "yb/pggate/k2_adapter.h"
+#include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {

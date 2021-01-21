@@ -50,6 +50,7 @@
 #define CHOGORI_GATE_PG_DML_WRITE_H
 
 #include "yb/pggate/pg_dml.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {
@@ -91,7 +92,7 @@ class PgDmlWrite : public PgDml {
   PgDmlWrite(std::shared_ptr<PgSession> pg_session,
              const PgObjectId& table_id,
              bool is_single_row_txn = false);
- 
+
   // Allocate write request.
   void AllocWriteRequest();
 
@@ -124,4 +125,4 @@ class PgDmlWrite : public PgDml {
 }  // namespace gate
 }  // namespace k2pg
 
-#endif //CHOGORI_GATE_PG_DML_WRITE_H    
+#endif //CHOGORI_GATE_PG_DML_WRITE_H

@@ -4258,9 +4258,15 @@ InitK23siWorker()
 			cpoBackoff = "10ms";
 		}
 
+		const char* logLevel = getenv("K2_LOG_LEVEL");
+		if (NULL == logLevel) {
+			logLevel = "INFO";
+		}
+
 		char* argv[MAX_K2_ARGS];
 		int argc = 0;
 		argv[argc++] = "k2_pg";
+		argv[argc++] = "--log_level"; argv[argc++] = logLevel;
 		argv[argc++] = "--cpuset"; argv[argc++] = coreToUse;
 		if (NULL != hugepages) argv[argc++] = hugepages;
 		if (NULL != rdmaDevice) { argv[argc++] = "--rdma"; argv[argc++] = rdmaDevice;}

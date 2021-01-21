@@ -20,12 +20,12 @@ namespace gate {
 Config::Config() {
     const char* configFileName = getenv("K2_CONFIG_FILE");
     if (NULL == configFileName) {
-        K2WARN("No config file given for K2 configuration in the K2_CONFIG_FILE env variable");
+        K2LOG_W(log::pg, "No config file given for K2 configuration in the K2_CONFIG_FILE env variable");
         return;
     }
 
     // read the config file
-    K2INFO(configFileName);
+    K2LOG_I(log::pg, "{}", configFileName);
     std::ifstream ifile(configFileName);
     ifile >> _config;
 }

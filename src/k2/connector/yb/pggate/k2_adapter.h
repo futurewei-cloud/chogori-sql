@@ -27,7 +27,8 @@
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
 
-#include "thread_pool.h"
+#include "k2_thread_pool.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

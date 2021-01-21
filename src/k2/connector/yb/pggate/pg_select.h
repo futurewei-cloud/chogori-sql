@@ -50,6 +50,7 @@
 #define CHOGORI_GATE_DML_SELECT_H
 
 #include "yb/pggate/pg_dml_read.h"
+#include "k2_log.h"
 
 namespace k2pg {
 namespace gate {

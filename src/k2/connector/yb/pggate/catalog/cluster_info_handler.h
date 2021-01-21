@@ -25,6 +25,7 @@ Copyright(c) 2020 Futurewei Cloud
 #define CHOGORI_SQL_CLUSTER_INFO_HANDLER_H
 
 #include <string>
+#include "catalog_log.h"
 
 #include "yb/pggate/catalog/base_handler.h"
 

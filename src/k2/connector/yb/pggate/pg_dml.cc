@@ -91,7 +91,7 @@ Status PgDml::AppendTarget(PgExpr *target) {
 }
 
 Status PgDml::AppendTargetVar(PgExpr *target) {
-  K2DEBUG("Append target " << (*target));
+  K2LOG_D(log::pg, "Append target {}", (*target));
   // Append to targets_.
   targets_.push_back(target);
 
@@ -154,7 +154,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 
   // Find column to bind.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
-  K2DEBUG("Bind column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << (*attr_value));
+  K2LOG_D(log::pg, "Bind column with attr_num: {}, name: {}, value: {}", attr_num, col->attr_name(), (*attr_value));
 
   // Alloc the expression variable.
   std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
@@ -162,7 +162,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
     bind_var = AllocColumnBindVar(col);
   } else {
     if (expr_binds_.find(bind_var) != expr_binds_.end()) {
-      K2WARN("Column " << attr_num << " is already bound to another value.");
+      K2LOG_W(log::pg, "Column {} is already bound to another value", attr_num);
     }
   }
 
@@ -181,7 +181,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
     // YBC logic uses a virtual column ybctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
-    K2DEBUG("kYBTupleId was bound and ybctid_bind_ is set as true");
+    K2LOG_D(log::pg, "kYBTupleId was bound and ybctid_bind_ is set as true");
     ybctid_bind_ = true;
   }
 
@@ -189,7 +189,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateBindVars() {
-  K2DEBUG("Updating bind variables");
+  K2LOG_D(log::pg, "Updating bind variables");
   for (const auto &entry : expr_binds_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -211,7 +211,7 @@ Status PgDml::BindTable() {
 Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   // Find column from targeted table.
   PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
-  K2DEBUG("Assign column with attr_num: " << attr_num << ", name: " << col->attr_name() << ", value" << (*attr_value));
+  K2LOG_D(log::pg, "Assign column with attr_num: {}, name: {}, value: {}", attr_num, col->attr_name(), (*attr_value));
 
   // Alloc the expression.
   std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();
@@ -241,7 +241,7 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateAssignVars() {
-  K2DEBUG("Updating assigned PgExpr to SqlOpExpr");
+  K2LOG_D(log::pg, "Updating assigned PgExpr to SqlOpExpr");
   for (const auto &entry : expr_assigns_) {
     std::shared_ptr<SqlOpExpr> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
@@ -256,7 +256,7 @@ Status PgDml::ClearBinds() {
 }
 
 Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
-  K2DEBUG("Fetching " << natts << " tuples from PgDml for table " << table_id_.GetPgTableId());
+  K2LOG_D(log::pg, "Fetching {} tuples from PgDml for table {}", natts, table_id_.GetPgTableId());
   // Each isnulls and values correspond (in order) to columns from the table schema.
   // Initialize to nulls for any columns not present in result.
   if (isnulls) {
@@ -281,13 +281,13 @@ Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns
 }
 
 Result<bool> PgDml::FetchDataFromServer() {
-  K2DEBUG("Fetch data from SKV");
+  K2LOG_D(log::pg, "Fetch data from SKV");
   // Get the rowsets from sql operator.
   RETURN_NOT_OK(sql_op_->GetResult(&rowsets_));
 
   // Check if EOF is reached.
   if (rowsets_.empty()) {
-    K2DEBUG("Result set is empty");
+    K2LOG_D(log::pg, "Result set is empty");
     // Process the secondary index to find the next WHERE condition.
     //   DML(Table) WHERE ybctid IN (SELECT base_ybctid FROM IndexTable),
     //   The nested query would return many rows each of which yields different result-set.
@@ -313,12 +313,12 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
     return false;
   }
 
-  K2DEBUG("Processing secondary index request, has_sql_op: " << has_sql_op());
+  K2LOG_D(log::pg, "Processing secondary index request, has_sql_op: {}", has_sql_op());
   // Execute query in PgGate.
   // If index query is not yet executed, run it.
   if (!secondary_index_query_->is_executed()) {
     secondary_index_query_->set_is_executed(true);
-    K2DEBUG("Exec secondary_index_query_");
+    K2LOG_D(log::pg, "Exec secondary_index_query_");
     RETURN_NOT_OK(secondary_index_query_->Exec(exec_params));
   }
 
@@ -336,7 +336,7 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
 }
 
 Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
-  K2DEBUG("Get next row of pg tuple");
+  K2LOG_D(log::pg, "Get next row of pg tuple");
   for (auto rowset_iter = rowsets_.begin(); rowset_iter != rowsets_.end();) {
     // Check if the rowset has any data.
     auto& rowset = *rowset_iter;
@@ -380,7 +380,7 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
           // get the pre-bound kYBRowId column and its value
           std::shared_ptr<SqlOpExpr> bind_var = c.bind_var();
           std::shared_ptr<SqlValue> value = bind_var->getValue();
-          K2ASSERT(bind_var != nullptr && value != nullptr, "kYBRowId column must be pre-bound");
+          K2ASSERT(log::pg, bind_var != nullptr && value != nullptr, "kYBRowId column must be pre-bound");
           values.push_back(value);
         } else {
           std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(attr->type_entity, attr->datum, false);
@@ -437,7 +437,7 @@ Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_
       expr_var->setCondition(op_cond);
     }
   }
-  K2DEBUG("Finished binding PgExpr " << (*target) << " to " << (*expr_var));
+  K2LOG_D(log::pg, "Finished binding PgExpr {} to {}", (*target), (*expr_var));
 
   return Status::OK();
 }

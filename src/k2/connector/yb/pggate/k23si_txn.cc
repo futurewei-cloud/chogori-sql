@@ -34,7 +34,7 @@ std::future<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     EndTxnRequest qr{.mtr=_mtr, .shouldCommit = shouldCommit, .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("endtxn: " << qr.mtr);
+    K2LOG_D(log::pg, "endtxn: {}", qr.mtr);
     pushQ(endTxQ, std::move(qr));
     return result;
 }
@@ -44,11 +44,11 @@ std::future<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query
     ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
 
     auto result = sr.prom.get_future();
-    K2DEBUG("scanread: "
-            << ", query-start-pk=" << escape(query->startScanRecord.getPartitionKey())
-            << ", query-start-rk=" << escape(query->startScanRecord.getRangeKey())
-            << ", query-end-pk=" << escape(query->endScanRecord.getPartitionKey())
-            << ", query-end-rk=" << escape(query->endScanRecord.getRangeKey()))
+    K2LOG_D(log::pg, "scanread: query-start-pk={}, query-start-rk={}, query-end-pk={}, query-end-rk={}",
+        query->startScanRecord.getPartitionKey(),
+        query->startScanRecord.getRangeKey(),
+        query->endScanRecord.getPartitionKey(),
+        query->endScanRecord.getRangeKey());
     pushQ(scanReadTxQ, std::move(sr));
     return result;
 }
@@ -57,12 +57,13 @@ std::future<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .key=k2::dto::Key(), .collectionName="", .prom={}};
 
     auto result = qr.prom.get_future();
-    K2DEBUG("read: mtr=" << qr.mtr
-                         << ", coll=" << escape(qr.record.collectionName)
-                         << ", schema-name=" << escape(qr.record.schema->name)
-                         << ", schema-version=" << qr.record.schema->version
-                         << ", key-pk=" << escape(qr.record.getPartitionKey())
-                         << ", key-rk=" << escape(qr.record.getRangeKey()));
+    K2LOG_D(log::pg, "read: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
+            qr.mtr,
+            qr.record.collectionName,
+            qr.record.schema->name,
+            qr.record.schema->version,
+            qr.record.getPartitionKey(),
+            qr.record.getRangeKey());
     pushQ(readTxQ, std::move(qr));
     return result;
 }
@@ -73,10 +74,11 @@ std::future<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std:
 
     auto result = qr.prom.get_future();
 
-    K2DEBUG("read: mtr=" << qr.mtr
-                         << ", coll=" << escape(qr.collectionName)
-                         << ", key-pk=" << escape(qr.key.partitionKey)
-                         << ", key-rk=" << escape(qr.key.rangeKey));
+    K2LOG_D(log::pg, "read: mtr={}, coll={}, key-pk={}, key-rk={}",
+                qr.mtr,
+                qr.collectionName,
+                qr.key.partitionKey,
+                qr.key.rangeKey);
     pushQ(readTxQ, std::move(qr));
     return result;
 }
@@ -86,13 +88,17 @@ std::future<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool 
 
     auto result = qr.prom.get_future();
 
-    K2DEBUG("write: mtr=" << qr.mtr
-                          << ", erase=" << qr.erase << ", reject=" << qr.rejectIfExists
-                          << ", coll=" << escape(qr.record.collectionName)
-                          << ", schema-name=" << escape(qr.record.schema->name)
-                          << ", schema-version=" << qr.record.schema->version
-                          << ", key-pk=" << escape(qr.record.getPartitionKey())
-                          << ", key-rk=" << escape(qr.record.getRangeKey()));
+    K2LOG_D(log::pg,
+        "write: mtr={}, erase={}, reject={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
+        qr.mtr,
+        qr.erase,
+        qr.rejectIfExists,
+        qr.record.collectionName,
+        qr.record.schema->name,
+        qr.record.schema->version,
+        qr.record.getPartitionKey(),
+        qr.record.getRangeKey());
+
     pushQ(writeTxQ, std::move(qr));
     return result;
 }
@@ -112,14 +118,16 @@ std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
 
     auto result = qr.prom.get_future();
 
-    K2DEBUG("partial write: mtr=" << qr.mtr
-                          << ", coll=" << escape(qr.record.collectionName)
-                          << ", schema-name=" << escape(qr.record.schema->name)
-                          << ", schema-version=" << qr.record.schema->version
-                          << ", key-pk=" << escape(qr.record.getPartitionKey())
-                          << ", key-rk=" << escape(qr.record.getRangeKey())
-                          << ", kkey-pk=" << escape(qr.key.partitionKey)
-                          << ", kkey-rk=" << escape(qr.key.rangeKey));
+    K2LOG_D(log::pg,
+        "partial write: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}, kkey-pk={}, kkey-rk={}",
+        qr.mtr,
+        qr.record.collectionName,
+        qr.record.schema->name,
+        qr.record.schema->version,
+        qr.record.getPartitionKey(),
+        qr.record.getRangeKey(),
+        qr.key.partitionKey,
+        qr.key.rangeKey);
     pushQ(updateTxQ, std::move(qr));
     return result;
 }

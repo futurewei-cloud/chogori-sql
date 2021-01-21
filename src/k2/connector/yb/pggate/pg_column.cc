@@ -84,7 +84,7 @@ namespace k2pg
         return;
       }
       }
-      K2ERROR("Invalid attribute number for hidden column");
+      K2LOG_E(log::pg, "Invalid attribute number for hidden column");
     }
 
     bool PgColumn::is_virtual_column()
@@ -97,7 +97,7 @@ namespace k2pg
     {
       if (is_primary() && bind_var_ == nullptr)
       {
-        K2DEBUG("Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
+        K2LOG_D(log::pg, "Allocating key binding SqlOpExpr for column name: {}, order: {}, for write request", attr_name(), attr_num());
         bind_var_ = std::make_shared<SqlOpExpr>();
         write_req->key_column_values.push_back(bind_var_);
       }
@@ -109,7 +109,8 @@ namespace k2pg
       if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
         std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(std::move(row_id));
         bind_var_ = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, value);
-        K2DEBUG("Allocating row id key binding SqlOpExpr " << (*bind_var_.get()) << " for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
+        K2LOG_D(log::pg, "Allocating row id key binding SqlOpExpr {} for column name: {}, order: {} for write request",
+            *bind_var_.get(), attr_name(), attr_num());
         write_req->key_column_values.push_back(bind_var_);
       }
       return bind_var_;
@@ -119,10 +120,10 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(!desc_.is_hash() && !desc_.is_primary())
-            << "Binds for primary columns should have already been allocated by AllocKeyBind()";
+        K2ASSERT(log::pg, !desc_.is_hash() && !desc_.is_primary(),
+            "Binds for primary columns should have already been allocated by AllocKeyBind()");
 
-        K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
+        K2LOG_D(log::pg, "Allocating binding SqlOpExpr for column name: {}, order: {}, for write request", attr_name(), attr_num());
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
         {
           if (write_req->ybctid_column_value == nullptr)
@@ -148,7 +149,7 @@ namespace k2pg
     {
       if (assign_var_ == nullptr)
       {
-        K2DEBUG("Allocating assign SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for write request");
+        K2LOG_D(log::pg, "Allocating assign SqlOpExpr for column name: {}, order: {}, for write request", attr_name(), attr_num());
         ColumnValue col;
         col.column_id = id();
         col.expr = std::make_shared<SqlOpExpr>();
@@ -163,7 +164,7 @@ namespace k2pg
     {
       if (is_primary() && bind_var_ == nullptr)
       {
-        K2DEBUG("Allocating key binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
+        K2LOG_D(log::pg, "Allocating key binding SqlOpExpr for column name: {}, order: {}, for read request", attr_name(), attr_num());
         bind_var_ = std::make_shared<SqlOpExpr>();
         read_req->key_column_values.push_back(bind_var_);
       }
@@ -177,15 +178,15 @@ namespace k2pg
     {
       if (bind_var_ == nullptr)
       {
-        DCHECK(!desc_.is_hash() && !desc_.is_primary())
-            << "Binds for primary columns should have already been allocated by AllocKeyBind()";
+        K2ASSERT(log::pg, !desc_.is_hash() && !desc_.is_primary(),
+            "Binds for primary columns should have already been allocated by AllocKeyBind()");
 
-        K2DEBUG("Allocating binding SqlOpExpr for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
+        K2LOG_D(log::pg, "Allocating binding SqlOpExpr for column name: {}, order: {}, for read request", attr_name(), attr_num());
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
           bind_var_ = std::make_shared<SqlOpExpr>();
           read_req->ybctid_column_values.push_back(bind_var_);
         } else {
-          K2ERROR("Binds for other columns are not allowed");
+          K2LOG_E(log::pg, "Binds for other columns are not allowed");
         }
       }
 
@@ -194,7 +195,7 @@ namespace k2pg
 
     std::shared_ptr<SqlOpCondition> PgColumn::AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req)
     {
-      K2DEBUG("Allocating binding SqlOpCondition for column name: " << attr_name() << ", order: " << attr_num() << " for read request");
+      K2LOG_D(log::pg, "Allocating binding SqlOpCondition for column name: {}, order: {}, for read request", attr_name(), attr_num());
       if (bind_condition_expr_var_ == nullptr)
       {
         if (read_req->condition_expr == nullptr) {

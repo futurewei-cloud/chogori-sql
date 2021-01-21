@@ -32,6 +32,7 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <seastar/core/resource.hh>
 #include <seastar/core/memory.hh>
+#include "k2_log.h"
 
 namespace k2pg {
 class ThreadPool {
@@ -45,7 +46,19 @@ public:
     // due to cache misses.
     ThreadPool(int threadCount, int firstCPUPin=-1) {
         for (int i = 0; i < threadCount; ++i) {
-            _workers.push_back(std::thread([i, firstCPUPin, this] {
+            _workers.push_back(std::thread([i, firstCPUPin, this,
+                     modLogLevels=k2::logging::Logger::moduleLevels,
+                     globalLogLevel=k2::logging::Logger::threadLocalLogLevel] {
+                // copy over the logging configuration from the main thread
+                k2::logging::Logger::threadLocalLogLevel = globalLogLevel;
+                k2::logging::Logger::moduleLevels=modLogLevels;
+                for (auto& [module, level]: k2::logging::Logger::moduleLevels) {
+                    auto it = k2::logging::Logger::moduleLoggers.find(module);
+                    if (it != k2::logging::Logger::moduleLoggers.end()) {
+                        it->second->moduleLevel = level;
+                    }
+                }
+
                 if (firstCPUPin >= 0) {
                     pin(i + firstCPUPin);
                 }
@@ -66,13 +79,15 @@ public:
                         _tasks.pop_front();
                         lock.unlock();
                         try {
-                            K2DEBUG("Running task");
+                            K2LOG_D(log::pg, "Running task");
                             task();
-                            K2DEBUG("Task completed");
+                            K2LOG_D(log::pg, "Task completed");
+                        }
+                        catch(const std::exception& exc) {
+                            K2LOG_W(log::pg, "Task threw exception: {}", exc.what());
                         }
                         catch(...) {
-                            K2ERROR("Task threw exception");
-                            std::cerr << "Ignoring caught task exception" << std::endl;
+                            K2LOG_E(log::pg, "Task threw unknown exception");
                         }
                     } else {
                         // no tasks left. Notify anyone waiting on threadpool
