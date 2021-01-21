@@ -37,7 +37,7 @@ void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, PgCallbac
     K2ASSERT(log::pg, api_impl == nullptr, "can only be called once");
     api_impl_shutdown_done.exchange(false);
     api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
-    K2LOG_V(log::pg, "K2 PgGate open");
+    K2LOG_I(log::pg, "K2 PgGate open");
 }
 
 void YBCDestroyPgGate() {
@@ -62,7 +62,7 @@ YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env) {
 
 // Initialize a session to process statements that come from the same client connection.
 YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgInitSession {}", database_name);
+  K2LOG_D(log::pg, "PgGateAPI: YBCPgInitSession {}", database_name);
   const string db_name(database_name ? database_name : "");
   return ToYBCStatus(api_impl->InitSession(pg_env, db_name));
 }

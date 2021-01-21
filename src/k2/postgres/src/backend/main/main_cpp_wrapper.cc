@@ -38,6 +38,8 @@ void startK2App(int argc, char** argv) {
     K2LOG_I(k2pg::log::main, "Creating PG-K2 thread");
     inited = true;
 
+    // in order to pass the args to the seastar thread, we need to copy them into a new array as their storage will
+    // disappear.
     char** argvN = (char**)malloc(MAX_K2_ARGS*sizeof(char*));
     assert(argvN != NULL);
     bool isLogLevel = false;
@@ -49,13 +51,18 @@ void startK2App(int argc, char** argv) {
         argvN[curarg][sarg.size()] = '\0';
         curarg++;
     };
-    // set loglevel for this thread;
+    // set the default loglevel for this thread, just in case one isn't specified by cmd line
     k2::logging::Logger::threadLocalLogLevel = k2::logging::LogLevel::INFO;
 
+    // process all command line arguments
     for (int i = 0; i < argc; ++i) {
         std::string el(argv[i]);
         if (isLogLevel) {
+            // the previous argument was "--log_level". That means that currently we're looking at the
+            // log levels string. This would be one string, e.g. "DEBUG k2::pg=INFO k2::transport=INFO"
             isLogLevel = false; // done with log level processing
+
+            // process this single string into individual args by providing a callback to be called on each arg
             k2pg::processLogLevelArg(el, addArg);
         }
         else {
