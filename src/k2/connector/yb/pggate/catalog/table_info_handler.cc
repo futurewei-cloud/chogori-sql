@@ -122,26 +122,32 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
 GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id) {
     K2LOG_D(log::catalog, "Fetch table schema ns id: {}, ns name: {}, table id: {}", namespace_id, namespace_name, table_id);
     GetTableResult response;
-    // use namespace_id, not namespace_name as the collection name
-    // in this we could implement rename database easily by sticking to the same namespace_id
-    // after the namespace_name change
-    // same purpose for using table_id instead of table_name
-    k2::dto::SKVRecord table_head_record = FetchTableHeadSKVRecord(context, namespace_id, table_id);
-    std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(context, namespace_id, table_id);
-    std::shared_ptr<TableInfo> table_info = BuildTableInfo(namespace_id, namespace_name, table_head_record, table_column_records);
-    // check all the indexes whose IndexedTableId is table_id
-    std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, namespace_id, table_id);
-    if (!index_records.empty()) {
-        // table has indexes defined
-        for (auto& index_record : index_records) {
-            // Fetch and build each index table
-            IndexInfo index_info = FetchAndBuildIndexInfo(context, namespace_id, index_record);
-            // populate index to table_info
-            table_info->add_secondary_index(index_info.table_id(), index_info);
+    try {
+        // use namespace_id, not namespace_name as the collection name
+        // in this we could implement rename database easily by sticking to the same namespace_id
+        // after the namespace_name change
+        // same purpose for using table_id instead of table_name
+        k2::dto::SKVRecord table_head_record = FetchTableHeadSKVRecord(context, namespace_id, table_id);
+        std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(context, namespace_id, table_id);
+        std::shared_ptr<TableInfo> table_info = BuildTableInfo(namespace_id, namespace_name, table_head_record, table_column_records);
+        // check all the indexes whose IndexedTableId is table_id
+        std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, namespace_id, table_id);
+        if (!index_records.empty()) {
+            // table has indexes defined
+            for (auto& index_record : index_records) {
+                // Fetch and build each index table
+                IndexInfo index_info = FetchAndBuildIndexInfo(context, namespace_id, index_record);
+                // populate index to table_info
+                table_info->add_secondary_index(index_info.table_id(), index_info);
+            }
         }
+        response.status.Succeed();
+        response.tableInfo = table_info;
+    } catch (const std::exception& e) {
+        K2LOG_E(log::catalog, "Failed to fetch table schema ns id: {}, ns name: {}, table id: {} due to error {} with message {}", namespace_id, namespace_name, table_id, typeid(e).name(), e.what());
+        response.status.code = StatusCode::RUNTIME_ERROR;
+        response.status.errorMessage = e.what();
     }
-    response.status.Succeed();
-    response.tableInfo = table_info;
     return response;
 }
 

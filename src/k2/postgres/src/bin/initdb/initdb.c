@@ -1453,7 +1453,7 @@ bootstrap_template1(void)
 	char		headerline[MAXPGPATH];
 	char		buf[64];
 
-	printf(_("running bootstrap script ... "));
+	printf(_("running bootstrap script ... \n"));
 	fflush(stdout);
 
 	bki_lines = readfile(bki_file);
@@ -3165,7 +3165,9 @@ initialize_data_directory(void)
 	setup_config();
 
 	/* Bootstrap template1 */
-  bootstrap_template1();
+	fputs(_("bootstrap_template1 ...\n "), stdout);
+	fflush(stdout);
+	bootstrap_template1();
 
   if (IsYugaByteLocalNodeInitdb())
     return;
@@ -3179,7 +3181,7 @@ initialize_data_directory(void)
 	 * Create the stuff we don't need to use bootstrap mode for, using a
 	 * backend running in simple standalone mode.
 	 */
-	fputs(_("performing post-bootstrap initialization ... "), stdout);
+	fputs(_("performing post-bootstrap initialization ...\n "), stdout);
 	fflush(stdout);
 
 	snprintf(cmd, sizeof(cmd),
@@ -3189,8 +3191,12 @@ initialize_data_directory(void)
 
 	PG_CMD_OPEN;
 
+	fputs(_("setup_auth ...\n "), stdout);
+	fflush(stdout);
 	setup_auth(cmdfd);
 
+	fputs(_("setup_depend ...\n "), stdout);
+	fflush(stdout);
 	setup_depend(cmdfd);
 
 	/*
@@ -3198,12 +3204,16 @@ initialize_data_directory(void)
 	 * They are all droppable at the whim of the DBA.
 	 */
 
+	fputs(_("setup_sysviews ...\n "), stdout);
+	fflush(stdout);
 	setup_sysviews(cmdfd);
 
 	/* Do not support copy in YB yet */
 	if (!IsYugaByteGlobalClusterInitdb())
 		setup_description(cmdfd);
 
+	fputs(_("setup_collation ...\n "), stdout);
+	fflush(stdout);
 	setup_collation(cmdfd);
 
 	if (!IsYugaByteGlobalClusterInitdb())
@@ -3213,10 +3223,16 @@ initialize_data_directory(void)
 		setup_dictionary(cmdfd);
 	}
 
+	fputs(_("setup_privileges ...\n "), stdout);
+	fflush(stdout);
 	setup_privileges(cmdfd);
 
+	fputs(_("setup_schema ...\n "), stdout);
+	fflush(stdout);
 	setup_schema(cmdfd);
 
+	fputs(_("load_plpgsql ...\n "), stdout);
+	fflush(stdout);
 	load_plpgsql(cmdfd);
 
 	if (!IsYugaByteGlobalClusterInitdb())
@@ -3225,21 +3241,35 @@ initialize_data_directory(void)
 		vacuum_db(cmdfd);
 	}
 
+	fputs(_("make_template0 ...\n "), stdout);
+	fflush(stdout);
 	make_template0(cmdfd);
 
+	fputs(_("make_postgres ...\n "), stdout);
+	fflush(stdout);
 	make_postgres(cmdfd);
 
 	if (IsYugaByteGlobalClusterInitdb()) {
 		/* Create the yugabyte db and user (defaults for YugaByte/ysqlsh) */
+		fputs(_("make_yugabyte ...\n "), stdout);
+		fflush(stdout);
 		make_yugabyte(cmdfd);
 
 		/* Create the system_platform database used by the YugaByte platform UI */
+		fputs(_("make_system_platform ...\n "), stdout);
+		fflush(stdout);
 		make_system_platform(cmdfd);
 	}
+
+	fputs(_("Finishing initdb steps ...\n "), stdout);
+	fflush(stdout);
 
 	PG_CMD_CLOSE;
 
 	check_ok();
+
+	fputs(_("Finished initdb steps ...\n "), stdout);
+	fflush(stdout);
 }
 
 
