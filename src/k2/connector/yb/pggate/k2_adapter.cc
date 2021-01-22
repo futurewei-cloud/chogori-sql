@@ -311,7 +311,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 }
 
                 scan->addProjection(name);
-                K2LOG_D(log::pg, "Projection added for name={}", name);
+                K2LOG_V(log::pg, "Projection added for name={}", name);
             }
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
@@ -620,30 +620,30 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
     if (value.IsNull()) {
-        K2LOG_D(log::pg, "null value for field: {}", record.schema->fields[record.getFieldCursor()])
+        K2LOG_V(log::pg, "null value for field: {}", record.schema->fields[record.getFieldCursor()])
         record.serializeNull();
         return;
     }
 
     switch (value.type_) {
         case SqlValue::ValueType::BOOL:
-            K2LOG_D(log::pg, "bool value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::pg, "bool value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<bool>(value.data_.bool_val_);
             break;
         case SqlValue::ValueType::INT:
-            K2LOG_D(log::pg, "int value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::pg, "int value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<int64_t>(value.data_.int_val_);
             break;
         case SqlValue::ValueType::FLOAT:
-            K2LOG_D(log::pg, "float value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::pg, "float value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<float>(value.data_.float_val_);
             break;
         case SqlValue::ValueType::DOUBLE:
-            K2LOG_D(log::pg, "double value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::pg, "double value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<double>(value.data_.double_val_);
             break;
         case SqlValue::ValueType::SLICE:
-            K2LOG_D(log::pg, "slice value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::pg, "slice value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<k2::String>(k2::String(value.data_.slice_val_));
             break;
         default:

@@ -220,7 +220,6 @@ Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field
 
 template<typename T>
 void FieldParser(std::optional<T> field, const k2::String& fieldName, const std::unordered_map<std::string, PgExpr*>& targets_by_name, PgTuple* pg_tuple, Status& result, int32_t* num) {
-    K2LOG_D(log::pg, "Parsing field {} in targets_by_name map with size: {}", fieldName, targets_by_name.size());
     auto iter = targets_by_name.find(fieldName.c_str());
     if (iter == targets_by_name.end()) {
         if (k2pg::sql::catalog::CatalogConsts::TABLE_ID_COLUMN_NAME == fieldName.c_str() ||
@@ -256,7 +255,7 @@ void FieldParser(std::optional<T> field, const k2::String& fieldName, const std:
         }
     }
     (*num)++;
-    K2LOG_D(log::pg, "Parsed field {}, num: {} in targets_by_name map with size: {}",
+    K2LOG_V(log::pg, "Parsed field {}, num: {} in targets_by_name map with size: {}",
             fieldName, (*num), targets_by_name.size());
 }
 
