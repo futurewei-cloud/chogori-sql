@@ -1066,11 +1066,9 @@ test_config_settings(void)
 				 "\"%s\" --boot -x0 %s "
 				 "-c max_connections=%d "
 				 "-c shared_buffers=%d "
-				 "-c dynamic_shared_memory_type=none "
-				 "< \"%s\" > \"%s\" 2>&1",
+				 "-c dynamic_shared_memory_type=none 2>&1",
 				 backend_exec, boot_options,
-				 test_conns, test_buffs,
-				 DEVNULL, DEVNULL);
+				 test_conns, test_buffs);
 		status = system(cmd);
 		if (status == 0)
 		{
@@ -1101,11 +1099,9 @@ test_config_settings(void)
 				 "\"%s\" --boot -x0 %s "
 				 "-c max_connections=%d "
 				 "-c shared_buffers=%d "
-				 "-c dynamic_shared_memory_type=none "
-				 "< \"%s\" > \"%s\" 2>&1",
+				 "-c dynamic_shared_memory_type=none 2>&1",
 				 backend_exec, boot_options,
-				 n_connections, test_buffs,
-				 DEVNULL, DEVNULL);
+				 n_connections, test_buffs);
 		status = system(cmd);
 		if (status == 0)
 			break;
@@ -3185,9 +3181,8 @@ initialize_data_directory(void)
 	fflush(stdout);
 
 	snprintf(cmd, sizeof(cmd),
-	         "\"%s\" %s template1 >%s",
-	         backend_exec, backend_options,
-	         DEVNULL);
+	         "\"%s\" %s template1",
+	         backend_exec, backend_options);
 
 	PG_CMD_OPEN;
 
