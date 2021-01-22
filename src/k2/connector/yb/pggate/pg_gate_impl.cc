@@ -708,7 +708,7 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
     case StmtOp::STMT_TRUNCATE:
       {
         auto dml_write = down_cast<PgDmlWrite *>(handle);
-        RETURN_NOT_OK(dml_write->Exec(rows_affected_count != nullptr /* force_non_bufferable */));
+        RETURN_NOT_OK(dml_write->Exec(true /* force_non_bufferable */));
         if (rows_affected_count) {
           *rows_affected_count = dml_write->GetRowsAffectedCount();
         }
