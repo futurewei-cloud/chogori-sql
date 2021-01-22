@@ -76,7 +76,7 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
     futs.reserve(q.size());
 
     while (!q.empty()) {
-        K2LOG_D(log::k2ss, "Found op in queue");
+        K2LOG_V(log::k2ss, "Found op in queue");
         futs.push_back(
             seastar::do_with(std::move(q.front()), std::forward<Func>(visitor), [](auto& req, auto& visitor) {
                 return visitor(req)

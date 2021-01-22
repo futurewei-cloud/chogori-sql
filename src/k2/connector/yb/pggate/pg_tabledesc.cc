@@ -79,7 +79,7 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
                col.type(),
                col.sorting_type());
     attr_num_map_[col.order()] = idx;
-    K2LOG_D(log::pg, "Table attr_num_map: [{}]= {}, for id={}, name={}",
+    K2LOG_V(log::pg, "Table attr_num_map: [{}]= {}, for id={}, name={}",
        col.order(), idx, schema.column_id(idx), col.name());
   }
 
@@ -112,7 +112,7 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespa
                SQLType::Create(col.type),
                col.sorting_type);
     attr_num_map_[col.order] = idx;
-    K2LOG_D(log::pg, "Table attr_num_map: [{}]= {}, for id={}, name={}", col.order, idx, col.column_id, col.column_name);
+    K2LOG_V(log::pg, "Table attr_num_map: [{}]= {}, for id={}, name={}", col.order, idx, col.column_id, col.column_name);
   }
 
   // Create virtual columns.
