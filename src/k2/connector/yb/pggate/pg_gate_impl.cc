@@ -915,7 +915,7 @@ Status PgGateApiImpl::ExecInsert(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgInsert*>(handle)->Exec();
+  return down_cast<PgInsert*>(handle)->Exec(true);
 }
 
 Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
@@ -954,7 +954,7 @@ Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgUpdate*>(handle)->Exec();
+  return down_cast<PgUpdate*>(handle)->Exec(true);
 }
 
 // Delete ------------------------------------------------------------------------------------------
@@ -974,7 +974,7 @@ Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDelete*>(handle)->Exec();
+  return down_cast<PgDelete*>(handle)->Exec(true);
 }
 
 Status PgGateApiImpl::BeginTransaction() {
