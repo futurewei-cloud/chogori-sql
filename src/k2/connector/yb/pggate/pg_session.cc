@@ -261,9 +261,11 @@ Status PgSession::FlushBufferedOperations() {
   if (buffered_ops_.empty()) {
     return Status::OK();
   }
+
+  K2ASSERT(log::pg, false, "FlushBufferedOperations - flush is not supported and there are indeed buffered ops!!! See issue #145");
   RunHelper runner(this, k2_adapter_, true);
-  PgSessionAsyncRunResult result = VERIFY_RESULT(runner.Flush());
-  return result.GetStatus();
+  std::future<Status> result = VERIFY_RESULT(runner.Flush());
+  return result.get();
 }
 
 void PgSession::DropBufferedOperations() {
@@ -296,21 +298,6 @@ bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
   return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
 }
 
-PgSessionAsyncRunResult::PgSessionAsyncRunResult(std::future<Status> future_status)
-    :  future_status_(std::move(future_status)) {
-}
-
-Status PgSessionAsyncRunResult::GetStatus() {
-  DCHECK(InProgress());
-  auto status = future_status_.get();
-  future_status_ = std::future<Status>();
-  return status;
-}
-
-bool PgSessionAsyncRunResult::InProgress() const {
-  return future_status_.valid();
-}
-
 PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional)
     :  pg_session_(pg_session),
        client_(client),
@@ -321,7 +308,7 @@ PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter
   }
 }
 
-Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
+Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
@@ -334,11 +321,11 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
     // send new operations
     if (ops_count < 1) {
       // invalid, do nothing
-      return PgSessionAsyncRunResult(std::future<Status>());
+      return std::future<Status>();
     } else if (ops_count == 1) {
       // run a single operation
       std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
-      return PgSessionAsyncRunResult(client_->Exec(k23SITxn, *op));
+      return client_->Exec(k23SITxn, *op);
     } else {
       // run multiple operations in a batch
       std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
@@ -346,9 +333,11 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
       for (auto end = op + ops_count; op != end; ++op) {
         ops.push_back(*op);
       }
-      return PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));
+      return client_->BatchExec(k23SITxn, ops);
     }
   } else {
+    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145"); 
+
     auto& buffered_keys = pg_session_->buffered_keys_;
     bool read_op_included = false;
     std::vector<std::shared_ptr<PgOpTemplate>> ops;
@@ -379,15 +368,17 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::ApplyAndFlush(const std::s
       return Flush();
     } else {
       // buffer the operations and return
-      return PgSessionAsyncRunResult(std::future<Status>());
+      return std::future<Status>();
     }
   }
 }
 
-Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
+Result<std::future<Status>> PgSession::RunHelper::Flush() {
   if (buffered_ops_.size() == 0) {
-    return PgSessionAsyncRunResult(std::future<Status>());
+    return std::future<Status>();
   }
+
+  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145"); 
 
   bool read_only = true;
   std::vector<std::shared_ptr<PgOpTemplate>> ops;
@@ -399,9 +390,9 @@ Result<PgSessionAsyncRunResult> PgSession::RunHelper::Flush() {
     ops.push_back(op);
   }
   std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only);
-  PgSessionAsyncRunResult result = PgSessionAsyncRunResult(client_->BatchExec(k23SITxn, ops));
+  std::future<Status> result = client_->BatchExec(k23SITxn, ops);
   // wait for the batch to complete
-  result.GetStatus();
+  result.get();
 
   // TODO: add logic to handle any failure in the batch
   for (const auto& buffered_op : buffered_ops_) {
