@@ -44,9 +44,12 @@ std::future<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query
     ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
 
     auto result = sr.prom.get_future();
-    K2LOG_D(log::pg, "scanread: query-start-pk={}, query-start-rk={}, query-end-pk={}, query-end-rk={}",
+    K2LOG_D(log::pg, "scanread: mtr={}, start-schema={}, start-pk={}, start-rk={}, end-schema={}, end-pk={}, end-rk={}",
+        sr.mtr,
+        query->startScanRecord.schema->name,
         query->startScanRecord.getPartitionKey(),
         query->startScanRecord.getRangeKey(),
+        query->endScanRecord.schema->name,
         query->endScanRecord.getPartitionKey(),
         query->endScanRecord.getRangeKey());
     pushQ(scanReadTxQ, std::move(sr));
