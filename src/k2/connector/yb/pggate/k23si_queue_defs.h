@@ -57,7 +57,7 @@ struct SchemaCreateRequest {
     k2::String collectionName;
     k2::dto::Schema schema;
     std::promise<k2::CreateSchemaResult> prom;
-    K2_DEF_FMT(SchemaGetRequest, collectionName, schema);
+    K2_DEF_FMT(SchemaCreateRequest, collectionName, schema);
 };
 
 struct CollectionCreateRequest {
