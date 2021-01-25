@@ -22,6 +22,7 @@ Copyright(c) 2020 Futurewei Cloud
 */
 #pragma once
 #include "k2_includes.h"
+#include <k2/common/FormattingUtils.h>
 
 #include <atomic>
 #include <future>
@@ -34,12 +35,14 @@ namespace gate {
 struct BeginTxnRequest {
     k2::K2TxnOptions opts;
     std::promise<K23SITxn> prom;
+    K2_DEF_FMT(BeginTxnRequest, opts);
 };
 
 struct EndTxnRequest {
     k2::dto::K23SI_MTR mtr;
     bool shouldCommit;
     std::promise<k2::EndResult> prom;
+    K2_DEF_FMT(EndTxnRequest, mtr, shouldCommit);
 };
 
 struct SchemaGetRequest {
@@ -47,34 +50,40 @@ struct SchemaGetRequest {
     k2::String schemaName;
     uint64_t schemaVersion;
     std::promise<k2::GetSchemaResult> prom;
+    K2_DEF_FMT(SchemaGetRequest, collectionName, schemaName, schemaVersion);
 };
 
 struct SchemaCreateRequest {
     k2::String collectionName;
     k2::dto::Schema schema;
     std::promise<k2::CreateSchemaResult> prom;
+    K2_DEF_FMT(SchemaCreateRequest, collectionName, schema);
 };
 
 struct CollectionCreateRequest {
     k2::dto::CollectionCreateRequest ccr;
     std::promise<k2::Status> prom;
+    K2_DEF_FMT(CollectionCreateRequest, ccr);
 };
 
 struct CreateScanReadResult {
     k2::Status status;
     std::shared_ptr<k2::Query> query;
+    K2_DEF_FMT(CreateScanReadResult, status);
 };
 
 struct ScanReadCreateRequest {
     k2::String collectionName;
     k2::String schemaName;
     std::promise<CreateScanReadResult> prom;
+    K2_DEF_FMT(ScanReadCreateRequest, collectionName, schemaName);
 };
 
 struct ScanReadRequest {
     k2::dto::K23SI_MTR mtr;
     std::shared_ptr<k2::Query> query;
     std::promise<k2::QueryResult> prom;
+    K2_DEF_FMT(ScanReadRequest, mtr);
 };
 
 struct ReadRequest {
@@ -85,6 +94,7 @@ struct ReadRequest {
     std::string collectionName = "";
 
     std::promise<k2::ReadResult<k2::SKVRecord>> prom;
+    K2_DEF_FMT(ReadRequest, mtr, key, collectionName);
 };
 
 struct WriteRequest {
@@ -93,6 +103,7 @@ struct WriteRequest {
     bool rejectIfExists = false; // If true, acts like SQL Insert
     k2::SKVRecord record;
     std::promise<k2::WriteResult> prom;
+    K2_DEF_FMT(WriteRequest, mtr, erase, rejectIfExists);
 };
 
 struct UpdateRequest {
@@ -101,6 +112,7 @@ struct UpdateRequest {
     std::vector<uint32_t> fieldsForUpdate;
     k2::dto::Key key = k2::dto::Key();
     std::promise<k2::PartialUpdateResult> prom;
+    K2_DEF_FMT(UpdateRequest, mtr, fieldsForUpdate, key);
 };
 
 // Lock-free mutex
