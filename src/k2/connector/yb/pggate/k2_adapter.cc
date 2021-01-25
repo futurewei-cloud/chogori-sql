@@ -93,7 +93,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     int colId = ops[0]->getId();
     if (colId < 0) {
         const char* msg = "column reference is for a system field";
-        K2LOG_E(log::pg, "{}, got=", msg, colId);
+        K2LOG_E(log::pg, "{}, got={}", msg, colId);
         return STATUS(InvalidCommand, msg);
     }
 
@@ -376,7 +376,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         prom->set_value(K2StatusToYBStatus(scan_result.status));
 
         } catch (const std::exception& e) {
-            K2LOG_W(log::pg, "Throw in handleReadOp", e.what());
+            K2LOG_W(log::pg, "Throw in handleReadOp {}", e.what());
             prom->set_exception(std::current_exception());
         }
     });
@@ -445,7 +445,7 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         prom->set_value(K2StatusToYBStatus(writeStatus));
 
         } catch (const std::exception& e) {
-            K2LOG_W(log::pg, "Throw in handlewrite: ", e.what());
+            K2LOG_W(log::pg, "Throw in handlewrite: {}", e.what());
             prom->set_exception(std::current_exception());
         }
     });
