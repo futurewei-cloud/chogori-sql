@@ -3244,18 +3244,6 @@ initialize_data_directory(void)
 	fflush(stdout);
 	make_postgres(cmdfd);
 
-	if (IsYugaByteGlobalClusterInitdb()) {
-		/* Create the yugabyte db and user (defaults for YugaByte/ysqlsh) */
-		fputs(_("make_yugabyte ...\n "), stdout);
-		fflush(stdout);
-		make_yugabyte(cmdfd);
-
-		/* Create the system_platform database used by the YugaByte platform UI */
-		fputs(_("make_system_platform ...\n "), stdout);
-		fflush(stdout);
-		make_system_platform(cmdfd);
-	}
-
 	fputs(_("Finishing initdb steps ...\n "), stdout);
 	fflush(stdout);
 
