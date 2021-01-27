@@ -2176,6 +2176,7 @@ make_postgres(FILE *cmdfd)
 {
 	const char *const *line;
 	static const char *const postgres_setup[] = {
+		"CREATE USER postgres SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'postgres';\n\n",
 		"CREATE DATABASE postgres;\n\n",
 		"COMMENT ON DATABASE postgres IS 'default administrative connection database';\n\n",
 		NULL
@@ -2194,9 +2195,9 @@ make_yugabyte(FILE *cmdfd)
 {
 	const char *const *line;
 	static const char *const yugabyte_setup[] = {
-		"CREATE USER yugabyte SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'yugabyte';\n\n"
-		"CREATE DATABASE yugabyte;\n\n",
-		"COMMENT ON DATABASE yugabyte IS 'default administrative connection database';\n\n",
+		"CREATE USER yugabyte SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'yugabyte';\n\n",
+//		"CREATE DATABASE yugabyte;\n\n",
+//		"COMMENT ON DATABASE yugabyte IS 'default administrative connection database';\n\n",
 		NULL
 	};
 
@@ -3243,6 +3244,13 @@ initialize_data_directory(void)
 	fputs(_("make_postgres ...\n "), stdout);
 	fflush(stdout);
 	make_postgres(cmdfd);
+
+	if (!IsYugaByteGlobalClusterInitdb())
+	{
+		fputs(_("make_yugabyte ...\n "), stdout);
+		fflush(stdout);
+		make_yugabyte(cmdfd);
+	}
 
 	fputs(_("Finishing initdb steps ...\n "), stdout);
 	fflush(stdout);
