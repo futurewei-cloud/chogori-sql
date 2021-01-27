@@ -39,7 +39,7 @@ using yb::Status;
 class K2Adapter {
  public:
   // TODO make thead pool size configurable and investigate best number of threads
-  K2Adapter():threadPool_(2, 0) {
+  K2Adapter():threadPool_(2) {
     k23si_ = std::make_shared<K23SIGate>();
   };
 
