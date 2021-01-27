@@ -204,8 +204,6 @@ AuxiliaryProcessMain(int argc, char *argv[])
 	int			flag;
 	char	   *userDoption = NULL;
 
-	InitK23siWorker();
-
 	/*
 	 * Initialize process environment (already done if under postmaster, but
 	 * not if standalone).

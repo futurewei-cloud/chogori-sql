@@ -315,6 +315,8 @@ void
 InitStandaloneProcess(const char *argv0)
 {
 	Assert(!IsPostmasterEnvironment);
+	
+	InitK23siWorker();
 
 	MyProcPid = getpid();		/* reset MyProcPid */
 
