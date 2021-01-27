@@ -17,7 +17,7 @@ export K2_CPO_TIMEOUT=100ms
 export K2_CPO_BACKOFF=100ms
 export K2_MSG_CHECKSUM=TRUE
 export K2_CONFIG_FILE=/build/pgtest/k2config.json
-export K2_LOG_LEVEL="INFO log::pg=INFO k2::pggate=DEBUG k2::pg_catalog=DEBUG k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
+export K2_LOG_LEVEL="INFO k2::pggate=DEBUG k2::pg_catalog=DEBUG k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
 
 export CPODIR=/tmp/___cpo_dir
 export EPS="tcp+k2rpc://0.0.0.0:10000"
