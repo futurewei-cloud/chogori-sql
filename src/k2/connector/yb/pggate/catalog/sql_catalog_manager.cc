@@ -348,7 +348,7 @@ namespace catalog {
         K2LOG_D(log::catalog, "Creating system tables for target namespace {}", new_ns->GetNamespaceId());
         CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
         if (!table_result.status.IsSucceeded()) {
-            K2LOG_E(log::catalog, "Failed to create system tables for target namespace {}, due to {}",
+            K2LOG_E(log::catalog, "Failed to create system tables for target namespace {} due to {}",
                 new_ns->GetNamespaceId(), table_result.status.errorMessage);
             target_context->Abort();
             ns_context->Abort();
@@ -365,13 +365,14 @@ namespace catalog {
             K2LOG_D(log::catalog, "Listing table ids from source namespace {}", request.sourceNamespaceId);
             ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
             if (!list_table_result.status.IsSucceeded()) {
-                K2LOG_E(log::catalog, "Failed to list table ids for namespace {}", source_namespace_info->GetNamespaceId());
+                K2LOG_E(log::catalog, "Failed to list table ids for namespace {} due to {}", source_namespace_info->GetNamespaceId(), list_table_result.status.errorMessage);
                 source_context->Abort();
                 target_context->Abort();
                 ns_context->Abort();
                 response.status = std::move(list_table_result.status);
                 return response;
             }
+            K2LOG_D(log::catalog, "Found {} table ids from source namespace {}", list_table_result.tableIds.size(), request.sourceNamespaceId);
             for (auto& source_table_id : list_table_result.tableIds) {
                 // copy the source table metadata to the target table
                 K2LOG_D(log::catalog, "Copying from source table {}", source_table_id);
@@ -385,7 +386,7 @@ namespace catalog {
                     source_namespace_info->GetNamespaceName(),
                     source_table_id);
                 if (!copy_result.status.IsSucceeded()) {
-                    K2LOG_E(log::catalog, "Failed to copy from source table {}", source_table_id);
+                    K2LOG_E(log::catalog, "Failed to copy from source table {} due to {}", source_table_id, copy_result.status.errorMessage);
                     source_context->Abort();
                     target_context->Abort();
                     ns_context->Abort();
@@ -394,7 +395,7 @@ namespace catalog {
                 }
             }
             source_context->Commit();
-            K2LOG_D(log::catalog, "Finished copying tables from source namespace {}, to {}",
+            K2LOG_D(log::catalog, "Finished copying tables from source namespace {} to {}",
                 source_namespace_info->GetNamespaceId(), new_ns->GetNamespaceId());
         }
 

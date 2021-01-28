@@ -32,18 +32,18 @@ namespace sql {
         std::string namespace_id;
         std::string namespace_name; // Can be empty, that means the namespace has not been set yet.
         std::string table_id;
-        std::string table_name;  
-        TableIdentifier(std::string ns_id, std::string ns_name, std::string tb_id, std::string tb_name) : 
+        std::string table_name;
+        TableIdentifier(std::string ns_id, std::string ns_name, std::string tb_id, std::string tb_name) :
             namespace_id(ns_id), namespace_name(ns_name), table_id(tb_id), table_name(tb_name) {
         }
     };
 
     class TableInfo {
-        public: 
-          
+        public:
+
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(std::string namespace_id, std::string namespace_name, std::string table_id, std::string table_name, Schema schema) : 
+        TableInfo(std::string namespace_id, std::string namespace_name, std::string table_id, std::string table_name, Schema schema) :
             table_id_(namespace_id, namespace_name, table_id, table_name), schema_(std::move(schema)) {
         }
 
@@ -66,7 +66,7 @@ namespace sql {
         const TableIdentifier& table_identifier() {
             return table_id_;
         }
-        
+
         void set_pg_oid(uint32_t pg_oid) {
             pg_oid_ = pg_oid;
         }
@@ -124,7 +124,7 @@ namespace sql {
         }
 
         Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
-
+        
         void set_is_sys_table(bool is_sys_table) {
             is_sys_table_ = is_sys_table;
         }
@@ -133,10 +133,10 @@ namespace sql {
             return is_sys_table_;
         }
 
-        static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id, 
+        static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
             std::string namespace_name, std::string table_id, std::string table_name);
 
-        private:        
+        private:
         TableIdentifier table_id_;
         // PG internal object id
         uint32_t pg_oid_;

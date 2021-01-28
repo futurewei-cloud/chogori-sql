@@ -805,5 +805,18 @@ SqlOpResponse::RequestStatus K2Adapter::K2StatusToPGStatus(const k2::Status& sta
     }
 }
 
+k2::dto::SKVRecord K2Adapter::CloneSKVRecordForTargetNamespace(k2::dto::SKVRecord& record, const std::string& target_collection,
+        std::shared_ptr<k2::dto::Schema> target_schema) {
+    k2::dto::SKVRecord cloned_record(target_collection, target_schema);
+
+    record.seekField(0);
+    for (int i=0; i < record.schema->fields.size(); ++i) {
+        DO_ON_NEXT_RECORD_FIELD(record, FieldCopy, cloned_record);
+    }
+    record.seekField(0);
+
+    return cloned_record;
+}
+
 }  // namespace gate
 }  // namespace k2pg
