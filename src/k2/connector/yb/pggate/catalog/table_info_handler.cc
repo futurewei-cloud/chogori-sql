@@ -401,7 +401,7 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransac
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
     K2LOG_I(log::catalog, "Finished copying to target table {} in {} with {} records", target_table_id, target_namespace_id, count);
-
+    response.status.Succeed();
     return response;
 }
 
