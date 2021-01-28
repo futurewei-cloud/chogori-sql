@@ -215,8 +215,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
         k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), {});
         query->setFilterExpression(std::move(filterExpr));
-        query->startScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
-        query->endScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
+        query->startScanRecord = buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt);
+        query->endScanRecord = buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt);
         do {
             std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
             k2::QueryResult query_result = query_result_future.get();
@@ -373,8 +373,8 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransac
 
     // scan the source table
     std::shared_ptr<k2::Query> query = create_source_scan_result.query;
-    query->startScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt));
-    query->endScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt));
+    query->startScanRecord = buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt);
+    query->endScanRecord = buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt);
     int count = 0;
     do {
         k2::QueryResult query_result = source_context->GetTxn()->scanRead(query).get();
@@ -1093,8 +1093,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
+    query->startScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
+    query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
     do {
         K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
@@ -1136,8 +1136,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
+    query->startScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
+    query->endScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -1178,8 +1178,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
+    query->startScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
+    query->endScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
