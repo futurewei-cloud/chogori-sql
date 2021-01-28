@@ -4332,7 +4332,10 @@ BackendInitialize(Port *port)
 	 * Must do this now because authentication uses libpq to send messages.
 	 */
 	pq_init();					/* initialize libpq to talk to client */
-	InitK23siWorker();
+	
+	// TODO: remove this log or reduce the logging level later 
+	elog(INFO, "BackendInitialize, previouly InitK23siWorker called pid = %d", MyProcPid);
+	//InitK23siWorker();
 
 	whereToSendOutput = DestRemote; /* now safe to ereport to client */
 
@@ -4928,6 +4931,9 @@ SubPostmasterMain(int argc, char *argv[])
 	/* Check we got appropriate args */
 	if (argc < 3)
 		elog(FATAL, "invalid subpostmaster invocation");
+
+	// TODO: remove this log or reduce the logging level later
+	elog(INFO, "SubPostmasterMain started, option %s. Verify InitK23siWorker are called.", argv[1]);
 
 	/* Read in the variables file */
 	memset(&port, 0, sizeof(Port));
