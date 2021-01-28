@@ -373,8 +373,8 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransac
 
     // scan the source table
     std::shared_ptr<k2::Query> query = create_source_scan_result.query;
-    query->startScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::make_optional(source_table_id)));
-    query->endScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::make_optional(source_table_id)));
+    query->startScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt));
+    query->endScanRecord = std::move(buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt));
     int count = 0;
     do {
         k2::QueryResult query_result = source_context->GetTxn()->scanRead(query).get();

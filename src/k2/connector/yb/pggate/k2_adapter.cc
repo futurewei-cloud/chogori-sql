@@ -518,10 +518,10 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
     op->allocateResponse();
     switch (op->type()) {
         case PgOpTemplate::WRITE:
-            K2LOG_I(log::pg, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
+            K2LOG_D(log::pg, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
             return handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
         case PgOpTemplate::READ:
-            K2LOG_I(log::pg, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
+            K2LOG_D(log::pg, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
             return handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
         default:
           throw new std::logic_error("Unsupported op template type");
