@@ -48,6 +48,10 @@ struct CreateUpdateTableResult {
     RStatus status;
 };
 
+struct CopySKVTableResult {
+    RStatus status;
+};
+
 struct GetTableResult {
     RStatus status;
     std::shared_ptr<TableInfo> tableInfo;
@@ -66,6 +70,7 @@ struct ListTableIdsResult {
 struct CopyTableResult {
     RStatus status;
     std::shared_ptr<TableInfo> tableInfo;
+    int num_index = 0;
 };
 
 struct CheckSKVSchemaResult {
@@ -191,6 +196,15 @@ class TableInfoHandler : public BaseHandler {
             const std::string& source_namespace_id,
             const std::string& source_namespace_name,
             const std::string& source_table_id);
+
+    CopySKVTableResult CopySKVTable(std::shared_ptr<SessionTransactionContext> target_context,
+            const std::string& target_namespace_id,
+            const std::string& target_table_id,
+            uint32_t target_version,
+            std::shared_ptr<SessionTransactionContext> source_context,
+            const std::string& source_namespace_id,
+            const std::string& source_table_id,
+            uint32_t source_version);
 
     CheckSKVSchemaResult CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name, uint32_t version);
 

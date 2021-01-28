@@ -215,8 +215,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         values.emplace_back(k2::dto::expression::makeValueLiteral<bool>(false));
         k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), {});
         query->setFilterExpression(std::move(filterExpr));
-        query->startScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
-        query->endScanRecord = std::move(buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt));
+        query->startScanRecord = buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt);
+        query->endScanRecord = buildRangeRecord(namespace_id, tablehead_schema_ptr_, std::nullopt);
         do {
             std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
             k2::QueryResult query_result = query_result_future.get();
@@ -285,14 +285,48 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
             return response;
         }
 
+        std::shared_ptr<TableInfo> source_table = table_result.tableInfo;
         std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_namespace_id,
                 target_namespace_name, target_table_id, table_result.tableInfo->table_name());
+
         CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_namespace_id, target_table);
         if (!create_result.status.IsSucceeded()) {
             response.status = std::move(create_result.status);
             return response;
         }
+
+        CopySKVTableResult copy_skv_table_result = CopySKVTable(target_context, target_namespace_id, target_table_id, target_table->schema().version(),
+                source_context, source_namespace_id, source_table_id, source_table->schema().version());
+        if (!copy_skv_table_result.status.IsSucceeded()) {
+            response.status = std::move(copy_skv_table_result.status);
+            return response;
+        }
+
+        if(source_table->has_secondary_indexes()) {
+            std::unordered_map<std::string, IndexInfo*> target_index_name_map;
+            for (std::pair<TableId, IndexInfo> secondary_index : target_table->secondary_indexes()) {
+                target_index_name_map[secondary_index.second.table_name()] = &secondary_index.second;
+            }
+            for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
+                // build the map and search for target index by name
+                IndexInfo* target_index = target_index_name_map[secondary_index.second.table_name()];
+                if (target_index == NULL) {
+                    response.status.code = StatusCode::NOT_FOUND;
+                    response.status.errorMessage = "Cannot find target index " + secondary_index.second.table_name();
+                    return response;
+                }
+                CopySKVTableResult copy_skv_index_result = CopySKVTable(target_context, target_namespace_id, secondary_index.first, secondary_index.second.version(),
+                    source_context, source_namespace_id, target_index->table_id(), target_index->version());
+                if (!copy_skv_index_result.status.IsSucceeded()) {
+                    response.status = std::move(copy_skv_index_result.status);
+                    return response;
+                }
+                response.num_index++;
+            }
+        }
+
+        K2LOG_D(log::catalog, "Copied table from {} in {} to {} in {}", source_table_id, source_namespace_id, target_table_id, target_namespace_id);
         response.tableInfo = target_table;
         response.status.Succeed();
     } catch (const std::exception& e) {
@@ -302,6 +336,75 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
     return response;
 }
 
+CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransactionContext> target_context,
+            const std::string& target_namespace_id,
+            const std::string& target_table_id,
+            uint32_t target_version,
+            std::shared_ptr<SessionTransactionContext> source_context,
+            const std::string& source_namespace_id,
+            const std::string& source_table_id,
+            uint32_t source_version) {
+    CopySKVTableResult response;
+    // check target SKV schema
+    CheckSKVSchemaResult target_schema_result = CheckSKVSchema(target_context, target_namespace_id, target_table_id, target_version);
+    if (!target_schema_result.status.IsSucceeded()) {
+        K2LOG_E(log::catalog, "Failed to get SKV schema for table {} in {} with version {} due to {}",
+            target_table_id, target_namespace_id, target_version, target_schema_result.status.errorMessage);
+        response.status = std::move(target_schema_result.status);
+        return response;
+    }
+
+    // check the source SKV schema
+    CheckSKVSchemaResult source_schema_result = CheckSKVSchema(source_context, source_namespace_id, source_table_id, source_version);
+    if (!source_schema_result.status.IsSucceeded()) {
+        K2LOG_E(log::catalog, "Failed to get SKV schema for table {} in {} with version {} due to {}",
+            source_table_id, source_namespace_id, source_version, source_schema_result.status.errorMessage);
+        response.status = std::move(source_schema_result.status);
+        return response;
+    }
+
+    // create scan for source table
+    CreateScanReadResult create_source_scan_result = k2_adapter_->CreateScanRead(source_namespace_id, source_schema_result.schema->name).get();
+    if (!create_source_scan_result.status.is2xxOK()) {
+        K2LOG_E(log::catalog, "Failed to create scan read for {} in {} due to {}", source_table_id, source_namespace_id, create_source_scan_result.status.message);
+        response.status.errorMessage = create_source_scan_result.status.message;
+        response.status.code = StatusCode::RUNTIME_ERROR;
+        return response;
+    }
+
+    // scan the source table
+    std::shared_ptr<k2::Query> query = create_source_scan_result.query;
+    query->startScanRecord = buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt);
+    query->endScanRecord = buildRangeRecord(source_namespace_id, source_schema_result.schema, std::nullopt);
+    int count = 0;
+    do {
+        k2::QueryResult query_result = source_context->GetTxn()->scanRead(query).get();
+        if (!query_result.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to run scan read for table {} in {} due to {}", source_table_id, source_namespace_id, query_result.status.message);
+            response.status.code = StatusCode::RUNTIME_ERROR;
+            response.status.errorMessage = query_result.status.message;
+            return response;
+        }
+
+        if (!query_result.records.empty()) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                // clone and persist SKV record to target table
+                k2::dto::SKVRecord target_record = record.cloneToOtherSchema(target_namespace_id, target_schema_result.schema);
+                RStatus table_status = PersistSKVRecord(target_context, target_record);
+                if (!table_status.IsSucceeded()) {
+                    K2LOG_E(log::catalog, "Failed to persist SKV record to table {} in {} due to {}", target_table_id, target_namespace_id, table_status.errorMessage);
+                    response.status = std::move(table_status);
+                    return response;
+                }
+                count++;
+            }
+        }
+        // if the query is not done, the query itself is updated with the pagination token for the next call
+    } while (!query->isDone());
+    K2LOG_I(log::catalog, "Finished copying to target table {} in {} with {} records", target_table_id, target_namespace_id, count);
+    response.status.Succeed();
+    return response;
+}
 
 CheckSKVSchemaResult TableInfoHandler::CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name, uint32_t version) {
     CheckSKVSchemaResult response;
@@ -991,8 +1094,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt));
+    query->startScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
+    query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
     do {
         K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
@@ -1034,8 +1137,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id)));
+    query->startScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
+    query->endScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
@@ -1076,8 +1179,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
-    query->startScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
-    query->endScanRecord = std::move(buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id)));
+    query->startScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
+    query->endScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
         k2::QueryResult query_result = query_result_future.get();
