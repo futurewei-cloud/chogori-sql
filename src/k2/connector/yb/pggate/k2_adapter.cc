@@ -40,30 +40,8 @@ Status K2Adapter::Shutdown() {
     return Status::OK();
 }
 
-template<typename T>
-void FieldCopy(std::optional<T> field, const k2::String& fieldName, k2::dto::SKVRecord& dest) {
-    (void) fieldName;
-
-    if (!field.has_value()) {
-        dest.serializeNull();
-    } else {
-        dest.serializeNext<T>(*field);
-    }
-}
-
-// A RowId can't be created directly from returned record from a read/scan request
-// because the key fields weren't serialized directly. This function copies them to a
-// a new record and gets the RowId
 std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
-    k2::dto::SKVRecord copyRec(record.collectionName, record.schema);
-
-    record.seekField(0);
-    for (int i=0; i < record.schema->partitionKeyFields.size(); ++i) {
-        DO_ON_NEXT_RECORD_FIELD(record, FieldCopy, copyRec);
-    }
-    record.seekField(0);
-
-    return copyRec.getKey().partitionKey;
+    return record.getPartitionKey();
 }
 
 // this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
@@ -803,19 +781,6 @@ SqlOpResponse::RequestStatus K2Adapter::K2StatusToPGStatus(const k2::Status& sta
         default:
             return SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
     }
-}
-
-k2::dto::SKVRecord K2Adapter::CloneSKVRecordForTargetNamespace(k2::dto::SKVRecord& record, const std::string& target_collection,
-        std::shared_ptr<k2::dto::Schema> target_schema) {
-    k2::dto::SKVRecord cloned_record(target_collection, target_schema);
-
-    record.seekField(0);
-    for (int i=0; i < record.schema->fields.size(); ++i) {
-        DO_ON_NEXT_RECORD_FIELD(record, FieldCopy, cloned_record);
-    }
-    record.seekField(0);
-
-    return cloned_record;
 }
 
 }  // namespace gate

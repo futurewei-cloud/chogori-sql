@@ -96,8 +96,6 @@ class K2Adapter {
 
   // We have two implicit fields (tableID and indexID) in the SKV, so this is the offset to get a user field
   static constexpr uint32_t SKV_FIELD_OFFSET = 2;
-
-  k2::dto::SKVRecord CloneSKVRecordForTargetNamespace(k2::dto::SKVRecord& record, const std::string& target_collection, std::shared_ptr<k2::dto::Schema> target_schema);
 };
 
 }  // namespace gate

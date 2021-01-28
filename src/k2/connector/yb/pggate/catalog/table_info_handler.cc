@@ -389,7 +389,7 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransac
         if (!query_result.records.empty()) {
             for (k2::dto::SKVRecord& record : query_result.records) {
                 // clone and persist SKV record to target table
-                k2::dto::SKVRecord target_record = k2_adapter_->CloneSKVRecordForTargetNamespace(record, target_namespace_id, target_schema_result.schema);
+                k2::dto::SKVRecord target_record = record.cloneToOtherSchema(target_namespace_id, target_schema_result.schema);
                 RStatus table_status = PersistSKVRecord(target_context, target_record);
                 if (!table_status.IsSucceeded()) {
                     K2LOG_E(log::catalog, "Failed to persist SKV record to table {} in {} due to {}", target_table_id, target_namespace_id, table_status.errorMessage);
