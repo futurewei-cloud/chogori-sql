@@ -373,6 +373,7 @@ namespace catalog {
                 return response;
             }
             K2LOG_D(log::catalog, "Found {} table ids from source namespace {}", list_table_result.tableIds.size(), request.sourceNamespaceId);
+            int num_index = 0;
             for (auto& source_table_id : list_table_result.tableIds) {
                 // copy the source table metadata to the target table
                 K2LOG_D(log::catalog, "Copying from source table {}", source_table_id);
@@ -393,10 +394,11 @@ namespace catalog {
                     response.status = std::move(copy_result.status);
                     return response;
                 }
+                num_index += copy_result.num_index;
             }
             source_context->Commit();
-            K2LOG_D(log::catalog, "Finished copying tables from source namespace {} to {}",
-                source_namespace_info->GetNamespaceId(), new_ns->GetNamespaceId());
+            K2LOG_D(log::catalog, "Finished copying {} tables and {} indexes from source namespace {} to {}",
+                list_table_result.tableIds.size(), num_index, source_namespace_info->GetNamespaceId(), new_ns->GetNamespaceId());
         }
 
         target_context->Commit();

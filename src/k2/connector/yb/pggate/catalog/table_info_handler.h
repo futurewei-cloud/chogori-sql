@@ -70,6 +70,7 @@ struct ListTableIdsResult {
 struct CopyTableResult {
     RStatus status;
     std::shared_ptr<TableInfo> tableInfo;
+    int num_index = 0;
 };
 
 struct CheckSKVSchemaResult {

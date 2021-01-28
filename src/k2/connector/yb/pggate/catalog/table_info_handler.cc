@@ -322,6 +322,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                     response.status = std::move(copy_skv_index_result.status);
                     return response;
                 }
+                response.num_index++;
             }
         }
 
