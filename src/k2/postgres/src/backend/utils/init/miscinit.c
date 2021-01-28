@@ -315,10 +315,10 @@ void
 InitStandaloneProcess(const char *argv0)
 {
 	Assert(!IsPostmasterEnvironment);
-	
-	InitK23siWorker();
 
 	MyProcPid = getpid();		/* reset MyProcPid */
+	// TODO: remove this log or reduce the logging level later
+	elog(INFO, "InitStandaloneProcess, MyProcPid:%d", MyProcPid);
 
 	MyStartTime = time(NULL);	/* set our start time in case we call elog */
 
