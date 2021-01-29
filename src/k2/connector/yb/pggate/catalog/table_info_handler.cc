@@ -331,12 +331,13 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                     K2LOG_D(log::catalog, "Skip copying shared index {} in {}", secondary_index.first, source_coll_name);
                 } else {
                     // search for target index by name
-                    IndexInfo* target_index = target_index_name_map[secondary_index.second.table_name()];
-                    if (target_index == NULL) {
+                    auto found = target_index_name_map.find(secondary_index.second.table_name());
+                    if (found == target_index_name_map.end()) {
                         response.status.code = StatusCode::NOT_FOUND;
                         response.status.errorMessage = "Cannot find target index " + secondary_index.second.table_name();
                         return response;
                     }
+                    IndexInfo* target_index = found->second;
                     CopySKVTableResult copy_skv_index_result = CopySKVTable(target_context, target_coll_name, secondary_index.first, secondary_index.second.version(),
                         source_context, source_coll_name, target_index->table_id(), target_index->version());
                     if (!copy_skv_index_result.status.IsSucceeded()) {

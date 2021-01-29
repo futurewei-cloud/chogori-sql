@@ -38,7 +38,7 @@ namespace catalog {
 class CollectionUtil {
     public:
     // map a namespace_id to a k2 collection name
-    static std::string GetCollectionName(const std::string& namespace_id, bool is_shared);
+    static const std::string& GetCollectionName(const std::string& namespace_id, bool is_shared);
 };
 
 } // namespace sql

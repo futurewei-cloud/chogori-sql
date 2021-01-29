@@ -27,10 +27,10 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
 
-std::string CollectionUtil::GetCollectionName(const std::string& namespace_id, bool is_shared) {
+const std::string& CollectionUtil::GetCollectionName(const std::string& namespace_id, bool is_shared) {
     if (is_shared) {
-        // for a shared table/index, we need to store and access it on the reserved primary collection
-        return CatalogConsts::skv_collection_name_sql_primary;
+        // for a shared table/index, we need to store and access it on a specific collection
+        return CatalogConsts::shared_table_skv_colllection_name;
     }
     return namespace_id;
 }

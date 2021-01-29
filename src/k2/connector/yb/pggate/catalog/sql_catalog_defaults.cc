@@ -40,6 +40,8 @@ const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
 const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
 const std::string CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
 
+const std::string CatalogConsts::shared_table_skv_colllection_name = "00000001000030008000000000000000";
+
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
