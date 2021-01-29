@@ -309,6 +309,12 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
         std::string target_coll_name = CollectionUtil::GetCollectionName(target_namespace_id, target_table->is_shared_table());
         if(source_table->is_shared_table()) {
             K2LOG_D(log::catalog, "Skip copying shared table {} in {}", source_table_id, source_coll_name);
+            if(source_table->has_secondary_indexes()) {
+                for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
+                    K2ASSERT(log::catalog, secondary_index.second.is_shared(), "Index for a shared table must be shared");
+                    K2LOG_D(log::catalog, "Skip copying shared index {} in {}", secondary_index.first, source_coll_name);
+                }
+            }
         } else {
             CopySKVTableResult copy_skv_table_result = CopySKVTable(target_context, target_coll_name, target_table_id, target_table->schema().version(),
                 source_context, source_coll_name, source_table_id, source_table->schema().version());
@@ -316,20 +322,14 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                 response.status = std::move(copy_skv_table_result.status);
                 return response;
             }
-        }
-
-        // the indexes for a shared table should be shared as well, right?
-        // here we don't make the above assumption
-        // TODO: move the following section to the above else block if the above assumption holds
-        if(source_table->has_secondary_indexes()) {
-            std::unordered_map<std::string, IndexInfo*> target_index_name_map;
-            for (std::pair<TableId, IndexInfo> secondary_index : target_table->secondary_indexes()) {
-                target_index_name_map[secondary_index.second.table_name()] = &secondary_index.second;
-            }
-            for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
-                if (secondary_index.second.is_shared()) {
-                    K2LOG_D(log::catalog, "Skip copying shared index {} in {}", secondary_index.first, source_coll_name);
-                } else {
+            // the indexes for a shared table should be shared as well
+            if(source_table->has_secondary_indexes()) {
+                std::unordered_map<std::string, IndexInfo*> target_index_name_map;
+                for (std::pair<TableId, IndexInfo> secondary_index : target_table->secondary_indexes()) {
+                    target_index_name_map[secondary_index.second.table_name()] = &secondary_index.second;
+                }
+                for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
+                    K2ASSERT(log::catalog, !secondary_index.second.is_shared(), "Index for a non-shared table must not be shared");
                     // search for target index by name
                     auto found = target_index_name_map.find(secondary_index.second.table_name());
                     if (found == target_index_name_map.end()) {
