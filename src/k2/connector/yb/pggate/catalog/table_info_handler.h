@@ -126,6 +126,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::STRING, "TableName", false, false},
                 {k2::dto::FieldType::INT64T, "TableOid", false, false},
                 {k2::dto::FieldType::BOOL, "IsSysTable", false, false},
+                {k2::dto::FieldType::BOOL, "IsShared", false, false},
                 {k2::dto::FieldType::BOOL, "IsTransactional", false, false},
                 {k2::dto::FieldType::BOOL, "IsIndex", false, false},
                 {k2::dto::FieldType::BOOL, "IsUnique", false, false},
@@ -178,9 +179,9 @@ class TableInfoHandler : public BaseHandler {
         .rangeKeyFields = std::vector<uint32_t> {3}
     };
 
-    CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string collection_name);
+    CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id);
 
-    CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
+    CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<SessionTransactionContext> context, const std::string& namespace_id, std::shared_ptr<TableInfo> table);
 
     GetTableResult GetTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string namespace_name, std::string table_id);
 
@@ -197,12 +198,30 @@ class TableInfoHandler : public BaseHandler {
             const std::string& source_namespace_name,
             const std::string& source_table_id);
 
+    CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id,
+        std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
+
+    PersistIndexTableResult PersistIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
+
+    DeleteTableResult DeleteTableMetadata(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::shared_ptr<TableInfo> table);
+
+    DeleteTableResult DeleteTableData(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::shared_ptr<TableInfo> table);
+
+    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id,  std::string& index_id);
+
+    DeleteIndexResult DeleteIndexData(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id,  std::string& index_id);
+
+    GeBaseTableIdResult GeBaseTableId(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string index_id);
+
+    TableOrIndexResult IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string table_id);
+
+    private:
     CopySKVTableResult CopySKVTable(std::shared_ptr<SessionTransactionContext> target_context,
-            const std::string& target_namespace_id,
+            const std::string& target_coll_name,
             const std::string& target_table_id,
             uint32_t target_version,
             std::shared_ptr<SessionTransactionContext> source_context,
-            const std::string& source_namespace_id,
+            const std::string& source_coll_name,
             const std::string& source_table_id,
             uint32_t source_version);
 
@@ -210,26 +229,8 @@ class TableInfoHandler : public BaseHandler {
 
     CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
 
-    CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,
-        std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
-
     PersistSysTableResult PersistSysTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
 
-    PersistIndexTableResult PersistIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
-
-    DeleteTableResult DeleteTableMetadata(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
-
-    DeleteTableResult DeleteTableData(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::shared_ptr<TableInfo> table);
-
-    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,  std::string& index_id);
-
-    DeleteIndexResult DeleteIndexData(std::shared_ptr<SessionTransactionContext> context, std::string collection_name,  std::string& index_id);
-
-    GeBaseTableIdResult GeBaseTableId(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string index_id);
-
-    TableOrIndexResult IsIndexTable(std::shared_ptr<SessionTransactionContext> context, std::string namespace_id, std::string table_id);
-
-    private:
     CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<SessionTransactionContext> context, std::string collection_name, std::string schema_name,
         std::shared_ptr<k2::dto::Schema> schema);
 

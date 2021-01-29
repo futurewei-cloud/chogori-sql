@@ -196,7 +196,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     std::vector<std::future<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
         k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(ybctid_column_value), .rangeKey=""};
-        result_futures.push_back(k23SITxn->read(std::move(key), request->namespace_id));
+        result_futures.push_back(k23SITxn->read(std::move(key), request->collection_name));
     }
 
     int idx = 0;
@@ -243,7 +243,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (request->paging_state && request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
-            std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->namespace_id, request->table_id);
+            std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->collection_name, request->table_id);
             CreateScanReadResult scan_create_result = scan_f.get();
             if (!scan_create_result.status.is2xxOK()) {
                 K2LOG_E(log::pg, "Unable to create scan read request");
@@ -564,14 +564,14 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     return key.partitionKey;
 }
 
-std::string K2Adapter::GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(namespace_id, table_id, schema_version);
+std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
-        throw std::runtime_error("Failed to get schema for " + table_id + " in " + namespace_id + " due to " + schema_result.status.message.c_str());
+        throw std::runtime_error("Failed to get schema for " + table_id + " in " + collection_name + " due to " + schema_result.status.message.c_str());
     }
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
-    k2::dto::SKVRecord record(namespace_id, schema);
+    k2::dto::SKVRecord record(collection_name, schema);
 
     // Serialize key data into SKVRecord
     record.serializeNext<k2::String>(table_id);
@@ -631,7 +631,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
 template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
 std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool existYbctids, bool ignoreYBCTID) {
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.namespace_id, request.table_id,
+    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.collection_name, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic
@@ -641,7 +641,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     }
 
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
-    k2::dto::SKVRecord record(request.namespace_id, schema);
+    k2::dto::SKVRecord record(request.collection_name, schema);
 
     if (existYbctids && !ignoreYBCTID) {
         // Using a pre-stored and pre-serialized key, just need to skip key fields

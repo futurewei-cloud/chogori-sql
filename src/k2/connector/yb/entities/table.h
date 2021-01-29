@@ -124,13 +124,21 @@ namespace sql {
         }
 
         Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
-        
+
         void set_is_sys_table(bool is_sys_table) {
             is_sys_table_ = is_sys_table;
         }
 
         bool is_sys_table() {
             return is_sys_table_;
+        }
+
+        void set_is_shared_table(bool is_shared_table) {
+            is_shared_table_ = is_shared_table;
+        }
+
+        bool is_shared_table() {
+            return is_shared_table_;
         }
 
         static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
@@ -144,6 +152,7 @@ namespace sql {
         IndexMap index_map_;
         int32_t next_column_id_ = 0;
         bool is_sys_table_ = false;
+        bool is_shared_table_ = false;
     };
 
 }  // namespace sql

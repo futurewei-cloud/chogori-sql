@@ -293,7 +293,11 @@ YBCStatus YBCPgNewCreateTable(const char *database_name,
                               bool add_primary_key,
                               const bool colocated,
                               YBCPgStatement *handle) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateTable {}, {}, {}", database_name, schema_name, table_name);
+  if (is_shared_table) {
+    K2LOG_I(log::pg, "PgGateAPI: YBCPgNewCreateTable (shared) {}, {}, {}", database_name, schema_name, table_name);
+  } else {
+    K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateTable {}, {}, {}", database_name, schema_name, table_name);
+  }
   const PgObjectId table_id(database_oid, table_oid);
   return ToYBCStatus(api_impl->NewCreateTable(
       database_name, schema_name, table_name, table_id, is_shared_table,
@@ -453,7 +457,11 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
                               const bool skip_index_backfill,
                               bool if_not_exist,
                               YBCPgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateIndex {}, {}, {}", database_name, schema_name, index_name);
+  if (is_shared_index) {
+    K2LOG_I(log::pg, "PgGateAPI: YBCPgNewCreateIndex (shared) {}, {}, {}", database_name, schema_name, index_name);
+  } else {
+    K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateIndex {}, {}, {}", database_name, schema_name, index_name);
+  }
   const PgObjectId index_id(database_oid, index_oid);
   const PgObjectId table_id(database_oid, table_oid);
   return ToYBCStatus(api_impl->NewCreateIndex(database_name, schema_name, index_name, index_id,

@@ -74,6 +74,10 @@ class PgTableDesc {
     return namespace_id_;
   }
 
+  const std::string& collection_name() const {
+    return collection_name_;
+  }
+
   const std::string& table_id() {
     return table_id_;
   }
@@ -139,6 +143,9 @@ class PgTableDesc {
 
   // Hidden columns.
   PgColumn column_ybctid_;
+
+  // k2 collection name
+  std::string collection_name_;
 };
 
 }  // namespace gate

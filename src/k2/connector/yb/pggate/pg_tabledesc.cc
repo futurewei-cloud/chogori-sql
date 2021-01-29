@@ -48,12 +48,15 @@
 
 #include "yb/pggate/pg_tabledesc.h"
 
+#include "yb/pggate/catalog/collection_util.h"
+
 namespace k2pg {
 namespace gate {
 
 using k2pg::sql::Schema;
 using k2pg::sql::ColumnSchema;
 using k2pg::sql::PgSystemAttrNum;
+using k2pg::sql::catalog::CollectionUtil;
 
 PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false),
     namespace_id_(pg_table->namespace_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
@@ -86,6 +89,8 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
 
+  collection_name_ = CollectionUtil::GetCollectionName(namespace_id_, pg_table->is_shared_table());
+
   K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
     table_id_, namespace_id_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
 }
@@ -117,6 +122,8 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespa
 
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
+
+  collection_name_ = CollectionUtil::GetCollectionName(namespace_id_, index_info.is_shared());
 
   K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
     table_id_, namespace_id_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
@@ -154,7 +161,7 @@ std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& clie
   std::unique_ptr<PgReadOpTemplate> op = std::make_unique<PgReadOpTemplate>();
   std::shared_ptr<SqlOpReadRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_id = namespace_id_;
+  req->collection_name = collection_name_;
   req->table_id = table_id_;
   req->schema_version = schema_version_;
   req->stmt_id = stmt_id;
@@ -166,7 +173,7 @@ std::unique_ptr<PgWriteOpTemplate> PgTableDesc::NewPgsqlOpWrite(SqlOpWriteReques
   std::unique_ptr<PgWriteOpTemplate> op = std::make_unique<PgWriteOpTemplate>();
   std::shared_ptr<SqlOpWriteRequest> req = op->request();
   req->client_id = client_id;
-  req->namespace_id = namespace_id_;
+  req->collection_name = collection_name_;
   req->table_id = table_id_;
   req->schema_version = schema_version_;
   req->stmt_id = stmt_id;

@@ -572,12 +572,13 @@ namespace catalog {
                 table_id, request.tableName, table_schema);
         new_table_info->set_pg_oid(request.tableOid);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
+        new_table_info->set_is_shared_table(request.isSharedTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
 
         // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        K2LOG_D(log::catalog, "Create or update table id: {}, name {}", table_id, request.tableName);
-        CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, new_table_info->namespace_id(), new_table_info);
+        K2LOG_D(log::catalog, "Create or update table id: {}, name: {}, shared: {}", table_id, request.tableName, request.isSharedTable);
+        CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
@@ -663,7 +664,7 @@ namespace catalog {
         try {
             // use default index permission, could be customized by user/api
             IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
-                    request.schema, request.isUnique, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
+                    request.schema, request.isUnique, request.isSharedTable, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
             K2LOG_D(log::catalog, "Persisting index table id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
             // persist the index table metadata to the system catalog SKV tables
@@ -1205,7 +1206,7 @@ namespace catalog {
     }
 
     IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
-            const Schema& index_schema, bool is_unique, IndexPermissions index_permissions) {
+            const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
         std::vector<IndexColumn> columns;
         for (ColumnId col_id: index_schema.column_ids()) {
             int col_idx = index_schema.find_column_by_id(col_id);
@@ -1235,7 +1236,7 @@ namespace catalog {
             columns.push_back(col);
         }
         IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
-                is_unique, columns, index_permissions);
+                is_unique, is_shared, columns, index_permissions);
         return index_info;
     }
 
