@@ -112,15 +112,16 @@ namespace k2pg {
 
         class IndexInfo {
         public:
-            explicit IndexInfo(TableId table_id, std::string table_name, uint32_t pg_oid,
-                TableId indexed_table_id, uint32_t schema_version, bool is_unique,
+            explicit IndexInfo(std::string table_name, uint32_t pg_oid, std::string uuid,
+                std::string indexed_table_id, uint32_t schema_version, bool is_unique,
                 bool is_shared, std::vector<IndexColumn> columns, size_t hash_column_count,
                 size_t range_column_count, std::vector<ColumnId> indexed_hash_column_ids,
                 std::vector<ColumnId> indexed_range_column_ids, IndexPermissions index_permissions,
                 bool use_mangled_column_name)
-                : table_id_(table_id),
-                table_name_(table_name),
+                : table_name_(table_name),
                 pg_oid_(pg_oid),
+                table_id_(std::to_string(pg_oid)),
+                uuid_(uuid),
                 indexed_table_id_(indexed_table_id),
                 schema_version_(schema_version),
                 is_unique_(is_unique),
@@ -133,18 +134,19 @@ namespace k2pg {
                 index_permissions_(index_permissions) {
             }
 
-            explicit IndexInfo(TableId table_id,
-                std::string table_name,
+            explicit IndexInfo(std::string table_name,
                 uint32_t pg_oid,
-                TableId indexed_table_id,
+                std::string uuid,
+                std::string indexed_table_id,
                 uint32_t schema_version,
                 bool is_unique,
                 bool is_shared,
                 std::vector<IndexColumn> columns,
                 IndexPermissions index_permissions)
-                : table_id_(std::move(table_id)),
-                    table_name_(std::move(table_name)),
+                : table_name_(table_name),
                     pg_oid_(pg_oid),
+                    table_id_(std::to_string(pg_oid)),
+                    uuid_(uuid),
                     indexed_table_id_(indexed_table_id),
                     schema_version_(schema_version),
                     is_unique_(is_unique),
@@ -160,7 +162,7 @@ namespace k2pg {
                     }
             }
 
-            const TableId& table_id() const {
+            const std::string& table_id() const {
                 return table_id_;
             }
 
@@ -172,7 +174,11 @@ namespace k2pg {
                 return pg_oid_;
             }
 
-            const TableId& indexed_table_id() const {
+            const std::string& uuid() const {
+                return uuid_;
+            }
+
+            const std::string& indexed_table_id() const {
                 return indexed_table_id_;
             }
 
@@ -183,7 +189,7 @@ namespace k2pg {
             bool is_shared() const {
                 return is_shared_;
             }
-            
+
             const uint32_t version() const {
                 return schema_version_;
             }
@@ -259,10 +265,11 @@ namespace k2pg {
             int32_t FindKeyIndex(const std::string& key_name) const;
 
         private:
-            const TableId table_id_;            // Index table id.
             const std::string table_name_;      // Index table name.
             const uint32_t pg_oid_;
-            const TableId indexed_table_id_;    // Indexed table id.
+            const std::string table_id_;            // Index table id.
+            const std::string uuid_;
+            const std::string indexed_table_id_;    // Indexed table id.
             const uint32_t schema_version_ = 0; // Index table's schema version.
             const bool is_unique_ = false;      // Whether this is a unique index.
             const bool is_shared_ = false;      // whether this is a shared index
@@ -274,11 +281,11 @@ namespace k2pg {
             const IndexPermissions index_permissions_ = INDEX_PERM_READ_WRITE_AND_DELETE;
         };
 
-        class IndexMap : public std::unordered_map<TableId, IndexInfo> {
+        class IndexMap : public std::unordered_map<std::string, IndexInfo> {
         public:
             IndexMap() {}
 
-            Result<const IndexInfo*> FindIndex(const TableId& index_id) const;
+            Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
         };
 
     }  // namespace sql

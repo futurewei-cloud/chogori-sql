@@ -112,7 +112,7 @@ namespace sql {
         return -1;
     }
 
-    Result<const IndexInfo*> IndexMap::FindIndex(const TableId& index_id) const {
+    Result<const IndexInfo*> IndexMap::FindIndex(const std::string& index_id) const {
         const auto itr = find(index_id);
         if (itr == end()) {
             return STATUS(NotFound, yb::Format("Index id $0 not found", index_id));

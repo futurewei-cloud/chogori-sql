@@ -59,7 +59,6 @@ namespace gate {
 
 using yb::Result;
 using yb::Status;
-using k2pg::sql::TableIdentifier;
 using k2pg::sql::TableInfo;
 using k2pg::sql::IndexInfo;
 

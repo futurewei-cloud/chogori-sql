@@ -250,6 +250,8 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
                     record.deserializeNext<k2::String>();
                     // TableOid
                     record.deserializeNext<int64_t>();
+                    // TableUuid
+                    record.deserializeNext<k2::String>();
                     // IsSysTable
                     bool is_sys_table = record.deserializeNext<bool>().value();
                     if (isSysTableIncluded) {
@@ -708,6 +710,8 @@ GeBaseTableIdResult TableInfoHandler::GeBaseTableId(std::shared_ptr<SessionTrans
         index_head.deserializeNext<k2::String>();
         // TableOid
         index_head.deserializeNext<int64_t>();
+        // TableUuid
+        index_head.deserializeNext<k2::String>();
         // IsSysTable
         index_head.deserializeNext<bool>();
         // IsShared
@@ -745,6 +749,8 @@ TableOrIndexResult TableInfoHandler::IsIndexTable(std::shared_ptr<SessionTransac
         record.deserializeNext<k2::String>();
         // TableOid
         record.deserializeNext<int64_t>();
+        // TableUuid
+        record.deserializeNext<k2::String>();
         // IsSysTable
         record.deserializeNext<bool>();
         // IsShared
@@ -879,6 +885,8 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(std::string collectio
     record.serializeNext<k2::String>(table->table_name());
     // TableOid
     record.serializeNext<int64_t>(table->pg_oid());
+    // TableUuid
+    record.serializeNext<k2::String>(table->uuid());
     // IsSysTable
     record.serializeNext<bool>(table->is_sys_table());
     // IsShared
@@ -912,6 +920,8 @@ k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(std::string collectio
     record.serializeNext<k2::String>(index.table_name());
     // TableOid
     record.serializeNext<int64_t>(index.pg_oid());
+    // TableUuid
+    record.serializeNext<k2::String>(index.uuid());
     // IsSysTable
     record.serializeNext<bool>(is_sys_table);
     // IsShared
@@ -1252,6 +1262,8 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
     std::string table_name = table_head.deserializeNext<k2::String>().value();
     // TableOid
     uint32_t table_oid = table_head.deserializeNext<int64_t>().value();
+    // TableUuid
+    std::string table_uuid = table_head.deserializeNext<k2::String>().value();
     // IsSysTable
     bool is_sys_table = table_head.deserializeNext<bool>().value();
     // IsShared
@@ -1314,8 +1326,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(std::string namespac
     }
     Schema table_schema(cols, ids, key_columns, table_properties);
     table_schema.set_version(version);
-    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_id, table_name, table_schema);
-    table_info->set_pg_oid(table_oid);
+    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_oid, table_name, table_uuid, table_schema);
     table_info->set_next_column_id(next_column_id);
     table_info->set_is_sys_table(is_sys_table);
     table_info->set_is_shared_table(is_shared);
@@ -1334,6 +1345,8 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     std::string table_name = index_head.deserializeNext<k2::String>().value();
     // TableOid
     uint32_t table_oid = index_head.deserializeNext<int64_t>().value();
+    // TableUuid
+    std::string table_uuid = index_head.deserializeNext<k2::String>().value();
     // IsSysTable
     index_head.deserializeNext<bool>();
     // IsShared
@@ -1392,7 +1405,7 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
         columns.push_back(std::move(index_column));
     }
 
-    IndexInfo index_info(table_id, table_name, table_oid, indexed_table_id, version, is_unique, is_shared, columns, index_perm);
+    IndexInfo index_info(table_name, table_oid, table_uuid, indexed_table_id, version, is_unique, is_shared, columns, index_perm);
     return index_info;
 }
 

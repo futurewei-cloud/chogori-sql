@@ -338,7 +338,7 @@ namespace catalog {
 
         void IncreaseCatalogVersion();
 
-        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
+        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t pg_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
         std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);

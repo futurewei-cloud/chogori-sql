@@ -543,7 +543,6 @@ namespace catalog {
 
         // check if the Table has already existed or not
         std::shared_ptr<TableInfo> table_info = GetCachedTableInfoByName(namespace_info->GetNamespaceId(), request.tableName);
-        std::string table_id;
         if (table_info != nullptr) {
             // only create table when it does not exist
             if (request.isNotExist) {
@@ -555,7 +554,7 @@ namespace catalog {
 
             // return table already present error if table already exists
             response.status.code = StatusCode::ALREADY_PRESENT;
-            response.status.errorMessage = "Table " + table_id + " has already existed in " + request.namespaceName;
+            response.status.errorMessage = "Table " + request.tableName + " has already existed in " + request.namespaceName;
             K2LOG_E(log::catalog, "{}", response.status);
             return response;
         }
@@ -565,24 +564,23 @@ namespace catalog {
         CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
         schema_version++;
         // generate a string format table id based database object oid and table oid
-        table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
         Schema table_schema = std::move(request.schema);
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
-                table_id, request.tableName, table_schema);
-        new_table_info->set_pg_oid(request.tableOid);
+                request.tableOid, request.tableName, uuid, table_schema);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
         new_table_info->set_is_shared_table(request.isSharedTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
 
         // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        K2LOG_D(log::catalog, "Create or update table id: {}, name: {}, shared: {}", table_id, request.tableName, request.isSharedTable);
+        K2LOG_D(log::catalog, "Create or update table id: {}, name: {}, shared: {}", new_table_info->table_id(), request.tableName, request.isSharedTable);
         CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
-            K2LOG_D(log::catalog, "Created table {}, with schema {}", new_table_info->table_id(),schema_version);
+            K2LOG_D(log::catalog, "Created table {}, with schema {}", new_table_info->table_id(), schema_version);
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version
@@ -611,12 +609,14 @@ namespace catalog {
             response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
             return response;
         }
-        // generate table id from namespace oid and table oid
-        std::string base_table_id = GetPgsqlTableId(request.namespaceOid, request.baseTableOid);
-        std::string index_table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        // generate table uuid from namespace oid and table oid
+        std::string base_table_uuid = GetPgsqlTableId(request.namespaceOid, request.baseTableOid);
+        std::string index_table_uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+
+        std::string base_table_id = std::to_string(request.baseTableOid);
 
         // check if the base table exists or not
-        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
+        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_uuid);
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
@@ -640,7 +640,7 @@ namespace catalog {
 
         if (base_table_info->has_secondary_indexes()) {
             const IndexMap& index_map = base_table_info->secondary_indexes();
-            const auto itr = index_map.find(index_table_id);
+            const auto itr = index_map.find(index_table_uuid);
             // the index has already been defined
             if (itr != index_map.end()) {
                 // return if 'create .. if not exist' clause is specified
@@ -654,7 +654,7 @@ namespace catalog {
                     context->Commit();
                     // return index already present error if index already exists
                     response.status.code = StatusCode::ALREADY_PRESENT;
-                    response.status.errorMessage = "Index " + index_table_id + " has already existed in ns " + namespace_info->GetNamespaceId();
+                    response.status.errorMessage = "Index " + index_table_uuid + " has already existed in ns " + namespace_info->GetNamespaceId();
                     K2LOG_E(log::catalog, "{}", response.status);
                     return response;
                 }
@@ -663,7 +663,7 @@ namespace catalog {
 
         try {
             // use default index permission, could be customized by user/api
-            IndexInfo new_index_info = BuildIndexInfo(base_table_info, index_table_id, request.tableName, request.tableOid,
+            IndexInfo new_index_info = BuildIndexInfo(base_table_info, request.tableName, request.tableOid, index_table_uuid,
                     request.schema, request.isUnique, request.isSharedTable, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
             K2LOG_D(log::catalog, "Persisting index table id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
@@ -675,7 +675,7 @@ namespace catalog {
             table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
             // update the base table with the new index
-            base_table_info->add_secondary_index(index_table_id, new_index_info);
+            base_table_info->add_secondary_index(new_index_info.table_id(), new_index_info);
 
             K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
             // update table cache
@@ -707,11 +707,12 @@ namespace catalog {
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
         GetTableSchemaResponse response;
         // generate table id from namespace oid and table oid
-        std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string table_uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string table_id = std::to_string(request.tableOid);
         K2LOG_D(log::catalog, "Get table schema ns oid: {}, table oid: {}, table id: {}",
             request.namespaceOid, request.tableOid, table_id);
         // check the table schema from cache
-        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_id);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {}", table_info->table_name(), table_info->table_id());
             response.tableInfo = table_info;
@@ -774,7 +775,7 @@ namespace catalog {
 
         // Check the index table
         K2LOG_D(log::catalog, "Fetching table schema for index {} in ns {}", table_id, namespace_info->GetNamespaceId());
-        std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_id);
+        std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_uuid);
         std::string base_table_id;
         if (index_ptr == nullptr) {
             // not founnd in cache, try to check the base table id from SKV
@@ -1205,7 +1206,7 @@ namespace catalog {
         context->Commit();
     }
 
-    IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_id, std::string index_name, uint32_t pg_oid,
+    IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t pg_oid, std::string index_uuid,
             const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
         std::vector<IndexColumn> columns;
         for (ColumnId col_id: index_schema.column_ids()) {
@@ -1235,7 +1236,7 @@ namespace catalog {
                     col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), indexed_column_id);
             columns.push_back(col);
         }
-        IndexInfo index_info(index_id, index_name, pg_oid, base_table_info->table_id(), index_schema.version(),
+        IndexInfo index_info(index_name, pg_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
                 is_unique, is_shared, columns, index_permissions);
         return index_info;
     }

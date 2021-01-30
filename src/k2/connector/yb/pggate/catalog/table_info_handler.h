@@ -125,6 +125,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::STRING, "TableName", false, false},
                 {k2::dto::FieldType::INT64T, "TableOid", false, false},
+                {k2::dto::FieldType::STRING, "TableUuid", false, false},
                 {k2::dto::FieldType::BOOL, "IsSysTable", false, false},
                 {k2::dto::FieldType::BOOL, "IsShared", false, false},
                 {k2::dto::FieldType::BOOL, "IsTransactional", false, false},

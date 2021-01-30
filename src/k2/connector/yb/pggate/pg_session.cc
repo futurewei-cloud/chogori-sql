@@ -336,7 +336,7 @@ Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::share
       return client_->BatchExec(k23SITxn, ops);
     }
   } else {
-    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145"); 
+    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145");
 
     auto& buffered_keys = pg_session_->buffered_keys_;
     bool read_op_included = false;
@@ -378,7 +378,7 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
     return std::future<Status>();
   }
 
-  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145"); 
+  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145");
 
   bool read_only = true;
   std::vector<std::shared_ptr<PgOpTemplate>> ops;
@@ -406,11 +406,11 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
-  const TableId t_table_id = table_id.GetPgTableId();
-  K2LOG_D(log::pg, "Loading table descriptor for {}, id={}", table_id, t_table_id);
+  const std::string t_table_uuid = table_id.GetPgTableId();
+  K2LOG_D(log::pg, "Loading table descriptor for {}, id={}", table_id, t_table_uuid);
   std::shared_ptr<TableInfo> table;
 
-  auto cached_table = table_cache_.find(t_table_id);
+  auto cached_table = table_cache_.find(t_table_uuid);
   if (cached_table == table_cache_.end()) {
     K2LOG_D(log::pg, "Table cache MISS: {}", table_id);
     Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
@@ -419,13 +419,14 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
                            table_id.object_oid, table_id.database_oid, s.ToUserMessage());
     }
-    table_cache_[t_table_id] = table;
+    table_cache_[t_table_uuid] = table;
   } else {
     K2LOG_D(log::pg, "Table cache HIT: {}", table_id);
     table = cached_table->second;
   }
 
-  // check if the t_table_id is for a table or an index
+  std::string t_table_id = std::to_string(table_id.object_oid);
+  // check if the t_table_uuid is for a table or an index
   if (table->table_id().compare(t_table_id) == 0) {
     // a table
     return std::make_shared<PgTableDesc>(table);
