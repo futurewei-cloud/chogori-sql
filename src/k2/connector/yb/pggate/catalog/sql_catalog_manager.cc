@@ -564,7 +564,7 @@ namespace catalog {
         CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
         schema_version++;
         // generate a string format table id based database object oid and table oid
-        std::string uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
         Schema table_schema = std::move(request.schema);
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
@@ -610,8 +610,8 @@ namespace catalog {
             return response;
         }
         // generate table uuid from namespace oid and table oid
-        std::string base_table_uuid = GetPgsqlTableId(request.namespaceOid, request.baseTableOid);
-        std::string index_table_uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string base_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.baseTableOid);
+        std::string index_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
 
         std::string base_table_id = std::to_string(request.baseTableOid);
 
@@ -707,7 +707,7 @@ namespace catalog {
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
         GetTableSchemaResponse response;
         // generate table id from namespace oid and table oid
-        std::string table_uuid = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
         std::string table_id = std::to_string(request.tableOid);
         K2LOG_D(log::catalog, "Get table schema ns oid: {}, table oid: {}, table id: {}",
             request.namespaceOid, request.tableOid, table_id);
@@ -720,7 +720,7 @@ namespace catalog {
             return response;
         }
 
-        std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
+        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
@@ -856,8 +856,8 @@ namespace catalog {
     DeleteTableResponse SqlCatalogManager::DeleteTable(const DeleteTableRequest& request) {
         K2LOG_D(log::catalog, "Deleting table {} in namespace {}", request.tableOid, request.namespaceOid);
         DeleteTableResponse response;
-        std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
-        std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
+        std::string table_id = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
         response.namespaceId = namespace_id;
         response.tableId = table_id;
 
@@ -919,8 +919,8 @@ namespace catalog {
     DeleteIndexResponse SqlCatalogManager::DeleteIndex(const DeleteIndexRequest& request) {
         K2LOG_D(log::catalog, "Deleting index {} in ns {}", request.tableOid, request.namespaceOid);
         DeleteIndexResponse response;
-        std::string namespace_id = GetPgsqlNamespaceId(request.namespaceOid);
-        std::string table_id = GetPgsqlTableId(request.namespaceOid, request.tableOid);
+        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
+        std::string table_id = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
         response.namespaceId = namespace_id;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {

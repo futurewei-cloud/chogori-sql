@@ -55,6 +55,7 @@
 
 #include "yb/common/metrics/metrics.h"
 #include "yb/common/sys/mem_tracker.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/entities/expr.h"
 #include "yb/entities/index.h"
 #include "yb/pggate/pg_gate_typedefs.h"
@@ -76,6 +77,8 @@ using yb::MetricEntity;
 using yb::MetricRegistry;
 using yb::Status;
 using k2pg::sql::PgExpr;
+using k2pg::sql::PgObjectId;
+using k2pg::sql::PgOid;
 using k2pg::sql::catalog::SqlCatalogClient;
 using k2pg::sql::catalog::SqlCatalogManager;
 

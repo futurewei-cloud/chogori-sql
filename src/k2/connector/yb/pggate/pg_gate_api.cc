@@ -3,6 +3,7 @@
 #include "yb/common/ybc-internal.h"
 #include "yb/common/ybc_util.h"
 #include "yb/common/env.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/pggate/pg_env.h"
 #include "yb/pggate/pg_gate_defaults.h"
 #include "yb/pggate/pg_gate_thread_local_vars.h"
@@ -13,6 +14,7 @@ namespace k2pg {
 namespace gate {
 
 using yb::Status;
+using k2pg::sql::kPgByteArrayOid;
 using k2pg::sql::catalog::SqlCatalogManager;
 
 namespace {

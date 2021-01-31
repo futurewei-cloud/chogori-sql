@@ -38,8 +38,8 @@ namespace sql {
 namespace catalog {
 
 using yb::Status;
-using k2pg::gate::PgObjectId;
-using k2pg::gate::PgOid;
+using k2pg::sql::PgObjectId;
+using k2pg::sql::PgOid;
 
 class SqlCatalogClient {
     public:

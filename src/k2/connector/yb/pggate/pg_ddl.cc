@@ -48,6 +48,7 @@
 
 #include "yb/pggate/pg_ddl.h"
 #include "yb/pggate/pg_gate_typedefs.h"
+#include "yb/entities/entity_ids.h"
 
 namespace k2pg {
 namespace gate {
@@ -129,7 +130,7 @@ PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
                              bool if_not_exist,
                              bool add_primary_key)
     : PgDdl(pg_session),
-      namespace_id_(GetPgsqlNamespaceId(table_id.database_oid)),
+      namespace_id_(PgObjectId::GetNamespaceUuid(table_id.GetDatabaseOid())),
       namespace_name_(database_name),
       table_name_(table_name),
       table_id_(table_id),
@@ -397,7 +398,7 @@ PgDropIndex::~PgDropIndex() {
 Status PgDropIndex::Exec() {
   PgOid *base_table_oid = nullptr;
   Status s = pg_session_->DropIndex(table_id_, base_table_oid);
-  PgObjectId base_table_id(table_id_.database_oid, *base_table_oid);
+  PgObjectId base_table_id(table_id_.GetDatabaseOid(), *base_table_oid);
 
   pg_session_->InvalidateTableCache(table_id_);
   pg_session_->InvalidateTableCache(base_table_id);

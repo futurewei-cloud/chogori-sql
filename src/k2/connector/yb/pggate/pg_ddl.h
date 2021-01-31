@@ -66,6 +66,8 @@ namespace gate {
 using yb::Status;
 using k2pg::sql::ColumnSchema;
 using k2pg::sql::SchemaBuilder;
+using k2pg::sql::PgObjectId;
+using k2pg::sql::PgOid;
 
 class PgDdl : public PgStatement {
  public:

@@ -297,7 +297,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
         }
 
         std::shared_ptr<TableInfo> source_table = table_result.tableInfo;
-        std::string target_table_id = GetPgsqlTableId(target_namespace_oid, table_result.tableInfo->pg_oid());
+        std::string target_table_id = PgObjectId::GetTableUuid(target_namespace_oid, table_result.tableInfo->pg_oid());
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_namespace_id,
                 target_namespace_name, target_table_id, table_result.tableInfo->table_name());
 

@@ -141,7 +141,7 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
     // case.
     DSCHECK(prepare_params_.querying_colocated_table, InvalidArgument, "Read request invalid");
     read_req_ = read_req;
-    read_req_->table_id = index_id_.GetPgTableId();
+    read_req_->table_id = index_id_.GetTableUuid();
     sql_op_ = nullptr;
     K2LOG_D(log::pg, "PgSelectIndex prepared as secondary index subquery. sql_op_ is null. read_req pagestate is null 1 or 0? {}", (!(read_req_->paging_state) ? 1:0 ));
   } else {

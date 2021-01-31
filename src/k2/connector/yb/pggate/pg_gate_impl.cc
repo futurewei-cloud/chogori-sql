@@ -57,6 +57,8 @@
 namespace k2pg {
 namespace gate {
 
+using k2pg::sql::kPgByteArrayOid;
+
 PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count, YBCPgCallbacks callbacks)
     : metric_registry_(new MetricRegistry()),
       metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(), "k2.pggate")),

@@ -91,9 +91,9 @@ Status SqlCatalogClient::CreateTable(
     bool if_not_exist) {
   CreateTableRequest request {
     .namespaceName = namespace_name,
-    .namespaceOid = table_id.database_oid,
+    .namespaceOid = table_id.GetDatabaseOid(),
     .tableName = table_name,
-    .tableOid = table_id.object_oid,
+    .tableOid = table_id.GetObjectOid(),
     .schema = schema,
     .isSysCatalogTable = is_pg_catalog_table,
     .isSharedTable = is_shared_table,
@@ -121,11 +121,11 @@ Status SqlCatalogClient::CreateIndexTable(
     bool if_not_exist) {
   CreateIndexTableRequest request {
     .namespaceName = namespace_name,
-    .namespaceOid = table_id.database_oid,
+    .namespaceOid = table_id.GetDatabaseOid(),
     .tableName = table_name,
-    .tableOid = table_id.object_oid,
+    .tableOid = table_id.GetObjectOid(),
     // index and the base table should be in the same namespace, i.e., database
-    .baseTableOid = base_table_id.object_oid,
+    .baseTableOid = base_table_id.GetObjectOid(),
     .schema = schema,
     .isUnique = is_unique_index,
     .skipIndexBackfill = skip_index_backfill,
@@ -191,7 +191,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
                                   uint32_t* begin_oid,
                                   uint32_t* end_oid) {
   ReservePgOidsRequest request {
-    .namespaceId = GetPgsqlNamespaceId(database_oid),
+    .namespaceId = PgObjectId::GetNamespaceUuid(database_oid),
     .nextOid = next_oid,
     .count = count
   };

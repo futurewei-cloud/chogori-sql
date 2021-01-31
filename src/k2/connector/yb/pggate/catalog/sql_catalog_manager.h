@@ -88,6 +88,7 @@ and task state checking APIs later by using thread pools.
 #include "yb/common/env.h"
 #include "yb/common/status.h"
 #include "yb/common/concurrent/locks.h"
+#include "yb/entities/entity_ids.h"
 #include "yb/entities/schema.h"
 #include "yb/entities/index.h"
 #include "yb/entities/table.h"
@@ -104,7 +105,7 @@ namespace catalog {
     using yb::Status;
     using yb::simple_spinlock;
     using k2pg::gate::K2Adapter;
-    using k2pg::gate::PgObjectId;
+    using k2pg::sql::PgObjectId;
 
     struct GetInitDbRequest {
     };

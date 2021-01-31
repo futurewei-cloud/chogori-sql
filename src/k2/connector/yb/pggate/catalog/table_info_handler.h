@@ -27,6 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <vector>
 
+#include "yb/entities/entity_ids.h"
 #include "yb/pggate/catalog/base_handler.h"
 #include "catalog_log.h"
 
@@ -35,6 +36,7 @@ namespace sql {
 namespace catalog {
 
 using k2pg::gate::CreateScanReadResult;
+using k2pg::sql::PgObjectId;
 
 struct CreateSysTablesResult {
     RStatus status;

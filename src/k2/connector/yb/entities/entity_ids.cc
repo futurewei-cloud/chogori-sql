@@ -29,7 +29,7 @@ const uint32_t kTemplate1Oid = 1;  // Hardcoded for template1. (in initdb.c)
 const uint32_t kPgProcTableOid = 1255;  // Hardcoded for pg_proc. (in pg_proc.h)
 
 // Static initialization is OK because this won't be used in another static initialization.
-const TableId kPgProcTableId = GetPgsqlTableId(kTemplate1Oid, kPgProcTableOid);
+const TableId kPgProcTableId = PgObjectId::GetTableUuid(kTemplate1Oid, kPgProcTableOid);
 
 //-------------------------------------------------------------------------------------------------
 
@@ -73,29 +73,33 @@ std::string UuidToString(uuid* id) {
 
 } // namespace
 
-NamespaceId GetPgsqlNamespaceId(const uint32_t database_oid) {
+std::string PgObjectId::GetNamespaceUuid(const PgOid& database_oid) {
   uuid id = boost::uuids::nil_uuid();
   UuidSetDatabaseId(database_oid, &id);
   return UuidToString(&id);
 }
 
-TableId GetPgsqlTableId(const uint32_t database_oid, const uint32_t table_oid) {
+std::string PgObjectId::GetTableUuid(const PgOid& database_oid, const PgOid& table_oid) {
   uuid id = boost::uuids::nil_uuid();
   UuidSetDatabaseId(database_oid, &id);
   UuidSetTableIds(table_oid, &id);
   return UuidToString(&id);
 }
 
-bool IsPgsqlId(const string& id) {
-  if (id.size() != 32) return false; // Ignore non-UUID id like "sys.catalog.uuid"
+std::string PgObjectId::GetTableUuid() const {
+  return GetTableUuid(database_oid_, object_oid_);
+}
+
+bool PgObjectId::IsPgsqlId(const string& uuid) {
+  if (uuid.size() != 32) return false; // Ignore non-UUID string like "sys.catalog.uuid"
   try {
     size_t pos = 0;
 #ifndef NDEBUG
-    const int variant = std::stoi(id.substr(8 * 2, 2), &pos, 16);
-    DCHECK((pos == 2) && (variant & 0xC0) == 0x80) << "Invalid Postgres id " << id;
+    const int variant = std::stoi(uuid.substr(8 * 2, 2), &pos, 16);
+    DCHECK((pos == 2) && (variant & 0xC0) == 0x80) << "Invalid Postgres uuid " << uuid;
 #endif
 
-    const int version = std::stoi(id.substr(6 * 2, 2), &pos, 16);
+    const int version = std::stoi(uuid.substr(6 * 2, 2), &pos, 16);
     if ((pos == 2) && (version & 0xF0) >> 4 == kUuidVersion) return true;
 
   } catch(const std::invalid_argument&) {
@@ -106,7 +110,7 @@ bool IsPgsqlId(const string& id) {
   return false;
 }
 
-Result<uint32_t> GetPgsqlDatabaseOid(const NamespaceId& namespace_id) {
+Result<uint32_t> PgObjectId::GetPgsqlDatabaseOid(const std::string& namespace_id) {
   DCHECK(IsPgsqlId(namespace_id));
   try {
     size_t pos = 0;
@@ -122,11 +126,11 @@ Result<uint32_t> GetPgsqlDatabaseOid(const NamespaceId& namespace_id) {
   return STATUS(InvalidArgument, "Invalid PostgreSQL namespace id", namespace_id);
 }
 
-Result<uint32_t> GetPgsqlTableOid(const TableId& table_id) {
-  DCHECK(IsPgsqlId(table_id));
+Result<uint32_t> PgObjectId::GetPgsqlTableOid(const std::string& table_uuid) {
+  DCHECK(IsPgsqlId(table_uuid));
   try {
     size_t pos = 0;
-    const uint32_t oid = stoul(table_id.substr(12 * 2, sizeof(uint32_t) * 2), &pos, 16);
+    const uint32_t oid = stoul(table_uuid.substr(12 * 2, sizeof(uint32_t) * 2), &pos, 16);
     if (pos == sizeof(uint32_t) * 2) {
       return oid;
     }
@@ -135,14 +139,14 @@ Result<uint32_t> GetPgsqlTableOid(const TableId& table_id) {
     // TODO: log the actual exceptions
   }
 
-  return STATUS(InvalidArgument, "Invalid PostgreSQL table id", table_id);
+  return STATUS(InvalidArgument, "Invalid PostgreSQL table uuid", table_uuid);
 }
 
-Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id) {
-  DCHECK(IsPgsqlId(table_id));
+Result<uint32_t> PgObjectId::GetPgsqlDatabaseOidByTableId(const std::string& table_uuid) {
+  DCHECK(IsPgsqlId(table_uuid));
   try {
     size_t pos = 0;
-    const uint32_t oid = stoul(table_id.substr(0, sizeof(uint32_t) * 2), &pos, 16);
+    const uint32_t oid = stoul(table_uuid.substr(0, sizeof(uint32_t) * 2), &pos, 16);
     if (pos == sizeof(uint32_t) * 2) {
       return oid;
     }
@@ -151,7 +155,7 @@ Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id) {
       // TODO: log the actual exceptions
   }
 
-  return STATUS(InvalidArgument, "Invalid PostgreSQL table id", table_id);
+  return STATUS(InvalidArgument, "Invalid PostgreSQL table uuid", table_uuid);
 }
 
     bool IsValidRowMarkType(RowMarkType row_mark_type) {

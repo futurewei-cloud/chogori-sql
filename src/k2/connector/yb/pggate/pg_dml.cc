@@ -256,7 +256,7 @@ Status PgDml::ClearBinds() {
 }
 
 Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
-  K2LOG_V(log::pg, "Fetching {} tuples from PgDml for table {}", natts, table_id_.GetPgTableId());
+  K2LOG_V(log::pg, "Fetching {} tuples from PgDml for table {}", natts, table_id_.GetTableUuid());
   // Each isnulls and values correspond (in order) to columns from the table schema.
   // Initialize to nulls for any columns not present in result.
   if (isnulls) {

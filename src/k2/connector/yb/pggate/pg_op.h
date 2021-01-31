@@ -75,6 +75,7 @@ namespace k2pg {
 namespace gate {
 using yb::Status;
 using yb::Slice;
+using k2pg::sql::PgObjectId;
 
 YB_STRONGLY_TYPED_BOOL(RequestSent);
 

@@ -620,7 +620,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
 }
 
 Status PgReadOp::ProcessResponsePagingState() {
-    K2LOG_D(log::pg, "Processing response paging state for PgReadOp for table {}", relation_id_.GetPgTableId());
+    K2LOG_D(log::pg, "Processing response paging state for PgReadOp for table {}", relation_id_.GetTableUuid());
     // For each read_op, set up its request for the next batch of data or make it in-active.
     bool has_more_data = false;
     int32_t send_count = std::min(parallelism_level_, active_op_count_);

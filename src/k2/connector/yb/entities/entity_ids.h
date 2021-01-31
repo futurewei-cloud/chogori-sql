@@ -52,13 +52,16 @@
 #include <string>
 #include <set>
 
+#include <boost/functional/hash/hash.hpp>
+
 #include "yb/common/result.h"
 #include "yb/common/type/strongly_typed_string.h"
 
 namespace k2pg {
 namespace sql {
     using yb::Result;
-    
+    using yb::Format;
+
     using NamespaceName = std::string;
     using TableName = std::string;
     using UDTypeName = std::string;
@@ -69,7 +72,7 @@ namespace sql {
     using UDTypeId = std::string;
 
     using NamespaceIdTableNamePair = std::pair<NamespaceId, TableName>;
-    
+
     // In addition to regular columns, YB support for postgres also have virtual columns.
     // Virtual columns are just expression that is evaluated by DocDB in "doc_expr.cc".
     enum class PgSystemAttrNum : int {
@@ -97,6 +100,11 @@ namespace sql {
                                       //  - to null otherwise (all indexed cols are non-null).
     };
 
+    // Postgres object identifier (OID).
+    typedef uint32_t PgOid;
+    static constexpr PgOid kPgInvalidOid = 0;
+    static constexpr PgOid kPgByteArrayOid = 17;
+
     static const uint32_t kPgSequencesDataTableOid = 0xFFFF;
     static const uint32_t kPgSequencesDataDatabaseOid = 0xFFFF;
 
@@ -104,19 +112,81 @@ namespace sql {
 
     extern const TableId kPgProcTableId;
 
-    // Get YB namespace id for a Postgres database.
-    NamespaceId GetPgsqlNamespaceId(uint32_t database_oid);
+    // A class to identify a Postgres object by oid and the database oid it belongs to.
+    class PgObjectId {
+        public:
+        PgObjectId(const PgOid database_oid, const PgOid object_oid) : database_oid_(database_oid), object_oid_(object_oid) {
+        }
 
-    // Get YB table id for a Postgres table.
-    TableId GetPgsqlTableId(uint32_t database_oid, uint32_t table_oid);
+        PgObjectId(): database_oid_(kPgInvalidOid), object_oid_(kPgInvalidOid) {
+        }
 
-    // Is the namespace/table id a Postgres database or table id?
-    bool IsPgsqlId(const string& id);
+        explicit PgObjectId(const std::string& table_uuid) {
+            auto res = GetPgsqlDatabaseOidByTableId(table_uuid);
+            if (res.ok()) {
+                database_oid_ = res.get();
+            }
+            res = GetPgsqlTableOid(table_uuid);
+            if (res.ok()) {
+                object_oid_ = res.get();
+            } else {
+                // Reset the previously set database_oid.
+                database_oid_ = kPgInvalidOid;
+            }
+        }
 
-    // Get Postgres database and table oids from a YB namespace/table id.
-    Result<uint32_t> GetPgsqlDatabaseOid(const NamespaceId& namespace_id);
-    Result<uint32_t> GetPgsqlTableOid(const TableId& table_id);
-    Result<uint32_t> GetPgsqlDatabaseOidByTableId(const TableId& table_id);
+        // Get namespace uuid for a Postgres database.
+        static std::string GetNamespaceUuid(const PgOid& database_oid);
+
+        // Get table uuid for a Postgres table.
+        std::string GetTableUuid() const;
+        static std::string GetTableUuid(const PgOid& database_oid, const PgOid& table_oid);
+
+        // Is the namespace/table uuid a Postgres database or table uuid?
+        static bool IsPgsqlId(const std::string& uuid);
+
+        // Get Postgres database and table oids from a namespace/table uuid.
+        static Result<uint32_t> GetPgsqlDatabaseOid(const std::string& namespace_id);
+        static Result<uint32_t> GetPgsqlTableOid(const std::string& table_uuid);
+        static Result<uint32_t> GetPgsqlDatabaseOidByTableId(const std::string& table_uuid);
+
+        const PgOid GetDatabaseOid() const {
+            return database_oid_;
+        }
+
+        const PgOid GetObjectOid() const {
+            return object_oid_;
+        }
+
+        bool IsValid() const {
+            return database_oid_ != kPgInvalidOid && object_oid_ != kPgInvalidOid;
+        }
+
+        std::string ToString() const {
+            return Format("{$0, $1}", database_oid_, object_oid_);
+        }
+
+        bool operator== (const PgObjectId& other) const {
+            return database_oid_ == other.GetDatabaseOid() && object_oid_ == other.GetObjectOid();
+        }
+
+        friend std::size_t hash_value(const PgObjectId& id) {
+            std::size_t value = 0;
+            boost::hash_combine(value, id.GetDatabaseOid());
+            boost::hash_combine(value, id.GetObjectOid());
+            return value;
+        }
+
+        private:
+        PgOid database_oid_ = kPgInvalidOid;
+        PgOid object_oid_ = kPgInvalidOid;
+    };
+
+    typedef boost::hash<PgObjectId> PgObjectIdHash;
+
+    inline std::ostream& operator<<(std::ostream& out, const PgObjectId& id) {
+        return out << id.ToString();
+    }
 
     // This enum matches enum RowMarkType defined in src/include/nodes/plannodes.h.
     // The exception is ROW_MARK_ABSENT, which signifies the absence of a row mark.

@@ -116,16 +116,16 @@ Status PgSession::CreateDatabase(const string& database_name,
                                  const PgOid source_database_oid,
                                  const PgOid next_oid) {
   return catalog_client_->CreateNamespace(database_name,
-                                  GetPgsqlNamespaceId(database_oid),
+                                  PgObjectId::GetNamespaceUuid(database_oid),
                                   database_oid,
-                                  source_database_oid != kPgInvalidOid ? GetPgsqlNamespaceId(source_database_oid) : "",
+                                  source_database_oid != kPgInvalidOid ? PgObjectId::GetNamespaceUuid(source_database_oid) : "",
                                   "" /* creator_role_name */,
                                   next_oid);
 }
 
 Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) {
   RETURN_NOT_OK(catalog_client_->DeleteNamespace(database_name,
-                                         GetPgsqlNamespaceId(database_oid)));
+                                         PgObjectId::GetNamespaceUuid(database_oid)));
   RETURN_NOT_OK(DeleteDBSequences(database_oid));
   return Status::OK();
 }
@@ -165,11 +165,11 @@ Status PgSession::CreateIndexTable(
 }
 
 Status PgSession::DropTable(const PgObjectId& table_id) {
-  return catalog_client_->DeleteTable(table_id.database_oid, table_id.object_oid);
+  return catalog_client_->DeleteTable(table_id.GetDatabaseOid(), table_id.GetObjectOid());
 }
 
 Status PgSession::DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait) {
-  return catalog_client_->DeleteIndexTable(index_id.database_oid, index_id.object_oid, base_table_oid);
+  return catalog_client_->DeleteIndexTable(index_id.GetDatabaseOid(), index_id.GetObjectOid(), base_table_oid);
 }
 
 Status PgSession::ReserveOids(const PgOid database_oid,
@@ -233,8 +233,8 @@ Status PgSession::DeleteDBSequences(int64_t db_oid) {
 }
 
 void PgSession::InvalidateTableCache(const PgObjectId& table_obj_id) {
-  const TableId pg_table_id = table_obj_id.GetPgTableId();
-  table_cache_.erase(pg_table_id);
+  std::string pg_table_uuid = table_obj_id.GetTableUuid();
+  table_cache_.erase(pg_table_uuid);
 }
 
 void PgSession::StartOperationsBuffering() {
@@ -406,18 +406,18 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
-  const std::string t_table_uuid = table_id.GetPgTableId();
+  std::string t_table_uuid = table_id.GetTableUuid();
   K2LOG_D(log::pg, "Loading table descriptor for {}, id={}", table_id, t_table_uuid);
   std::shared_ptr<TableInfo> table;
 
   auto cached_table = table_cache_.find(t_table_uuid);
   if (cached_table == table_cache_.end()) {
     K2LOG_D(log::pg, "Table cache MISS: {}", table_id);
-    Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
+    Status s = catalog_client_->OpenTable(table_id.GetDatabaseOid(), table_id.GetObjectOid(), &table);
     if (!s.ok()) {
       K2LOG_E(log::pg, "LoadTable: Server returns an error: {}", s);
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
-                           table_id.object_oid, table_id.database_oid, s.ToUserMessage());
+                           table_id.GetObjectOid(), table_id.GetDatabaseOid(), s.ToUserMessage());
     }
     table_cache_[t_table_uuid] = table;
   } else {
@@ -425,7 +425,7 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
     table = cached_table->second;
   }
 
-  std::string t_table_id = std::to_string(table_id.object_oid);
+  std::string t_table_id = std::to_string(table_id.GetObjectOid());
   // check if the t_table_uuid is for a table or an index
   if (table->table_id().compare(t_table_id) == 0) {
     // a table
