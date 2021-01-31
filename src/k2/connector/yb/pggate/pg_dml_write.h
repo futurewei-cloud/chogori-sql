@@ -90,7 +90,7 @@ class PgDmlWrite : public PgDml {
  protected:
   // Constructor.
   PgDmlWrite(std::shared_ptr<PgSession> pg_session,
-             const PgObjectId& table_id,
+             const PgObjectId& table_object_id_,
              bool is_single_row_txn = false);
 
   // Allocate write request.

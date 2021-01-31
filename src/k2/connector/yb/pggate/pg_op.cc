@@ -728,9 +728,9 @@ Status PgReadOp::ResetInactivePgsqlOps() {
 
 PgWriteOp::PgWriteOp(const std::shared_ptr<PgSession>& pg_session,
                         const std::shared_ptr<PgTableDesc>& table_desc,
-                        const PgObjectId& relation_id,
+                        const PgObjectId& table_object_id,
                         std::unique_ptr<PgWriteOpTemplate> write_op)
-    : PgOp(pg_session, table_desc, relation_id),
+    : PgOp(pg_session, table_desc, table_object_id),
     write_op_(std::move(write_op)) {
 }
 

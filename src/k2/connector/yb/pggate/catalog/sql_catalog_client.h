@@ -68,7 +68,7 @@ class SqlCatalogClient {
 
     CHECKED_STATUS CreateTable(const std::string& namespace_name,
                             const std::string& table_name,
-                            const PgObjectId& table_id,
+                            const PgObjectId& table_object_id,
                             PgSchema& schema,
                             bool is_pg_catalog_table,
                             bool is_shared_table,
@@ -76,8 +76,8 @@ class SqlCatalogClient {
 
     CHECKED_STATUS CreateIndexTable(const std::string& namespace_name,
                             const std::string& table_name,
-                            const PgObjectId& table_id,
-                            const PgObjectId& base_table_id,
+                            const PgObjectId& table_object_id,
+                            const PgObjectId& base_table_object_id,
                             PgSchema& schema,
                             bool is_unique_index,
                             bool skip_index_backfill,
@@ -93,9 +93,9 @@ class SqlCatalogClient {
 
     CHECKED_STATUS OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table);
 
-    Result<std::shared_ptr<TableInfo>> OpenTable(const PgOid database_oid, const PgOid table_id) {
+    Result<std::shared_ptr<TableInfo>> OpenTable(const PgOid database_oid, const PgOid table_oid) {
         std::shared_ptr<TableInfo> result;
-        RETURN_NOT_OK(OpenTable(database_oid, table_id, &result));
+        RETURN_NOT_OK(OpenTable(database_oid, table_oid, &result));
         return result;
     }
 

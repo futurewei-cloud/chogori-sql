@@ -153,7 +153,7 @@ class PgCreateTable : public PgDdl {
                 const std::string& database_name,
                 const std::string& chema_name,
                 const std::string& table_name,
-                const PgObjectId& table_id,
+                const PgObjectId& table_object_id,
                 bool is_shared_table,
                 bool if_not_exist,
                 bool add_primary_key);
@@ -161,7 +161,7 @@ class PgCreateTable : public PgDdl {
   StmtOp stmt_op() const override { return StmtOp::STMT_CREATE_TABLE; }
 
   // For PgCreateIndex: the indexed (base) table id and if this is a unique index.
-  virtual std::optional<const PgObjectId> indexed_table_id() const { return std::nullopt; }
+  virtual std::optional<const PgObjectId> indexed_table_object_id() const { return std::nullopt; }
   virtual bool is_unique_index() const { return false; }
   virtual const bool skip_index_backfill() const { return false; }
 
@@ -203,7 +203,7 @@ class PgCreateTable : public PgDdl {
   const std::string namespace_id_;
   const std::string namespace_name_;
   const std::string table_name_;
-  const PgObjectId table_id_;
+  const PgObjectId table_object_id_;
   bool is_pg_catalog_table_;
   bool is_shared_table_;
   bool if_not_exist_;
@@ -215,7 +215,7 @@ class PgCreateTable : public PgDdl {
 class PgDropTable: public PgDdl {
  public:
   // Constructors.
-  PgDropTable(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id, bool if_exist);
+  PgDropTable(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id, bool if_exist);
   virtual ~PgDropTable();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_TABLE; }
@@ -224,7 +224,7 @@ class PgDropTable: public PgDdl {
   CHECKED_STATUS Exec();
 
  protected:
-  const PgObjectId table_id_;
+  const PgObjectId table_object_id_;
   bool if_exist_;
 };
 
@@ -236,7 +236,7 @@ class PgAlterTable : public PgDdl {
  public:
   // Constructors.
   PgAlterTable(std::shared_ptr<PgSession> pg_session,
-               const PgObjectId& table_id);
+               const PgObjectId& table_object_id);
 
   CHECKED_STATUS AddColumn(const std::string& name,
                            const YBCPgTypeEntity *attr_type,
@@ -256,7 +256,7 @@ class PgAlterTable : public PgDdl {
   StmtOp stmt_op() const override { return StmtOp::STMT_ALTER_TABLE; }
 
   private:
-  const PgObjectId table_id_;
+  const PgObjectId table_object_id_;
 };
 
 class PgCreateIndex : public PgCreateTable {
@@ -266,8 +266,8 @@ class PgCreateIndex : public PgCreateTable {
                 const std::string& database_name,
                 const std::string& schema_name,
                 const std::string& index_name,
-                const PgObjectId& index_id,
-                const PgObjectId& base_table_id,
+                const PgObjectId& index_object_id,
+                const PgObjectId& base_table_object_id,
                 bool is_shared_index,
                 bool is_unique_index,
                 const bool skip_index_backfill,
@@ -275,8 +275,8 @@ class PgCreateIndex : public PgCreateTable {
 
   StmtOp stmt_op() const override { return StmtOp::STMT_CREATE_INDEX; }
 
-  std::optional<const PgObjectId> indexed_table_id() const override {
-    return base_table_id_;
+  std::optional<const PgObjectId> indexed_table_object_id() const override {
+    return base_table_object_id_;
   }
 
   bool is_unique_index() const override {
@@ -303,7 +303,7 @@ class PgCreateIndex : public PgCreateTable {
 
   CHECKED_STATUS AddYBbasectidColumn();
 
-  const PgObjectId base_table_id_;
+  const PgObjectId base_table_object_id_;
   bool is_unique_index_ = false;
   bool skip_index_backfill_ = false;
   bool ybbasectid_added_ = false;
@@ -313,7 +313,7 @@ class PgCreateIndex : public PgCreateTable {
 class PgDropIndex : public PgDropTable {
  public:
   // Constructors.
-  PgDropIndex(std::shared_ptr<PgSession> pg_session, const PgObjectId& index_id, bool if_exist);
+  PgDropIndex(std::shared_ptr<PgSession> pg_session, const PgObjectId& index_object_id, bool if_exist);
   virtual ~PgDropIndex();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_DROP_INDEX; }

@@ -319,27 +319,27 @@ namespace catalog {
 
         void ClearTableCache(std::shared_ptr<TableInfo> table_info);
 
-        void ClearIndexCacheForTable(std::string table_id);
+        void ClearIndexCacheForTable(const std::string& base_table_id);
 
         void UpdateIndexCacheForTable(std::shared_ptr<TableInfo> table_info);
 
         void AddIndexCache(std::shared_ptr<IndexInfo> index_info);
 
-        std::shared_ptr<NamespaceInfo> GetCachedNamespaceById(std::string namespace_id);
+        std::shared_ptr<NamespaceInfo> GetCachedNamespaceById(const std::string& namespace_id);
 
-        std::shared_ptr<NamespaceInfo> GetCachedNamespaceByName(std::string namespace_name);
+        std::shared_ptr<NamespaceInfo> GetCachedNamespaceByName(const std::string& namespace_name);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoById(std::string table_id);
+        std::shared_ptr<TableInfo> GetCachedTableInfoById(const std::string& table_uuid);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoByName(std::string namespace_id, std::string table_name);
+        std::shared_ptr<TableInfo> GetCachedTableInfoByName(const std::string& namespace_id, const std::string& table_name);
 
-        std::shared_ptr<IndexInfo> GetCachedIndexInfoById(std::string index_id);
+        std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
         std::shared_ptr<SessionTransactionContext> NewTransactionContext();
 
         void IncreaseCatalogVersion();
 
-        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t pg_oid, std::string index_uuid,
+        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
         std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
@@ -376,13 +376,13 @@ namespace catalog {
 
         // a table is uniquely referenced by its id, which is generated based on its
         // database (namespace) PgOid and table PgOid, as a result, no namespace name is required here
-        std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_id_map_;
+        std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_uuid_map_;
 
         // to reference a table by its name, we have to use both namespaceId and table name
         std::unordered_map<TableNameKey, std::shared_ptr<TableInfo>, boost::hash<TableNameKey>> table_name_map_;
 
         // index id to quickly search for the index information and base table id
-        std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_id_map_;
+        std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
     };
 
 } // namespace catalog

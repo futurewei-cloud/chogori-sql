@@ -73,6 +73,10 @@ std::string UuidToString(uuid* id) {
 
 } // namespace
 
+std::string PgObjectId::GetNamespaceUuid() const {
+  return GetNamespaceUuid(database_oid_);
+}
+
 std::string PgObjectId::GetNamespaceUuid(const PgOid& database_oid) {
   uuid id = boost::uuids::nil_uuid();
   UuidSetDatabaseId(database_oid, &id);
@@ -88,6 +92,14 @@ std::string PgObjectId::GetTableUuid(const PgOid& database_oid, const PgOid& tab
 
 std::string PgObjectId::GetTableUuid() const {
   return GetTableUuid(database_oid_, object_oid_);
+}
+
+std::string PgObjectId::GetTableId() const {
+  return GetTableId(object_oid_);
+}
+
+std::string PgObjectId::GetTableId(const PgOid& table_oid) {
+  return std::to_string(table_oid);
 }
 
 bool PgObjectId::IsPgsqlId(const string& uuid) {

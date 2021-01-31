@@ -613,7 +613,7 @@ namespace catalog {
         std::string base_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.baseTableOid);
         std::string index_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
 
-        std::string base_table_id = std::to_string(request.baseTableOid);
+        std::string base_table_id = PgObjectId::GetTableId(request.baseTableOid);
 
         // check if the base table exists or not
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_uuid);
@@ -708,7 +708,7 @@ namespace catalog {
         GetTableSchemaResponse response;
         // generate table id from namespace oid and table oid
         std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
-        std::string table_id = std::to_string(request.tableOid);
+        std::string table_id = PgObjectId::GetTableId(request.tableOid);
         K2LOG_D(log::catalog, "Get table schema ns oid: {}, table oid: {}, table id: {}",
             request.namespaceOid, request.tableOid, table_id);
         // check the table schema from cache
@@ -920,7 +920,8 @@ namespace catalog {
         K2LOG_D(log::catalog, "Deleting index {} in ns {}", request.tableOid, request.namespaceOid);
         DeleteIndexResponse response;
         std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
-        std::string table_id = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string table_id = PgObjectId::GetTableId(request.tableOid);
         response.namespaceId = namespace_id;
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
@@ -931,7 +932,7 @@ namespace catalog {
         }
 
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_id);
+        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
         std::string base_table_id;
         if (index_info == nullptr) {
             GeBaseTableIdResult index_result = table_info_handler_->GeBaseTableId(context, namespace_id, table_id);
@@ -987,7 +988,7 @@ namespace catalog {
         base_table_info->drop_index(table_id);
         // update table cache with the index removed, index cache is updated accordingly
         UpdateTableCache(base_table_info);
-        response.baseIndexTableOid = base_table_info->pg_oid();
+        response.baseIndexTableOid = base_table_info->table_oid();
         response.status.Succeed();
         return response;
     }
@@ -1091,7 +1092,7 @@ namespace catalog {
     // update table caches
     void SqlCatalogManager::UpdateTableCache(std::shared_ptr<TableInfo> table_info) {
         std::lock_guard<std::mutex> l(lock_);
-        table_id_map_[table_info->table_id()] = table_info;
+        table_uuid_map_[table_info->table_uuid()] = table_info;
         // TODO: add logic to remove table with old name if rename table is called
         TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
         table_name_map_[key] = table_info;
@@ -1103,23 +1104,23 @@ namespace catalog {
     void SqlCatalogManager::ClearTableCache(std::shared_ptr<TableInfo> table_info) {
         std::lock_guard<std::mutex> l(lock_);
         ClearIndexCacheForTable(table_info->table_id());
-        table_id_map_.erase(table_info->table_id());
+        table_uuid_map_.erase(table_info->table_uuid());
         TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
         table_name_map_.erase(key);
     }
 
     // clear index infos for a table in the index cache
-    void SqlCatalogManager::ClearIndexCacheForTable(std::string table_id) {
-        std::vector<std::string> index_ids;
-        for (std::pair<std::string, std::shared_ptr<IndexInfo>> pair : index_id_map_) {
+    void SqlCatalogManager::ClearIndexCacheForTable(const std::string& base_table_id) {
+        std::vector<std::string> index_uuids;
+        for (std::pair<std::string, std::shared_ptr<IndexInfo>> pair : index_uuid_map_) {
             // first find all indexes that belong to the table
-            if (table_id == pair.second->indexed_table_id()) {
-                index_ids.push_back(pair.first);
+            if (base_table_id == pair.second->indexed_table_id()) {
+                index_uuids.push_back(pair.second->table_uuid());
             }
         }
         // delete the indexes in cache
-        for (std::string index_id : index_ids) {
-            index_id_map_.erase(index_id);
+        for (std::string index_uuid : index_uuids) {
+            index_uuid_map_.erase(index_uuid);
         }
     }
 
@@ -1135,10 +1136,10 @@ namespace catalog {
     }
 
     void SqlCatalogManager::AddIndexCache(std::shared_ptr<IndexInfo> index_info) {
-        index_id_map_[index_info->table_id()] = index_info;
+        index_uuid_map_[index_info->table_uuid()] = index_info;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceById(std::string namespace_id) {
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceById(const std::string& namespace_id) {
         if (!namespace_id_map_.empty()) {
             const auto itr = namespace_id_map_.find(namespace_id);
             if (itr != namespace_id_map_.end()) {
@@ -1148,7 +1149,7 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceByName(std::string namespace_name) {
+    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceByName(const std::string& namespace_name) {
         if (!namespace_name_map_.empty()) {
             const auto itr = namespace_name_map_.find(namespace_name);
             if (itr != namespace_name_map_.end()) {
@@ -1158,18 +1159,18 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoById(std::string table_id) {
-        if (!table_id_map_.empty()) {
-            const auto itr = table_id_map_.find(table_id);
-            if (itr != table_id_map_.end()) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoById(const std::string& table_uuid) {
+        if (!table_uuid_map_.empty()) {
+            const auto itr = table_uuid_map_.find(table_uuid);
+            if (itr != table_uuid_map_.end()) {
                 return itr->second;
             }
         }
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(std::string namespace_id, std::string table_name) {
-        if (!table_id_map_.empty()) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(const std::string& namespace_id, const std::string& table_name) {
+        if (!table_name_map_.empty()) {
            TableNameKey key = std::make_pair(namespace_id, table_name);
            const auto itr = table_name_map_.find(key);
             if (itr != table_name_map_.end()) {
@@ -1179,10 +1180,10 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<IndexInfo> SqlCatalogManager::GetCachedIndexInfoById(std::string index_id) {
-        if (!index_id_map_.empty()) {
-            const auto itr = index_id_map_.find(index_id);
-            if (itr != index_id_map_.end()) {
+    std::shared_ptr<IndexInfo> SqlCatalogManager::GetCachedIndexInfoById(const std::string& index_uuid) {
+        if (!index_uuid_map_.empty()) {
+            const auto itr = index_uuid_map_.find(index_uuid);
+            if (itr != index_uuid_map_.end()) {
                 return itr->second;
             }
         }
@@ -1206,7 +1207,7 @@ namespace catalog {
         context->Commit();
     }
 
-    IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t pg_oid, std::string index_uuid,
+    IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
             const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
         std::vector<IndexColumn> columns;
         for (ColumnId col_id: index_schema.column_ids()) {
@@ -1236,7 +1237,7 @@ namespace catalog {
                     col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), indexed_column_id);
             columns.push_back(col);
         }
-        IndexInfo index_info(index_name, pg_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
+        IndexInfo index_info(index_name, table_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
                 is_unique, is_shared, columns, index_permissions);
         return index_info;
     }

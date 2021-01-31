@@ -91,10 +91,10 @@ struct BufferableOperation {
 typedef std::vector<BufferableOperation> PgsqlOpBuffer;
 
 struct PgForeignKeyReference {
-  uint32_t table_id;
+  uint32_t table_oid;
   std::string ybctid;
 
-  K2_DEF_FMT(PgForeignKeyReference, table_id, ybctid);
+  K2_DEF_FMT(PgForeignKeyReference, table_oid, ybctid);
 };
 
 class RowIdentifier {
@@ -136,16 +136,16 @@ class PgSession {
 
   CHECKED_STATUS RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to);
 
-  CHECKED_STATUS CreateTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id,
+  CHECKED_STATUS CreateTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_object_id,
     PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
-  CHECKED_STATUS CreateIndexTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_id,
-    const PgObjectId& base_table_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
+  CHECKED_STATUS CreateIndexTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_object_id,
+    const PgObjectId& base_table_object_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
-  CHECKED_STATUS DropTable(const PgObjectId& table_id);
+  CHECKED_STATUS DropTable(const PgObjectId& table_object_id);
 
-  CHECKED_STATUS DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait = true);
+  CHECKED_STATUS DropIndex(const PgObjectId& index_object_id, PgOid *base_table_oid, bool wait = true);
 
   CHECKED_STATUS ReserveOids(PgOid database_oid,
                              PgOid nexte_oid,
@@ -206,9 +206,9 @@ class PgSession {
     fk_reference_cache_.clear();
   }
 
-  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_id);
+  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_object_id);
 
-  void InvalidateTableCache(const PgObjectId& table_id);
+  void InvalidateTableCache(const PgObjectId& table_object_id);
 
   // Check if initdb has already been run before. Needed to make initdb idempotent.
   Result<bool> IsInitDbDone();
@@ -232,13 +232,13 @@ class PgSession {
 
   // Returns true if the row referenced by ybctid exists in FK reference cache (Used for caching
   // foreign key checks).
-  bool ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid);
+  bool ForeignKeyReferenceExists(uint32_t table_oid, std::string&& ybctid);
 
   // Adds the row referenced by ybctid to FK reference cache.
-  CHECKED_STATUS CacheForeignKeyReference(uint32_t table_id, std::string&& ybctid);
+  CHECKED_STATUS CacheForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
 
   // Deletes the row referenced by ybctid from FK reference cache.
-  CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid);
+  CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
 
   // Start operation buffering. Buffering must not be in progress.
   void StartOperationsBuffering();
@@ -295,11 +295,11 @@ class PgSession {
   std::shared_ptr<K23SITxn> GetTxnHandler(bool transactional, bool read_onl);
 
   Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
-      const PgObjectId& table_id,
-      const PgObjectId& index_id,
+      const PgObjectId& table_object_id,
+      const PgObjectId& index_object_id,
       const IndexPermissions& target_index_permissions);
 
-  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id);
+  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_object_id);
 
   // Generate a new random and unique rowid. It is a v4 UUID.
   string GenerateNewRowid() {

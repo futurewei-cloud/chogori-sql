@@ -174,17 +174,17 @@ class PgGateApiImpl {
   CHECKED_STATUS GetCatalogMasterVersion(uint64_t *version);
 
   // Load table.
-  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_id);
+  Result<std::shared_ptr<PgTableDesc>> LoadTable(const PgObjectId& table_object_id);
 
-  // Invalidate the cache entry corresponding to table_id from the PgSession table cache.
-  void InvalidateTableCache(const PgObjectId& table_id);
+  // Invalidate the cache entry corresponding to table_object_id from the PgSession table cache.
+  void InvalidateTableCache(const PgObjectId& table_object_id);
 
   //------------------------------------------------------------------------------------------------
   // Create, alter and drop table.
   CHECKED_STATUS NewCreateTable(const char *database_name,
                                 const char *schema_name,
                                 const char *table_name,
-                                const PgObjectId& table_id,
+                                const PgObjectId& table_object_id,
                                 bool is_shared_table,
                                 bool if_not_exist,
                                 bool add_primary_key,
@@ -199,7 +199,7 @@ class PgGateApiImpl {
 
   CHECKED_STATUS ExecCreateTable(PgStatement *handle);
 
-  CHECKED_STATUS NewAlterTable(const PgObjectId& table_id,
+  CHECKED_STATUS NewAlterTable(const PgObjectId& table_object_id,
                                PgStatement **handle);
 
   CHECKED_STATUS AlterTableAddColumn(PgStatement *handle, const char *name,
@@ -215,13 +215,13 @@ class PgGateApiImpl {
 
   CHECKED_STATUS ExecAlterTable(PgStatement *handle);
 
-  CHECKED_STATUS NewDropTable(const PgObjectId& table_id,
+  CHECKED_STATUS NewDropTable(const PgObjectId& table_object_id,
                               bool if_exist,
                               PgStatement **handle);
 
   CHECKED_STATUS ExecDropTable(PgStatement *handle);
 
-  CHECKED_STATUS GetTableDesc(const PgObjectId& table_id,
+  CHECKED_STATUS GetTableDesc(const PgObjectId& table_object_id,
                               PgTableDesc **handle);
 
   CHECKED_STATUS GetColumnInfo(PgTableDesc* table_desc,
@@ -241,8 +241,8 @@ class PgGateApiImpl {
   CHECKED_STATUS NewCreateIndex(const char *database_name,
                                 const char *schema_name,
                                 const char *index_name,
-                                const PgObjectId& index_id,
-                                const PgObjectId& table_id,
+                                const PgObjectId& index_object_id,
+                                const PgObjectId& table_object_id,
                                 bool is_shared_index,
                                 bool is_unique_index,
                                 const bool skip_index_backfill,
@@ -265,11 +265,11 @@ class PgGateApiImpl {
   CHECKED_STATUS ExecDropIndex(PgStatement *handle);
 
   Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
-      const PgObjectId& table_id,
-      const PgObjectId& index_id,
+      const PgObjectId& table_object_id,
+      const PgObjectId& index_object_id,
       const IndexPermissions& target_index_permissions);
 
-  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id);
+  CHECKED_STATUS AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_object_id);
 
   // Sequence Operations -----------------------------------------------------------------------------
 
@@ -376,8 +376,8 @@ class PgGateApiImpl {
 
   //------------------------------------------------------------------------------------------------
   // Select.
-  CHECKED_STATUS NewSelect(const PgObjectId& table_id,
-                           const PgObjectId& index_id,
+  CHECKED_STATUS NewSelect(const PgObjectId& table_object_id,
+                           const PgObjectId& index_object_id,
                            const PgPrepareParameters *prepare_params,
                            PgStatement **handle);
 
@@ -387,7 +387,7 @@ class PgGateApiImpl {
 
 // INSERT ------------------------------------------------------------------------------------------
 
-  CHECKED_STATUS NewInsert(const PgObjectId& table_id,
+  CHECKED_STATUS NewInsert(const PgObjectId& table_object_id,
                            bool is_single_row_txn,
                            PgStatement **handle);
 
@@ -399,7 +399,7 @@ class PgGateApiImpl {
 
   //------------------------------------------------------------------------------------------------
   // Update.
-  CHECKED_STATUS NewUpdate(const PgObjectId& table_id,
+  CHECKED_STATUS NewUpdate(const PgObjectId& table_object_id,
                            bool is_single_row_txn,
                            PgStatement **handle);
 
@@ -407,7 +407,7 @@ class PgGateApiImpl {
 
   //------------------------------------------------------------------------------------------------
   // Delete.
-  CHECKED_STATUS NewDelete(const PgObjectId& table_id,
+  CHECKED_STATUS NewDelete(const PgObjectId& table_object_id,
                            bool is_single_row_txn,
                            PgStatement **handle);
 
@@ -449,11 +449,11 @@ class PgGateApiImpl {
   CHECKED_STATUS OperatorAppendArg(PgExpr *op_handle, PgExpr *arg);
 
   // Foreign key reference caching.
-  bool ForeignKeyReferenceExists(YBCPgOid table_id, std::string&& ybctid);
+  bool ForeignKeyReferenceExists(YBCPgOid table_oid, std::string&& ybctid);
 
-  CHECKED_STATUS CacheForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
+  CHECKED_STATUS CacheForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid);
 
-  CHECKED_STATUS DeleteForeignKeyReference(YBCPgOid table_id, std::string&& ybctid);
+  CHECKED_STATUS DeleteForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid);
 
   void ClearForeignKeyReferenceCache();
 

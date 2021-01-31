@@ -57,8 +57,8 @@ namespace gate {
 class PgInsert : public PgDmlWrite {
  public:
   // Constructors.
-  PgInsert(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id, bool is_single_row_txn)
-      : PgDmlWrite(std::move(pg_session), table_id, is_single_row_txn) {}
+  PgInsert(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id, bool is_single_row_txn)
+      : PgDmlWrite(std::move(pg_session), table_object_id, is_single_row_txn) {}
 
   StmtOp stmt_op() const override { return StmtOp::STMT_INSERT; }
 

@@ -135,10 +135,10 @@ class PgDml : public PgStatement {
   protected:
   // Method members.
   // Constructor.
-  PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id);
+  PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id);
   PgDml(std::shared_ptr<PgSession> pg_session,
-        const PgObjectId& table_id,
-        const PgObjectId& index_id,
+        const PgObjectId& table_object_id,
+        const PgObjectId& index_object_id,
         const PgPrepareParameters *prepare_params);
 
   // Allocate doc expression for a SELECTed expression.
@@ -166,20 +166,20 @@ class PgDml : public PgStatement {
   // Data members that define the DML statement.
 
   // Table identifiers
-  // - table_id_ identifies the table to read data from.
-  // - index_id_ identifies the index to be used for scanning.
+  // - table_object_id_ identifies the table to read data from.
+  // - index_object_id_ identifies the index to be used for scanning.
   //
-  // Example for query on table_id_ using index_id_.
-  //   SELECT FROM "table_id_"
-  //     WHERE ybctid IN (SELECT base_ybctid FROM "index_id_" WHERE matched-index-binds)
+  // Example for query on table_object_id_ using index_object_id_.
+  //   SELECT FROM "table_object_id_"
+  //     WHERE ybctid IN (SELECT base_ybctid FROM "index_object_id_" WHERE matched-index-binds)
   //
-  // - Postgres will create PgSelect(table_id_) { nested PgSelectIndex (index_id_) }
+  // - Postgres will create PgSelect(table_object_id_) { nested PgSelectIndex (index_object_id_) }
   // - When bind functions are called, it bind user-values to columns in PgSelectIndex as these
   //   binds will be used to find base_ybctid from the IndexTable.
-  // - When AddTargets() is called, the target is added to PgSlect as data will be reading from
-  //   table_id_ using the found base_ybctid from index_id_.
-  PgObjectId table_id_;
-  PgObjectId index_id_;
+  // - When AddTargets() is called, the target is added to PgSelect as data will be reading from
+  //   table_object_id_ using the found base_ybctid from index_object_id_.
+  PgObjectId table_object_id_;
+  PgObjectId index_object_id_;
 
   // Targets of statements (Output parameter).
   // - "target_desc_" is the table descriptor where data will be read from.

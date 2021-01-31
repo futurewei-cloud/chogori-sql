@@ -136,11 +136,16 @@ namespace sql {
         }
 
         // Get namespace uuid for a Postgres database.
+        std::string GetNamespaceUuid() const;
         static std::string GetNamespaceUuid(const PgOid& database_oid);
 
         // Get table uuid for a Postgres table.
         std::string GetTableUuid() const;
         static std::string GetTableUuid(const PgOid& database_oid, const PgOid& table_oid);
+
+        // Get table id string from table oid
+        std::string GetTableId() const;
+        static std::string GetTableId(const PgOid& table_oid);
 
         // Is the namespace/table uuid a Postgres database or table uuid?
         static bool IsPgsqlId(const std::string& uuid);

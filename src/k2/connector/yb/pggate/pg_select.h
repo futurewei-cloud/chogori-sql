@@ -65,8 +65,8 @@ using yb::Slice;
 class PgSelect : public PgDmlRead {
  public:
   // Constructors.
-  PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
-           const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
+  PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id,
+           const PgObjectId& index_object_id, const PgPrepareParameters *prepare_params);
 
   virtual ~PgSelect();
 
@@ -87,8 +87,8 @@ class PgSelectIndex : public PgDmlRead {
 
   // Constructors.
   PgSelectIndex(std::shared_ptr<PgSession> pg_session,
-                const PgObjectId& table_id,
-                const PgObjectId& index_id,
+                const PgObjectId& table_object_id,
+                const PgObjectId& index_object_id,
                 const PgPrepareParameters *prepare_params);
   virtual ~PgSelectIndex();
 

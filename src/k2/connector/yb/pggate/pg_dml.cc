@@ -56,21 +56,21 @@ namespace gate {
 using namespace k2pg::sql;
 using yb::to_underlying;
 
-PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id)
-    : PgStatement(pg_session), table_id_(table_id) {
+PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id)
+    : PgStatement(pg_session), table_object_id_(table_object_id) {
 }
 
 PgDml::PgDml(std::shared_ptr<PgSession> pg_session,
-             const PgObjectId& table_id,
-             const PgObjectId& index_id,
+             const PgObjectId& table_object_id,
+             const PgObjectId& index_object_id,
              const PgPrepareParameters *prepare_params)
-    : PgDml(pg_session, table_id) {
+    : PgDml(pg_session, table_object_id) {
 
   if (prepare_params) {
     prepare_params_ = *prepare_params;
     // Primary index does not have its own data table.
     if (prepare_params_.use_secondary_index) {
-      index_id_ = index_id;
+      index_object_id_ = index_object_id;
     }
   }
 }
@@ -256,7 +256,7 @@ Status PgDml::ClearBinds() {
 }
 
 Status PgDml::Fetch(int32_t natts, uint64_t *values, bool *isnulls, PgSysColumns *syscols, bool *has_data) {
-  K2LOG_V(log::pg, "Fetching {} tuples from PgDml for table {}", natts, table_id_.GetTableUuid());
+  K2LOG_V(log::pg, "Fetching {} tuples from PgDml for table {}", natts, table_object_id_.GetTableUuid());
   // Each isnulls and values correspond (in order) to columns from the table schema.
   // Initialize to nulls for any columns not present in result.
   if (isnulls) {

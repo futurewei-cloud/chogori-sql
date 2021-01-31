@@ -34,9 +34,9 @@ namespace sql {
 
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(std::string namespace_id, std::string namespace_name, uint32_t pg_oid, std::string table_name, std::string uuid, Schema schema) :
-            namespace_id_(namespace_id), namespace_name_(namespace_name), pg_oid_(pg_oid), table_id_(std::to_string(pg_oid)), table_name_(table_name),
-            uuid_(uuid), schema_(std::move(schema)) {
+        TableInfo(std::string namespace_id, std::string namespace_name, uint32_t table_oid, std::string table_name, std::string table_uuid, Schema schema) :
+            namespace_id_(namespace_id), namespace_name_(namespace_name), table_oid_(table_oid), table_id_(PgObjectId::GetTableId(table_oid)), table_name_(table_name),
+            table_uuid_(table_uuid), schema_(std::move(schema)) {
         }
 
         const std::string& namespace_id() const {
@@ -55,16 +55,16 @@ namespace sql {
             return table_name_;
         }
 
-        void set_pg_oid(uint32_t pg_oid) {
-            pg_oid_ = pg_oid;
+        void set_table_oid(uint32_t table_oid) {
+            table_oid_ = table_oid;
         }
 
-        uint32_t pg_oid() {
-            return pg_oid_;
+        uint32_t table_oid() {
+            return table_oid_;
         }
 
-        const std::string uuid() {
-            return uuid_;
+        const std::string table_uuid() {
+            return table_uuid_;
         }
 
         void set_next_column_id(int32_t next_column_id) {
@@ -134,17 +134,17 @@ namespace sql {
         }
 
         static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
-            std::string namespace_name, std::string table_id, std::string table_name);
+            std::string namespace_name, std::string table_uuid, std::string table_name);
 
         private:
         std::string namespace_id_;
         std::string namespace_name_; // Can be empty, that means the namespace has not been set yet.
         // PG internal object id
-        uint32_t pg_oid_;
+        uint32_t table_oid_;
         std::string table_id_;
         std::string table_name_;
         // cache key and it is unique cross databases
-        std::string uuid_;
+        std::string table_uuid_;
         Schema schema_;
         IndexMap index_map_;
         int32_t next_column_id_ = 0;

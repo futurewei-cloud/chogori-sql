@@ -328,7 +328,7 @@ public:
     // Constructors & Destructors.
     PgWriteOp(const std::shared_ptr<PgSession>& pg_session,
                 const std::shared_ptr<PgTableDesc>& table_desc,
-                const PgObjectId& relation_id,
+                const PgObjectId& table_object_id,
                 std::unique_ptr<PgWriteOpTemplate> write_op);
 
     // Set write time.
