@@ -732,33 +732,55 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // fetch the table from SKV
         K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
-        TableOrIndexResult is_index_result = table_info_handler_->IsIndexTable(context, namespace_info->GetNamespaceId(), table_id);
-        if (!is_index_result.status.IsSucceeded()) {
+        GetTableInfoResult table_info_result = table_info_handler_->GetTableInfo(context, namespace_info->GetNamespaceId(), table_id);
+        if (!table_info_result.status.IsSucceeded()) {
             context->Abort();
             K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                table_id, namespace_info->GetNamespaceId(), is_index_result.status);
-            response.status = std::move(is_index_result.status);
+                table_id, namespace_info->GetNamespaceId(), table_info_result.status);
+            response.status = std::move(table_info_result.status);
             response.tableInfo = nullptr;
             return response;
         }
-        if (!is_index_result.isIndex) {
-            K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, namespace_info->GetNamespaceId());
+
+        // check the physical collection for a table
+        std::string physical_collection = CatalogConsts::physical_collection(namespace_id, table_info_result.isShared);
+        if (table_info_result.isShared) {
+            // check if the shared table is stored on a different collection
+            if (physical_collection.compare(namespace_id) != 0) {
+                // shared table is on a different collection, first finish the existing collection
+                context->Commit();
+                K2LOG_I(log::catalog, "Shared table {} is not in {} but in {} instead", table_id, namespace_id, physical_collection);
+                // load the shared namespace info
+                namespace_info = CheckAndLoadNamespaceById(physical_collection);
+                if (namespace_info == nullptr) {
+                    K2LOG_E(log::catalog, "Cannot find namespace {} for shared table {}", physical_collection, table_id);
+                    response.status.code = StatusCode::NOT_FOUND;
+                    response.status.errorMessage = "Cannot find namespace " + physical_collection + " for shared table " + table_id;
+                    return response;
+                }
+                // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
+                context = NewTransactionContext();
+            }
+        }
+
+        if (!table_info_result.isIndex) {
+            K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, physical_collection);
             // the table id belongs to a table
-            GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+            GetTableResult table_result = table_info_handler_->GetTable(context, physical_collection, namespace_info->GetNamespaceName(),
                 table_id);
             if (!table_result.status.IsSucceeded()) {
                 context->Abort();
                 K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                    table_id, namespace_info->GetNamespaceId(), table_result.status);
+                    table_id, physical_collection, table_result.status);
                 response.status = std::move(table_result.status);
                 response.tableInfo = nullptr;
                 return response;
             }
             if (table_result.tableInfo == nullptr) {
                 context->Commit();
-                K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, namespace_info->GetNamespaceId());
+                K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
                 response.status.code = StatusCode::NOT_FOUND;
-                response.status.errorMessage = "Cannot find table " + table_id;
+                response.status.errorMessage = "Cannot find table " + table_id + " in ns " + physical_collection;
                 response.tableInfo = nullptr;
                 return response;
             }
@@ -774,16 +796,16 @@ namespace catalog {
         }
 
         // Check the index table
-        K2LOG_D(log::catalog, "Fetching table schema for index {} in ns {}", table_id, namespace_info->GetNamespaceId());
+        K2LOG_D(log::catalog, "Fetching table schema for index {} in ns {}", table_id, physical_collection);
         std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_uuid);
         std::string base_table_id;
         if (index_ptr == nullptr) {
             // not founnd in cache, try to check the base table id from SKV
-            GeBaseTableIdResult table_id_result = table_info_handler_->GeBaseTableId(context, namespace_info->GetNamespaceId(), table_id);
+            GetBaseTableIdResult table_id_result = table_info_handler_->GetBaseTableId(context, physical_collection, table_id);
             if (!table_id_result.status.IsSucceeded()) {
                 context->Abort();
-                K2LOG_E(log::catalog, "Failed to check base table id for index {}, {}, due to {}",
-                    table_id, namespace_info->GetNamespaceId(), table_id_result.status.errorMessage);
+                K2LOG_E(log::catalog, "Failed to check base table id for index {} in {}, due to {}",
+                    table_id, physical_collection, table_id_result.status.errorMessage);
                 response.status = std::move(table_id_result.status);
                 response.tableInfo = nullptr;
                 return response;
@@ -796,16 +818,15 @@ namespace catalog {
         if (base_table_id.empty()) {
             // cannot find the id as either a table id or an index id
             context->Abort();
-            K2LOG_E(log::catalog, "Failed to find base table id for index {}, {}", table_id, namespace_info->GetNamespaceId());
+            K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
             response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find base table for index " + table_id;
+            response.status.errorMessage = "Cannot find base table for index " + table_id + " in " + physical_collection;
             response.tableInfo = nullptr;
             return response;
         }
 
-        K2LOG_D(log::catalog, "Fetching base table schema {} for index {}, {}",
-                base_table_id, table_id, namespace_info->GetNamespaceId());
-        GetTableResult base_table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+        K2LOG_D(log::catalog, "Fetching base table schema {} for index {} in {}", base_table_id, table_id, physical_collection);
+        GetTableResult base_table_result = table_info_handler_->GetTable(context, physical_collection, namespace_info->GetNamespaceName(),
                 base_table_id);
         if (!base_table_result.status.IsSucceeded()) {
             context->Abort();
@@ -935,7 +956,7 @@ namespace catalog {
         std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
         std::string base_table_id;
         if (index_info == nullptr) {
-            GeBaseTableIdResult index_result = table_info_handler_->GeBaseTableId(context, namespace_id, table_id);
+            GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(context, namespace_id, table_id);
             if (!index_result.status.IsSucceeded()) {
                 response.status = std::move(index_result.status);
                 context->Abort();

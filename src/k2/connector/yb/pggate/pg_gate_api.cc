@@ -296,7 +296,7 @@ YBCStatus YBCPgNewCreateTable(const char *database_name,
                               const bool colocated,
                               YBCPgStatement *handle) {
   if (is_shared_table) {
-    K2LOG_I(log::pg, "PgGateAPI: YBCPgNewCreateTable (shared) {}, {}, {}", database_name, schema_name, table_name);
+    K2LOG_D(log::pg, "PgGateAPI: YBCPgNewCreateTable (shared) {}, {}, {}", database_name, schema_name, table_name);
   } else {
     K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateTable {}, {}, {}", database_name, schema_name, table_name);
   }
@@ -460,7 +460,7 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
                               bool if_not_exist,
                               YBCPgStatement *handle){
   if (is_shared_index) {
-    K2LOG_I(log::pg, "PgGateAPI: YBCPgNewCreateIndex (shared) {}, {}, {}", database_name, schema_name, index_name);
+    K2LOG_D(log::pg, "PgGateAPI: YBCPgNewCreateIndex (shared) {}, {}, {}", database_name, schema_name, index_name);
   } else {
     K2LOG_V(log::pg, "PgGateAPI: YBCPgNewCreateIndex {}, {}, {}", database_name, schema_name, index_name);
   }

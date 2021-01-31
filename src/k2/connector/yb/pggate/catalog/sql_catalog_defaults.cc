@@ -40,7 +40,16 @@ const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
 const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
 const std::string CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
 
+// collection name for template1 database
 const std::string CatalogConsts::shared_table_skv_colllection_name = "00000001000030008000000000000000";
+
+const std::string& CatalogConsts::physical_collection(const std::string& namespace_id, bool is_shared) {
+    if (is_shared) {
+        // for a shared table/index, we need to store and access it on a specific collection
+        return CatalogConsts::shared_table_skv_colllection_name;
+    }
+    return namespace_id;
+}
 
 } // namespace catalog
 }  // namespace sql
