@@ -612,9 +612,9 @@ namespace catalog {
         }
         // generate table uuid from namespace oid and table oid
         std::string base_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.baseTableOid);
-        std::string index_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
-
         std::string base_table_id = PgObjectId::GetTableId(request.baseTableOid);
+        std::string index_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string index_table_id = PgObjectId::GetTableId(request.tableOid);
 
         // check if the base table exists or not
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_uuid);
@@ -641,7 +641,7 @@ namespace catalog {
 
         if (base_table_info->has_secondary_indexes()) {
             const IndexMap& index_map = base_table_info->secondary_indexes();
-            const auto itr = index_map.find(index_table_uuid);
+            const auto itr = index_map.find(index_table_id);
             // the index has already been defined
             if (itr != index_map.end()) {
                 // return if 'create .. if not exist' clause is specified
@@ -655,7 +655,7 @@ namespace catalog {
                     context->Commit();
                     // return index already present error if index already exists
                     response.status.code = StatusCode::ALREADY_PRESENT;
-                    response.status.errorMessage = "Index " + index_table_uuid + " has already existed in ns " + namespace_info->GetNamespaceId();
+                    response.status.errorMessage = "Index " + index_table_id + " has already existed in ns " + namespace_info->GetNamespaceId();
                     K2LOG_E(log::catalog, "{}", response.status);
                     return response;
                 }
