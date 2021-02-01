@@ -46,6 +46,8 @@ struct CatalogConsts {
     static const std::string shared_table_skv_colllection_name;
 
     static const std::string& physical_collection(const std::string& namespace_id, bool is_shared);
+
+    static bool is_on_physical_collection(const std::string& namespace_id, bool is_shared);
 };
 
 } // namespace catalog

@@ -81,15 +81,6 @@ RStatus BaseHandler::SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionCon
     return response;
 }
 
-bool BaseHandler::ShouldCreateSKVSchema(const std::string& namespace_id, bool is_shared) {
-    std::string physical_collection = CatalogConsts::physical_collection(namespace_id, is_shared);
-
-    // only create SKV schema if the namespace_id is on its own physical collection
-    // case 1: a non-shared table/index, this should always be true
-    // case 2: a shared table/index, this is true when the table/index on the shared collection, otherwise, it is false
-    return physical_collection.compare(namespace_id) == 0;
-}
-
 } // namespace sql
 } // namespace sql
 } // namespace k2pg

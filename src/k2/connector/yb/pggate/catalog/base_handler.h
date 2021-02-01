@@ -53,8 +53,6 @@ class BaseHandler : public std::enable_shared_from_this<BaseHandler> {
 
     RStatus SaveOrUpdateSKVRecord(std::shared_ptr<SessionTransactionContext> context, k2::dto::SKVRecord& record, bool isDelete);
 
-    static bool ShouldCreateSKVSchema(const std::string& namespace_id, bool is_shared);
-
     protected:
     std::shared_ptr<K2Adapter> k2_adapter_;
 };

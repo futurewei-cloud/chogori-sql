@@ -51,6 +51,17 @@ const std::string& CatalogConsts::physical_collection(const std::string& namespa
     return namespace_id;
 }
 
+bool CatalogConsts::is_on_physical_collection(const std::string& namespace_id, bool is_shared) {
+    if (is_shared) {
+        std::string physical_collection = CatalogConsts::physical_collection(namespace_id, is_shared);
+        // the namespace_id is the same as the physical collection
+        return physical_collection.compare(namespace_id) == 0;
+    }
+
+    // for a non-shared table/index, namespace_id is always physical
+    return true;
+}
+
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg

@@ -122,7 +122,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
             response.status = std::move(sys_table_result.status);
             return response;
         }
-        if (BaseHandler::ShouldCreateSKVSchema(table->namespace_id(), table->is_shared())) {
+        if (CatalogConsts::is_on_physical_collection(table->namespace_id(), table->is_shared())) {
             K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->namespace_id());
             // persist SKV table and index schemas
             CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);

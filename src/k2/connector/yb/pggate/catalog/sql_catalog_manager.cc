@@ -671,7 +671,7 @@ namespace catalog {
             // persist the index table metadata to the system catalog SKV tables
             table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
-            if (BaseHandler::ShouldCreateSKVSchema(namespace_info->GetNamespaceId(), new_index_info.is_shared())) {
+            if (CatalogConsts::is_on_physical_collection(namespace_info->GetNamespaceId(), new_index_info.is_shared())) {
                 K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
                 // create a SKV schema to insert the actual index data
                 CreateUpdateSKVSchemaResult skv_schema_result =
