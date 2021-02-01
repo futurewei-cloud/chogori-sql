@@ -99,7 +99,8 @@ std::string PgObjectId::GetTableId() const {
 }
 
 std::string PgObjectId::GetTableId(const PgOid& table_oid) {
-  return std::to_string(table_oid);
+// table id is a uuid without database oid information
+  return GetTableUuid(kPgInvalidOid, table_oid);
 }
 
 bool PgObjectId::IsPgsqlId(const string& uuid) {
