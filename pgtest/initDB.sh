@@ -17,7 +17,7 @@ export K2_CPO_TIMEOUT=100ms
 export K2_CPO_BACKOFF=100ms
 export K2_MSG_CHECKSUM=TRUE
 export K2_CONFIG_FILE=/build/pgtest/k2config.json
-export K2_LOG_LEVEL="INFO k2::pggate=INFO k2::pg_catalog=DEBUG k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
+export K2_LOG_LEVEL="INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
 
 export CPODIR=/tmp/___cpo_dir
 export EPS="tcp+k2rpc://0.0.0.0:10000"
@@ -28,4 +28,8 @@ export GLOG_log_dir=/tmp
 
 rm -rf pgroot/data
 mkdir -p pgroot/data
-/build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data -d
+
+./run_k2_platform.sh 
+sleep 2
+
+/build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data
