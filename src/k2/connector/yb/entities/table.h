@@ -129,7 +129,7 @@ namespace sql {
             is_shared_table_ = is_shared_table;
         }
 
-        bool is_shared_table() {
+        bool is_shared() {
             return is_shared_table_;
         }
 

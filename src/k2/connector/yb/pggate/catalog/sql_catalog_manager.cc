@@ -575,12 +575,13 @@ namespace catalog {
 
         // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        K2LOG_D(log::catalog, "Create or update table id: {}, name: {}, shared: {}", new_table_info->table_id(), request.tableName, request.isSharedTable);
+        K2LOG_D(log::catalog, "Create or update table id: {}, name: {} in {}, shared: {}", new_table_info->table_id(), request.tableName,
+            namespace_info->GetNamespaceId(), request.isSharedTable);
         CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
         if (result.status.IsSucceeded()) {
             // commit transaction
             context->Commit();
-            K2LOG_D(log::catalog, "Created table {}, with schema {}", new_table_info->table_id(), schema_version);
+            K2LOG_D(log::catalog, "Created table {} in {}, with schema version {}", new_table_info->table_id(), namespace_info->GetNamespaceId(), schema_version);
             // update table caches
             UpdateTableCache(new_table_info);
             // increase catalog version
@@ -591,7 +592,7 @@ namespace catalog {
         } else {
             // abort the transaction
             context->Abort();
-            K2LOG_E(log::catalog, "Failed to create table {}, due to {}", new_table_info->table_id(), result.status);
+            K2LOG_E(log::catalog, "Failed to create table {} in {}, due to {}", new_table_info->table_id(), namespace_info->GetNamespaceId(), result.status);
             response.status = std::move(result.status);
         }
 
@@ -632,9 +633,9 @@ namespace catalog {
         if (base_table_info == nullptr) {
             context->Abort();
             // cannot find the base table
-            K2LOG_E(log::catalog, "Cannot find base table {} for index {}", base_table_id, request.tableName);
+            K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, namespace_info->GetNamespaceId());
             response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request.tableName;
+            response.status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request.tableName + " in " + namespace_info->GetNamespaceId();
             return response;
         }
 
@@ -666,18 +667,31 @@ namespace catalog {
             IndexInfo new_index_info = BuildIndexInfo(base_table_info, request.tableName, request.tableOid, index_table_uuid,
                     request.schema, request.isUnique, request.isSharedTable, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
-            K2LOG_D(log::catalog, "Persisting index table id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
+            K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
             // persist the index table metadata to the system catalog SKV tables
             table_info_handler_->PersistIndexTable(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
 
-            K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
-            // create a SKV schema to insert the actual index data
-            table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+            if (BaseHandler::ShouldCreateSKVSchema(namespace_info->GetNamespaceId(), new_index_info.is_shared())) {
+                K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
+                // create a SKV schema to insert the actual index data
+                CreateUpdateSKVSchemaResult skv_schema_result =
+                    table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+                if (!skv_schema_result.status.IsSucceeded()) {
+                    context->Abort();
+                    response.status = std::move(skv_schema_result.status);
+                    K2LOG_E(log::catalog, "Failed to persist index SKV schema id: {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
+                        namespace_info->GetNamespaceId(), response.status);
+                    return response;
+                }
+            } else {
+                K2LOG_D(log::catalog, "Skip persisting index SKV schema id: {}, name: {} in {}, shared: {}", new_index_info.table_id(), new_index_info.table_name(),
+                    namespace_info->GetNamespaceId(), new_index_info.is_shared());
+            }
 
             // update the base table with the new index
             base_table_info->add_secondary_index(new_index_info.table_id(), new_index_info);
 
-            K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {}", new_index_info.table_id(), new_index_info.table_name());
+            K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
             // update table cache
             UpdateTableCache(base_table_info);
 
@@ -694,12 +708,12 @@ namespace catalog {
             context->Commit();
             response.indexInfo = new_index_info_ptr;
             response.status.Succeed();
-            K2LOG_D(log::catalog, "Created index id: {}, name: {}", new_index_info.table_id(), request.tableName);
+            K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, namespace_info->GetNamespaceId());
         } catch (const std::exception& e) {
             context->Abort();
             response.status.code = StatusCode::RUNTIME_ERROR;
             response.status.errorMessage = e.what();
-            K2LOG_E(log::catalog, "Failed to create index {} due to {}", request.tableName, response.status);
+            K2LOG_E(log::catalog, "Failed to create index {} due to {} in {}", request.tableName, response.status, namespace_info->GetNamespaceId());
         }
         return response;
     }

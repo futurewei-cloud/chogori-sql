@@ -89,7 +89,7 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
 
-  collection_name_ = CatalogConsts::physical_collection(namespace_id_, pg_table->is_shared_table());
+  collection_name_ = CatalogConsts::physical_collection(namespace_id_, pg_table->is_shared());
 
   K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
     table_id_, namespace_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);

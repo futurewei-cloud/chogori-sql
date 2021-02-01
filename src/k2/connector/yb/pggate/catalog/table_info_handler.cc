@@ -122,13 +122,21 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
             response.status = std::move(sys_table_result.status);
             return response;
         }
-        // persist SKV table and index schemas
-        CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);
-        if (skv_schema_result.status.IsSucceeded()) {
-            response.status.Succeed();
+        if (BaseHandler::ShouldCreateSKVSchema(table->namespace_id(), table->is_shared())) {
+            K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->namespace_id());
+            // persist SKV table and index schemas
+            CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);
+            if (!skv_schema_result.status.IsSucceeded()) {
+                response.status = std::move(skv_schema_result.status);
+                K2LOG_E(log::catalog, "Failed to persist table SKV schema id: {}, name: {}, in {} due to {}", table->table_id(), table->table_name(),
+                    table->namespace_id(), response.status);
+                return response;
+            }
         } else {
-            response.status = std::move(skv_schema_result.status);
+            K2LOG_D(log::catalog, "Skip persisting table SKV schema id: {}, name: {} in {}, shared: {}", table->table_id(), table->table_name(),
+                table->namespace_id(), table->is_shared());
         }
+        response.status.Succeed();
     }
     catch (const std::exception& e) {
         response.status.code = StatusCode::RUNTIME_ERROR;
@@ -297,7 +305,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
             return response;
         }
 
-        if(source_table->is_shared_table()) {
+        if(source_table->is_shared()) {
             K2LOG_D(log::catalog, "Skip copying shared table {} in {}", source_table_id, source_coll_name);
             if(source_table->has_secondary_indexes()) {
                 for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
@@ -872,7 +880,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(const std::string& co
     // IsSysTable
     record.serializeNext<bool>(table->is_sys_table());
     // IsShared
-    record.serializeNext<bool>(table->is_shared_table());
+    record.serializeNext<bool>(table->is_shared());
     // IsTransactional
     record.serializeNext<bool>(table->schema().table_properties().is_transactional());
     // IsIndex
