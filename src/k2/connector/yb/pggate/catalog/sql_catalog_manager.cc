@@ -892,11 +892,12 @@ namespace catalog {
         K2LOG_D(log::catalog, "Deleting table {} in namespace {}", request.tableOid, request.namespaceOid);
         DeleteTableResponse response;
         std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
-        std::string table_id = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string table_id = PgObjectId::GetTableId(request.tableOid);
         response.namespaceId = namespace_id;
         response.tableId = table_id;
 
-        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_id);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         if (table_info == nullptr) {
             // try to find table from SKV by looking at namespace first

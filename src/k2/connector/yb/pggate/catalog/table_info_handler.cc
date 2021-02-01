@@ -295,9 +295,9 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
         }
 
         std::shared_ptr<TableInfo> source_table = table_result.tableInfo;
-        std::string target_table_id = PgObjectId::GetTableUuid(target_namespace_oid, table_result.tableInfo->table_oid());
+        std::string target_table_uuid = PgObjectId::GetTableUuid(target_namespace_oid, table_result.tableInfo->table_oid());
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_coll_name,
-                target_namespace_name, target_table_id, table_result.tableInfo->table_name());
+                target_namespace_name, target_table_uuid, table_result.tableInfo->table_name());
 
         CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_coll_name, target_table);
         if (!create_result.status.IsSucceeded()) {
@@ -314,7 +314,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                 }
             }
         } else {
-            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_context, target_coll_name, target_table_id, target_table->schema().version(),
+            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_context, target_coll_name, target_table->table_id(), target_table->schema().version(),
                 source_context, source_coll_name, source_table_id, source_table->schema().version());
             if (!copy_skv_table_result.status.IsSucceeded()) {
                 response.status = std::move(copy_skv_table_result.status);
@@ -347,7 +347,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
             }
         }
 
-        K2LOG_D(log::catalog, "Copied table from {} in {} to {} in {}", source_table_id, source_coll_name, target_table_id, target_coll_name);
+        K2LOG_D(log::catalog, "Copied table from {} in {} to {} in {}", source_table_id, source_coll_name, target_table->table_id(), target_coll_name);
         response.tableInfo = target_table;
         response.status.Succeed();
     } catch (const std::exception& e) {
