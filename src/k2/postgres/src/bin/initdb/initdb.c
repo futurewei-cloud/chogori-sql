@@ -3245,7 +3245,7 @@ initialize_data_directory(void)
 	fflush(stdout);
 	make_postgres(cmdfd);
 
-	if (IsYugaByteGlobalClusterInitdb())
+	if (!IsYugaByteGlobalClusterInitdb())
 	{
 		fputs(_("make_yugabyte ...\n "), stdout);
 		fflush(stdout);

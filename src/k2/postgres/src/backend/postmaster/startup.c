@@ -205,13 +205,10 @@ StartupProcessMain(void)
 	 */
 	PG_SETMASK(&UnBlockSig);
 
-	elog(INFO, "StartupProcessMain StartupXLOG");
 	/*
 	 * Do what we came for.
 	 */
 	StartupXLOG();
-	
-	elog(INFO, "StartupProcessMain proc_exit");
 
 	/*
 	 * Exit normally. Exit code 0 tells postmaster that we completed recovery

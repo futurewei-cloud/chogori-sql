@@ -204,10 +204,6 @@ AuxiliaryProcessMain(int argc, char *argv[])
 	int			flag;
 	char	   *userDoption = NULL;
 
-	// TODO: remove this log or reduce the logging level later
-	elog(INFO, "InitK23siWorker in AuxiliaryProcessMain, IsUnderPostmaster %d,  pid= %d", (int) IsUnderPostmaster, MyProcPid);
-	InitK23siWorker();
-
 	/*
 	 * Initialize process environment (already done if under postmaster, but
 	 * not if standalone).
@@ -314,9 +310,6 @@ AuxiliaryProcessMain(int argc, char *argv[])
 				break;
 		}
 	}
-
-	// TODO: remove this log or reduce the logging level later
-	elog(INFO, "AuxiliaryProcessMain, MyAuxProcType %d", (int) MyAuxProcType);
 
 	if (argc != optind)
 	{
