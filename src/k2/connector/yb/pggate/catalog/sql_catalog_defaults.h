@@ -41,7 +41,7 @@ struct CatalogConsts {
 
     static const std::string TABLE_ID_COLUMN_NAME;
     static const std::string INDEX_ID_COLUMN_NAME;
-    static const std::string INDEXED_TABLE_ID_COLUMN_NAME;
+    static const std::string BASE_TABLE_ID_COLUMN_NAME;
 
     static const std::string shared_table_skv_colllection_name;
 

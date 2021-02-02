@@ -155,7 +155,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionCont
         k2::dto::SKVRecord table_head_record = FetchTableHeadSKVRecord(context, collection_name, table_id);
         std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(context, collection_name, table_id);
         std::shared_ptr<TableInfo> table_info = BuildTableInfo(collection_name, namespace_name, table_head_record, table_column_records);
-        // check all the indexes whose IndexedTableId is table_id
+        // check all the indexes whose BaseTableId is table_id
         std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, collection_name, table_id);
         if (!index_records.empty()) {
             // table has indexes defined
@@ -713,7 +713,7 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<SessionTra
         index_head.deserializeNext<bool>();
         // IsUnique
         index_head.deserializeNext<bool>();
-        // IndexedTableId
+        // BaseTableId
         response.baseTableId = index_head.deserializeNext<k2::String>().value();
         response.status.Succeed();
     } catch (const std::exception& e) {
@@ -887,7 +887,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(const std::string& co
     record.serializeNext<bool>(false);
     // IsUnique (for index)
     record.serializeNext<bool>(false);
-    // IndexedTableId
+    // BaseTableId
     record.serializeNull();
     // IndexPermission
     record.serializeNull();
@@ -922,8 +922,8 @@ k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(const std::string& co
     record.serializeNext<bool>(true);
     // IsUnique (for index)
     record.serializeNext<bool>(index.is_unique());
-    // IndexedTableId
-    record.serializeNext<k2::String>(index.indexed_table_id());
+    // BaseTableId
+    record.serializeNext<k2::String>(index.base_table_id());
     // IndexPermission
     record.serializeNext<int16_t>(index.index_permissions());
     // NextColumnId
@@ -1126,8 +1126,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     std::shared_ptr<k2::Query> query = create_result.query;
     std::vector<k2::dto::expression::Value> values;
     std::vector<k2::dto::expression::Expression> exps;
-    // find all the indexes for the base table, i.e., by IndexedTableId
-    values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME));
+    // find all the indexes for the base table, i.e., by BaseTableId
+    values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::BASE_TABLE_ID_COLUMN_NAME));
     values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
@@ -1267,7 +1267,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& n
     }
     // IsUnique
     table_head.deserializeNext<bool>();
-    // IndexedTableId
+    // BaseTableId
     table_head.deserializeNext<k2::String>();
     // IndexPermission
     table_head.deserializeNext<int16_t>();
@@ -1350,8 +1350,8 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     }
     // IsUnique
     bool is_unique = index_head.deserializeNext<bool>().value();
-    // IndexedTableId
-    std::string indexed_table_id = index_head.deserializeNext<k2::String>().value();
+    // BaseTableId
+    std::string base_table_id = index_head.deserializeNext<k2::String>().value();
     // IndexPermission
     IndexPermissions index_perm = static_cast<IndexPermissions>(index_head.deserializeNext<int16_t>().value());
     // NextColumnId
@@ -1395,7 +1395,7 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
         columns.push_back(std::move(index_column));
     }
 
-    IndexInfo index_info(table_name, table_oid, table_uuid, indexed_table_id, version, is_unique, is_shared, columns, index_perm);
+    IndexInfo index_info(table_name, table_oid, table_uuid, base_table_id, version, is_unique, is_shared, columns, index_perm);
     return index_info;
 }
 

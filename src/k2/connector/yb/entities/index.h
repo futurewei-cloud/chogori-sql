@@ -113,7 +113,7 @@ namespace k2pg {
         class IndexInfo {
         public:
             explicit IndexInfo(std::string table_name, uint32_t table_oid, std::string table_uuid,
-                std::string indexed_table_id, uint32_t schema_version, bool is_unique,
+                std::string base_table_id, uint32_t schema_version, bool is_unique,
                 bool is_shared, std::vector<IndexColumn> columns, size_t hash_column_count,
                 size_t range_column_count, std::vector<ColumnId> indexed_hash_column_ids,
                 std::vector<ColumnId> indexed_range_column_ids, IndexPermissions index_permissions,
@@ -122,7 +122,7 @@ namespace k2pg {
                 table_oid_(table_oid),
                 table_id_(PgObjectId::GetTableId(table_oid)),
                 table_uuid_(table_uuid),
-                indexed_table_id_(indexed_table_id),
+                base_table_id_(base_table_id),
                 schema_version_(schema_version),
                 is_unique_(is_unique),
                 is_shared_(is_shared),
@@ -137,7 +137,7 @@ namespace k2pg {
             explicit IndexInfo(std::string table_name,
                 uint32_t table_oid,
                 std::string table_uuid,
-                std::string indexed_table_id,
+                std::string base_table_id,
                 uint32_t schema_version,
                 bool is_unique,
                 bool is_shared,
@@ -147,7 +147,7 @@ namespace k2pg {
                     table_oid_(table_oid),
                     table_id_(PgObjectId::GetTableId(table_oid)),
                     table_uuid_(table_uuid),
-                    indexed_table_id_(indexed_table_id),
+                    base_table_id_(base_table_id),
                     schema_version_(schema_version),
                     is_unique_(is_unique),
                     is_shared_(is_shared),
@@ -178,8 +178,8 @@ namespace k2pg {
                 return table_uuid_;
             }
 
-            const std::string& indexed_table_id() const {
-                return indexed_table_id_;
+            const std::string& base_table_id() const {
+                return base_table_id_;
             }
 
             bool is_unique() const {
@@ -269,7 +269,7 @@ namespace k2pg {
             const uint32_t table_oid_;
             const std::string table_id_;            // Index table id.
             const std::string table_uuid_;
-            const std::string indexed_table_id_;    // Indexed table id.
+            const std::string base_table_id_;    // Indexed table id.
             const uint32_t schema_version_ = 0; // Index table's schema version.
             const bool is_unique_ = false;      // Whether this is a unique index.
             const bool is_shared_ = false;      // whether this is a shared index

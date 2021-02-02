@@ -38,7 +38,7 @@ const std::string CatalogConsts::skv_schema_name_sys_catalog_indexcolumn = "K2RE
 
 const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
 const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
-const std::string CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
+const std::string CatalogConsts::BASE_TABLE_ID_COLUMN_NAME = "BaseTableId";
 
 // collection name for template1 database
 const std::string CatalogConsts::shared_table_skv_colllection_name = "00000001000030008000000000000000";

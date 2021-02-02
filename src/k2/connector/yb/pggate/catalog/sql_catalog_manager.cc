@@ -826,7 +826,7 @@ namespace catalog {
             }
             base_table_id = table_id_result.baseTableId;
         } else {
-            base_table_id = index_ptr->indexed_table_id();
+            base_table_id = index_ptr->base_table_id();
         }
 
         if (base_table_id.empty()) {
@@ -979,7 +979,7 @@ namespace catalog {
             }
             base_table_id = index_result.baseTableId;
         } else {
-            base_table_id = index_info->indexed_table_id();
+            base_table_id = index_info->base_table_id();
         }
 
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
@@ -1150,7 +1150,7 @@ namespace catalog {
         std::vector<std::string> index_uuids;
         for (std::pair<std::string, std::shared_ptr<IndexInfo>> pair : index_uuid_map_) {
             // first find all indexes that belong to the table
-            if (base_table_id == pair.second->indexed_table_id()) {
+            if (base_table_id == pair.second->base_table_id()) {
                 index_uuids.push_back(pair.second->table_uuid());
             }
         }

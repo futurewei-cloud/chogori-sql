@@ -134,7 +134,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::BOOL, "IsTransactional", false, false},
                 {k2::dto::FieldType::BOOL, "IsIndex", false, false},
                 {k2::dto::FieldType::BOOL, "IsUnique", false, false},
-                {k2::dto::FieldType::STRING, "IndexedTableId", false, false},
+                {k2::dto::FieldType::STRING, "BaseTableId", false, false},
                 {k2::dto::FieldType::INT16T, "IndexPermission", false, false},
                 {k2::dto::FieldType::INT32T, "NextColumnId", false, false},
                 {k2::dto::FieldType::INT32T, "SchemaVersion", false, false}},

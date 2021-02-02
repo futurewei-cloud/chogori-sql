@@ -155,7 +155,7 @@ Result<uint32_t> PgObjectId::GetPgsqlTableOid(const std::string& table_uuid) {
   return STATUS(InvalidArgument, "Invalid PostgreSQL table uuid", table_uuid);
 }
 
-Result<uint32_t> PgObjectId::GetPgsqlDatabaseOidByTableId(const std::string& table_uuid) {
+Result<uint32_t> PgObjectId::GetDatabaseOidByTableUuid(const std::string& table_uuid) {
   DCHECK(IsPgsqlId(table_uuid));
   try {
     size_t pos = 0;

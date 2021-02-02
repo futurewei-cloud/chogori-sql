@@ -122,7 +122,7 @@ namespace sql {
         }
 
         explicit PgObjectId(const std::string& table_uuid) {
-            auto res = GetPgsqlDatabaseOidByTableId(table_uuid);
+            auto res = GetDatabaseOidByTableUuid(table_uuid);
             if (res.ok()) {
                 database_oid_ = res.get();
             }
@@ -153,7 +153,7 @@ namespace sql {
         // Get Postgres database and table oids from a namespace/table uuid.
         static Result<uint32_t> GetPgsqlDatabaseOid(const std::string& namespace_id);
         static Result<uint32_t> GetPgsqlTableOid(const std::string& table_uuid);
-        static Result<uint32_t> GetPgsqlDatabaseOidByTableId(const std::string& table_uuid);
+        static Result<uint32_t> GetDatabaseOidByTableUuid(const std::string& table_uuid);
 
         const PgOid GetDatabaseOid() const {
             return database_oid_;
