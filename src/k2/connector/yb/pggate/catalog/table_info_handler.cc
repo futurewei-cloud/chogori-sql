@@ -1047,47 +1047,12 @@ k2::dto::FieldType TableInfoHandler::ToK2Type(DataType type) {
             field_type = k2::dto::FieldType::INT64T;
         } break;
         case DataType::DECIMAL: {
-            field_type = k2::dto::FieldType::DECIMAL64;
+            field_type = k2::dto::FieldType::STRING;
         } break;
         default:
             throw std::invalid_argument("Unsupported type " + type);
     }
     return field_type;
-}
-
-DataType TableInfoHandler::ToSqlType(k2::dto::FieldType type) {
-    // utility method, not used yet
-    DataType sql_type = DataType::NOT_SUPPORTED;
-    switch (type) {
-        case k2::dto::FieldType::INT16T: {
-            sql_type = DataType::INT16;
-        } break;
-        case k2::dto::FieldType::INT32T: {
-            sql_type = DataType::INT32;
-        } break;
-        case k2::dto::FieldType::INT64T: {
-            sql_type = DataType::INT64;
-        } break;
-        case k2::dto::FieldType::STRING: {
-            sql_type = DataType::STRING;
-        } break;
-        case k2::dto::FieldType::BOOL: {
-            sql_type = DataType::BOOL;
-        } break;
-        case k2::dto::FieldType::FLOAT: {
-            sql_type = DataType::FLOAT;
-        } break;
-        case k2::dto::FieldType::DOUBLE: {
-            sql_type = DataType::DOUBLE;
-        } break;
-        case k2::dto::FieldType::DECIMAL64: {
-            sql_type = DataType::DECIMAL;
-        } break;
-        default: {
-            throw std::invalid_argument(fmt::format("unsupported type: {}", type));
-        }
-    }
-    return sql_type;
 }
 
 k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
