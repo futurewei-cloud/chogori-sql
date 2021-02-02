@@ -565,7 +565,7 @@ namespace catalog {
         schema_version++;
         // generate a string format table id based database object oid and table oid
         std::string uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
-        Schema table_schema = std::move(request.schema);
+        Schema table_schema = request.schema;
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
                 request.tableOid, request.tableName, uuid, table_schema);
@@ -1252,14 +1252,14 @@ namespace catalog {
                 throw std::runtime_error("Cannot find column with id " + col_id);
             }
             const ColumnSchema& col_schema = index_schema.column(col_idx);
-            int32_t indexed_column_id = -1;
+            int32_t base_column_id = -1;
             if (col_schema.name().compare("ybuniqueidxkeysuffix") != 0 && col_schema.name().compare("ybidxbasectid") != 0) {
                 // skip checking "ybuniqueidxkeysuffix" and "ybidxbasectid" on base table, which only exist on index table
                 std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
                 if (!pair.first) {
                     throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
                 }
-                indexed_column_id = pair.second;
+                base_column_id = pair.second;
             }
             K2LOG_D(log::catalog,
                 "Index column id: {}, name: {}, type: {}, is_primary: {}, is_hash: {}, order: {}",
@@ -1270,7 +1270,7 @@ namespace catalog {
                 is_range = true;
             }
             IndexColumn col(col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_nullable(),
-                    col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), indexed_column_id);
+                    col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), base_column_id);
             columns.push_back(col);
         }
         IndexInfo index_info(index_name, table_oid, index_uuid, base_table_info->table_id(), index_schema.version(),

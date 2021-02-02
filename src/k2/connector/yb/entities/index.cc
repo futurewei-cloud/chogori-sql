@@ -58,7 +58,7 @@ namespace sql {
     vector<ColumnId> IndexInfo::index_key_column_ids() const {
         unordered_map<ColumnId, ColumnId> map;
         for (const auto column : columns_) {
-            map[column.indexed_column_id] = column.column_id;
+            map[column.base_column_id] = column.column_id;
         }
         vector<ColumnId> ids;
         ids.reserve(indexed_hash_column_ids_.size() + indexed_range_column_ids_.size());
@@ -73,7 +73,7 @@ namespace sql {
 
     bool IndexInfo::PrimaryKeyColumnsOnly(const Schema& indexed_schema) const {
         for (size_t i = 0; i < hash_column_count_ + range_column_count_; i++) {
-            if (!indexed_schema.is_key_column(columns_[i].indexed_column_id)) {
+            if (!indexed_schema.is_key_column(columns_[i].base_column_id)) {
                 return false;
             }
         }
@@ -93,7 +93,7 @@ namespace sql {
             // 2. Index by expression of column:
             // - INDEX ON tab (j_column->>'field')
             // - The ID of "j_column" is included in index data.
-            if (index_col.indexed_column_id == column_id) {
+            if (index_col.base_column_id == column_id) {
                 return true;
             }
         }

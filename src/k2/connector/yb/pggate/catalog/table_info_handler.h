@@ -178,7 +178,7 @@ class TableInfoHandler : public BaseHandler {
                 {k2::dto::FieldType::BOOL, "IsRange", false, false},
                 {k2::dto::FieldType::INT32T, "Order", false, false},
                 {k2::dto::FieldType::INT16T, "SortingType", false, false},
-                {k2::dto::FieldType::INT32T, "IndexedColumnId", false, false}},
+                {k2::dto::FieldType::INT32T, "BaseColumnId", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0, 1, 2},
         .rangeKeyFields = std::vector<uint32_t> {3}
     };

@@ -86,27 +86,27 @@ namespace k2pg {
             bool is_range;                  // is range key
             int32_t order;                  // attr_num
             ColumnSchema::SortingType sorting_type;       // sort type
-            ColumnId indexed_column_id;      // Corresponding column id in indexed table.
+            ColumnId base_column_id;      // Corresponding column id in base table.
             std::shared_ptr<PgExpr> colexpr = nullptr;    // Index expression.
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
                 DataType in_type, bool in_is_nullable, bool in_is_hash, bool in_is_range,
                 int32_t in_order, ColumnSchema::SortingType in_sorting_type,
-                ColumnId in_indexed_column_id, std::shared_ptr<PgExpr> in_colexpr)
+                ColumnId in_base_column_id, std::shared_ptr<PgExpr> in_colexpr)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
                     type(in_type), is_nullable(in_is_nullable), is_hash(in_is_hash),
                     is_range(in_is_range), order(in_order), sorting_type(in_sorting_type),
-                    indexed_column_id(in_indexed_column_id), colexpr(in_colexpr) {
+                    base_column_id(in_base_column_id), colexpr(in_colexpr) {
             }
 
             explicit IndexColumn(ColumnId in_column_id, std::string in_column_name,
                 DataType in_type, bool in_is_nullable, bool in_is_hash, bool in_is_range,
                 int32_t in_order, ColumnSchema::SortingType in_sorting_type,
-                ColumnId in_indexed_column_id)
+                ColumnId in_base_column_id)
                 : column_id(in_column_id), column_name(std::move(in_column_name)),
                     type(in_type), is_nullable(in_is_nullable), is_hash(in_is_hash),
                     is_range(in_is_range), order(in_order), sorting_type(in_sorting_type),
-                    indexed_column_id(in_indexed_column_id) {
+                    base_column_id(in_base_column_id) {
             }
         };
 
@@ -230,13 +230,13 @@ namespace k2pg {
                 return index_permissions_;
             }
 
-            // Return column ids that are primary key columns of the indexed table.
+            // Return column ids that are primary key columns of the base table.
             std::vector<ColumnId> index_key_column_ids() const;
 
             // Check if this index is dependent on the given column.
             bool CheckColumnDependency(ColumnId column_id) const;
 
-            // Index primary key columns of the indexed table only?
+            // Index primary key columns of the base table only?
             bool PrimaryKeyColumnsOnly(const Schema& indexed_schema) const;
 
             // Are read operations allowed to use the index?  During CREATE INDEX, reads are not allowed until
@@ -269,15 +269,15 @@ namespace k2pg {
             const uint32_t table_oid_;
             const std::string table_id_;            // Index table id.
             const std::string table_uuid_;
-            const std::string base_table_id_;    // Indexed table id.
+            const std::string base_table_id_;    // Base table id.
             const uint32_t schema_version_ = 0; // Index table's schema version.
             const bool is_unique_ = false;      // Whether this is a unique index.
             const bool is_shared_ = false;      // whether this is a shared index
             const std::vector<IndexColumn> columns_; // Index columns.
             size_t hash_column_count_ = 0;     // Number of hash columns in the index.
             size_t range_column_count_ = 0;    // Number of range columns in the index.
-            const std::vector<ColumnId> indexed_hash_column_ids_;  // Hash column ids in the indexed table.
-            const std::vector<ColumnId> indexed_range_column_ids_; // Range column ids in the indexed table.
+            const std::vector<ColumnId> indexed_hash_column_ids_;  // Hash column ids in the base table.
+            const std::vector<ColumnId> indexed_range_column_ids_; // Range column ids in the base table.
             const IndexPermissions index_permissions_ = INDEX_PERM_READ_WRITE_AND_DELETE;
         };
 
