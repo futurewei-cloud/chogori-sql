@@ -994,8 +994,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnRecords(const
         record.serializeNext<int32_t>(index_column.order);
         // SortingType
         record.serializeNext<int16_t>(index_column.sorting_type);
-        // IndexedColumnId
-        record.serializeNext<int32_t>(index_column.indexed_column_id);
+        // BaseColumnId
+        record.serializeNext<int32_t>(index_column.base_column_id);
         response.push_back(std::move(record));
     }
     return response;
@@ -1387,11 +1387,11 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
         int32_t col_order = column.deserializeNext<int32_t>().value();
         // SortingType
         int16_t sorting_type = column.deserializeNext<int16_t>().value();
-        // IndexedColumnId
-        int32_t indexed_col_id = column.deserializeNext<int32_t>().value();
+        // BaseColumnId
+        int32_t base_col_id = column.deserializeNext<int32_t>().value();
         // TODO: add support for expression in index
         IndexColumn index_column(col_id, col_name, static_cast<DataType>(col_type), is_nullable, is_hash, is_range,
-                col_order, static_cast<ColumnSchema::SortingType>(sorting_type), indexed_col_id);
+                col_order, static_cast<ColumnSchema::SortingType>(sorting_type), base_col_id);
         columns.push_back(std::move(index_column));
     }
 
