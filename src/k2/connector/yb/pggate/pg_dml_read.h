@@ -81,8 +81,8 @@ class PgDmlRead : public PgDml {
   typedef std::shared_ptr<PgDmlRead> SharedPtr;
 
   // Constructors.
-  PgDmlRead(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
-           const PgObjectId& index_id, const PgPrepareParameters *prepare_params);
+  PgDmlRead(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id,
+           const PgObjectId& index_object_id, const PgPrepareParameters *prepare_params);
   virtual ~PgDmlRead();
 
   StmtOp stmt_op() const override { return StmtOp::STMT_SELECT; }

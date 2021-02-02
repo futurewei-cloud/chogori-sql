@@ -116,16 +116,16 @@ Status PgSession::CreateDatabase(const string& database_name,
                                  const PgOid source_database_oid,
                                  const PgOid next_oid) {
   return catalog_client_->CreateNamespace(database_name,
-                                  GetPgsqlNamespaceId(database_oid),
+                                  PgObjectId::GetNamespaceUuid(database_oid),
                                   database_oid,
-                                  source_database_oid != kPgInvalidOid ? GetPgsqlNamespaceId(source_database_oid) : "",
+                                  source_database_oid != kPgInvalidOid ? PgObjectId::GetNamespaceUuid(source_database_oid) : "",
                                   "" /* creator_role_name */,
                                   next_oid);
 }
 
 Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) {
   RETURN_NOT_OK(catalog_client_->DeleteNamespace(database_name,
-                                         GetPgsqlNamespaceId(database_oid)));
+                                         PgObjectId::GetNamespaceUuid(database_oid)));
   RETURN_NOT_OK(DeleteDBSequences(database_oid));
   return Status::OK();
 }
@@ -139,12 +139,12 @@ Status PgSession::CreateTable(
     const std::string& namespace_id,
     const std::string& namespace_name,
     const std::string& table_name,
-    const PgObjectId& table_id,
+    const PgObjectId& table_object_id,
     PgSchema& schema,
     bool is_pg_catalog_table,
     bool is_shared_table,
     bool if_not_exist) {
-  return catalog_client_->CreateTable(namespace_name, table_name, table_id, schema,
+  return catalog_client_->CreateTable(namespace_name, table_name, table_object_id, schema,
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
@@ -152,24 +152,24 @@ Status PgSession::CreateIndexTable(
     const std::string& namespace_id,
     const std::string& namespace_name,
     const std::string& table_name,
-    const PgObjectId& table_id,
-    const PgObjectId& base_table_id,
+    const PgObjectId& table_object_id,
+    const PgObjectId& base_table_object_id,
     PgSchema& schema,
     bool is_unique_index,
     bool skip_index_backfill,
     bool is_pg_catalog_table,
     bool is_shared_table,
     bool if_not_exist) {
-  return catalog_client_->CreateIndexTable(namespace_name, table_name, table_id, base_table_id, schema,
+  return catalog_client_->CreateIndexTable(namespace_name, table_name, table_object_id, base_table_object_id, schema,
     is_unique_index, skip_index_backfill, is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
-Status PgSession::DropTable(const PgObjectId& table_id) {
-  return catalog_client_->DeleteTable(table_id.database_oid, table_id.object_oid);
+Status PgSession::DropTable(const PgObjectId& table_object_id) {
+  return catalog_client_->DeleteTable(table_object_id.GetDatabaseOid(), table_object_id.GetObjectOid());
 }
 
-Status PgSession::DropIndex(const PgObjectId& index_id, PgOid *base_table_oid, bool wait) {
-  return catalog_client_->DeleteIndexTable(index_id.database_oid, index_id.object_oid, base_table_oid);
+Status PgSession::DropIndex(const PgObjectId& index_object_id, PgOid *base_table_oid, bool wait) {
+  return catalog_client_->DeleteIndexTable(index_object_id.GetDatabaseOid(), index_object_id.GetObjectOid(), base_table_oid);
 }
 
 Status PgSession::ReserveOids(const PgOid database_oid,
@@ -233,8 +233,8 @@ Status PgSession::DeleteDBSequences(int64_t db_oid) {
 }
 
 void PgSession::InvalidateTableCache(const PgObjectId& table_obj_id) {
-  const TableId pg_table_id = table_obj_id.GetPgTableId();
-  table_cache_.erase(pg_table_id);
+  std::string pg_table_uuid = table_obj_id.GetTableUuid();
+  table_cache_.erase(pg_table_uuid);
 }
 
 void PgSession::StartOperationsBuffering() {
@@ -336,7 +336,7 @@ Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::share
       return client_->BatchExec(k23SITxn, ops);
     }
   } else {
-    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145"); 
+    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145");
 
     auto& buffered_keys = pg_session_->buffered_keys_;
     bool read_op_included = false;
@@ -378,7 +378,7 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
     return std::future<Status>();
   }
 
-  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145"); 
+  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145");
 
   bool read_only = true;
   std::vector<std::shared_ptr<PgOpTemplate>> ops;
@@ -405,26 +405,27 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
   return result;
 }
 
-Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_id) {
-  const TableId t_table_id = table_id.GetPgTableId();
-  K2LOG_D(log::pg, "Loading table descriptor for {}, id={}", table_id, t_table_id);
+Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_object_id) {
+  std::string t_table_uuid = table_object_id.GetTableUuid();
+  K2LOG_D(log::pg, "Loading table descriptor for {}, uuid={}", table_object_id, t_table_uuid);
   std::shared_ptr<TableInfo> table;
 
-  auto cached_table = table_cache_.find(t_table_id);
+  auto cached_table = table_cache_.find(t_table_uuid);
   if (cached_table == table_cache_.end()) {
-    K2LOG_D(log::pg, "Table cache MISS: {}", table_id);
-    Status s = catalog_client_->OpenTable(table_id.database_oid, table_id.object_oid, &table);
+    K2LOG_D(log::pg, "Table cache MISS: {}", table_object_id);
+    Status s = catalog_client_->OpenTable(table_object_id.GetDatabaseOid(), table_object_id.GetObjectOid(), &table);
     if (!s.ok()) {
       K2LOG_E(log::pg, "LoadTable: Server returns an error: {}", s);
       return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
-                           table_id.object_oid, table_id.database_oid, s.ToUserMessage());
+                           table_object_id.GetObjectOid(), table_object_id.GetDatabaseOid(), s.ToUserMessage());
     }
-    table_cache_[t_table_id] = table;
+    table_cache_[t_table_uuid] = table;
   } else {
-    K2LOG_D(log::pg, "Table cache HIT: {}", table_id);
+    K2LOG_D(log::pg, "Table cache HIT: {}", table_object_id);
     table = cached_table->second;
   }
 
+  std::string t_table_id = table_object_id.GetTableId();
   // check if the t_table_id is for a table or an index
   if (table->table_id().compare(t_table_id) == 0) {
     // a table
@@ -456,30 +457,30 @@ Result<uint64_t> PgSession::GetSharedCatalogVersion() {
 }
 
 bool operator==(const PgForeignKeyReference& k1, const PgForeignKeyReference& k2) {
-  return k1.table_id == k2.table_id &&
+  return k1.table_oid == k2.table_oid &&
       k1.ybctid == k2.ybctid;
 }
 
 size_t hash_value(const PgForeignKeyReference& key) {
   size_t hash = 0;
-  boost::hash_combine(hash, key.table_id);
+  boost::hash_combine(hash, key.table_oid);
   boost::hash_combine(hash, key.ybctid);
   return hash;
 }
 
-bool PgSession::ForeignKeyReferenceExists(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_id, std::move(ybctid)};
+bool PgSession::ForeignKeyReferenceExists(uint32_t table_oid, std::string&& ybctid) {
+  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
   return fk_reference_cache_.find(reference) != fk_reference_cache_.end();
 }
 
-Status PgSession::CacheForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_id, std::move(ybctid)};
+Status PgSession::CacheForeignKeyReference(uint32_t table_oid, std::string&& ybctid) {
+  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
   fk_reference_cache_.emplace(reference);
   return Status::OK();
 }
 
-Status PgSession::DeleteForeignKeyReference(uint32_t table_id, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_id, std::move(ybctid)};
+Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid) {
+  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
   fk_reference_cache_.erase(reference);
   return Status::OK();
 }
@@ -489,14 +490,14 @@ std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool transactional, bool read
 }
 
 Result<IndexPermissions> PgSession::WaitUntilIndexPermissionsAtLeast(
-    const PgObjectId& table_id,
-    const PgObjectId& index_id,
+    const PgObjectId& table_object_id,
+    const PgObjectId& index_object_id,
     const IndexPermissions& target_index_permissions) {
   // TODO: add implementation
   return IndexPermissions::INDEX_PERM_NOT_USED;
 }
 
-Status PgSession::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id) {
+Status PgSession::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_object_id) {
   // TODO: add implementation
   return Status::OK();
 }

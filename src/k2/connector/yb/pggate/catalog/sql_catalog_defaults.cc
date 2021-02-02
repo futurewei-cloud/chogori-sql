@@ -38,7 +38,29 @@ const std::string CatalogConsts::skv_schema_name_sys_catalog_indexcolumn = "K2RE
 
 const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
 const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
-const std::string CatalogConsts::INDEXED_TABLE_ID_COLUMN_NAME = "IndexedTableId";
+const std::string CatalogConsts::BASE_TABLE_ID_COLUMN_NAME = "BaseTableId";
+
+// collection name for template1 database
+const std::string CatalogConsts::shared_table_skv_colllection_name = "00000001000030008000000000000000";
+
+const std::string& CatalogConsts::physical_collection(const std::string& namespace_id, bool is_shared) {
+    if (is_shared) {
+        // for a shared table/index, we need to store and access it on a specific collection
+        return CatalogConsts::shared_table_skv_colllection_name;
+    }
+    return namespace_id;
+}
+
+bool CatalogConsts::is_on_physical_collection(const std::string& namespace_id, bool is_shared) {
+    if (is_shared) {
+        std::string physical_collection = CatalogConsts::physical_collection(namespace_id, is_shared);
+        // the namespace_id is the same as the physical collection
+        return physical_collection.compare(namespace_id) == 0;
+    }
+
+    // for a non-shared table/index, namespace_id is always physical
+    return true;
+}
 
 } // namespace catalog
 }  // namespace sql

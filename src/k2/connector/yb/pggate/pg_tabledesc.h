@@ -59,7 +59,6 @@ namespace gate {
 
 using yb::Result;
 using yb::Status;
-using k2pg::sql::TableIdentifier;
 using k2pg::sql::TableInfo;
 using k2pg::sql::IndexInfo;
 
@@ -72,6 +71,10 @@ class PgTableDesc {
 
   const std::string& namespace_id() const {
     return namespace_id_;
+  }
+
+  const std::string& collection_name() const {
+    return collection_name_;
   }
 
   const std::string& table_id() {
@@ -139,6 +142,9 @@ class PgTableDesc {
 
   // Hidden columns.
   PgColumn column_ybctid_;
+
+  // k2 collection name
+  std::string collection_name_;
 };
 
 }  // namespace gate

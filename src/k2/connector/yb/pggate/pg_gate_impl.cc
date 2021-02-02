@@ -57,6 +57,8 @@
 namespace k2pg {
 namespace gate {
 
+using k2pg::sql::kPgByteArrayOid;
+
 PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count, YBCPgCallbacks callbacks)
     : metric_registry_(new MetricRegistry()),
       metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(), "k2.pggate")),
@@ -311,12 +313,12 @@ Status PgGateApiImpl::GetCatalogMasterVersion(uint64_t *version) {
   return pg_session_->GetCatalogMasterVersion(version);
 }
 
-Result<std::shared_ptr<PgTableDesc>> PgGateApiImpl::LoadTable(const PgObjectId& table_id) {
-  return pg_session_->LoadTable(table_id);
+Result<std::shared_ptr<PgTableDesc>> PgGateApiImpl::LoadTable(const PgObjectId& table_object_id) {
+  return pg_session_->LoadTable(table_object_id);
 }
 
-void PgGateApiImpl::InvalidateTableCache(const PgObjectId& table_id) {
-  pg_session_->InvalidateTableCache(table_id);
+void PgGateApiImpl::InvalidateTableCache(const PgObjectId& table_object_id) {
+  pg_session_->InvalidateTableCache(table_object_id);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -324,14 +326,14 @@ void PgGateApiImpl::InvalidateTableCache(const PgObjectId& table_id) {
 Status PgGateApiImpl::NewCreateTable(const char *database_name,
                                  const char *schema_name,
                                  const char *table_name,
-                                 const PgObjectId& table_id,
+                                 const PgObjectId& table_object_id,
                                  bool is_shared_table,
                                  bool if_not_exist,
                                  bool add_primary_key,
                                  PgStatement **handle) {
   auto stmt = std::make_shared<PgCreateTable>(
       pg_session_, database_name, schema_name, table_name,
-      table_id, is_shared_table, if_not_exist, add_primary_key);
+      table_object_id, is_shared_table, if_not_exist, add_primary_key);
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
 }
@@ -367,9 +369,9 @@ Status PgGateApiImpl::ExecCreateTable(PgStatement *handle) {
   return down_cast<PgCreateTable*>(handle)->Exec();
 }
 
-Status PgGateApiImpl::NewAlterTable(const PgObjectId& table_id,
+Status PgGateApiImpl::NewAlterTable(const PgObjectId& table_object_id,
                                 PgStatement **handle) {
-  auto stmt = std::make_shared<PgAlterTable>(pg_session_, table_id);
+  auto stmt = std::make_shared<PgAlterTable>(pg_session_, table_object_id);
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
 }
@@ -427,10 +429,10 @@ Status PgGateApiImpl::ExecAlterTable(PgStatement *handle) {
   return pg_stmt->Exec();
 }
 
-Status PgGateApiImpl::NewDropTable(const PgObjectId& table_id,
+Status PgGateApiImpl::NewDropTable(const PgObjectId& table_object_id,
                                bool if_exist,
                                PgStatement **handle) {
-  auto stmt = std::make_shared<PgDropTable>(pg_session_, table_id, if_exist);
+  auto stmt = std::make_shared<PgDropTable>(pg_session_, table_object_id, if_exist);
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
 }
@@ -443,15 +445,15 @@ Status PgGateApiImpl::ExecDropTable(PgStatement *handle) {
   return down_cast<PgDropTable*>(handle)->Exec();
 }
 
-Status PgGateApiImpl::GetTableDesc(const PgObjectId& table_id,
+Status PgGateApiImpl::GetTableDesc(const PgObjectId& table_object_id,
                                PgTableDesc **handle) {
   // First read from memory context.
-  size_t hash_id = hash_value(table_id);
+  size_t hash_id = hash_value(table_object_id);
   RETURN_NOT_OK(GetTabledescFromCurrentMemctx(hash_id, handle));
 
   // Read from environment.
   if (*handle == nullptr) {
-    auto result = pg_session_->LoadTable(table_id);
+    auto result = pg_session_->LoadTable(table_object_id);
     RETURN_NOT_OK(result);
     RETURN_NOT_OK(AddToCurrentMemctx(hash_id, *result));
 
@@ -529,15 +531,15 @@ Status PgGateApiImpl::SetCatalogCacheVersion(PgStatement *handle, uint64_t catal
 Status PgGateApiImpl::NewCreateIndex(const char *database_name,
                                  const char *schema_name,
                                  const char *index_name,
-                                 const PgObjectId& index_id,
-                                 const PgObjectId& base_table_id,
+                                 const PgObjectId& index_object_id,
+                                 const PgObjectId& base_table_object_id,
                                  bool is_shared_index,
                                  bool is_unique_index,
                                  const bool skip_index_backfill,
                                  bool if_not_exist,
                                  PgStatement **handle) {
   auto stmt = std::make_shared<PgCreateIndex>(
-      pg_session_, database_name, schema_name, index_name, index_id, base_table_id,
+      pg_session_, database_name, schema_name, index_name, index_object_id, base_table_object_id,
       is_shared_index, is_unique_index, skip_index_backfill, if_not_exist);
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
@@ -591,17 +593,17 @@ Status PgGateApiImpl::ExecDropIndex(PgStatement *handle) {
 }
 
 Result<IndexPermissions> PgGateApiImpl::WaitUntilIndexPermissionsAtLeast(
-    const PgObjectId& table_id,
-    const PgObjectId& index_id,
+    const PgObjectId& table_object_id,
+    const PgObjectId& index_object_id,
     const IndexPermissions& target_index_permissions) {
   return pg_session_->WaitUntilIndexPermissionsAtLeast(
-      table_id,
-      index_id,
+      table_object_id,
+      index_object_id,
       target_index_permissions);
 }
 
-Status PgGateApiImpl::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_id) {
-  return pg_session_->AsyncUpdateIndexPermissions(indexed_table_id);
+Status PgGateApiImpl::AsyncUpdateIndexPermissions(const PgObjectId& indexed_table_object_id) {
+  return pg_session_->AsyncUpdateIndexPermissions(indexed_table_object_id);
 }
 
 // Sequence -----------------------------------------------------------------------------------------
@@ -720,16 +722,16 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 
-bool PgGateApiImpl::ForeignKeyReferenceExists(YBCPgOid table_id, std::string&& ybctid) {
-  return pg_session_->ForeignKeyReferenceExists(table_id, std::move(ybctid));
+bool PgGateApiImpl::ForeignKeyReferenceExists(YBCPgOid table_oid, std::string&& ybctid) {
+  return pg_session_->ForeignKeyReferenceExists(table_oid, std::move(ybctid));
 }
 
-Status PgGateApiImpl::CacheForeignKeyReference(YBCPgOid table_id, std::string&& ybctid) {
-  return pg_session_->CacheForeignKeyReference(table_id, std::move(ybctid));
+Status PgGateApiImpl::CacheForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid) {
+  return pg_session_->CacheForeignKeyReference(table_oid, std::move(ybctid));
 }
 
-Status PgGateApiImpl::DeleteForeignKeyReference(YBCPgOid table_id, std::string&& ybctid) {
-  return pg_session_->DeleteForeignKeyReference(table_id, std::move(ybctid));
+Status PgGateApiImpl::DeleteForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid) {
+  return pg_session_->DeleteForeignKeyReference(table_oid, std::move(ybctid));
 }
 
 void PgGateApiImpl::ClearForeignKeyReferenceCache() {
@@ -854,26 +856,26 @@ void PgGateApiImpl::DropBufferedOperations() {
 
 // Select ------------------------------------------------------------------------------------------
 
-Status PgGateApiImpl::NewSelect(const PgObjectId& table_id,
-                            const PgObjectId& index_id,
+Status PgGateApiImpl::NewSelect(const PgObjectId& table_object_id,
+                            const PgObjectId& index_object_id,
                             const PgPrepareParameters *prepare_params,
                             PgStatement **handle) {
   // Scenarios:
-  // - Sequential Scan: PgSelect to read from table_id.
-  // - Primary Scan: PgSelect from table_id. YugaByte does not have separate table for primary key.
+  // - Sequential Scan: PgSelect to read from table_object_id.
+  // - Primary Scan: PgSelect from table_object_id. YugaByte does not have separate table for primary key.
   // - Index-Only-Scan: PgSelectIndex directly from secondary index_id.
-  // - IndexScan: Use PgSelectIndex to read from index_id and then PgSelect to read from table_id.
-  //     Note that for SysTable, only one request is send for both table_id and index_id.
+  // - IndexScan: Use PgSelectIndex to read from index_id and then PgSelect to read from table_object_id.
+  //     Note that for SysTable, only one request is send for both table_object_id and index_object_id.
   *handle = nullptr;
   std::shared_ptr<PgDmlRead> stmt;
   if (prepare_params && prepare_params->index_only_scan && prepare_params->use_secondary_index) {
-    if (!index_id.IsValid()) {
+    if (!index_object_id.IsValid()) {
       return STATUS(InvalidArgument, "Cannot run query with invalid index ID");
     }
-    stmt = std::make_shared<PgSelectIndex>(pg_session_, table_id, index_id, prepare_params);
+    stmt = std::make_shared<PgSelectIndex>(pg_session_, table_object_id, index_object_id, prepare_params);
   } else {
     // For IndexScan PgSelect processing will create subquery PgSelectIndex.
-    stmt = std::make_shared<PgSelect>(pg_session_, table_id, index_id, prepare_params);
+    stmt = std::make_shared<PgSelect>(pg_session_, table_object_id, index_object_id, prepare_params);
   }
 
   RETURN_NOT_OK(stmt->Prepare());
@@ -900,11 +902,11 @@ Status PgGateApiImpl::ExecSelect(PgStatement *handle, const PgExecParameters *ex
 
 // Insert ------------------------------------------------------------------------------------------
 
-Status PgGateApiImpl::NewInsert(const PgObjectId& table_id,
+Status PgGateApiImpl::NewInsert(const PgObjectId& table_object_id,
                             const bool is_single_row_txn,
                             PgStatement **handle) {
   *handle = nullptr;
-  auto stmt = std::make_shared<PgInsert>(pg_session_, table_id, is_single_row_txn);
+  auto stmt = std::make_shared<PgInsert>(pg_session_, table_object_id, is_single_row_txn);
   RETURN_NOT_OK(stmt->Prepare());
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
@@ -939,11 +941,11 @@ Status PgGateApiImpl::InsertStmtSetWriteTime(PgStatement *handle, const uint64_t
 
 // Update ------------------------------------------------------------------------------------------
 
-Status PgGateApiImpl::NewUpdate(const PgObjectId& table_id,
+Status PgGateApiImpl::NewUpdate(const PgObjectId& table_object_id,
                             const bool is_single_row_txn,
                             PgStatement **handle) {
   *handle = nullptr;
-  auto stmt = std::make_shared<PgUpdate>(pg_session_, table_id, is_single_row_txn);
+  auto stmt = std::make_shared<PgUpdate>(pg_session_, table_object_id, is_single_row_txn);
   RETURN_NOT_OK(stmt->Prepare());
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();
@@ -959,11 +961,11 @@ Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
 
 // Delete ------------------------------------------------------------------------------------------
 
-Status PgGateApiImpl::NewDelete(const PgObjectId& table_id,
+Status PgGateApiImpl::NewDelete(const PgObjectId& table_object_id,
                             const bool is_single_row_txn,
                             PgStatement **handle) {
   *handle = nullptr;
-  auto stmt = std::make_shared<PgDelete>(pg_session_, table_id, is_single_row_txn);
+  auto stmt = std::make_shared<PgDelete>(pg_session_, table_object_id, is_single_row_txn);
   RETURN_NOT_OK(stmt->Prepare());
   RETURN_NOT_OK(AddToCurrentMemctx(stmt, handle));
   return Status::OK();

@@ -217,8 +217,8 @@ namespace gate {
 
         string client_id;
         int64_t stmt_id;
-        NamespaceId namespace_id;
-        TableId table_id;
+        std::string collection_name;
+        std::string table_id;
         // K2 SKV schema version
         uint64_t schema_version;
         // One of either key_column_values or ybctid_column_values
@@ -258,8 +258,8 @@ namespace gate {
         string client_id;
         int64_t stmt_id;
         StmtType stmt_type;
-        NamespaceId namespace_id;
-        TableName table_id;
+        std::string collection_name;
+        std::string table_id;
         uint64_t schema_version;
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
         std::shared_ptr<SqlOpExpr> ybctid_column_value;

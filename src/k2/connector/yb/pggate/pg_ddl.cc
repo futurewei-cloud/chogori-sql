@@ -48,6 +48,7 @@
 
 #include "yb/pggate/pg_ddl.h"
 #include "yb/pggate/pg_gate_typedefs.h"
+#include "yb/entities/entity_ids.h"
 
 namespace k2pg {
 namespace gate {
@@ -124,15 +125,15 @@ PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
                              const std::string& database_name,
                              const std::string& schema_name,
                              const std::string& table_name,
-                             const PgObjectId& table_id,
+                             const PgObjectId& table_object_id,
                              bool is_shared_table,
                              bool if_not_exist,
                              bool add_primary_key)
     : PgDdl(pg_session),
-      namespace_id_(GetPgsqlNamespaceId(table_id.database_oid)),
+      namespace_id_(table_object_id.GetNamespaceUuid()),
       namespace_name_(database_name),
       table_name_(table_name),
-      table_id_(table_id),
+      table_object_id_(table_object_id),
       is_pg_catalog_table_(schema_name.compare("pg_catalog") == 0 ||
                            schema_name.compare("information_schema") == 0),
       is_shared_table_(is_shared_table),
@@ -187,11 +188,11 @@ Status PgCreateTable::Exec() {
   // Construct schema.
   PgSchema schema = schema_builder_.Build();
   K2LOG_D(log::pg,
-    "Creating schema for namespace_id: {}, namespace_name: {}, table_id: {}, table_name: {}, schema: {}",
-    namespace_id_, namespace_name_, table_id_, table_name_, schema.ToString());
+    "Creating schema for namespace_id: {}, namespace_name: {}, table_object_id: {}, table_name: {}, schema: {}",
+    namespace_id_, namespace_name_, table_object_id_, table_name_, schema.ToString());
 
   // Create table.
-  const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_id_, schema,
+  const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_object_id_, schema,
     is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
@@ -216,10 +217,10 @@ Status PgCreateTable::Exec() {
 //--------------------------------------------------------------------------------------------------
 
 PgDropTable::PgDropTable(std::shared_ptr<PgSession> pg_session,
-                         const PgObjectId& table_id,
+                         const PgObjectId& table_object_id,
                          bool if_exist)
     : PgDdl(pg_session),
-      table_id_(table_id),
+      table_object_id_(table_object_id),
       if_exist_(if_exist) {
 }
 
@@ -227,8 +228,8 @@ PgDropTable::~PgDropTable() {
 }
 
 Status PgDropTable::Exec() {
-  Status s = pg_session_->DropTable(table_id_);
-  pg_session_->InvalidateTableCache(table_id_);
+  Status s = pg_session_->DropTable(table_object_id_);
+  pg_session_->InvalidateTableCache(table_object_id_);
   if (s.ok() || (s.IsNotFound() && if_exist_)) {
     return Status::OK();
   }
@@ -240,9 +241,9 @@ Status PgDropTable::Exec() {
 //--------------------------------------------------------------------------------------------------
 
 PgAlterTable::PgAlterTable(std::shared_ptr<PgSession> pg_session,
-                           const PgObjectId& table_id)
+                           const PgObjectId& table_object_id)
     : PgDdl(pg_session),
-      table_id_(table_id) {
+      table_object_id_(table_object_id) {
 }
 
 PgAlterTable::~PgAlterTable() {
@@ -273,7 +274,7 @@ Status PgAlterTable::RenameTable(const std::string& db_name, const std::string& 
 }
 
 Status PgAlterTable::Exec() {
-  pg_session_->InvalidateTableCache(table_id_);
+  pg_session_->InvalidateTableCache(table_object_id_);
   // TODO: add implementation
   return Status::OK();
 }
@@ -286,15 +287,15 @@ PgCreateIndex::PgCreateIndex(std::shared_ptr<PgSession> pg_session,
                              const std::string& database_name,
                              const std::string& schema_name,
                              const std::string& index_name,
-                             const PgObjectId& index_id,
-                             const PgObjectId& base_table_id,
+                             const PgObjectId& index_object_id,
+                             const PgObjectId& base_table_object_id,
                              bool is_shared_index,
                              bool is_unique_index,
                              const bool skip_index_backfill,
                              bool if_not_exist)
-    : PgCreateTable(pg_session, database_name, schema_name, index_name, index_id,
+    : PgCreateTable(pg_session, database_name, schema_name, index_name, index_object_id,
                     is_shared_index, if_not_exist, false /* add_primary_key */),
-      base_table_id_(base_table_id),
+      base_table_object_id_(base_table_object_id),
       is_unique_index_(is_unique_index),
       skip_index_backfill_(skip_index_backfill) {
 }
@@ -360,7 +361,7 @@ Status PgCreateIndex::Exec() {
   PgSchema schema = schema_builder_.Build();
 
   // Create table.
-  const Status s = pg_session_->CreateIndexTable(namespace_id_, namespace_name_, table_name_, table_id_, base_table_id_, schema,
+  const Status s = pg_session_->CreateIndexTable(namespace_id_, namespace_name_, table_name_, table_object_id_, base_table_object_id_, schema,
     is_unique_index_, skip_index_backfill_, is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
@@ -377,7 +378,7 @@ Status PgCreateIndex::Exec() {
         s.ToString(false /* include_file_and_line */, false /* include_code */));
   }
 
-  pg_session_->InvalidateTableCache(base_table_id_);
+  pg_session_->InvalidateTableCache(base_table_object_id_);
   return Status::OK();
 }
 
@@ -386,9 +387,9 @@ Status PgCreateIndex::Exec() {
 //--------------------------------------------------------------------------------------------------
 
 PgDropIndex::PgDropIndex(std::shared_ptr<PgSession> pg_session,
-                         const PgObjectId& index_id,
+                         const PgObjectId& index_object_id,
                          bool if_exist)
-    : PgDropTable(pg_session, index_id, if_exist) {
+    : PgDropTable(pg_session, index_object_id, if_exist) {
 }
 
 PgDropIndex::~PgDropIndex() {
@@ -396,11 +397,11 @@ PgDropIndex::~PgDropIndex() {
 
 Status PgDropIndex::Exec() {
   PgOid *base_table_oid = nullptr;
-  Status s = pg_session_->DropIndex(table_id_, base_table_oid);
-  PgObjectId base_table_id(table_id_.database_oid, *base_table_oid);
+  Status s = pg_session_->DropIndex(table_object_id_, base_table_oid);
+  PgObjectId base_table_object_id(table_object_id_.GetDatabaseOid(), *base_table_oid);
 
-  pg_session_->InvalidateTableCache(table_id_);
-  pg_session_->InvalidateTableCache(base_table_id);
+  pg_session_->InvalidateTableCache(table_object_id_);
+  pg_session_->InvalidateTableCache(base_table_object_id);
   if (s.ok() || (s.IsNotFound() && if_exist_)) {
     return Status::OK();
   }

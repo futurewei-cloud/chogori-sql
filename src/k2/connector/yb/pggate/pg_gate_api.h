@@ -141,7 +141,7 @@ void YBCPgInvalidateTableCache(
     const YBCPgOid database_oid,
     const YBCPgOid table_oid);
 
-YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_id);
+YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_uuid);
 
 // TABLE -------------------------------------------------------------------------------------------
 // Create and drop table "database_name.schema_name.table_name()".
@@ -433,13 +433,13 @@ YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg);
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
-bool YBCForeignKeyReferenceExists(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size);
+bool YBCForeignKeyReferenceExists(YBCPgOid table_oid, const char* ybctid, int64_t ybctid_size);
 
 // Add an entry to foreign key reference cache.
-YBCStatus YBCCacheForeignKeyReference(YBCPgOid table_id, const char* ybctid, int64_t ybctid_size);
+YBCStatus YBCCacheForeignKeyReference(YBCPgOid table_oid, const char* ybctid, int64_t ybctid_size);
 
 // Delete an entry from foreign key reference cache.
-YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_id, uint64_t ybctid);
+YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_oid, uint64_t ybctid);
 
 void ClearForeignKeyReferenceCache();
 

@@ -81,7 +81,7 @@ namespace gate {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
        newRequest->client_id = client_id;
        newRequest->stmt_id = stmt_id;
-       newRequest->namespace_id = namespace_id;
+       newRequest->collection_name = collection_name;
        newRequest->table_id = table_id;
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;

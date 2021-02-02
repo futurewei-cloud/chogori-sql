@@ -41,11 +41,17 @@ struct CatalogConsts {
 
     static const std::string TABLE_ID_COLUMN_NAME;
     static const std::string INDEX_ID_COLUMN_NAME;
-    static const std::string INDEXED_TABLE_ID_COLUMN_NAME;
+    static const std::string BASE_TABLE_ID_COLUMN_NAME;
+
+    static const std::string shared_table_skv_colllection_name;
+
+    static const std::string& physical_collection(const std::string& namespace_id, bool is_shared);
+
+    static bool is_on_physical_collection(const std::string& namespace_id, bool is_shared);
 };
 
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
 
-#endif //CHOGORI_SQL_DEFAULTS_H     
+#endif //CHOGORI_SQL_DEFAULTS_H

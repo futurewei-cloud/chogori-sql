@@ -53,9 +53,9 @@ namespace gate {
 
 using std::make_shared;
 
-PgSelect::PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_id,
-                   const PgObjectId& index_id, const PgPrepareParameters *prepare_params)
-    : PgDmlRead(pg_session, table_id, index_id, prepare_params) {
+PgSelect::PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id,
+                   const PgObjectId& index_object_id, const PgPrepareParameters *prepare_params)
+    : PgDmlRead(pg_session, table_object_id, index_object_id, prepare_params) {
 }
 
 PgSelect::~PgSelect() {
@@ -64,14 +64,14 @@ PgSelect::~PgSelect() {
 Status PgSelect::Prepare() {
   // Prepare target and bind descriptors.
   if (!prepare_params_.use_secondary_index) {
-    target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_id_));
+    target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_object_id_));
   } else {
-    target_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_id_));
+    target_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_object_id_));
     bind_desc_ = nullptr;
 
     // Create secondary index query.
     secondary_index_query_ =
-      std::make_shared<PgSelectIndex>(pg_session_, table_id_, index_id_, &prepare_params_);
+      std::make_shared<PgSelectIndex>(pg_session_, table_object_id_, index_object_id_, &prepare_params_);
     K2LOG_D(log::pg, "new secondary_index_query_ created.");
   }
 
@@ -106,10 +106,10 @@ Status PgSelect::PrepareSecondaryIndex() {
 }
 
 PgSelectIndex::PgSelectIndex(std::shared_ptr<PgSession> pg_session,
-                             const PgObjectId& table_id,
-                             const PgObjectId& index_id,
+                             const PgObjectId& table_object_id,
+                             const PgObjectId& index_object_id,
                              const PgPrepareParameters *prepare_params)
-    : PgDmlRead(pg_session, table_id, index_id, prepare_params) {
+    : PgDmlRead(pg_session, table_object_id, index_object_id, prepare_params) {
 }
 
 PgSelectIndex::~PgSelectIndex() {
@@ -132,7 +132,7 @@ Status PgSelectIndex::PrepareSubquery(std::shared_ptr<SqlOpReadRequest> read_req
 
 Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
   // Setup target and bind descriptor.
-  target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(index_id_));
+  target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(index_object_id_));
 
   // Allocate READ requests to send to K2 SKV.
   if (read_req) {
@@ -141,9 +141,9 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
     // case.
     DSCHECK(prepare_params_.querying_colocated_table, InvalidArgument, "Read request invalid");
     read_req_ = read_req;
-    read_req_->table_id = index_id_.GetPgTableId();
+    read_req_->table_id = index_object_id_.GetTableId();
     sql_op_ = nullptr;
-    K2LOG_D(log::pg, "PgSelectIndex prepared as secondary index subquery. sql_op_ is null. read_req pagestate is null 1 or 0? {}", (!(read_req_->paging_state) ? 1:0 ));
+    K2LOG_D(log::pg, "PgSelectIndex prepared as secondary index subquery for {}. sql_op_ is null. read_req pagestate is null 1 or 0? {}", read_req_->table_id, (!(read_req_->paging_state) ? 1:0 ));
   } else {
     auto read_op = target_desc_->NewPgsqlSelect(client_id_, stmt_id_);
     read_req_ = read_op->request();

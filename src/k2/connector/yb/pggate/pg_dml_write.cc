@@ -52,9 +52,9 @@ namespace k2pg {
 namespace gate {
 
 PgDmlWrite::PgDmlWrite(std::shared_ptr<PgSession> pg_session,
-                       const PgObjectId& table_id,
+                       const PgObjectId& table_object_id_,
                        const bool is_single_row_txn)
-    : PgDml(pg_session, table_id), is_single_row_txn_(is_single_row_txn) {
+    : PgDml(pg_session, table_object_id_), is_single_row_txn_(is_single_row_txn) {
 }
 
 PgDmlWrite::~PgDmlWrite() {
@@ -62,7 +62,7 @@ PgDmlWrite::~PgDmlWrite() {
 
 Status PgDmlWrite::Prepare() {
   // Setup descriptors for target and bind columns.
-  target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_id_));
+  target_desc_ = bind_desc_ = VERIFY_RESULT(pg_session_->LoadTable(table_object_id_));
 
   // Allocate either INSERT, UPDATE, or DELETE request.
   AllocWriteRequest();
@@ -160,7 +160,7 @@ void PgDmlWrite::AllocWriteRequest() {
   DCHECK(wop);
   wop->set_is_single_row_txn(is_single_row_txn_);
   write_req_ = wop->request();
-  sql_op_ = std::make_shared<PgWriteOp>(pg_session_, target_desc_, table_id_, std::move(wop));
+  sql_op_ = std::make_shared<PgWriteOp>(pg_session_, target_desc_, table_object_id_, std::move(wop));
 }
 
 std::shared_ptr<SqlOpExpr> PgDmlWrite::AllocColumnBindVar(PgColumn *col) {

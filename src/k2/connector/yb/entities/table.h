@@ -28,51 +28,43 @@
 
 namespace k2pg {
 namespace sql {
-    struct TableIdentifier {
-        std::string namespace_id;
-        std::string namespace_name; // Can be empty, that means the namespace has not been set yet.
-        std::string table_id;
-        std::string table_name;
-        TableIdentifier(std::string ns_id, std::string ns_name, std::string tb_id, std::string tb_name) :
-            namespace_id(ns_id), namespace_name(ns_name), table_id(tb_id), table_name(tb_name) {
-        }
-    };
 
     class TableInfo {
         public:
 
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(std::string namespace_id, std::string namespace_name, std::string table_id, std::string table_name, Schema schema) :
-            table_id_(namespace_id, namespace_name, table_id, table_name), schema_(std::move(schema)) {
+        TableInfo(std::string namespace_id, std::string namespace_name, uint32_t table_oid, std::string table_name, std::string table_uuid, Schema schema) :
+            namespace_id_(namespace_id), namespace_name_(namespace_name), table_oid_(table_oid), table_id_(PgObjectId::GetTableId(table_oid)), table_name_(table_name),
+            table_uuid_(table_uuid), schema_(std::move(schema)) {
         }
 
         const std::string& namespace_id() const {
-            return table_id_.namespace_id;
+            return namespace_id_;
         }
 
         const std::string& namespace_name() const {
-            return table_id_.namespace_name;
+            return namespace_name_;
         }
 
         const std::string& table_id() const {
-            return table_id_.table_id;
-        }
-
-        const std::string& table_name() const {
-            return table_id_.table_name;
-        }
-
-        const TableIdentifier& table_identifier() {
             return table_id_;
         }
 
-        void set_pg_oid(uint32_t pg_oid) {
-            pg_oid_ = pg_oid;
+        const std::string& table_name() const {
+            return table_name_;
         }
 
-        uint32_t pg_oid() {
-            return pg_oid_;
+        void set_table_oid(uint32_t table_oid) {
+            table_oid_ = table_oid;
+        }
+
+        uint32_t table_oid() {
+            return table_oid_;
+        }
+
+        const std::string table_uuid() {
+            return table_uuid_;
         }
 
         void set_next_column_id(int32_t next_column_id) {
@@ -124,7 +116,7 @@ namespace sql {
         }
 
         Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
-        
+
         void set_is_sys_table(bool is_sys_table) {
             is_sys_table_ = is_sys_table;
         }
@@ -133,17 +125,31 @@ namespace sql {
             return is_sys_table_;
         }
 
+        void set_is_shared_table(bool is_shared_table) {
+            is_shared_table_ = is_shared_table;
+        }
+
+        bool is_shared() {
+            return is_shared_table_;
+        }
+
         static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
-            std::string namespace_name, std::string table_id, std::string table_name);
+            std::string namespace_name, std::string table_uuid, std::string table_name);
 
         private:
-        TableIdentifier table_id_;
+        std::string namespace_id_;
+        std::string namespace_name_; // Can be empty, that means the namespace has not been set yet.
         // PG internal object id
-        uint32_t pg_oid_;
+        uint32_t table_oid_;
+        std::string table_id_;
+        std::string table_name_;
+        // cache key and it is unique cross databases
+        std::string table_uuid_;
         Schema schema_;
         IndexMap index_map_;
         int32_t next_column_id_ = 0;
         bool is_sys_table_ = false;
+        bool is_shared_table_ = false;
     };
 
 }  // namespace sql
