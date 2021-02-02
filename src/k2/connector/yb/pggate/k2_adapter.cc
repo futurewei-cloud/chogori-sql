@@ -22,14 +22,6 @@ using k2::K2TxnOptions;
 
 Status K2Adapter::Init() {
     K2LOG_I(log::pg, "Initialize adapter");
-    Config conf;
-    size_t mem = conf()["thread_mem_mb"].get<size_t>();
-    mem *= 1024 * 1024; // to bytes
-    // TODO NUMA and hugepages
-    seastar::resource::memory mem_config{.bytes = mem, .nodeid = 0};
-    std::vector<seastar::resource::memory> mem_configs;
-    mem_configs.emplace_back(mem_config);
-    seastar::memory::configure(std::move(mem_configs), false, false);
 
     return Status::OK();
 }

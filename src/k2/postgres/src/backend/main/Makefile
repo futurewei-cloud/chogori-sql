@@ -15,6 +15,6 @@ include $(top_builddir)/src/Makefile.global
 OBJS = main.o main_cpp_wrapper.cc.o
 
 main_cpp_wrapper.cc.o: main_cpp_wrapper.cc
-	$(CXX) -std=c++17 $(CPPFLAGS) -c $< -o $@
+	$(CXX) -DSEASTAR_API_LEVEL=6 -std=gnu++17 $(CPPFLAGS) -c $< -o $@
 
 include $(top_srcdir)/src/backend/common.mk
