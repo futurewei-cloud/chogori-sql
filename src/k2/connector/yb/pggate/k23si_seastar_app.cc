@@ -49,7 +49,7 @@ seastar::future<> PGK2Client::gracefulStop() {
 seastar::future<> PGK2Client::start() {
     K2LOG_I(log::k2ss, "Starting");
     // start polling the request queues only on core 0
-    if (seastar::engine().cpu_id() == 0) {
+    if (seastar::this_shard_id() == 0) {
         K2LOG_I(log::k2ss, "Poller starting");
         _poller = _poller.then([this] {
             return seastar::do_until(
@@ -262,7 +262,7 @@ seastar::future<> PGK2Client::_pollUpdateQ() {
 seastar::future<> PGK2Client::_pollForWork() {
     return seastar::when_all_succeed(
         _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ(),
-        _pollCreateCollectionQ());  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
+        _pollCreateCollectionQ()).discard_result();  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
 }
 
 }  // namespace gate
