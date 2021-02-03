@@ -42,9 +42,13 @@ std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
 // more of the key prefix.
 // lastColId: is an input/output param. We check against it to make sure we haven't seen the current field yet,
 // and we set it to the current field if we are about to process it.
+// startValues, endValues: store values that are passed in out of order so that they can be later sorted
+// and serialized to SKV in order
 Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
                            k2::dto::SKVRecord& start, k2::dto::SKVRecord& end,
-                           bool& didBranch, int& lastColId) {
+                           bool& didBranch, int& lastColId,
+                           std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& startValues,
+                           std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& endValues) {
     auto& ops = cond->getOperands();
     // we expect 2 nested expressions except for BETWEEN which has 3
     int expectedExpressions = cond->getOp() == PgExpr::Opcode::PG_EXPR_BETWEEN ? 3: 2;
@@ -60,7 +64,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         return STATUS(InvalidCommand, msg);
     }
 
-    int colId = ops[0]->getId();
+    int colId = ops[0]->getId() - 1; // Converting from 1-based attribute number to column ID
     if (colId < 0) {
         const char* msg = "column reference is for a system field";
         K2LOG_E(log::pg, "{}, got={}", msg, colId);
@@ -73,17 +77,16 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         K2LOG_E(log::pg, "{}, got={}, lastColId={}", msg, colId, lastColId);
         return STATUS(InvalidCommand, msg);
     }
-    // update the output param
-    lastColId = colId;
+
     int skvId = colId + K2Adapter::SKV_FIELD_OFFSET;
-    // rewind the cursor if necessary. Ideally, the fields come in order so this should be a no-op
+    bool saveForLater = false;
     if (start.getFieldCursor() != skvId || end.getFieldCursor() != skvId) {
         const char* msg = "column reference in leaf condition refers to non-consecutive field";
-        K2LOG_E(log::pg, "{}, got={}, start={}, end={}", msg, skvId, start.getFieldCursor(), end.getFieldCursor());
-        // TODO fix ordering when possible to avoid full table scan
-        didBranch = true;
-        return Status();
-        //return STATUS(InvalidCommand, msg);
+        K2LOG_D(log::pg, "{}, name={}, got={}, start={}, end={}", msg, ops[0]->getName(), skvId, start.getFieldCursor(), end.getFieldCursor());
+        saveForLater = true;
+    } else {
+        // update the output param
+        lastColId = colId;
     }
 
     switch (cond->getOp()) {
@@ -94,6 +97,12 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
                 return STATUS(InvalidCommand, msg);
             }
             // non-branching case. Set the value here in both start and end keys as we're limiting both bounds
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                endValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
             K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
             K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
             break;
@@ -106,6 +115,12 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
             }
             // branching case. we can only set the lower bound
             didBranch = true;
+
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
             K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
             break;
         }
@@ -117,6 +132,12 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
             }
             // branching case. we can only set the upper bound
             didBranch = true;
+
+            if (saveForLater) {
+                endValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
             K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
             break;
         }
@@ -128,6 +149,13 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
             }
             // branching case. we can set both bounds but no further prefix is possible
             didBranch = true;
+
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                endValues.push_back(std::make_pair(colId, ops[2]));
+                break;
+            }
+
             K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
             K2Adapter::SerializeValueToSKVRecord(*(ops[2]->getValue()), end);
             break;
@@ -139,6 +167,27 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         }
     }
     return Status();
+}
+
+// sorts OpExpr values by column id and serializes into SKVRecord until no more prefix can be formed
+void sortAndSerializeOpValues(std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& values,
+                                                                    k2::dto::SKVRecord& record) {
+    std::sort(values.begin(), values.end(), [] (const std::pair<int, std::shared_ptr<SqlOpExpr>>& a,
+                                                const std::pair<int, std::shared_ptr<SqlOpExpr>>& b) {
+        return a.first < b.first; }
+    );
+
+    for (const std::pair<int, std::shared_ptr<SqlOpExpr>>& value : values) {
+        int skvId = value.first + K2Adapter::SKV_FIELD_OFFSET;
+        K2LOG_D(log::pg, "late serialize, got={}, cursor={}", skvId, record.getFieldCursor());
+        K2LOG_V(log::pg, "late serialize, schema={}", *(record.schema));
+        if (record.getFieldCursor() != skvId) {
+            K2LOG_W(log::pg, "Ignoring op in condition expression because it is not a prefix");
+            return;
+        }
+
+        K2Adapter::SerializeValueToSKVRecord(*(value.second->getValue()), record);
+    }
 }
 
 // this method processes the given top-level condition and sets the start/end boundaries based on the condition
@@ -154,6 +203,10 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
         K2LOG_E(log::pg, "{}", msg);
         return STATUS(InvalidCommand, msg);
     }
+
+    // If ops come in out of schema order, store here for later sorting and serialization to SKV records
+    std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>> startValues;
+    std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>> endValues;
 
     int lastColId = -1; // make sure we're setting the key fields in increasing order
     bool didBranch = false;
@@ -171,11 +224,14 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
             return STATUS(InvalidCommand, msg);
         }
         auto cond = expr->getCondition();
-        auto status = handleLeafCondition(expr->getCondition(), start, end, didBranch, lastColId);
+        auto status = handleLeafCondition(expr->getCondition(), start, end, didBranch, lastColId, startValues, endValues);
         if (!status.ok()) {
             return status;
         }
     }
+
+    sortAndSerializeOpValues(startValues, start);
+    sortAndSerializeOpValues(endValues, end);
 
     return Status::OK();
 }
@@ -676,6 +732,10 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         record.serializeNext<k2::String>(request.table_id);
         record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
+            if (expr->getType() == SqlOpExpr::ExprType::UNBOUND) {
+                K2LOG_D(log::pg, "Stopping key serialization due to unbound value");
+                break;
+            }
             if (!expr->isValueType()) {
                 throw std::logic_error("Non value type in key_column_values");
             }
