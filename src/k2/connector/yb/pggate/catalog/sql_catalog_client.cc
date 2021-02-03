@@ -22,7 +22,6 @@ Copyright(c) 2020 Futurewei Cloud
 */
 
 #include "yb/pggate/catalog/sql_catalog_client.h"
-#include "yb/pggate/catalog/stopwatch.h"
 
 namespace k2pg {
 namespace sql {
@@ -30,9 +29,9 @@ namespace catalog {
 
 Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   GetInitDbRequest request;
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   GetInitDbResponse response = catalog_manager_->IsInitDbDone(request);
-  K2LOG_I(log::catalog, "IsInitDbDone took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "IsInitDbDone took {} microseconds", k2::nsec(k2::Clock::now() - start));
   if(!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to check init_db state due to code $0 and message $1", response.status.code, response.status.errorMessage);
@@ -65,9 +64,9 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
     .creatorRoleName = creator_role_name,
     .nextPgOid = next_pg_oid
   };
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
-  K2LOG_I(log::catalog, "CreateNamespace {} took {} microseconds", namespace_name, stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateNamespace {} took {} microseconds", namespace_name, k2::nsec(k2::Clock::now() - start));
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to create namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
@@ -104,9 +103,9 @@ Status SqlCatalogClient::CreateTable(
     .isSharedTable = is_shared_table,
     .isNotExist = if_not_exist
   };
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   CreateTableResponse response = catalog_manager_->CreateTable(request);
-  K2LOG_I(log::catalog, "CreateTable {} in {} took {} microseconds", table_name, namespace_name, stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateTable {} in {} took {} microseconds", table_name, namespace_name, k2::nsec(k2::Clock::now() - start));
   if (!response.status.IsSucceeded()) {
     return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
@@ -140,9 +139,9 @@ Status SqlCatalogClient::CreateIndexTable(
     .isSharedTable = is_shared_table,
     .isNotExist = if_not_exist
   };
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
-  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {} microseconds", table_name, namespace_name, stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {} microseconds", table_name, namespace_name, k2::nsec(k2::Clock::now() - start));
   if (!response.status.IsSucceeded()) {
     return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
@@ -184,9 +183,9 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
     .namespaceOid = database_oid,
     .tableOid = table_oid
   };
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
-  K2LOG_I(log::catalog, "GetTableSchema {} : {} took {} microseconds", database_oid, table_oid, stopwatch.duration());
+  K2LOG_I(log::catalog, "GetTableSchema {} : {} took {} microseconds", database_oid, table_oid, k2::nsec(k2::Clock::now() - start));
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
@@ -206,9 +205,9 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
     .nextOid = next_oid,
     .count = count
   };
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
-  K2LOG_I(log::catalog, "ReservePgOid took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "ReservePgOid took {} microseconds", k2::nsec(k2::Clock::now() - start));
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to reserve PG Oids for database $0 due to code $1 and message $2", database_oid, response.status.code, response.status.errorMessage);
@@ -220,9 +219,9 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
 
 Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
   GetCatalogVersionRequest request;
-  Stopwatch stopwatch;
+  auto start = k2::Clock::now();
   GetCatalogVersionResponse response = catalog_manager_->GetCatalogVersion(request);
-  K2LOG_I(log::catalog, "GetCatalogVersion took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "GetCatalogVersion took {} microseconds", k2::nsec(k2::Clock::now() - start));
   if(!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to get catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
