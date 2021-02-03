@@ -67,7 +67,7 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
   };
   Stopwatch stopwatch;
   CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
-  K2LOG_I(log::catalog, "CreateNamespace took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateNamespace {} took {} microseconds", namespace_name, stopwatch.duration());
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to create namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
@@ -106,7 +106,7 @@ Status SqlCatalogClient::CreateTable(
   };
   Stopwatch stopwatch;
   CreateTableResponse response = catalog_manager_->CreateTable(request);
-  K2LOG_I(log::catalog, "CreateTable took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateTable {} in {} took {} microseconds", table_name, namespace_name, stopwatch.duration());
   if (!response.status.IsSucceeded()) {
     return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
@@ -142,7 +142,7 @@ Status SqlCatalogClient::CreateIndexTable(
   };
   Stopwatch stopwatch;
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
-  K2LOG_I(log::catalog, "CreateIndexTable took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {} microseconds", table_name, namespace_name, stopwatch.duration());
   if (!response.status.IsSucceeded()) {
     return STATUS_FORMAT(RuntimeError,
         "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
@@ -186,7 +186,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   };
   Stopwatch stopwatch;
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
-  K2LOG_I(log::catalog, "GetTableSchema took {} microseconds", stopwatch.duration());
+  K2LOG_I(log::catalog, "GetTableSchema {} : {} took {} microseconds", database_oid, table_oid, stopwatch.duration());
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
