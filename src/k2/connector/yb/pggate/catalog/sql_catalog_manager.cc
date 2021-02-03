@@ -573,29 +573,47 @@ namespace catalog {
         new_table_info->set_is_shared_table(request.isSharedTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
 
-        // TODO: add logic for shared table
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         K2LOG_D(log::catalog, "Create or update table id: {}, name: {} in {}, shared: {}", new_table_info->table_id(), request.tableName,
             namespace_info->GetNamespaceId(), request.isSharedTable);
-        CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
-        if (result.status.IsSucceeded()) {
-            // commit transaction
+        try {
+            CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
+            if (!result.status.IsSucceeded()) {
+                // abort the transaction
+                context->Abort();
+                K2LOG_E(log::catalog, "Failed to create table id: {}, name: {} in {}, due to {}", new_table_info->table_id(), new_table_info->table_name(),
+                    namespace_info->GetNamespaceId(), result.status);
+                response.status = std::move(result.status);
+                return response;
+            }
+
+            // try to increase catalog version
+            std::shared_ptr<SessionTransactionContext> v_context = NewTransactionContext();
+            RStatus version_result = IncreaseCatalogVersion(v_context);
+            if (!version_result.IsSucceeded()) {
+                v_context->Abort();
+                context->Abort();
+                response.status = std::move(version_result);
+                return response;
+            }
+
+            // commit transactions
+            v_context->Commit();
             context->Commit();
-            K2LOG_D(log::catalog, "Created table {} in {}, with schema version {}", new_table_info->table_id(), namespace_info->GetNamespaceId(), schema_version);
+            K2LOG_D(log::catalog, "Created table id: {}, name: {} in {}, with schema version {}", new_table_info->table_id(), new_table_info->table_name(),
+                namespace_info->GetNamespaceId(), schema_version);
             // update table caches
             UpdateTableCache(new_table_info);
-            // increase catalog version
-            IncreaseCatalogVersion();
+
             // return response
             response.status.Succeed();
             response.tableInfo = new_table_info;
-        } else {
-            // abort the transaction
+        }  catch (const std::exception& e) {
             context->Abort();
-            K2LOG_E(log::catalog, "Failed to create table {} in {}, due to {}", new_table_info->table_id(), namespace_info->GetNamespaceId(), result.status);
-            response.status = std::move(result.status);
+            response.status.code = StatusCode::RUNTIME_ERROR;
+            response.status.errorMessage = e.what();
+            K2LOG_E(log::catalog, "Failed to create table {} due to {} in {}", request.tableName, response.status, namespace_info->GetNamespaceId());
         }
-
         return response;
     }
 
@@ -699,12 +717,21 @@ namespace catalog {
             std::shared_ptr<IndexInfo> new_index_info_ptr = std::make_shared<IndexInfo>(new_index_info);
             AddIndexCache(new_index_info_ptr);
 
-            // increase catalog version
-            IncreaseCatalogVersion();
-
             if (!request.skipIndexBackfill) {
                 // TODO: add logic to backfill the index
+                K2LOG_W(log::catalog, "Index backfill is not supported yet");
             }
+
+            // try to increase catalog version
+            std::shared_ptr<SessionTransactionContext> v_context = NewTransactionContext();
+            RStatus version_result = IncreaseCatalogVersion(v_context);
+            if (!version_result.IsSucceeded()) {
+                v_context->Abort();
+                context->Abort();
+                response.status = std::move(version_result);
+                return response;
+            }
+            v_context->Commit();
             context->Commit();
             response.indexInfo = new_index_info_ptr;
             response.status.Succeed();
@@ -1233,14 +1260,21 @@ namespace catalog {
         return context;
     }
 
-    void SqlCatalogManager::IncreaseCatalogVersion() {
+    RStatus SqlCatalogManager::IncreaseCatalogVersion(std::shared_ptr<SessionTransactionContext> context) {
+        RStatus response;
         catalog_version_++;
         // need to update the catalog version on SKV
         // the update frequency could be reduced once we have a single or a quorum of catalog managers
         ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
-        std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
-        context->Commit();
+        UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
+        if (!result.status.IsSucceeded()) {
+            K2LOG_D(log::catalog, "Failed to update catalog version due to {}", result.status);
+            response = std::move(result.status);
+            catalog_version_--;
+            return response;
+        }
+        response.Succeed();
+        return response;
     }
 
     IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,

@@ -337,7 +337,7 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> NewTransactionContext();
 
-        void IncreaseCatalogVersion();
+        RStatus IncreaseCatalogVersion(std::shared_ptr<SessionTransactionContext> context);
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
