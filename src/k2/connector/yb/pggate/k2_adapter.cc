@@ -682,6 +682,11 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
         K2Adapter::SerializeValueToSKVRecord(*(column.expr->getValue()), record);
     }
 
+    // For partial updates, need to explicitly skip remaining columns
+    while (record.getFieldCursor() != record.schema->fields.size()) {
+        record.serializeNull();
+    }
+
     return fieldsForUpdate;
 }
 
