@@ -171,7 +171,8 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         char* plaintext;
         // Calls YBCDatumToDecimalText in ybctype.c
         type_entity->datum_to_yb(datum, &plaintext, nullptr);
-        data_.slice_val_ = std::string(plaintext);
+        yb::util::Decimal yb_decimal(plaintext);
+        data_.slice_val_ = yb_decimal.EncodeToComparable();
       }
       break;
 

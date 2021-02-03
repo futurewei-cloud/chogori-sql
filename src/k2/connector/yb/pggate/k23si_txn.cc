@@ -115,15 +115,12 @@ std::future<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
     auto result = qr.prom.get_future();
 
     K2LOG_D(log::pg,
-        "partial write: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}, kkey-pk={}, kkey-rk={}",
+        "partial write: mtr={}, record={}, kkey-pk={}, kkey-rk={}, fieldsForUpdate={}",
         qr.mtr,
-        qr.record.collectionName,
-        qr.record.schema->name,
-        qr.record.schema->version,
-        qr.record.getPartitionKey(),
-        qr.record.getRangeKey(),
+        qr.record,
         qr.key.partitionKey,
-        qr.key.rangeKey);
+        qr.key.rangeKey,
+        qr.fieldsForUpdate);
     pushQ(updateTxQ, std::move(qr));
     return result;
 }
