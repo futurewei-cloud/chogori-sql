@@ -80,7 +80,10 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     if (start.getFieldCursor() != skvId || end.getFieldCursor() != skvId) {
         const char* msg = "column reference in leaf condition refers to non-consecutive field";
         K2LOG_E(log::pg, "{}, got={}, start={}, end={}", msg, skvId, start.getFieldCursor(), end.getFieldCursor());
-        return STATUS(InvalidCommand, msg);
+        // TODO fix ordering when possible to avoid full table scan
+        didBranch = true;
+        return Status();
+        //return STATUS(InvalidCommand, msg);
     }
 
     switch (cond->getOp()) {
@@ -672,7 +675,12 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
 
         // Assumes field ids need to be offset for the implicit tableID and indexID SKV fields
         uint32_t skvIndex = column.column_id + SKV_FIELD_OFFSET;
-
+        if (skvIndex < record.schema->partitionKeyFields.size() &&
+                        record.getFieldCursor() >= record.schema->partitionKeyFields.size()) {
+            // PG gave us both rowid and the columns for key fields, so skip the column
+            // TODO why does this happen? Is something else wrong?
+            continue;
+        }
         while (record.getFieldCursor() != skvIndex) {
             record.serializeNull();
         }
@@ -683,7 +691,7 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
     }
 
     // For partial updates, need to explicitly skip remaining columns
-    while (record.getFieldCursor() != record.schema->fields.size()) {
+    while (record.getFieldCursor() < record.schema->fields.size()) {
         record.serializeNull();
     }
 
