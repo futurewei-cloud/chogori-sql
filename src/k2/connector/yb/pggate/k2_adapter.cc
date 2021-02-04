@@ -77,14 +77,15 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         K2LOG_E(log::pg, "{}, got={}, lastColId={}", msg, colId, lastColId);
         return STATUS(InvalidCommand, msg);
     }
-    // update the output param
+
     int skvId = colId + K2Adapter::SKV_FIELD_OFFSET;
     bool saveForLater = false;
     if (start.getFieldCursor() != skvId || end.getFieldCursor() != skvId) {
         const char* msg = "column reference in leaf condition refers to non-consecutive field";
-        K2LOG_D(log::pg, "{}, got={}, start={}, end={}", msg, skvId, start.getFieldCursor(), end.getFieldCursor());
+        K2LOG_I(log::pg, "{}, got={}, start={}, end={}", msg, skvId, start.getFieldCursor(), end.getFieldCursor());
         saveForLater = true;
     } else {
+        // update the output param
         lastColId = colId;
     }
 
@@ -177,6 +178,7 @@ void sortAndSerializeOpValues(std::vector<std::shared_ptr<SqlOpExpr>>& values, k
 
     for (const std::shared_ptr<SqlOpExpr>& value : values) {
         int skvId = value->getId() + K2Adapter::SKV_FIELD_OFFSET;
+        K2LOG_I(log::pg, "late serialize, got={}, cursor={}", skvId, record.getFieldCursor());
         if (record.getFieldCursor() != skvId) {
             K2LOG_E(log::pg, "Ignoring op in condition expression because it is not a prefix");
             return;
