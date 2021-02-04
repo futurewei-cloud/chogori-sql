@@ -106,6 +106,8 @@ class SqlCatalogClient {
 
     CHECKED_STATUS GetCatalogVersion(uint64_t *pg_catalog_version);
 
+    CHECKED_STATUS IncrementCatalogVersion();
+
     private:
     std::shared_ptr<SqlCatalogManager> catalog_manager_;
 };

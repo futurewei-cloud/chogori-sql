@@ -114,6 +114,9 @@ Status PgDmlWrite::Exec(bool force_non_bufferable) {
     rows_affected_count_ = VERIFY_RESULT(sql_op_->GetRowsAffectedCount());
   }
 
+  if (ysql_catalog_change_) {
+    RETURN_NOT_OK(pg_session_->GetCatalogClient()->IncrementCatalogVersion());
+  }
   return Status::OK();
 }
 

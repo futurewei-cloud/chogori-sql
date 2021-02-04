@@ -261,6 +261,14 @@ namespace catalog {
         uint32_t endOid;
     };
 
+    struct IncrementCatalogVersionRequest {
+    };
+
+    struct IncrementCatalogVersionResponse {
+        RStatus status;
+        uint64_t version;
+    };
+
     class SqlCatalogManager : public std::enable_shared_from_this<SqlCatalogManager> {
 
     public:
@@ -283,6 +291,8 @@ namespace catalog {
         GetInitDbResponse IsInitDbDone(const GetInitDbRequest& request);
 
         GetCatalogVersionResponse GetCatalogVersion(const GetCatalogVersionRequest& request);
+
+        IncrementCatalogVersionResponse IncrementCatalogVersion(const IncrementCatalogVersionRequest& request);
 
         CreateNamespaceResponse CreateNamespace(const CreateNamespaceRequest& request);
 
@@ -336,8 +346,6 @@ namespace catalog {
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
         std::shared_ptr<SessionTransactionContext> NewTransactionContext();
-
-        RStatus IncreaseCatalogVersion(std::shared_ptr<SessionTransactionContext> context);
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
