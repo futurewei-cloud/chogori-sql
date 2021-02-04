@@ -87,10 +87,10 @@ namespace gate {
             value_ = value;
         }
 
-        void setColumnId(int32_t id, std::string col_name) {
+        void setColumnId(int32_t id, const std::string& col_name) {
             type_ = ExprType::COLUMN_ID;
             id_ = id;
-            attr_name_ = std::move(col_name);
+            attr_name_ = col_name;
         }
 
         void setBindId(int32_t id) {
@@ -105,7 +105,7 @@ namespace gate {
 
         void setCondition(std::shared_ptr<SqlOpCondition> condition) {
             type_ = ExprType::CONDITION;
-            condition_ = std::move(condition);
+            condition_ = condition;
         }
 
         void addListValue(std::shared_ptr<SqlValue> value) {
@@ -133,7 +133,7 @@ namespace gate {
             return id_;
         }
 
-        std::string getName() {
+        const std::string& getName() {
             return attr_name_;
         }
 
