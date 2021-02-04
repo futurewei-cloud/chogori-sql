@@ -310,6 +310,10 @@ class PgSession {
     return k2_adapter_->GetRowId(namespace_id, table_id, schema_version, key_values);
   }
 
+  std::shared_ptr<SqlCatalogClient> GetCatalogClient() {
+    return catalog_client_;
+  }
+
   private:
   // Helper class to run multiple operations on single session.
   // This class allows to keep implementation of RunAsync template method simple

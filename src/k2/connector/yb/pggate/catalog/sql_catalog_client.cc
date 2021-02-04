@@ -185,7 +185,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   };
   auto start = k2::Clock::now();
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
-  K2LOG_I(log::catalog, "GetTableSchema {} : {} took {}", database_oid, table_oid, k2::Clock::now() - start);
+  K2LOG_I(log::catalog, "GetTableSchema ({} : {}) took {}", database_oid, table_oid, k2::Clock::now() - start);
   if (!response.status.IsSucceeded()) {
      return STATUS_FORMAT(RuntimeError,
          "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
@@ -227,10 +227,20 @@ Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
          "Failed to get catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
   }
   *pg_catalog_version = response.catalogVersion;
-
   return Status::OK();
 }
 
+Status SqlCatalogClient::IncrementCatalogVersion() {
+  IncrementCatalogVersionRequest request;
+  auto start = k2::Clock::now();
+  IncrementCatalogVersionResponse response = catalog_manager_->IncrementCatalogVersion(request);
+  K2LOG_I(log::catalog, "IncrementCatalogVersion took {}", k2::Clock::now() - start);
+  if(!response.status.IsSucceeded()) {
+     return STATUS_FORMAT(RuntimeError,
+         "Failed to increase catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
+  }
+  return Status::OK();
+}
 } // namespace catalog
 }  // namespace sql
 }  // namespace k2pg

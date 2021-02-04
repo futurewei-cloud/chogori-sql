@@ -48,7 +48,7 @@ namespace catalog {
     }
 
     Status SqlCatalogManager::Start() {
-        K2LOG_D(log::catalog, "Starting Catalog Manager...");
+        K2LOG_I(log::catalog, "Starting Catalog Manager...");
         CHECK(!initted_.load(std::memory_order_acquire));
 
         std::shared_ptr<SessionTransactionContext> ci_context = NewTransactionContext();
@@ -58,7 +58,7 @@ namespace catalog {
             if (ciresp.clusterInfo != nullptr) {
                 init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
                 catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
-                K2LOG_D(log::catalog, "Loaded cluster info record succeeded");
+                K2LOG_I(log::catalog, "Loaded cluster info record succeeded, init_db_done: {}, catalog_version: {}", init_db_done_, catalog_version_);
             } else {
                 ci_context->Abort();  // no difference either abort or commit
                 K2LOG_W(log::catalog, "Empty cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization");
@@ -87,6 +87,7 @@ namespace catalog {
                     // cache namespaces by namespace id and namespace name
                     namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
                     namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
+                    K2LOG_I(log::catalog, "Loaded namespace id: {}, name: {}", ns_ptr->GetNamespaceId(), ns_ptr->GetNamespaceName());
                 }
             } else {
                 K2LOG_D(log::catalog, "namespaces are empty");
@@ -98,20 +99,19 @@ namespace catalog {
         }
 
         initted_.store(true, std::memory_order_release);
-        K2LOG_D(log::catalog, "Catalog Manager started up successfully");
+        K2LOG_I(log::catalog, "Catalog Manager started up successfully");
         return Status::OK();
     }
 
     void SqlCatalogManager::Shutdown() {
-        K2LOG_D(log::catalog, "SQL CatalogManager shutting down...");
+        K2LOG_I(log::catalog, "SQL CatalogManager shutting down...");
 
         bool expected = true;
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
             // TODO: add shut down steps
-
         }
 
-        K2LOG_D(log::catalog, "SQL CatalogManager shut down complete. Bye!");
+        K2LOG_I(log::catalog, "SQL CatalogManager shut down complete. Bye!");
     }
 
     // Called only once during PG initDB
@@ -273,6 +273,44 @@ namespace catalog {
         K2LOG_D(log::catalog, "Returned catalog version {}", catalog_version_);
         response.catalogVersion = catalog_version_;
         response.status.Succeed();
+        return response;
+    }
+
+    IncrementCatalogVersionResponse SqlCatalogManager::IncrementCatalogVersion(const IncrementCatalogVersionRequest& request) {
+        std::lock_guard<std::mutex> l(lock_);
+        IncrementCatalogVersionResponse response;
+        std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
+        // TODO: use a background thread to fetch the ClusterInfo record periodically instead of fetching it for each call
+        GetClusterInfoResult read_result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
+        if (!read_result.status.IsSucceeded()) {
+            K2LOG_E(log::catalog, "Failed to check cluster info due to {}", read_result.status);
+            context->Abort();
+            response.status = std::move(read_result.status);
+            return response;
+        }
+        if (read_result.clusterInfo == nullptr) {
+            context->Abort();
+            response.status.errorMessage = "Cluster Info record is empty";
+            response.status.code = StatusCode::NOT_FOUND;
+            return response;
+        }
+        K2LOG_D(log::catalog, "Found SKV catalog version: {}", read_result.clusterInfo->GetCatalogVersion());
+        catalog_version_ = read_result.clusterInfo->GetCatalogVersion() + 1;
+        // need to update the catalog version on SKV
+        // the update frequency could be reduced once we have a single or a quorum of catalog managers
+        ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
+        UpdateClusterInfoResult update_result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
+        if (!update_result.status.IsSucceeded()) {
+            context->Abort();
+            response.status = std::move(update_result.status);
+            catalog_version_ = read_result.clusterInfo->GetCatalogVersion();
+            K2LOG_D(log::catalog, "Failed to update catalog version due to {}, revert catalog version to {}", update_result.status, catalog_version_);
+            return response;
+        }
+        context->Commit();
+        response.version = catalog_version_;
+        response.status.Succeed();
+        K2LOG_D(log::catalog, "Increase catalog version to {}", catalog_version_);
         return response;
     }
 
@@ -587,18 +625,7 @@ namespace catalog {
                 return response;
             }
 
-            // try to increase catalog version
-            std::shared_ptr<SessionTransactionContext> v_context = NewTransactionContext();
-            RStatus version_result = IncreaseCatalogVersion(v_context);
-            if (!version_result.IsSucceeded()) {
-                v_context->Abort();
-                context->Abort();
-                response.status = std::move(version_result);
-                return response;
-            }
-
             // commit transactions
-            v_context->Commit();
             context->Commit();
             K2LOG_D(log::catalog, "Created table id: {}, name: {} in {}, with schema version {}", new_table_info->table_id(), new_table_info->table_name(),
                 namespace_info->GetNamespaceId(), schema_version);
@@ -722,16 +749,6 @@ namespace catalog {
                 K2LOG_W(log::catalog, "Index backfill is not supported yet");
             }
 
-            // try to increase catalog version
-            std::shared_ptr<SessionTransactionContext> v_context = NewTransactionContext();
-            RStatus version_result = IncreaseCatalogVersion(v_context);
-            if (!version_result.IsSucceeded()) {
-                v_context->Abort();
-                context->Abort();
-                response.status = std::move(version_result);
-                return response;
-            }
-            v_context->Commit();
             context->Commit();
             response.indexInfo = new_index_info_ptr;
             response.status.Succeed();
@@ -1127,7 +1144,7 @@ namespace catalog {
             K2LOG_D(log::catalog,
                 "Catalog version update: version on SKV is too old. New: {}, Old: {}",
                  new_version, local_catalog_version);
-            ClusterInfo cluster_info(cluster_id_, init_db_done_, local_catalog_version);
+            ClusterInfo cluster_info(cluster_id_, local_catalog_version, init_db_done_);
             K2LOG_D(log::catalog, "Updating catalog version on SKV to {}", new_version);
             UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
             if (!result.status.IsSucceeded()) {
@@ -1258,23 +1275,6 @@ namespace catalog {
         std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(txn_future.get());
         std::shared_ptr<SessionTransactionContext> context = std::make_shared<SessionTransactionContext>(txn);
         return context;
-    }
-
-    RStatus SqlCatalogManager::IncreaseCatalogVersion(std::shared_ptr<SessionTransactionContext> context) {
-        RStatus response;
-        catalog_version_++;
-        // need to update the catalog version on SKV
-        // the update frequency could be reduced once we have a single or a quorum of catalog managers
-        ClusterInfo cluster_info(cluster_id_, init_db_done_, catalog_version_);
-        UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
-        if (!result.status.IsSucceeded()) {
-            K2LOG_D(log::catalog, "Failed to update catalog version due to {}", result.status);
-            response = std::move(result.status);
-            catalog_version_--;
-            return response;
-        }
-        response.Succeed();
-        return response;
     }
 
     IndexInfo SqlCatalogManager::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
