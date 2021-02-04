@@ -93,6 +93,10 @@ namespace gate {
             attr_name_ = col_name;
         }
 
+        void setColumnName(const std::string& col_name) {
+            attr_name_ = col_name;
+        }
+
         void setBindId(int32_t id) {
             type_ = ExprType::BIND_ID;
             id_ = id;

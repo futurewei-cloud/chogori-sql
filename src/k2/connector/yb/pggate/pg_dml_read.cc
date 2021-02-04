@@ -150,6 +150,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
     condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_EQ);
 
     std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+    op1_var->setColumnName(col->attr_name());
     condition_expr_var->addOperand(op1_var);
 
     std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
@@ -190,6 +191,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
     if (attr_value_end != nullptr) {
       condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_BETWEEN);
       std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+      op1_var->setColumnName(col->attr_name());
       condition_expr_var->addOperand(op1_var);
 
       std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
@@ -202,6 +204,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
     } else {
       condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_GE);
       std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+      op1_var->setColumnName(col->attr_name());
       condition_expr_var->addOperand(op1_var);
 
       std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
@@ -213,6 +216,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
     if (attr_value_end != nullptr) {
       condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_LE);
       std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+      op1_var->setColumnName(col->attr_name());
       condition_expr_var->addOperand(op1_var);
 
       std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
@@ -254,6 +258,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
     std::shared_ptr<SqlOpCondition> doc_condition = std::make_shared<SqlOpCondition>();
     doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
     std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+    op1_var->setColumnName(col->attr_name());
     doc_condition->addOperand(op1_var);
     bind_var->setCondition(doc_condition);
 
@@ -284,6 +289,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
     std::shared_ptr<SqlOpCondition> doc_condition = AllocColumnBindConditionExprVar(col);
     doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
     std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
+    op1_var->setColumnName(col->attr_name());
     doc_condition->addOperand(op1_var);
     std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
     doc_condition->addOperand(op2_var);
