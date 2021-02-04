@@ -429,14 +429,14 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
     auto start = k2::Clock::now();
     std::future<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
-    K2LOG_I(log::pg, "GetSchema took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "GetSchema took {}", k2::Clock::now() - start);
     return result;
 }
 
 std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
     auto start = k2::Clock::now();
     std::future<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
-    K2LOG_I(log::pg, "CreateSchema took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "CreateSchema took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -479,7 +479,7 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
     };
 
     auto result = k23si_->createCollection(std::move(createCollectionReq));
-    K2LOG_I(log::pg, "CreateCollection took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "CreateCollection took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -487,7 +487,7 @@ std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& c
                                                      const std::string& schemaName) {
     auto start = k2::Clock::now();
     auto result = k23si_->createScanRead(collectionName, schemaName);
-    K2LOG_I(log::pg, "CreateScanRead took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "CreateScanRead took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -506,13 +506,13 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
         case PgOpTemplate::WRITE: {
             K2LOG_D(log::pg, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
             auto result = handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
-            K2LOG_I(log::pg, "Exec took {}", k2::Clock::now() - start);
+            K2LOG_D(log::pg, "Exec took {}", k2::Clock::now() - start);
             return result;
         } break;
         case PgOpTemplate::READ: {
             K2LOG_D(log::pg, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
             auto result = handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
-            K2LOG_I(log::pg, "Exec took {}", k2::Clock::now() - start);
+            K2LOG_D(log::pg, "Exec took {}", k2::Clock::now() - start);
             return result;
         } break;
         default:
@@ -556,7 +556,7 @@ std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, con
             prom->set_exception(e);
         }
     });
-    K2LOG_I(log::pg, "BatchExec took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "BatchExec took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -577,7 +577,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
-    K2LOG_I(log::pg, "GetRowId by request took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "GetRowId by request took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
@@ -601,7 +601,7 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
     K2LOG_D(log::pg, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
-    K2LOG_I(log::pg, "GetRowId took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "GetRowId took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
@@ -614,7 +614,7 @@ std::future<K23SITxn> K2Adapter::beginTransaction() {
     options.deadline = k2::Duration(60000s);
     //options.priority = k2::dto::TxnPriority::Medium;
     auto result = k23si_->beginTxn(options);
-    K2LOG_I(log::pg, "beginTransaction took {}", k2::Clock::now() - start);
+    K2LOG_D(log::pg, "beginTransaction took {}", k2::Clock::now() - start);
     return result;
 }
 
