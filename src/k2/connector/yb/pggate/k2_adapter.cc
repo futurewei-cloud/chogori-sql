@@ -427,15 +427,22 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 }
 
 std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
-  return k23si_->getSchema(collectionName, schemaName, schemaVersion);
+    auto start = k2::Clock::now();
+    std::future<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
+    K2LOG_D(log::pg, "GetSchema took {}", k2::Clock::now() - start);
+    return result;
 }
 
 std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
-  return k23si_->createSchema(collectionName, *schema.get());
+    auto start = k2::Clock::now();
+    std::future<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
+    K2LOG_D(log::pg, "CreateSchema took {}", k2::Clock::now() - start);
+    return result;
 }
 
 std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
 {
+    auto start = k2::Clock::now();
     K2LOG_I(log::pg, "Create collection: name={}, ns={}", collection_name, nsName);
     Config conf;
 
@@ -471,15 +478,21 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
         .rangeEnds = std::move(rangeEnds)
     };
 
-    return k23si_->createCollection(std::move(createCollectionReq));
+    auto result = k23si_->createCollection(std::move(createCollectionReq));
+    K2LOG_D(log::pg, "CreateCollection took {}", k2::Clock::now() - start);
+    return result;
 }
 
 std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName) {
-  return k23si_->createScanRead(collectionName, schemaName);
+    auto start = k2::Clock::now();
+    auto result = k23si_->createScanRead(collectionName, schemaName);
+    K2LOG_V(log::pg, "CreateScanRead took {}", k2::Clock::now() - start);
+    return result;
 }
 
 std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
+    auto start = k2::Clock::now();
     // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
     // 2) call read or write on k23SITxn
     // 3) create create a runner in a thread pool to check the response of the SKV call
@@ -490,18 +503,25 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
     //   c) set the value for future
     op->allocateResponse();
     switch (op->type()) {
-        case PgOpTemplate::WRITE:
+        case PgOpTemplate::WRITE: {
             K2LOG_D(log::pg, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
-            return handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
-        case PgOpTemplate::READ:
+            auto result = handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
+            K2LOG_V(log::pg, "Exec took {}", k2::Clock::now() - start);
+            return result;
+        } break;
+        case PgOpTemplate::READ: {
             K2LOG_D(log::pg, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
-            return handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
+            auto result = handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
+            K2LOG_V(log::pg, "Exec took {}", k2::Clock::now() - start);
+            return result;
+        } break;
         default:
           throw new std::logic_error("Unsupported op template type");
     }
 }
 
 std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
+    auto start = k2::Clock::now();
     // same as the above except that send multiple requests and need to handle multiple futures from SKV
     // but only return a single future to this method caller. Return Status will be OK all Execs are
     // successful, otherwise Status will be one of the failed Execs
@@ -536,11 +556,12 @@ std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, con
             prom->set_exception(e);
         }
     });
-
+    K2LOG_V(log::pg, "BatchExec took {}", k2::Clock::now() - start);
     return result;
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
+    auto start = k2::Clock::now();
     // either use the virtual row id defined in ybctid_column_value field
     // if it has been set or calculate the row id based on primary key values
     // in key_column_values in the request
@@ -556,10 +577,12 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
+    K2LOG_V(log::pg, "GetRowId by request took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
 std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    auto start = k2::Clock::now();
     std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
@@ -578,17 +601,21 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
     K2LOG_D(log::pg, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
+    K2LOG_V(log::pg, "GetRowId took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
 std::future<K23SITxn> K2Adapter::beginTransaction() {
+    auto start = k2::Clock::now();
     k2::K2TxnOptions options{};
     // use default values for now
     // TODO: read from configuration/env files
     // Actual partition request deadline is min of this and command line option
     options.deadline = k2::Duration(60000s);
     //options.priority = k2::dto::TxnPriority::Medium;
-    return k23si_->beginTxn(options);
+    auto result = k23si_->beginTxn(options);
+    K2LOG_V(log::pg, "beginTransaction took {}", k2::Clock::now() - start);
+    return result;
 }
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
