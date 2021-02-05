@@ -97,6 +97,8 @@ and task state checking APIs later by using thread pools.
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
 #include "yb/pggate/catalog/table_info_handler.h"
+#include "yb/pggate/catalog/background_task.h"
+
 #include "catalog_log.h"
 
 namespace k2pg {
@@ -321,8 +323,6 @@ namespace catalog {
 
         mutable std::mutex lock_;
 
-        RStatus UpdateCatalogVersion(std::shared_ptr<SessionTransactionContext> context, uint64_t new_version);
-
         void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
 
         void UpdateTableCache(std::shared_ptr<TableInfo> table_info);
@@ -353,6 +353,8 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
 
         std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
+
+        void CheckCatalogVersion();
 
     private:
         // cluster identifier
@@ -391,6 +393,9 @@ namespace catalog {
 
         // index id to quickly search for the index information and base table id
         std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
+
+        // background task
+        std::unique_ptr<BackgroundTask> background_task_ = nullptr;
     };
 
 } // namespace catalog

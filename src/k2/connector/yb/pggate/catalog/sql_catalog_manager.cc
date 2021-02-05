@@ -98,6 +98,17 @@ namespace catalog {
                 nsresp.status.code, nsresp.status.errorMessage);
         }
 
+        // only start background task in normal mode, i.e., not in InitDB mode
+        if (init_db_done_) {
+            std::function<void()> catalog_version_task([this]{
+                CheckCatalogVersion();
+            });
+            background_task_ = std::make_unique<BackgroundTask>(catalog_version_task, "catalog-version-task",
+                std::chrono::milliseconds(CatalogConsts::catalog_manager_background_task_initial_wait_ms),
+                std::chrono::milliseconds(CatalogConsts::catalog_manager_background_task_sleep_interval_ms));
+            background_task_->Start();
+        }
+
         initted_.store(true, std::memory_order_release);
         K2LOG_I(log::catalog, "Catalog Manager started up successfully");
         return Status::OK();
@@ -108,7 +119,10 @@ namespace catalog {
 
         bool expected = true;
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
-            // TODO: add shut down steps
+            // shut down steps
+            if (background_task_ != nullptr) {
+                background_task_->Shutdown();
+            }
         }
 
         K2LOG_I(log::catalog, "SQL CatalogManager shut down complete. Bye!");
@@ -244,35 +258,28 @@ namespace catalog {
         return response;
     }
 
-    GetCatalogVersionResponse SqlCatalogManager::GetCatalogVersion(const GetCatalogVersionRequest& request) {
-        GetCatalogVersionResponse response;
+    void SqlCatalogManager::CheckCatalogVersion() {
+        std::lock_guard<std::mutex> l(lock_);
         K2LOG_D(log::catalog, "Checking catalog version...");
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        // TODO: use a background thread to fetch the ClusterInfo record periodically instead of fetching it for each call
         GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
-        if (!result.status.IsSucceeded()) {
+        if (!result.status.IsSucceeded() || result.clusterInfo == nullptr) {
             K2LOG_E(log::catalog, "Failed to check cluster info due to {}", result.status);
             context->Abort();
-            response.status = std::move(result.status);
-            return response;
-        }
-        if (result.clusterInfo == nullptr) {
-            context->Abort();
-            response.status.errorMessage = "Cluster Info record is empty";
-            response.status.code = StatusCode::NOT_FOUND;
-            return response;
-        }
-        RStatus status = UpdateCatalogVersion(context, result.clusterInfo->GetCatalogVersion());
-        if (!status.IsSucceeded()) {
-            context->Abort();
-            K2LOG_E(log::catalog, "Failed to update catalog version due to {}", status);
-            response.status = std::move(status);
-            return response;
+            return;
         }
         context->Commit();
-        K2LOG_D(log::catalog, "Returned catalog version {}", catalog_version_);
+        if (result.clusterInfo->GetCatalogVersion() > catalog_version_) {
+            catalog_version_ = result.clusterInfo->GetCatalogVersion();
+            K2LOG_D(log::catalog, "Updated catalog version to {}", catalog_version_);
+        }
+    }
+
+    GetCatalogVersionResponse SqlCatalogManager::GetCatalogVersion(const GetCatalogVersionRequest& request) {
+        GetCatalogVersionResponse response;
         response.catalogVersion = catalog_version_;
         response.status.Succeed();
+        K2LOG_D(log::catalog, "Returned catalog version {}", response.catalogVersion);
         return response;
     }
 
@@ -1133,29 +1140,6 @@ namespace catalog {
         namespace_name_map_[updated_ns->GetNamespaceName()] = updated_ns;
         response.status.Succeed();
         return response;
-    }
-
-    RStatus SqlCatalogManager::UpdateCatalogVersion(std::shared_ptr<SessionTransactionContext> context, uint64_t new_version) {
-        std::lock_guard<std::mutex> l(lock_);
-        // compare new_version with the local version
-        uint64_t local_catalog_version = catalog_version_.load(std::memory_order_acquire);
-        K2LOG_D(log::catalog, "Local catalog version: {}. new version: {}", local_catalog_version, new_version);
-        if (new_version < local_catalog_version) {
-            K2LOG_D(log::catalog,
-                "Catalog version update: version on SKV is too old. New: {}, Old: {}",
-                 new_version, local_catalog_version);
-            ClusterInfo cluster_info(cluster_id_, local_catalog_version, init_db_done_);
-            K2LOG_D(log::catalog, "Updating catalog version on SKV to {}", new_version);
-            UpdateClusterInfoResult result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
-            if (!result.status.IsSucceeded()) {
-                K2LOG_E(log::catalog, "ClusterInfo update failed due to {}", result.status);
-                return result.status;
-            }
-        } else if (new_version > local_catalog_version) {
-            K2LOG_D(log::catalog, "Updating local catalog version to {}", new_version);
-            catalog_version_.store(new_version, std::memory_order_release);
-        }
-        return StatusOK;
     }
 
     // update namespace caches
