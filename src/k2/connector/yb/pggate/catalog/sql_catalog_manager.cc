@@ -103,10 +103,10 @@ namespace catalog {
             std::function<void()> catalog_version_task([this]{
                 CheckCatalogVersion();
             });
-            background_task_ = std::make_unique<SingleThreadedPeriodicTask>(catalog_version_task, "catalog-version-task",
+            catalog_version_task_ = std::make_unique<SingleThreadedPeriodicTask>(catalog_version_task, "catalog-version-task",
                 CatalogConsts::catalog_manager_background_task_initial_wait,
                 CatalogConsts::catalog_manager_background_task_sleep_interval);
-            background_task_->Start();
+            catalog_version_task_->Start();
         }
 
         initted_.store(true, std::memory_order_release);
@@ -120,8 +120,8 @@ namespace catalog {
         bool expected = true;
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
             // shut down steps
-            if (background_task_ != nullptr) {
-                background_task_->Cancel();
+            if (catalog_version_task_ != nullptr) {
+                catalog_version_task_.reset(nullptr);
             }
         }
 
