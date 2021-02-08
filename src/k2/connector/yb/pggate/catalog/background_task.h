@@ -28,16 +28,18 @@ Copyright(c) 2020 Futurewei Cloud
 #include <pthread.h>
 #include <chrono>
 
+#include <k2/common/Chrono.h>
+
 #include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
 
-class BackgroundTask {
+class SingleThreadedPeriodicTask {
     public:
-    explicit BackgroundTask(std::function<void()> task, const std::string& name,
-        std::chrono::milliseconds initial_wait, std::chrono::milliseconds interval)
+    explicit SingleThreadedPeriodicTask(std::function<void()> task, const std::string& name,
+        k2::Duration initial_wait, k2::Duration interval)
         : task_(std::move(task)), name_(name), initial_wait_(std::move(initial_wait)), interval_(std::move(interval)) {
     }
 
@@ -56,7 +58,7 @@ class BackgroundTask {
        }
     }
 
-    void Shutdown() {
+    void Cancel() {
         std::lock_guard<std::mutex> lock(mutex_);
         if (running_) {
             if(thread_handler_ != std::nullopt) {
@@ -90,11 +92,11 @@ class BackgroundTask {
     mutable std::mutex mutex_;
     std::unique_ptr<std::thread> thread_;
     std::optional<pthread_t> thread_handler_ = std::nullopt;
-    std::chrono::milliseconds initial_wait_;
-    std::chrono::milliseconds interval_;
-    std::atomic<bool> running_ = false;
+    k2::Duration initial_wait_;
+    k2::Duration interval_;
+    bool running_ = false;
 };
 
-} // namespace sql
+} // namespace k2pg
 } // namespace sql
 } // namespace k2pg

@@ -395,7 +395,7 @@ namespace catalog {
         std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
 
         // background task
-        std::unique_ptr<BackgroundTask> background_task_ = nullptr;
+        std::unique_ptr<SingleThreadedPeriodicTask> background_task_ = nullptr;
     };
 
 } // namespace catalog

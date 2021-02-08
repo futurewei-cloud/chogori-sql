@@ -103,9 +103,9 @@ namespace catalog {
             std::function<void()> catalog_version_task([this]{
                 CheckCatalogVersion();
             });
-            background_task_ = std::make_unique<BackgroundTask>(catalog_version_task, "catalog-version-task",
-                std::chrono::milliseconds(CatalogConsts::catalog_manager_background_task_initial_wait_ms),
-                std::chrono::milliseconds(CatalogConsts::catalog_manager_background_task_sleep_interval_ms));
+            background_task_ = std::make_unique<SingleThreadedPeriodicTask>(catalog_version_task, "catalog-version-task",
+                CatalogConsts::catalog_manager_background_task_initial_wait,
+                CatalogConsts::catalog_manager_background_task_sleep_interval);
             background_task_->Start();
         }
 
@@ -121,7 +121,7 @@ namespace catalog {
         if (initted_.compare_exchange_strong(expected, false, std::memory_order_acq_rel)) {
             // shut down steps
             if (background_task_ != nullptr) {
-                background_task_->Shutdown();
+                background_task_->Cancel();
             }
         }
 
