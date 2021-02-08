@@ -79,14 +79,14 @@ class SingleThreadedPeriodicTask {
             K2LOG_I(log::catalog, "Running background task {}", name_);
             try {
                 task_();
-                if (cancelling_) {
-                    K2LOG_I(log::catalog, "cancelling background task {}", name_);
-                    break;
-                }
             } catch (const std::exception& e) {
                 K2LOG_E(log::catalog, "Failed to run background task {} due to {}", name_, e.what());
             }
-            std::this_thread::sleep_for(interval_);
+            if (cancelling_) {
+                K2LOG_I(log::catalog, "cancelling background task {}", name_);
+                break;
+            }
+           std::this_thread::sleep_for(interval_);
         }
     }
 

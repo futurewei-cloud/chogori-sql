@@ -66,6 +66,8 @@ class SqlCatalogClient {
     CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
                                 const std::string& namespace_id);
 
+    CHECKED_STATUS UseDatabase(const std::string& database_name);
+
     CHECKED_STATUS CreateTable(const std::string& namespace_name,
                             const std::string& table_name,
                             const PgObjectId& table_object_id,

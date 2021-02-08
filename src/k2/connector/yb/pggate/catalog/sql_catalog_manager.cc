@@ -481,6 +481,12 @@ namespace catalog {
     GetNamespaceResponse SqlCatalogManager::GetNamespace(const GetNamespaceRequest& request) {
         GetNamespaceResponse response;
         K2LOG_D(log::catalog, "Getting namespace with name: {}, id: {}", request.namespaceName, request.namespaceId);
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(request.namespaceId);
+        if (namespace_info != nullptr) {
+            response.namespace_info = namespace_info;
+            response.status.Succeed();
+            return response;
+        }
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
@@ -569,6 +575,20 @@ namespace catalog {
         // remove namespace from local cache
         namespace_id_map_.erase(namespace_info->GetNamespaceId());
         namespace_name_map_.erase(namespace_info->GetNamespaceName());
+        response.status.Succeed();
+        return response;
+    }
+
+    UseDatabaseResponse SqlCatalogManager::UseDatabase(const UseDatabaseRequest& request) {
+        UseDatabaseResponse response;
+        // check if the namespace exists
+        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.databaseName);
+        if (namespace_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find database " + request.databaseName;
+            return response;
+        }
         response.status.Succeed();
         return response;
     }
