@@ -61,7 +61,7 @@ class SingleThreadedPeriodicTask {
 
     void Cancel() {
         std::lock_guard<std::mutex> lock(mutex_);
-        cancelling = true;
+        cancelling_ = true;
         if (running_) {
             thread_->join();
             running_ = false;
@@ -75,16 +75,12 @@ class SingleThreadedPeriodicTask {
 
     void RunTask() {
         std::this_thread::sleep_for(initial_wait_);
-        while(true) {
+        while(!cancelling_) {
             K2LOG_I(log::catalog, "Running background task {}", name_);
             try {
-                if (cancelling) {
-                    K2LOG_I(log::catalog, "Cancelling background task {}", name_);
-                    break;
-                }
                 task_();
-                if (cancelling) {
-                    K2LOG_I(log::catalog, "Cancelling background task {}", name_);
+                if (cancelling_) {
+                    K2LOG_I(log::catalog, "cancelling background task {}", name_);
                     break;
                 }
             } catch (const std::exception& e) {
@@ -101,7 +97,7 @@ class SingleThreadedPeriodicTask {
     k2::Duration initial_wait_;
     k2::Duration interval_;
     bool running_ = false;
-    bool cancelling = false;
+    bool cancelling_ = false;
 };
 
 } // namespace k2pg
