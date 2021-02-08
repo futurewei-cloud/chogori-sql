@@ -26,6 +26,8 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 
+#include <k2/common/Chrono.h>
+
 namespace k2pg {
 namespace sql {
 namespace catalog {
@@ -44,6 +46,9 @@ struct CatalogConsts {
     static const std::string BASE_TABLE_ID_COLUMN_NAME;
 
     static const std::string shared_table_skv_colllection_name;
+
+    static inline const k2::Duration catalog_manager_background_task_initial_wait = 1s;
+    static inline const k2::Duration catalog_manager_background_task_sleep_interval = 30s;
 
     static const std::string& physical_collection(const std::string& namespace_id, bool is_shared);
 
