@@ -36,20 +36,6 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-using k2pg::ThreadPool;
-
-class ThreadPoolTaskRunner {
-    public:
-    ThreadPoolTaskRunner(int thread_pool_size) : thread_pool_(thread_pool_size) {
-    }
-
-    void SubmitTask(std::function<void()> task) {
-        thread_pool_.enqueue(std::move(task));
-    }
-
-    private:
-    ThreadPool thread_pool_;
-};
 
 class SingleThreadedPeriodicTask {
     public:
@@ -92,14 +78,14 @@ class SingleThreadedPeriodicTask {
     void RunTask() {
         std::this_thread::sleep_for(initial_wait_);
         while(!cancelling_) {
-            K2LOG_I(log::catalog, "Running background task {}", name_);
+            K2LOG_D(log::catalog, "Running background task {}", name_);
             try {
                 task_();
             } catch (const std::exception& e) {
                 K2LOG_E(log::catalog, "Failed to run background task {} due to {}", name_, e.what());
             }
             if (cancelling_) {
-                K2LOG_I(log::catalog, "cancelling background task {}", name_);
+                K2LOG_D(log::catalog, "cancelling background task {}", name_);
                 break;
             }
            std::this_thread::sleep_for(interval_);

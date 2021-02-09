@@ -50,7 +50,7 @@ struct CatalogConsts {
     static inline const k2::Duration catalog_manager_background_task_initial_wait = 1s;
     static inline const k2::Duration catalog_manager_background_task_sleep_interval = 30s;
 
-    static inline int catalog_manager_task_runner_thread_pool_size = 2;
+    static inline int catalog_manager_background_task_thread_pool_size = 2;
 
     static const std::string& physical_collection(const std::string& namespace_id, bool is_shared);
 

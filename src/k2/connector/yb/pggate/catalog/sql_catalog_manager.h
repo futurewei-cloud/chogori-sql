@@ -93,6 +93,7 @@ and task state checking APIs later by using thread pools.
 #include "yb/entities/index.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/k2_thread_pool.h"
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
@@ -105,6 +106,7 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
     using yb::Status;
+    using k2pg::ThreadPool;
     using k2pg::gate::K2Adapter;
     using k2pg::sql::PgObjectId;
 
@@ -371,6 +373,9 @@ namespace catalog {
 
         std::shared_ptr<K2Adapter> k2_adapter_;
 
+        // thread pool to run background tasks
+        ThreadPool thread_pool_;
+ 
         // flag to indicate whether init_db is done or not
         std::atomic<bool> init_db_done_{false};
 
@@ -403,9 +408,8 @@ namespace catalog {
         // index id to quickly search for the index information and base table id
         std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
 
-        // background tasks
+        // background task
         std::unique_ptr<SingleThreadedPeriodicTask> catalog_version_task_ = nullptr;
-        std::unique_ptr<ThreadPoolTaskRunner> thread_pool_task_runner_ = nullptr;
     };
 
 } // namespace catalog

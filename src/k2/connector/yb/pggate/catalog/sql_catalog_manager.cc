@@ -37,7 +37,8 @@ namespace catalog {
     using k2pg::gate::K2Adapter;
 
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) :
-        cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter) {
+        cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter),
+        thread_pool_(CatalogConsts::catalog_manager_background_task_thread_pool_size) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
         table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter_);
@@ -106,8 +107,6 @@ namespace catalog {
                 CatalogConsts::catalog_manager_background_task_initial_wait,
                 CatalogConsts::catalog_manager_background_task_sleep_interval);
             catalog_version_task_->Start();
-            thread_pool_task_runner_ =
-                std::make_unique<ThreadPoolTaskRunner>(CatalogConsts::catalog_manager_task_runner_thread_pool_size);
         }
 
         initted_.store(true, std::memory_order_release);
@@ -123,9 +122,6 @@ namespace catalog {
             // shut down steps
             if (catalog_version_task_ != nullptr) {
                 catalog_version_task_.reset(nullptr);
-            }
-            if (thread_pool_task_runner_ != nullptr) {
-                thread_pool_task_runner_.reset(nullptr);
             }
         }
 
@@ -593,7 +589,9 @@ namespace catalog {
             response.status.errorMessage = "Cannot find database " + request.databaseName;
             return response;
         }
-        std::function<void()> preload_tables_task([this, request]{
+
+        // preload tables for a database
+        thread_pool_.enqueue([this, request] () {
             ListTablesRequest req {.namespaceName = request.databaseName, .isSysTableIncluded=true};
             K2LOG_I(log::catalog, "Preloading database {}", req.namespaceName);
             ListTablesResponse result = ListTables(req);
@@ -601,7 +599,7 @@ namespace catalog {
               K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.errorMessage);
             }
         });
-        thread_pool_task_runner_->SubmitTask(preload_tables_task);
+
         response.status.Succeed();
         return response;
     }
@@ -975,6 +973,7 @@ namespace catalog {
 
         context->Commit();
         for (auto& tableInfo : tables_result.tableInfos) {
+            K2LOG_D(log::catalog, "Caching table name: {}, id: {} in {}", tableInfo->table_name(), tableInfo->table_id(), namespace_info->GetNamespaceId());
             UpdateTableCache(tableInfo);
             response.tableInfos.push_back(tableInfo);
         }
