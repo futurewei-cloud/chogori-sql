@@ -1,7 +1,7 @@
 #!/bin/bash
 echo ">>>>>>>>>>>>>>>>>>>>"
 echo "start container with"
-echo docker run --privileged --network=host -v "/dev/:/dev" -v "/sys/:/sys/" -v ${PWD}:/build -it --rm -e RDMAV_HUGEPAGES_SAFE=1  k2-bvu-10001.usrd.futurewei.com/k2sql_builder:latest
+echo docker run --privileged --network=host -v "/dev/:/dev" -v "/sys/:/sys/" -v ${PWD}:/build -it --rm -e RDMAV_HUGEPAGES_SAFE=1 -e RDMAV_FORK_SAFE=1 -e IBV_FORK_SAFE=1 k2-bvu-10001.usrd.futurewei.com/k2sql_builder:latest
 echo ">>>>>>>>>>>>>>>>>>>>"
 export REMOTE_IP=192.168.1.6
 export PROTO="auto-rrdma+k2rpc"
