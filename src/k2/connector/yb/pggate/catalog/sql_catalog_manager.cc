@@ -33,8 +33,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-
-    using yb::Status;
+    using yb::Result;
     using k2pg::gate::K2Adapter;
 
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) :
@@ -98,7 +97,7 @@ namespace catalog {
                 nsresp.status.code, nsresp.status.errorMessage);
         }
 
-        // only start background task in normal mode, i.e., not in InitDB mode
+        // only start background tasks in normal mode, i.e., not in InitDB mode
         if (init_db_done_) {
             std::function<void()> catalog_version_task([this]{
                 CheckCatalogVersion();
@@ -107,6 +106,8 @@ namespace catalog {
                 CatalogConsts::catalog_manager_background_task_initial_wait,
                 CatalogConsts::catalog_manager_background_task_sleep_interval);
             catalog_version_task_->Start();
+            thread_pool_task_runner_ =
+                std::make_unique<ThreadPoolTaskRunner>(CatalogConsts::catalog_manager_task_runner_thread_pool_size);
         }
 
         initted_.store(true, std::memory_order_release);
@@ -122,6 +123,9 @@ namespace catalog {
             // shut down steps
             if (catalog_version_task_ != nullptr) {
                 catalog_version_task_.reset(nullptr);
+            }
+            if (thread_pool_task_runner_ != nullptr) {
+                thread_pool_task_runner_.reset(nullptr);
             }
         }
 
@@ -589,6 +593,15 @@ namespace catalog {
             response.status.errorMessage = "Cannot find database " + request.databaseName;
             return response;
         }
+        std::function<void()> preload_tables_task([this, request]{
+            ListTablesRequest req {.namespaceName = request.databaseName, .isSysTableIncluded=true};
+            K2LOG_I(log::catalog, "Preloading database {}", req.namespaceName);
+            ListTablesResponse result = ListTables(req);
+            if (!result.status.IsSucceeded()) {
+              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.errorMessage);
+            }
+        });
+        thread_pool_task_runner_->SubmitTask(preload_tables_task);
         response.status.Succeed();
         return response;
     }
@@ -805,6 +818,16 @@ namespace catalog {
             return response;
         }
 
+        // check table info by index uuid
+        table_info = GetCachedTableInfoByIndexId(request.namespaceOid, table_uuid);
+        if (table_info != nullptr) {
+            K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
+                table_info->table_name(), table_info->table_id(), table_uuid);
+            response.tableInfo = table_info;
+            response.status.Succeed();
+            return response;
+        }
+
         std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
@@ -952,7 +975,8 @@ namespace catalog {
 
         context->Commit();
         for (auto& tableInfo : tables_result.tableInfos) {
-            response.tableInfos.push_back(std::move(tableInfo));
+            UpdateTableCache(tableInfo);
+            response.tableInfos.push_back(tableInfo);
         }
         response.status.Succeed();
         K2LOG_D(log::catalog, "Found {} tables in namespace {}", response.tableInfos.size(), request.namespaceName);
@@ -1272,6 +1296,28 @@ namespace catalog {
             }
         }
         return nullptr;
+    }
+
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid) {
+        std::shared_ptr<IndexInfo> index_info = nullptr;
+        if (!index_uuid_map_.empty()) {
+            const auto itr = index_uuid_map_.find(index_uuid);
+            if (itr != index_uuid_map_.end()) {
+                index_info = itr->second;
+            }
+        }
+        if (index_info == nullptr) {
+            return nullptr;
+        }
+
+        // get base table uuid from database oid and base table id
+        uint32_t base_table_oid = PgObjectId::GetTableOidByTableUuid(index_info->base_table_id());
+        if (base_table_oid == kPgInvalidOid) {
+            K2LOG_W(log::catalog, "Invalid base table id {}", index_info->base_table_id());
+            return nullptr;
+        }
+        std::string base_table_uuid = PgObjectId::GetTableUuid(namespaceOid, base_table_oid);
+        return GetCachedTableInfoById(base_table_uuid);
     }
 
     std::shared_ptr<SessionTransactionContext> SqlCatalogManager::NewTransactionContext() {

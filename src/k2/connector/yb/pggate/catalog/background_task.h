@@ -29,11 +29,27 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <k2/common/Chrono.h>
 
+#include "yb/pggate/k2_thread_pool.h"
+
 #include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
+using k2pg::ThreadPool;
+
+class ThreadPoolTaskRunner {
+    public:
+    ThreadPoolTaskRunner(int thread_pool_size) : thread_pool_(thread_pool_size) {
+    }
+
+    void SubmitTask(std::function<void()> task) {
+        thread_pool_.enqueue(std::move(task));
+    }
+
+    private:
+    ThreadPool thread_pool_;
+};
 
 class SingleThreadedPeriodicTask {
     public:

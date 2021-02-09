@@ -123,11 +123,11 @@ bool PgObjectId::IsPgsqlId(const string& uuid) {
   return false;
 }
 
-Result<uint32_t> PgObjectId::GetPgsqlDatabaseOid(const std::string& namespace_id) {
-  DCHECK(IsPgsqlId(namespace_id));
+Result<uint32_t> PgObjectId::GetDatabaseOidByUuid(const std::string& namespace_uuid) {
+  DCHECK(IsPgsqlId(namespace_uuid));
   try {
     size_t pos = 0;
-    const uint32_t oid = stoul(namespace_id.substr(0, sizeof(uint32_t) * 2), &pos, 16);
+    const uint32_t oid = stoul(namespace_uuid.substr(0, sizeof(uint32_t) * 2), &pos, 16);
     if (pos == sizeof(uint32_t) * 2) {
       return oid;
     }
@@ -135,11 +135,11 @@ Result<uint32_t> PgObjectId::GetPgsqlDatabaseOid(const std::string& namespace_id
   } catch(const std::out_of_range&) {
     // TODO: log the actual exceptions
   }
-
-  return STATUS(InvalidArgument, "Invalid PostgreSQL namespace id", namespace_id);
+  return kPgInvalidOid;
+  return STATUS(InvalidArgument, "Invalid PostgreSQL namespace uuid", namespace_uuid);
 }
 
-Result<uint32_t> PgObjectId::GetPgsqlTableOid(const std::string& table_uuid) {
+uint32_t PgObjectId::GetTableOidByTableUuid(const std::string& table_uuid) {
   DCHECK(IsPgsqlId(table_uuid));
   try {
     size_t pos = 0;
@@ -151,8 +151,7 @@ Result<uint32_t> PgObjectId::GetPgsqlTableOid(const std::string& table_uuid) {
   } catch(const std::out_of_range&) {
     // TODO: log the actual exceptions
   }
-
-  return STATUS(InvalidArgument, "Invalid PostgreSQL table uuid", table_uuid);
+  return kPgInvalidOid;
 }
 
 Result<uint32_t> PgObjectId::GetDatabaseOidByTableUuid(const std::string& table_uuid) {

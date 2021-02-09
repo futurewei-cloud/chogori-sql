@@ -108,6 +108,7 @@ Status PgSession::FinishInitDB()
 
 Status PgSession::ConnectDatabase(const string& database_name) {
   connected_database_ = database_name;
+  RETURN_NOT_OK(catalog_client_->UseDatabase(database_name));
   return Status::OK();
 }
 

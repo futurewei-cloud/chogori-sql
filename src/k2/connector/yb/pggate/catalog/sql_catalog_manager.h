@@ -222,8 +222,6 @@ namespace catalog {
 
     struct ListTablesRequest {
         std::string namespaceName;
-        // use string match for table name, not used for now
-        std::string nameFilter;
         bool isSysTableIncluded = false;
     };
 
@@ -354,6 +352,8 @@ namespace catalog {
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
+        std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid);
+
         std::shared_ptr<SessionTransactionContext> NewTransactionContext();
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
@@ -403,8 +403,9 @@ namespace catalog {
         // index id to quickly search for the index information and base table id
         std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
 
-        // background task
+        // background tasks
         std::unique_ptr<SingleThreadedPeriodicTask> catalog_version_task_ = nullptr;
+        std::unique_ptr<ThreadPoolTaskRunner> thread_pool_task_runner_ = nullptr;
     };
 
 } // namespace catalog
