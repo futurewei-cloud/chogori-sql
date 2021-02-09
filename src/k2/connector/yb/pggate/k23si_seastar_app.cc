@@ -107,6 +107,7 @@ seastar::future<> PGK2Client::_pollBeginQ() {
         K2LOG_D(log::k2ss, "Begin txn...");
 
         // This is required for RDMA initDB, otherwise it can stay commented out
+        // TODO further investigation
         //req.opts.syncFinalize = true;
 
         return _client->beginTxn(req.opts)
@@ -248,7 +249,8 @@ seastar::future<> PGK2Client::_pollWriteQ() {
         }
         // Copy SKVRecord to make RDMA safe
         k2::dto::SKVRecord copy = req.record.deepCopy();
-        return fiter->second.write(copy, req.erase, false) //req.rejectIfExists)
+        // TODO RDMA initDB may require rejectIfExits=false
+        return fiter->second.write(copy, req.erase, req.rejectIfExists)
             .then([this, &req](auto&& writeResult) {
                 K2LOG_D(log::k2ss, "Written... {}", writeResult);
                 req.prom.set_value(std::move(writeResult));
