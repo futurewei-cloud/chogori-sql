@@ -85,6 +85,18 @@ Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
   return Status::OK();
 }
 
+Status SqlCatalogClient::UseDatabase(const std::string& database_name) {
+  UseDatabaseRequest request {.databaseName = database_name};
+  auto start = k2::Clock::now();
+  UseDatabaseResponse response = catalog_manager_->UseDatabase(request);
+  K2LOG_I(log::catalog, "UseDatabase {} took {}", database_name, k2::Clock::now() - start);
+  if (!response.status.IsSucceeded()) {
+    return STATUS_FORMAT(RuntimeError,
+        "Failed to use database $0 due to code $1 and message $2", database_name, response.status.code, response.status.errorMessage);
+  }
+  return Status::OK();
+}
+
 Status SqlCatalogClient::CreateTable(
     const std::string& namespace_name,
     const std::string& table_name,

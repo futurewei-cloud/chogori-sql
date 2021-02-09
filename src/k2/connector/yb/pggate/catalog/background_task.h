@@ -29,6 +29,8 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <k2/common/Chrono.h>
 
+#include "yb/pggate/k2_thread_pool.h"
+
 #include "catalog_log.h"
 
 namespace k2pg {
@@ -76,17 +78,17 @@ class SingleThreadedPeriodicTask {
     void RunTask() {
         std::this_thread::sleep_for(initial_wait_);
         while(!cancelling_) {
-            K2LOG_I(log::catalog, "Running background task {}", name_);
+            K2LOG_D(log::catalog, "Running background task {}", name_);
             try {
                 task_();
-                if (cancelling_) {
-                    K2LOG_I(log::catalog, "cancelling background task {}", name_);
-                    break;
-                }
             } catch (const std::exception& e) {
                 K2LOG_E(log::catalog, "Failed to run background task {} due to {}", name_, e.what());
             }
-            std::this_thread::sleep_for(interval_);
+            if (cancelling_) {
+                K2LOG_D(log::catalog, "cancelling background task {}", name_);
+                break;
+            }
+           std::this_thread::sleep_for(interval_);
         }
     }
 

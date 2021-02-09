@@ -20,6 +20,8 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
+#pragma once
+
 #include "k2_includes.h"
 #include "k2_config.h"
 

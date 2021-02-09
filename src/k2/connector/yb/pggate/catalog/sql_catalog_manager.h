@@ -93,6 +93,7 @@ and task state checking APIs later by using thread pools.
 #include "yb/entities/index.h"
 #include "yb/entities/table.h"
 #include "yb/pggate/k2_adapter.h"
+#include "yb/pggate/k2_thread_pool.h"
 #include "yb/pggate/catalog/sql_catalog_defaults.h"
 #include "yb/pggate/catalog/cluster_info_handler.h"
 #include "yb/pggate/catalog/namespace_info_handler.h"
@@ -105,7 +106,7 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
     using yb::Status;
-    using yb::simple_spinlock;
+    using k2pg::ThreadPool;
     using k2pg::gate::K2Adapter;
     using k2pg::sql::PgObjectId;
 
@@ -126,11 +127,11 @@ namespace catalog {
     };
 
     struct CreateNamespaceRequest {
-        string namespaceName;
-        string namespaceId;
+        std::string namespaceName;
+        std::string namespaceId;
         uint32_t namespaceOid;
-        string sourceNamespaceId;
-        string creatorRoleName;
+        std::string sourceNamespaceId;
+        std::string creatorRoleName;
         // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used
         std::optional<uint32_t> nextPgOid;
     };
@@ -149,8 +150,8 @@ namespace catalog {
     };
 
     struct GetNamespaceRequest {
-        string namespaceName;
-        string namespaceId;
+        std::string namespaceName;
+        std::string namespaceId;
     };
 
     struct GetNamespaceResponse {
@@ -159,18 +160,26 @@ namespace catalog {
     };
 
     struct DeleteNamespaceRequest {
-        string namespaceName;
-        string namespaceId;
+        std::string namespaceName;
+        std::string namespaceId;
     };
 
     struct DeleteNamespaceResponse {
         RStatus status;
     };
 
+    struct UseDatabaseRequest {
+        std::string databaseName;
+    };
+
+    struct UseDatabaseResponse {
+        RStatus status;
+    };
+
     struct CreateTableRequest {
-        string namespaceName;
+        std::string namespaceName;
         uint32_t namespaceOid;
-        string tableName;
+        std::string tableName;
         uint32_t tableOid;
         Schema schema;
         bool isSysCatalogTable;
@@ -185,9 +194,9 @@ namespace catalog {
     };
 
     struct CreateIndexTableRequest {
-        string namespaceName;
+        std::string namespaceName;
         uint32_t namespaceOid;
-        string tableName;
+        std::string tableName;
         uint32_t tableOid;
         uint32_t baseTableOid;
         Schema schema;
@@ -214,15 +223,13 @@ namespace catalog {
     };
 
     struct ListTablesRequest {
-        string namespaceName;
-        // use string match for table name, not used for now
-        string nameFilter;
+        std::string namespaceName;
         bool isSysTableIncluded = false;
     };
 
     struct ListTablesResponse {
         RStatus status;
-        string namespaceId;
+        std::string namespaceId;
         std::vector<std::shared_ptr<TableInfo>> tableInfos;
     };
 
@@ -233,8 +240,8 @@ namespace catalog {
 
     struct DeleteTableResponse {
         RStatus status;
-        string namespaceId;
-        string tableId;
+        std::string namespaceId;
+        std::string tableId;
     };
 
     struct DeleteIndexRequest {
@@ -244,7 +251,7 @@ namespace catalog {
 
     struct DeleteIndexResponse {
         RStatus status;
-        string namespaceId;
+        std::string namespaceId;
         uint32_t baseIndexTableOid;
     };
 
@@ -304,6 +311,8 @@ namespace catalog {
 
         DeleteNamespaceResponse DeleteNamespace(const DeleteNamespaceRequest& request);
 
+        UseDatabaseResponse UseDatabase(const UseDatabaseRequest& request);
+
         CreateTableResponse CreateTable(const CreateTableRequest& request);
 
         CreateIndexTableResponse CreateIndexTable(const CreateIndexTableRequest& request);
@@ -345,6 +354,8 @@ namespace catalog {
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
+        std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid);
+
         std::shared_ptr<SessionTransactionContext> NewTransactionContext();
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
@@ -362,6 +373,9 @@ namespace catalog {
 
         std::shared_ptr<K2Adapter> k2_adapter_;
 
+        // thread pool to run background tasks
+        ThreadPool thread_pool_;
+ 
         // flag to indicate whether init_db is done or not
         std::atomic<bool> init_db_done_{false};
 

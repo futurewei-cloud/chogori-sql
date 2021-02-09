@@ -33,12 +33,12 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-
-    using yb::Status;
+    using yb::Result;
     using k2pg::gate::K2Adapter;
 
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) :
-        cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter) {
+        cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter),
+        thread_pool_(CatalogConsts::catalog_manager_background_task_thread_pool_size) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
         table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter_);
@@ -98,7 +98,7 @@ namespace catalog {
                 nsresp.status.code, nsresp.status.errorMessage);
         }
 
-        // only start background task in normal mode, i.e., not in InitDB mode
+        // only start background tasks in normal mode, i.e., not in InitDB mode
         if (init_db_done_) {
             std::function<void()> catalog_version_task([this]{
                 CheckCatalogVersion();
@@ -481,6 +481,12 @@ namespace catalog {
     GetNamespaceResponse SqlCatalogManager::GetNamespace(const GetNamespaceRequest& request) {
         GetNamespaceResponse response;
         K2LOG_D(log::catalog, "Getting namespace with name: {}, id: {}", request.namespaceName, request.namespaceId);
+        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(request.namespaceId);
+        if (namespace_info != nullptr) {
+            response.namespace_info = namespace_info;
+            response.status.Succeed();
+            return response;
+        }
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
@@ -569,6 +575,31 @@ namespace catalog {
         // remove namespace from local cache
         namespace_id_map_.erase(namespace_info->GetNamespaceId());
         namespace_name_map_.erase(namespace_info->GetNamespaceName());
+        response.status.Succeed();
+        return response;
+    }
+
+    UseDatabaseResponse SqlCatalogManager::UseDatabase(const UseDatabaseRequest& request) {
+        UseDatabaseResponse response;
+        // check if the namespace exists
+        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.databaseName);
+        if (namespace_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
+            response.status.code = StatusCode::NOT_FOUND;
+            response.status.errorMessage = "Cannot find database " + request.databaseName;
+            return response;
+        }
+
+        // preload tables for a database
+        thread_pool_.enqueue([this, request] () {
+            ListTablesRequest req {.namespaceName = request.databaseName, .isSysTableIncluded=true};
+            K2LOG_I(log::catalog, "Preloading database {}", req.namespaceName);
+            ListTablesResponse result = ListTables(req);
+            if (!result.status.IsSucceeded()) {
+              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.errorMessage);
+            }
+        });
+
         response.status.Succeed();
         return response;
     }
@@ -785,6 +816,16 @@ namespace catalog {
             return response;
         }
 
+        // check table info by index uuid
+        table_info = GetCachedTableInfoByIndexId(request.namespaceOid, table_uuid);
+        if (table_info != nullptr) {
+            K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
+                table_info->table_name(), table_info->table_id(), table_uuid);
+            response.tableInfo = table_info;
+            response.status.Succeed();
+            return response;
+        }
+
         std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
@@ -932,7 +973,9 @@ namespace catalog {
 
         context->Commit();
         for (auto& tableInfo : tables_result.tableInfos) {
-            response.tableInfos.push_back(std::move(tableInfo));
+            K2LOG_D(log::catalog, "Caching table name: {}, id: {} in {}", tableInfo->table_name(), tableInfo->table_id(), namespace_info->GetNamespaceId());
+            UpdateTableCache(tableInfo);
+            response.tableInfos.push_back(tableInfo);
         }
         response.status.Succeed();
         K2LOG_D(log::catalog, "Found {} tables in namespace {}", response.tableInfos.size(), request.namespaceName);
@@ -1252,6 +1295,28 @@ namespace catalog {
             }
         }
         return nullptr;
+    }
+
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid) {
+        std::shared_ptr<IndexInfo> index_info = nullptr;
+        if (!index_uuid_map_.empty()) {
+            const auto itr = index_uuid_map_.find(index_uuid);
+            if (itr != index_uuid_map_.end()) {
+                index_info = itr->second;
+            }
+        }
+        if (index_info == nullptr) {
+            return nullptr;
+        }
+
+        // get base table uuid from database oid and base table id
+        uint32_t base_table_oid = PgObjectId::GetTableOidByTableUuid(index_info->base_table_id());
+        if (base_table_oid == kPgInvalidOid) {
+            K2LOG_W(log::catalog, "Invalid base table id {}", index_info->base_table_id());
+            return nullptr;
+        }
+        std::string base_table_uuid = PgObjectId::GetTableUuid(namespaceOid, base_table_oid);
+        return GetCachedTableInfoById(base_table_uuid);
     }
 
     std::shared_ptr<SessionTransactionContext> SqlCatalogManager::NewTransactionContext() {
