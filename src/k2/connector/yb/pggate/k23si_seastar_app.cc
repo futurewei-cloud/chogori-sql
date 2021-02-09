@@ -106,12 +106,16 @@ seastar::future<> PGK2Client::_pollBeginQ() {
     return pollQ(beginTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Begin txn...");
 
+        // This is required for RDMA initDB, otherwise it can stay commented out
+        //req.opts.syncFinalize = true;
+
         return _client->beginTxn(req.opts)
             .then([this, &req](auto&& txn) {
                 K2LOG_D(log::k2ss, "txn: {}", txn.mtr());
-                req.prom.set_value(K23SITxn(txn.mtr()));  // send a copy to the promise
-
+                auto mtr = txn.mtr();
                 (*_txns)[txn.mtr()] = std::move(txn);
+                req.prom.set_value(K23SITxn(mtr));  // send a copy to the promise
+
             });
     });
 }
@@ -138,6 +142,7 @@ seastar::future<> PGK2Client::_pollEndQ() {
 seastar::future<> PGK2Client::_pollSchemaGetQ() {
     return pollQ(schemaGetTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Schema get {}", req);
+        // Strings will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->getSchema(req.collectionName, req.schemaName, req.schemaVersion)
             .then([this, &req](auto&& result) {
                 K2LOG_D(log::k2ss, "Schema get received {}", result);
@@ -149,6 +154,7 @@ seastar::future<> PGK2Client::_pollSchemaGetQ() {
 seastar::future<> PGK2Client::_pollSchemaCreateQ() {
     return pollQ(schemaCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Schema create... {}", req);
+        // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->createSchema(req.collectionName, req.schema)
             .then([this, &req](auto&& result) {
                 K2LOG_D(log::k2ss, "Schema create received {}", result);
@@ -160,7 +166,8 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
 seastar::future<> PGK2Client::_pollCreateCollectionQ() {
     return pollQ(collectionCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Collection create... {}", req);
-        return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints), std::move(req.ccr.rangeEnds))
+        return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints),
+                                       std::move(req.ccr.rangeEnds))
             .then([this, &req](auto&& result) {
                 K2LOG_D(log::k2ss, "Collection create received {}", result);
                 req.prom.set_value(std::move(result));
@@ -179,13 +186,16 @@ seastar::future<> PGK2Client::_pollReadQ() {
         }
 
         if (!req.key.partitionKey.empty()) {
+            // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
             return fiter->second.read(std::move(req.key), std::move(req.collectionName))
             .then([this, &req](auto&& readResult) {
                 K2LOG_D(log::k2ss, "Key Read received: {}", readResult);
                 req.prom.set_value(std::move(readResult));
             });
         }
-        return fiter->second.read(std::move(req.record))
+
+        // Copy SKVRecrod to make RDMA safe
+        return fiter->second.read(req.record.deepCopy())
             .then([this, &req](auto&& readResult) {
                 K2LOG_D(log::k2ss, "Read received: {}", readResult);
                 req.prom.set_value(std::move(readResult));
@@ -196,6 +206,7 @@ seastar::future<> PGK2Client::_pollReadQ() {
 seastar::future<> PGK2Client::_pollCreateScanReadQ() {
     return pollQ(scanReadCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Create scan... {}", req);
+        // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->createQuery(req.collectionName, req.schemaName)
             .then([this, &req](auto&& result) {
                 K2LOG_D(log::k2ss, "Created scan... {}", result);
@@ -217,6 +228,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
             req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
+        req.query->copyPayloads();
         return fiter->second.query(*req.query)
             .then([this, &req](auto&& queryResult) {
                 K2LOG_D(log::k2ss, "Scanned... {}", queryResult);
@@ -234,7 +246,9 @@ seastar::future<> PGK2Client::_pollWriteQ() {
             req.prom.set_value(k2::WriteResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::K23SIWriteResponse{}));
             return seastar::make_ready_future();
         }
-        return fiter->second.write(req.record, req.erase, req.rejectIfExists)
+        // Copy SKVRecord to make RDMA safe
+        k2::dto::SKVRecord copy = req.record.deepCopy();
+        return fiter->second.write(copy, req.erase, false) //req.rejectIfExists)
             .then([this, &req](auto&& writeResult) {
                 K2LOG_D(log::k2ss, "Written... {}", writeResult);
                 req.prom.set_value(std::move(writeResult));
@@ -251,7 +265,9 @@ seastar::future<> PGK2Client::_pollUpdateQ() {
             req.prom.set_value(k2::PartialUpdateResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
-        return fiter->second.partialUpdate(req.record, std::move(req.fieldsForUpdate), std::move(req.key))
+        // Copy SKVRecord to make RDMA safe
+        k2::dto::SKVRecord copy = req.record.deepCopy();
+        return fiter->second.partialUpdate(copy, std::move(req.fieldsForUpdate), std::move(req.key))
             .then([this, &req](auto&& updateResult) {
                 K2LOG_D(log::k2ss, "Updated... {}", updateResult);
                 req.prom.set_value(std::move(updateResult));
