@@ -64,7 +64,8 @@ namespace gate {
             COLUMN_ID,
             BIND_ID,
             ALIAS_ID,
-            CONDITION
+            CONDITION,
+            UNBOUND
         );
 
         SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {

@@ -101,33 +101,24 @@ std::shared_ptr<SqlOpExpr> PgDmlRead::AllocColumnAssignVar(PgColumn *col) {
   return nullptr;
 }
 
-Status PgDmlRead::DeleteEmptyPrimaryBinds() {
+Status PgDmlRead::SetUnboundPrimaryBinds() {
   if (secondary_index_query_) {
-    RETURN_NOT_OK(secondary_index_query_->DeleteEmptyPrimaryBinds());
+    RETURN_NOT_OK(secondary_index_query_->SetUnboundPrimaryBinds());
   }
 
   if (!bind_desc_) {
-    // This query does not have any bindings.
+    // This query does not have any allocated columns.
     read_req_->key_column_values.clear();
     return Status::OK();
   }
 
-  bool miss_key_columns = false;
   for (size_t i = 0; i < bind_desc_->num_key_columns(); i++) {
     PgColumn& col = bind_desc_->columns()[i];
     std::shared_ptr<SqlOpExpr> expr = col.bind_var();
-    // Not find the binding in the expr_binds_ map
-    if (expr_binds_.find(expr) == expr_binds_.end()) {
-      miss_key_columns = true;
-      break;
-    }
-  }
 
-  K2LOG_D(log::pg, "Deleting empty primary binds and found missing primary key: {}", miss_key_columns);
-  // if one of the primary keys is not bound, we need to use full scan without passing key values
-  if (miss_key_columns) {
-    K2LOG_D(log::pg, "Full scan is needed");
-    read_req_->key_column_values.clear();
+    if (expr_binds_.find(expr) == expr_binds_.end()) {
+      expr->setType(SqlOpExpr::ExprType::UNBOUND);
+    }
   }
 
   return Status::OK();
@@ -327,8 +318,8 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
     sql_op_->ExecuteInit(exec_params);
   }
 
-  // Delete key columns that are not bound to any values.
-  RETURN_NOT_OK(DeleteEmptyPrimaryBinds());
+  // Detect and set key columns that are not bound to any values.
+  RETURN_NOT_OK(SetUnboundPrimaryBinds());
 
   // First, process the secondary index request.
   bool has_ybctid = VERIFY_RESULT(ProcessSecondaryIndexRequest(exec_params));

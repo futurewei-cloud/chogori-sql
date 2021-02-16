@@ -122,8 +122,8 @@ class PgDmlRead : public PgDml {
   // Allocate column expression.
   std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;
 
-  // Delete allocated target for columns that have no bind-values.
-  CHECKED_STATUS DeleteEmptyPrimaryBinds();
+  // Detect and set columns that have no bind-values.
+  CHECKED_STATUS SetUnboundPrimaryBinds();
 
   // References read request from template operation.
   std::shared_ptr<SqlOpReadRequest> read_req_ = nullptr;
