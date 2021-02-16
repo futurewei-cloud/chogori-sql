@@ -16,5 +16,6 @@
             "range_ends": [""],
             "endpoints": ["tcp+k2rpc://127.0.0.1:10003"]
         }
-    }
+    },
+    "force_sync_finalize": false
 }

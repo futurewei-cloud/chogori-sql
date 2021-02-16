@@ -24,6 +24,7 @@ echo "{
             \"endpoints\": [\"tcp+k2rpc://${REMOTE_IP}:10003\"]
         }
     }
+    \"force_sync_finalize\": false
 }
 " > k2config_rdma.json
 
@@ -44,6 +45,7 @@ export K2_PG_MEM=2G
 export K2_CPO_TIMEOUT=900ms
 export K2_CPO_BACKOFF=300ms
 #export K2_MSG_CHECKSUM=FALSE
+export K2_POLL_MODE="--poll-mode"
 export K2_CONFIG_FILE=/build/pgtest/k2config_rdma.json
 export K2_LOG_LEVEL="INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
 #export K2_LOG_LEVEL="DEBUG"

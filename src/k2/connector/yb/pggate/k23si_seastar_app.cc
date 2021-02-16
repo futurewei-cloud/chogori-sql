@@ -106,10 +106,6 @@ seastar::future<> PGK2Client::_pollBeginQ() {
     return pollQ(beginTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Begin txn...");
 
-        // This is required for RDMA initDB, otherwise it can stay commented out
-        // TODO further investigation
-        //req.opts.syncFinalize = true;
-
         return _client->beginTxn(req.opts)
             .then([this, &req](auto&& txn) {
                 K2LOG_D(log::k2ss, "txn: {}", txn.mtr());
