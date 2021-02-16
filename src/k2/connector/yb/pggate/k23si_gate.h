@@ -57,6 +57,8 @@ public:
     // TODO: Add DeleteColection later when it is supported on CPO/K23si
     std::future<CreateScanReadResult> createScanRead(const k2::String& collectionName,
                                                      const k2::String& schemaName);
+private:
+    bool _syncFinalize;
 };  // class K23SIGate
 
 }  // namespace gate

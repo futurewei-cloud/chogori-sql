@@ -4264,6 +4264,8 @@ InitK23siWorker()
 			logLevel = "INFO";
 		}
 
+		const char* pollMode = getenv("K2_POLL_MODE");
+
 		char* argv[MAX_K2_ARGS];
 		int argc = 0;
 		argv[argc++] = "k2_pg";
@@ -4277,6 +4279,7 @@ InitK23siWorker()
 		argv[argc++] = "--tso_endpoint"; argv[argc++] = tsoAddress;
 		argv[argc++] = "--cpo_request_timeout"; argv[argc++] = cpoTimeout;
 		argv[argc++] = "--cpo_request_backoff"; argv[argc++] = cpoBackoff;
+        if (NULL != pollMode) { argv[argc++] = pollMode; }
 		if (NULL != msgChecksum) { argv[argc++] = "--enable_tx_checksum"; argv[argc++] = "true"; }
 		k2_init_func(argc, argv);
         on_shmem_exit(k2_kill_func, (Datum)0);

@@ -20,6 +20,8 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
+
+#include "k2_config.h"
 #include "k23si_gate.h"
 #include "k23si_queue_defs.h"
 
@@ -28,10 +30,13 @@ namespace gate {
 using namespace k2;
 
 K23SIGate::K23SIGate() {
+    Config conf;
+    _syncFinalize = conf()["force_sync_finalize"];
 }
 
 std::future<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
     BeginTxnRequest qr{.opts=txnOpts, .prom={}};
+    qr.opts.syncFinalize = _syncFinalize;
 
     auto result = qr.prom.get_future();
     K2LOG_D(log::pg, "starting txn: enqueue");
