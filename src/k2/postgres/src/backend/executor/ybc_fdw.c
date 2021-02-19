@@ -1061,7 +1061,7 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 }
 
 /*
- * Get YugaByte-specific table metadata and load it into the scan_plan.
+ * Get k2Sql-specific table metadata and load it into the scan_plan.
  * Currently only the hash and primary key info.
  */
 static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
@@ -1141,7 +1141,7 @@ static void pgBindColumnCondBetween(YbFdwExecState *ybScan, TupleDesc bind_desc,
 	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
       false /* isnull */) : NULL;
 
-  HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
+    HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
 														ybc_expr_end),
 													ybScan->handle,
 													ybScan->stmt_owner);
@@ -1171,7 +1171,6 @@ static void pgBindColumnCondIn(YbFdwExecState *ybScan, TupleDesc bind_desc, Attr
 }
 
 static void pgBindScanKeys(Relation relation,
-							Relation index,
 							YbFdwExecState *ybScan,
 							PgFdwScanPlan scan_plan) {
 	/* Bind the scan keys */
@@ -1229,6 +1228,12 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	}
 
 	ybc_state->is_exec_done = false;
+
+	PgFdwScanPlan scan_plan = (PgFdwScanPlan *) palloc0(sizeof(PgFdwScanPlan));
+	scan_plan->target_relation = relation;
+	pgLoadTableInfo(relation, scan_plan);
+	scan_plan->bind_desc = RelationGetDescr(relation);
+	pgBindScanKeys(relation, ybc_state, scan_plan);
 
 	/* Set the current syscatalog version (will check that we are up to date) */
 	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
