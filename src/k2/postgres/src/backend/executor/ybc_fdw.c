@@ -866,8 +866,37 @@ ybcGetForeignPlan(PlannerInfo *root,
 	YbFdwPlanState *yb_plan_state = (YbFdwPlanState *) baserel->fdw_private;
 	Index          scan_relid     = baserel->relid;
 	ListCell       *lc;
+	List	   *local_exprs = NIL;
+	List	   *remote_exprs = NIL;
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
+
+	/*
+	 * Separate the restrictionClauses into those that can be executed remotely
+	 * and those that can't.  baserestrictinfo clauses that were previously
+	 * determined to be safe or unsafe are shown in fpinfo->remote_conds and
+	 * fpinfo->local_conds.  Anything else in the restrictionClauses list will
+	 * be a join clause, which we have to check for remote-safety.
+	 */
+	foreach(lc, scan_clauses)
+	{
+		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+
+		Assert(IsA(rinfo, RestrictInfo));
+
+		/* Ignore pseudoconstants, they are dealt with elsewhere */
+		if (rinfo->pseudoconstant)
+			continue;
+
+		if (list_member_ptr(yb_plan_state->remote_conds, rinfo))
+			remote_exprs = lappend(remote_exprs, rinfo->clause);
+		else if (list_member_ptr(yb_plan_state->local_conds, rinfo))
+			local_exprs = lappend(local_exprs, rinfo->clause);
+		else if (is_foreign_expr(root, baserel, rinfo->clause))
+			remote_exprs = lappend(remote_exprs, rinfo->clause);
+		else
+			local_exprs = lappend(local_exprs, rinfo->clause);
+	}
 
 	/* Get the target columns that need to be retrieved from YugaByte */
 	foreach(lc, baserel->reltarget->exprs)
@@ -932,9 +961,9 @@ ybcGetForeignPlan(PlannerInfo *root,
 
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,  /* target list */
-	                        scan_clauses,
+	                        scan_clauses,  /* ideally we should use local_exprs here, still use the whole list in case the FDW cannot process some remote exprs*/
 	                        scan_relid,
-	                        yb_plan_state->remote_conds,    /* expressions YB may evaluate */
+	                        remote_exprs,    /* expressions YB may evaluate */
 	                        target_attrs,  /* fdw_private data for YB */
 	                        NIL,    /* custom YB target list (none for now) */
 	                        NIL,    /* custom YB target list (none for now) */
