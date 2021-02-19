@@ -981,9 +981,212 @@ typedef struct YbFdwExecState
 	/* The handle for the internal YB Select statement. */
 	YBCPgStatement	handle;
 	ResourceOwner	stmt_owner;
+
+	Relation index;
+
+	int nkeys;
+	ScanKey key;
+
+	/* Oid of the table being scanned */
+	Oid tableOid;
+
+	/* Kept query-plan control to pass it to PgGate during preparation */
+	YBCPgPrepareParameters prepare_params;
+
 	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
 	bool is_exec_done; /* Each statement should be executed exactly one time */
 } YbFdwExecState;
+
+typedef struct PgFdwScanPlanData
+{
+	/* The relation where to read data from */
+	Relation target_relation;
+
+	/* Primary and hash key columns of the referenced table/relation. */
+	Bitmapset *primary_key;
+	Bitmapset *hash_key;
+
+	/* Set of key columns whose values will be used for scanning. */
+	Bitmapset *sk_cols;
+
+	/* Description and attnums of the columns to bind */
+	TupleDesc bind_desc;
+	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+} PgFdwScanPlanData;
+
+typedef PgFdwScanPlanData *PgFdwScanPlan;
+
+static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
+{
+  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+  if (bms_is_member(idx, scan_plan->primary_key))
+    scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
+}
+
+/*
+ * Checks if an attribute is a hash or primary key column and note it in
+ * the scan plan.
+ */
+static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
+										YBCPgTableDesc  ybc_table_desc,
+										AttrNumber      attnum)
+{
+	bool is_primary = false;
+	bool is_hash    = false;
+
+	/*
+	 * TODO(neil) We shouldn't need to upload YugaByte table descriptor here because the structure
+	 * Postgres::Relation already has all information.
+	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
+	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
+	 * - Number of all columns: IndexRelation->rd_index->indnatts
+	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
+	 */
+	HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_table_desc,
+											   attnum,
+											   &is_primary,
+											   &is_hash), ybc_table_desc);
+
+	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+	if (is_hash)
+	{
+		scan_plan->hash_key = bms_add_member(scan_plan->hash_key, idx);
+	}
+	if (is_primary)
+	{
+		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
+	}
+}
+
+/*
+ * Get YugaByte-specific table metadata and load it into the scan_plan.
+ * Currently only the hash and primary key info.
+ */
+static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
+{
+	Oid            dboid          = YBCGetDatabaseOid(relation);
+	Oid            relid          = RelationGetRelid(relation);
+	YBCPgTableDesc ybc_table_desc = NULL;
+
+	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
+
+	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, attnum);
+	}
+	if (relation->rd_rel->relhasoids)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, ObjectIdAttributeNumber);
+	}
+}
+
+static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
+{
+	Oid	atttypid;
+
+	if (attnum > 0)
+	{
+		/* Get the type from the description */
+		atttypid = TupleDescAttr(bind_desc, attnum - 1)->atttypid;
+	}
+	else
+	{
+		/* This must be an OID column. */
+		atttypid = OIDOID;
+	}
+
+  return atttypid;
+}
+
+/*
+ * Bind a scan key.
+ */
+static void pgBindColumn(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
+													ybScan->handle,
+													ybScan->stmt_owner);
+}
+
+void pgBindColumnCondEq(YbFdwExecState *ybScan, bool is_hash_key, TupleDesc bind_desc,
+						 AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+
+	if (is_hash_key)
+		HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
+														ybScan->handle,
+														ybScan->stmt_owner);
+	else
+		HandleYBStatusWithOwner(YBCPgDmlBindColumnCondEq(ybScan->handle, attnum, ybc_expr),
+														ybScan->handle,
+														ybScan->stmt_owner);
+}
+
+static void pgBindColumnCondBetween(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum,
+                                     bool start_valid, Datum value, bool end_valid, Datum value_end)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(ybScan->handle, atttypid, value,
+      false /* isnull */) : NULL;
+	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
+      false /* isnull */) : NULL;
+
+  HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
+														ybc_expr_end),
+													ybScan->handle,
+													ybScan->stmt_owner);
+}
+
+/*
+ * Bind an array of scan keys for a column.
+ */
+static void pgBindColumnCondIn(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum,
+                                int nvalues, Datum *values)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
+	for (int i = 0; i < nvalues; i++) {
+		/*
+		 * For IN we are removing all null values in ybcBindScanKeys before
+		 * getting here (relying on btree/lsm operators being strict).
+		 * So we can safely set is_null to false for all options left here.
+		 */
+		ybc_exprs[i] = YBCNewConstant(ybScan->handle, atttypid, values[i], false /* is_null */);
+	}
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumnCondIn(ybScan->handle, attnum, nvalues, ybc_exprs),
+	                                                 ybScan->handle,
+	                                                 ybScan->stmt_owner);
+}
+
+static void pgBindScanKeys(Relation relation,
+							Relation index,
+							YbFdwExecState *ybScan,
+							PgFdwScanPlan scan_plan) {
+	/* Bind the scan keys */
+	for (int i = 0; i < ybScan->nkeys; i++)
+	{
+		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+		if (bms_is_member(idx, scan_plan->sk_cols))
+		{
+			bool is_null = (ybScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
+
+			pgBindColumn(ybScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
+							  ybScan->key[i].sk_argument, is_null);
+		}
+	}
+}
 
 /*
  * ybcBeginForeignScan
