@@ -21,6 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
+#include "k2_config.h"
 #include "k23si_seastar_app.h"
 #include "k23si_queue_defs.h"
 #include "k23si_txn.h"
@@ -31,13 +32,11 @@ namespace gate {
 
 PGK2Client::PGK2Client() {
     K2LOG_I(log::k2ss, "Ctor");
-    _client = new k2::K23SIClient(k2::K23SIClientConfig());
-    _txns = new std::unordered_map<k2::dto::K23SI_MTR, k2::K2TxnHandle>();
-}
-
-PGK2Client::~PGK2Client() {
-    delete _client;
-    delete _txns;
+    _client = std::make_unique<k2::K23SIClient>(k2::K23SIClient(k2::K23SIClientConfig()));
+    Config conf;
+    // Sync finalize is used to make the heavy load of initDB and TPCC load phase more
+    // reliable especially with RDMA, so concurrentWrites is tied to this value
+    _concurrentWrites = !(conf()["force_sync_finalize"]);
 }
 
 seastar::future<> PGK2Client::gracefulStop() {
@@ -110,9 +109,9 @@ seastar::future<> PGK2Client::_pollBeginQ() {
             .then([this, &req](auto&& txn) {
                 K2LOG_D(log::k2ss, "txn: {}", txn.mtr());
                 auto mtr = txn.mtr();
-                (*_txns)[txn.mtr()] = std::move(txn);
+                _txns[txn.mtr()] = std::move(txn);
+                _activeWrites.insert({mtr, seastar::make_ready_future()});
                 req.prom.set_value(K23SITxn(mtr));  // send a copy to the promise
-
             });
     });
 }
@@ -120,19 +119,33 @@ seastar::future<> PGK2Client::_pollBeginQ() {
 seastar::future<> PGK2Client::_pollEndQ() {
     return pollQ(endTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "End txn...");
-        auto fiter = _txns->find(req.mtr);
-        if (fiter == _txns->end()) {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
             req.prom.set_value(k2::EndResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
+
         K2LOG_D(log::k2ss, "Ending txn: {}, with commit={}", req.mtr, req.shouldCommit);
-        return fiter->second.end(req.shouldCommit)
-            .then([this, &req](auto&& endResult) {
-                K2LOG_D(log::k2ss, "Ended txn: {}, with result: {}", req.mtr, endResult);
-                _txns->erase(req.mtr);
-                req.prom.set_value(std::move(endResult));
-            });
+        seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
+        return active_writes
+        .then([this, mtr=req.mtr, shouldCommit=req.shouldCommit] () {
+            // We are relying on the SKV client to change the commit to an abort if there was an error
+            // on one of the writes. In that case the error will be progated to the response of the end() call
+            return _txns[mtr].end(shouldCommit);
+        })
+        .then([this, &req](auto&& endResult) {
+            K2LOG_D(log::k2ss, "Ended txn: {}, with result: {}", req.mtr, endResult);
+            _txns.erase(req.mtr);
+            _activeWrites.erase(req.mtr);
+            req.prom.set_value(std::move(endResult));
+        })
+        .handle_exception([this, &req](auto exc) {
+            K2LOG_W_EXC(log::k2ss, exc, "caught exception");
+            _txns.erase(req.mtr);
+            _activeWrites.erase(req.mtr);
+            req.prom.set_exception(exc);
+        });
     });
 }
 
@@ -175,28 +188,35 @@ seastar::future<> PGK2Client::_pollCreateCollectionQ() {
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Read... {}", req);
-        auto fiter = _txns->find(req.mtr);
-        if (fiter == _txns->end()) {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
             req.prom.set_value(k2::ReadResult<k2::dto::SKVRecord>(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::SKVRecord()));
             return seastar::make_ready_future();
         }
 
-        if (!req.key.partitionKey.empty()) {
-            // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
-            return fiter->second.read(std::move(req.key), std::move(req.collectionName))
-            .then([this, &req](auto&& readResult) {
-                K2LOG_D(log::k2ss, "Key Read received: {}", readResult);
-                req.prom.set_value(std::move(readResult));
-            });
-        }
+        // Must wait for any active writes before servicing a read
+        seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
+        return active_writes
+        .then([this, &req] () {
+            auto it = _txns.find(req.mtr);
 
-        // Copy SKVRecrod to make RDMA safe
-        return fiter->second.read(req.record.deepCopy())
+            if (!req.key.partitionKey.empty()) {
+                // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
+                return it->second.read(std::move(req.key), std::move(req.collectionName))
+                .then([this, &req](auto&& readResult) {
+                    K2LOG_D(log::k2ss, "Key Read received: {}", readResult);
+                    req.prom.set_value(std::move(readResult));
+                });
+            }
+
+            // Copy SKVRecrod to make RDMA safe
+            return it->second.read(req.record.deepCopy())
             .then([this, &req](auto&& readResult) {
                 K2LOG_D(log::k2ss, "Read received: {}", readResult);
                 req.prom.set_value(std::move(readResult));
             });
+        });
     });
 }
 
@@ -219,26 +239,33 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Scan... {}", req);
-        auto fiter = _txns->find(req.mtr);
-        if (fiter == _txns->end()) {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
             req.prom.set_value(k2::QueryResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
-        req.query->copyPayloads();
-        return fiter->second.query(*req.query)
+
+        // Must wait for any active writes before servicing a scan
+        seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
+        return active_writes
+        .then([this, &req] () {
+            req.query->copyPayloads();
+            auto it = _txns.find(req.mtr);
+            return it->second.query(*req.query)
             .then([this, &req](auto&& queryResult) {
                 K2LOG_D(log::k2ss, "Scanned... {}", queryResult);
                 req.prom.set_value(std::move(queryResult));
             });
+        });
     });
 }
 
 seastar::future<> PGK2Client::_pollWriteQ() {
     return pollQ(writeTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Write... {}", req);
-        auto fiter = _txns->find(req.mtr);
-        if (fiter == _txns->end()) {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
             req.prom.set_value(k2::WriteResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id"), k2::dto::K23SIWriteResponse{}));
             return seastar::make_ready_future();
@@ -246,30 +273,68 @@ seastar::future<> PGK2Client::_pollWriteQ() {
         // Copy SKVRecord to make RDMA safe
         k2::dto::SKVRecord copy = req.record.deepCopy();
         // TODO RDMA initDB may require rejectIfExits=false
-        return fiter->second.write(copy, req.erase, req.rejectIfExists)
+        seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
+        active_writes = active_writes
+        .then([this, copy=std::move(copy), erase=req.erase, rejectFlag=req.rejectIfExists,
+                                                            mtr=req.mtr, &req] () mutable {
+            auto it = _txns.find(mtr);
+            return it->second.write(copy, erase, rejectFlag)
             .then([this, &req](auto&& writeResult) {
                 K2LOG_D(log::k2ss, "Written... {}", writeResult);
-                req.prom.set_value(std::move(writeResult));
+                if (!_concurrentWrites) {
+                    req.prom.set_value(std::move(writeResult));
+                }
             });
+        });
+
+        if (_concurrentWrites) {
+            k2::WriteResult result(k2::dto::K23SIStatus::OK("Concurrent write enqueued"),
+                                   k2::dto::K23SIWriteResponse());
+            req.prom.set_value(std::move(result));
+            return seastar::make_ready_future();
+        } else {
+            seastar::future<> f = std::move(active_writes);
+            _activeWrites.insert_or_assign(req.mtr, seastar::make_ready_future());
+            return f;
+        }
     });
 }
 
 seastar::future<> PGK2Client::_pollUpdateQ() {
     return pollQ(updateTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Update... {}", req);
-        auto fiter = _txns->find(req.mtr);
-        if (fiter == _txns->end()) {
+        auto fiter = _txns.find(req.mtr);
+        if (fiter == _txns.end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
             req.prom.set_value(k2::PartialUpdateResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
             return seastar::make_ready_future();
         }
         // Copy SKVRecord to make RDMA safe
         k2::dto::SKVRecord copy = req.record.deepCopy();
-        return fiter->second.partialUpdate(copy, std::move(req.fieldsForUpdate), std::move(req.key))
+
+        seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
+        active_writes = active_writes
+        .then([this, copy=std::move(copy), fields=std::move(req.fieldsForUpdate),
+                                           key=std::move(req.key), mtr=req.mtr, &req] () mutable {
+            auto it = _txns.find(mtr);
+            return it->second.partialUpdate(copy, std::move(fields), std::move(key))
             .then([this, &req](auto&& updateResult) {
                 K2LOG_D(log::k2ss, "Updated... {}", updateResult);
-                req.prom.set_value(std::move(updateResult));
+                if (!_concurrentWrites) {
+                    req.prom.set_value(std::move(updateResult));
+                }
             });
+        });
+
+        if (_concurrentWrites) {
+            k2::PartialUpdateResult result(k2::dto::K23SIStatus::OK("Concurrent update enqueued"));
+            req.prom.set_value(std::move(result));
+            return seastar::make_ready_future();
+        } else {
+            seastar::future<> f = std::move(active_writes);
+            _activeWrites.insert_or_assign(req.mtr, seastar::make_ready_future());
+            return f;
+        }
     });
 }
 

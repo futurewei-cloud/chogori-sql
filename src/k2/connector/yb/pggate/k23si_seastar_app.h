@@ -20,16 +20,13 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
+
 #pragma once
+
 #include <k2/appbase/AppEssentials.h>
 #include <k2/common/Log.h>
-namespace k2 {
-    class K2TxnHandle;
-    class K23SIClient;
-namespace dto {
-    class K23SI_MTR;
-}
-}
+#include <k2/module/k23si/client/k23si_client.h>
+
 namespace k2pg {
 namespace gate {
 namespace log {
@@ -38,13 +35,18 @@ inline thread_local k2::logging::Logger k2ss("k2::pg_seastar");
 class PGK2Client {
 public:
     PGK2Client();
-    ~PGK2Client();
+    ~PGK2Client() {}
     // required for seastar::distributed interface
     seastar::future<> gracefulStop();
     seastar::future<> start();
 private:
-    k2::K23SIClient* _client;
-    std::unordered_map<k2::dto::K23SI_MTR, k2::K2TxnHandle>* _txns;
+    std::unique_ptr<k2::K23SIClient> _client = nullptr;
+    std::unordered_map<k2::dto::K23SI_MTR, k2::K2TxnHandle> _txns;
+    // SQL does inserts and writes sequentially, but we want to run them concurrently when possible,
+    // so PGK2Client will ack the writes immediately to the upper layer and keep track of active writes
+    // in this data structure. If SQL does a read, scan, commit, or partial update, we will wait for
+    // all active writes. We keep a single future and chain off of it in order to maintain ordering
+    std::unordered_map<k2::dto::K23SI_MTR, seastar::future<>> _activeWrites;
 
     seastar::future<> _poller = seastar::make_ready_future();
     seastar::future<> _pollForWork();
@@ -61,6 +63,7 @@ private:
     seastar::future<> _pollCreateCollectionQ();
 
     bool _stop = false;
+    bool _concurrentWrites = false;
 };
 
 }  // namespace gate
