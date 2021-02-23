@@ -85,7 +85,6 @@ typedef struct YbFdwPlanState
 	List	   *local_conds;
 } YbFdwPlanState;
 
-
 /*
  * Global context for foreign_expr_walker's search of an expression tree.
  */
@@ -117,6 +116,29 @@ typedef struct foreign_loc_cxt
 	FDWCollateState state;		/* state of current collation choice */
 } foreign_loc_cxt;
 
+typedef struct column_ref {
+	AttrNumber attr_num;
+	int attno;
+	int attr_typid;
+	int atttypmod;
+} column_ref;
+
+typedef struct const_value
+{
+	Oid	atttypid;
+	Datum value;
+	bool is_null;
+} const_value;
+
+typedef struct foreign_expr_cxt {
+	PlannerInfo *root;			/* global planner state */
+	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
+	Relids		relids;			/* relids of base relations in the underlying
+								 * scan */
+	List *column_refs;
+	List *const_values;
+} foreign_expr_cxt;
+
 /*
  * Functions to determine whether an expression can be evaluated safely on
  * remote server.
@@ -129,7 +151,7 @@ static bool is_foreign_expr(PlannerInfo *root,
 				RelOptInfo *baserel,
 				Expr *expr);
 
-static void classifyConditions(PlannerInfo *root,
+static void classify_conditions(PlannerInfo *root,
 				   RelOptInfo *baserel,
 				   List *input_conds,
 				   List **remote_conds,
@@ -758,7 +780,7 @@ foreign_expr_walker(Node *node,
  *	- local_conds contains expressions that can't be evaluated remotely
  */
 void
-classifyConditions(PlannerInfo *root,
+classify_conditions(PlannerInfo *root,
 				   RelOptInfo *baserel,
 				   List *input_conds,
 				   List **remote_conds,
@@ -778,6 +800,61 @@ classifyConditions(PlannerInfo *root,
 		else
 			*local_conds = lappend(*local_conds, ri);
 	}
+}
+
+static void append_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
+	ListCell   *lc;
+	foreach(lc, exprs)
+	{
+		Expr	   *expr = (Expr *) lfirst(lc);
+
+		/* Extract clause from RestrictInfo, if required */
+		if (IsA(expr, RestrictInfo))
+			expr = ((RestrictInfo *) expr)->clause;
+		deparseExpr(expr, expr_cxt);
+	}
+}
+
+static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt) {
+	if (node == NULL)
+		return;
+
+	switch (nodeTag(node))
+	{
+		case T_Var:
+			parse_var((Var *) node, expr_cxt);
+			break;
+		case T_Const:
+			parse_const((Const *) node, expr_cxt);
+			break;
+		default:
+			elog(ERROR, "unsupported expression type for expr: %d",
+				 (int) nodeTag(node));
+			break;
+	}
+}
+
+static void parse_var(Var *node, foreign_expr_cxt *expr_cxt) {
+	Relids		relids = expr_cxt->relids;
+
+	/* Qualify columns when multiple relations are involved. */
+	bool qualify_col = (bms_num_members(relids) > 1);
+	if (bms_is_member(node->varno, relids) && node->varlevelsup == 0) {
+		column_ref col_ref;
+		col_ref.attno = node->varno;
+		col_ref.attr_num = node->varattno;
+		col_ref.attr_typid = node->vartype;
+		col_ref.atttypmod = node->vartypmod;
+		expr_cxt->column_refs = lappend(expr_cxt->column_refs, &col_ref);
+	}
+}
+
+static void parse_const(Const *node, foreign_expr_cxt *expr_cxt) {
+	const_value val;
+	val.atttypid = node->consttype;
+	val.value = node->constvalue;
+	val.is_null = node->constisnull;
+	expr_cxt->const_values = lappend(expr_cxt->const_values, &val);
 }
 
 /*
@@ -805,7 +882,7 @@ ybcGetForeignRelSize(PlannerInfo *root,
 
 	baserel->fdw_private = ybc_plan;
 
-	classifyConditions(root, baserel, baserel->baserestrictinfo,
+	classify_conditions(root, baserel, baserel->baserestrictinfo,
 						   &ybc_plan->remote_conds, &ybc_plan->local_conds);
 	/*
 	 * Test any indexes of rel for applicability also.
