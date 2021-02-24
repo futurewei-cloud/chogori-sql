@@ -53,6 +53,7 @@
 #include "utils/rel.h"
 #include "utils/sampling.h"
 #include "utils/typcache.h"
+#include "utils/fmgroids.h"
 
 /*  YB includes. */
 #include "commands/dbcommands.h"
@@ -157,7 +158,17 @@ static void classify_conditions(PlannerInfo *root,
 				   List **remote_conds,
 				   List **local_conds);
 
-bool
+static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
+
+static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt);
+
+static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt);
+
+static void parse_var(Var *node, foreign_expr_cxt *expr_cxt);
+
+static void parse_const(Const *node, foreign_expr_cxt *expr_cxt);
+
+static bool
 is_foreign_expr(PlannerInfo *root,
 				RelOptInfo *baserel,
 				Expr *expr)
@@ -802,7 +813,7 @@ classify_conditions(PlannerInfo *root,
 	}
 }
 
-static void append_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
+static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 	ListCell   *lc;
 	foreach(lc, exprs)
 	{
@@ -811,7 +822,7 @@ static void append_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		/* Extract clause from RestrictInfo, if required */
 		if (IsA(expr, RestrictInfo))
 			expr = ((RestrictInfo *) expr)->clause;
-		deparseExpr(expr, expr_cxt);
+		parse_expr(expr, expr_cxt);
 	}
 }
 
@@ -827,10 +838,33 @@ static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt) {
 		case T_Const:
 			parse_const((Const *) node, expr_cxt);
 			break;
-		default:
-			elog(ERROR, "unsupported expression type for expr: %d",
-				 (int) nodeTag(node));
+		case T_OpExpr:
+			parse_op_expr((OpExpr *) node, expr_cxt);
 			break;
+		default:
+			elog(WARNING, "unsupported expression type for expr: %d", (int) nodeTag(node));
+			break;
+	}
+}
+
+static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt) {
+	if (list_length(node->args) != 2) {
+		elog(WARNING, "we only handle binary opclause, actual args length: %d", list_length(node->args));
+		return;
+	}
+
+	ListCell *lc = NULL;
+	switch (get_oprrest(node->opno))
+	{
+		case F_EQSEL: // only handle equal condition for now
+		foreach(lc, node->args)
+		{
+			Expr *arg = (Expr *) lfirst(lc);
+			parse_expr(arg, expr_cxt);
+		}
+		break;
+		default:
+		break;
 	}
 }
 
