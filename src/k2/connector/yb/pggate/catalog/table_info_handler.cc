@@ -87,8 +87,7 @@ CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<Ses
     CheckSysTableResult response;
     try {
         // check if the schema already exists or not, which is an indication of whether if we have created the table or not
-        std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name, schema_name, 1);
-        k2::GetSchemaResult schema_result = schema_result_future.get();
+        auto schema_result = k2_adapter_->GetSchema(collection_name, schema_name, 1).get();
         // TODO: double check if this check is valid for schema
         if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
             K2LOG_D(log::catalog, "Table {}, does not exist in {}. Creating...", schema_name, collection_name);
@@ -205,8 +204,7 @@ ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<SessionTransaction
 ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, bool isSysTableIncluded) {
     ListTableIdsResult response;
     try {
-        std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_);
-        CreateScanReadResult create_result = create_result_future.get();
+        auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_).get();
         if (!create_result.status.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
 
@@ -225,8 +223,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         query->startScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
         query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
         do {
-            std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
-            k2::QueryResult query_result = query_result_future.get();
+            auto query_result = context->GetTxn()->scanRead(query).get();
             if (!query_result.status.is2xxOK()) {
                 K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
                 response.status.code = StatusCode::INTERNAL_ERROR;
@@ -431,8 +428,7 @@ CheckSKVSchemaResult TableInfoHandler::CheckSKVSchema(std::shared_ptr<SessionTra
     CheckSKVSchemaResult response;
     try {
         // use the same schema version in PG for SKV schema version
-        std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name, schema_name, version);
-        k2::GetSchemaResult schema_result = schema_result_future.get();
+        auto schema_result = k2_adapter_->GetSchema(collection_name, schema_name, version).get();
         if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
             response.schema = nullptr;
             response.status.Succeed();
@@ -1064,8 +1060,7 @@ k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<Ses
     // table_id
     record.serializeNext<k2::String>(table_id);
     K2LOG_D(log::catalog, "Fetching Tablehead SKV record for table {}", table_id);
-    std::future<k2::ReadResult<k2::dto::SKVRecord>> result_future = context->GetTxn()->read(std::move(record));
-    k2::ReadResult<k2::dto::SKVRecord> result = result_future.get();
+    auto result = context->GetTxn()->read(std::move(record)).get();
     // TODO: add error handling and retry logic in catalog manager
     if (result.status == k2::dto::K23SIStatus::KeyNotFound) {
         throw std::runtime_error("Cannot find entry " + table_id + " in " + collection_name);
@@ -1078,8 +1073,7 @@ k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<Ses
 }
 
 std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& base_table_id) {
-    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_);
-    CreateScanReadResult create_result = create_result_future.get();
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         base_table_id, collection_name, create_result.status);
@@ -1100,8 +1094,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
     do {
         K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
-        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
-        k2::QueryResult query_result = query_result_future.get();
+        auto query_result = context->GetTxn()->scanRead(query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
             base_table_id, collection_name, query_result.status);
@@ -1121,8 +1114,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
 }
 
 std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
-    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_);
-    CreateScanReadResult create_result = create_result_future.get();
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         table_id, collection_name, create_result.status);
@@ -1142,8 +1134,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     query->startScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     query->endScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     do {
-        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
-        k2::QueryResult query_result = query_result_future.get();
+        auto query_result = context->GetTxn()->scanRead(query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
             table_id, collection_name, query_result.status);
@@ -1163,8 +1154,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
 }
 
 std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
-    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_);
-    CreateScanReadResult create_result = create_result_future.get();
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         table_id, collection_name, create_result.status);
@@ -1184,8 +1174,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     query->startScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     query->endScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     do {
-        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
-        k2::QueryResult query_result = query_result_future.get();
+        auto query_result = context->GetTxn()->scanRead(query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
             table_id, collection_name, query_result.status);

@@ -244,7 +244,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     SqlOpResponse& response = op->response();
 
     k2::Status status;
-    std::vector<std::future<k2::ReadResult<k2::SKVRecord>>> result_futures;
+    std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
         k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(ybctid_column_value), .rangeKey=""};
         result_futures.push_back(k23SITxn->read(std::move(key), request->collection_name));
@@ -272,10 +272,10 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     prom->set_value(K2StatusToYBStatus(status));
 }
 
-std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
+CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                                             std::shared_ptr<PgReadOpTemplate> op) {
     auto prom = std::make_shared<std::promise<Status>>();
-    auto result = prom->get_future();
+    auto result = CBFuture<Status>(prom->get_future(), []{});
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
         try {
@@ -294,8 +294,7 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (request->paging_state && request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
-            std::future<CreateScanReadResult> scan_f = k23si_->createScanRead(request->collection_name, request->table_id);
-            CreateScanReadResult scan_create_result = scan_f.get();
+            auto scan_create_result = k23si_->createScanRead(request->collection_name, request->table_id).get();
             if (!scan_create_result.status.is2xxOK()) {
                 K2LOG_E(log::pg, "Unable to create scan read request");
                 response.rows_affected_count = 0;
@@ -413,10 +412,10 @@ std::future<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
     return result;
 }
 
-std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
+CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
                                              std::shared_ptr<PgWriteOpTemplate> op) {
     auto prom = std::make_shared<std::promise<Status>>();
-    auto result = prom->get_future();
+    auto result = CBFuture<Status>(prom->get_future(), [] {});
 
     threadPool_.enqueue([this, k23SITxn, op, prom] () {
         try {
@@ -482,21 +481,21 @@ std::future<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     return result;
 }
 
-std::future<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
+CBFuture<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
     auto start = k2::Clock::now();
-    std::future<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
+    CBFuture<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
     K2LOG_D(log::pg, "GetSchema took {}", k2::Clock::now() - start);
     return result;
 }
 
-std::future<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
+CBFuture<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
     auto start = k2::Clock::now();
-    std::future<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
+    CBFuture<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
     K2LOG_D(log::pg, "CreateSchema took {}", k2::Clock::now() - start);
     return result;
 }
 
-std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
+CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
 {
     auto start = k2::Clock::now();
     K2LOG_I(log::pg, "Create collection: name={}, ns={}", collection_name, nsName);
@@ -539,7 +538,7 @@ std::future<k2::Status> K2Adapter::CreateCollection(const std::string& collectio
     return result;
 }
 
-std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName,
+CBFuture<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName) {
     auto start = k2::Clock::now();
     auto result = k23si_->createScanRead(collectionName, schemaName);
@@ -547,7 +546,7 @@ std::future<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& c
     return result;
 }
 
-std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
+CBFuture<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
     auto start = k2::Clock::now();
     // 1) check the request in op and construct the SKV request based on the op type, i.e., READ or WRITE
     // 2) call read or write on k23SITxn
@@ -576,7 +575,7 @@ std::future<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::sha
     }
 }
 
-std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
+CBFuture<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops) {
     auto start = k2::Clock::now();
     // same as the above except that send multiple requests and need to handle multiple futures from SKV
     // but only return a single future to this method caller. Return Status will be OK all Execs are
@@ -584,18 +583,18 @@ std::future<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, con
 
     // This only works if the Exec calls are executed in order by the threadpool, otherwise we could
     // deadlock if the waiting thread below is executed first
-    auto op_futures = std::make_shared<std::vector<std::future<Status>>>();
+    auto op_futures = std::make_shared<std::vector<CBFuture<Status>>>();
     for (const std::shared_ptr<PgOpTemplate>& op : ops) {
         op_futures->emplace_back(Exec(k23SITxn, op));
     }
 
     auto prom = std::make_shared<std::promise<Status>>();
-    auto result = prom->get_future();
+    auto result = CBFuture<Status>(prom->get_future(), [] {});
     threadPool_.enqueue([op_futures, prom] () {
         Status status = Status::OK();
         std::exception_ptr e = nullptr;
 
-        for (std::future<Status>& op : *op_futures) {
+        for (CBFuture<Status>& op : *op_futures) {
             try {
                 Status exec_status = op.get();
                 if (!exec_status.ok()) {
@@ -639,7 +638,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 
 std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
     auto start = k2::Clock::now();
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
+    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
         throw std::runtime_error("Failed to get schema for " + table_id + " in " + collection_name + " due to " + schema_result.status.message.c_str());
@@ -661,7 +660,7 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     return key.partitionKey;
 }
 
-std::future<K23SITxn> K2Adapter::beginTransaction() {
+CBFuture<K23SITxn> K2Adapter::beginTransaction() {
     auto start = k2::Clock::now();
     k2::K2TxnOptions options{};
     // use default values for now
@@ -709,7 +708,7 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
 template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
 std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool existYbctids, bool ignoreYBCTID) {
-    std::future<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.collection_name, request.table_id,
+    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.collection_name, request.table_id,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic

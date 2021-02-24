@@ -47,32 +47,32 @@ class K2Adapter {
 
   CHECKED_STATUS Shutdown();
 
-  std::future<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
+  CBFuture<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
 
-  std::future<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
+  CBFuture<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
 
-  std::future<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
+  CBFuture<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
   // TODO: Add DeleteColection later when it is supported on CPO/K23si
 
-  std::future<CreateScanReadResult> CreateScanRead(const std::string& collectionName,
+  CBFuture<CreateScanReadResult> CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName);
 
-  std::future<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
+  CBFuture<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 
-  std::future<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
+  CBFuture<Status> BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const std::vector<std::shared_ptr<PgOpTemplate>>& ops);
 
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
   std::string GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values);
   static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
 
-  std::future<K23SITxn> beginTransaction();
+  CBFuture<K23SITxn> beginTransaction();
 
   private:
   std::shared_ptr<K23SIGate> k23si_;
   ThreadPool threadPool_;
 
-  std::future<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
-  std::future<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
+  CBFuture<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
+  CBFuture<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
   // Helper funcxtion for handleReadOp when ybctid is set in the request
   void handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                            std::shared_ptr<PgReadOpTemplate> op,

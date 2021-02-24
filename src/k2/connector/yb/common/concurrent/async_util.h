@@ -110,16 +110,5 @@ class Synchronizer {
   Status status_;
 };
 
-// Functor is any functor that accepts callback as only argument.
-template <class Result, class Functor>
-std::future<Result> MakeFuture(const Functor& functor) {
-  auto promise = std::make_shared<std::promise<Result>>();
-  auto future = promise->get_future();
-  functor([promise](Result result) {
-    promise->set_value(std::move(result));
-  });
-  return future;
-}
-
 } // namespace yb
 #endif /* YB_UTIL_ASYNC_UTIL_H */

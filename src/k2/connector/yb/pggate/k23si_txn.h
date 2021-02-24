@@ -30,8 +30,7 @@ Copyright(c) 2020 Futurewei Cloud
 #pragma once
 #include "k2_includes.h"
 #include "k2_log.h"
-
-#include <future>
+#include "k2_future.h"
 
 namespace k2pg {
 namespace gate {
@@ -43,38 +42,38 @@ namespace gate {
 class K23SITxn {
 public:
     // Ctor: creates a new transaction with the given mtr.
-    K23SITxn(k2::dto::K23SI_MTR mtr);
+    K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime);
 
     // Scans records from K2.
     // The result future is eventually satisfied with the resulting SKVRecords of the scan.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::QueryResult> scanRead(std::shared_ptr<k2::Query> query);
+    CBFuture<k2::QueryResult> scanRead(std::shared_ptr<k2::Query> query);
 
     // Reads a record from K2.
     // The result future is eventually satisfied with the result of the read.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::ReadResult<k2::SKVRecord>> read(k2::dto::SKVRecord&& rec);
-    std::future<k2::ReadResult<k2::SKVRecord>> read(k2::dto::Key key, std::string collectionName);
+    CBFuture<k2::ReadResult<k2::SKVRecord>> read(k2::dto::SKVRecord&& rec);
+    CBFuture<k2::ReadResult<k2::SKVRecord>> read(k2::dto::Key key, std::string collectionName);
 
     // Writes a record (full) into K2. The erase flag is used if this write should delete
     // the record from K2.
     // The result future is eventually satisfied with the result of the write
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
+    CBFuture<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
 
     // Writes a partial update (e.g. SQL UPDATE) into K2.
     // fieldsToUpdate are the indexes of the fields to change, key may be empty in which case the key is
     // generated from the SKVRecord or filled in with a previously cached value
     // The result future is eventually satisfied with the result of the update
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::PartialUpdateResult> partialUpdate(k2::dto::SKVRecord&& rec,
+    CBFuture<k2::PartialUpdateResult> partialUpdate(k2::dto::SKVRecord&& rec,
                                                        std::vector<uint32_t> fieldsForUpdate,
                                                        std::string key="");
 
     // Ends the transaction. The transaction can be either committed or aborted.
     // The result future is eventually satisfied with the result of the end operation
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    std::future<k2::EndResult> endTxn(bool shouldCommit);
+    CBFuture<k2::EndResult> endTxn(bool shouldCommit);
 
     // Returns the MTR for this transaction. This is unique for each transaction and
     // can be useful to keep track of transactions or to log
@@ -83,7 +82,17 @@ public:
 
 private: // fields
     k2::dto::K23SI_MTR _mtr; // mtr for this transaction
+    void _reportEndMetrics(k2::TimePoint now);
 
+    // the time at which SQL asked to start this txn
+    k2::TimePoint _startTime;
+
+    // remember if we were asked to end with commit or not
+    bool _shouldCommit{false};
+
+    uint32_t _readOps{0};
+    uint32_t _writeOps{0};
+    uint32_t _scanOps{0};
  };  // class K23SITxn
 
 } // ns gate

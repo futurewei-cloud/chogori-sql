@@ -111,7 +111,7 @@ seastar::future<> PGK2Client::_pollBeginQ() {
                 K2LOG_D(log::k2ss, "txn: {}", txn.mtr());
                 auto mtr = txn.mtr();
                 (*_txns)[txn.mtr()] = std::move(txn);
-                req.prom.set_value(K23SITxn(mtr));  // send a copy to the promise
+                req.prom.set_value(K23SITxn(mtr, req.startTime));  // send a copy to the promise
 
             });
     });

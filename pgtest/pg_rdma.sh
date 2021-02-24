@@ -24,7 +24,10 @@ echo "{
             \"endpoints\": [\"tcp+k2rpc://${REMOTE_IP}:10003\"]
         }
     }
-    \"force_sync_finalize\": false
+    \"force_sync_finalize\": false,
+    \"prometheus_port\": -1,
+    \"prometheus_push_interval_ms\": 10000,
+    \"prometheus_push_address\": \"127.0.0.1:9091\"
 }
 " > k2config_rdma.json
 

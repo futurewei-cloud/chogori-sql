@@ -7,6 +7,6 @@ set_target_properties(ybpggate PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION 1
         )
-target_link_libraries (ybpggate PRIVATE glog gflags ybcommon k2entities k2::dto Seastar::seastar nlohmann_json::nlohmann_json)
+target_link_libraries (ybpggate PRIVATE glog gflags ybcommon k2entities k2::dto Seastar::seastar prom nlohmann_json::nlohmann_json)
 
 set_target_properties(ybpggate PROPERTIES LINKER_LANGUAGE C)

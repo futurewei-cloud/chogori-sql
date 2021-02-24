@@ -35,6 +35,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <seastar/core/resource.hh>
 #include <seastar/core/memory.hh>
 #include "k2_log.h"
+#include "k2_session_metrics.h"
 
 namespace k2pg {
 class ThreadPool {
@@ -72,6 +73,7 @@ public:
                         auto task = _tasks[0];
                         _tasks.pop_front();
                         lock.unlock();
+                        auto start = k2::Clock::now();
                         try {
                             K2LOG_D(log::pg, "Running task");
                             task();
@@ -83,6 +85,7 @@ public:
                         catch(...) {
                             K2LOG_E(log::pg, "Task threw unknown exception");
                         }
+                        session::thread_pool_task_duration->observe(k2::Clock::now() - start);
                     } else {
                         // no tasks left. Notify anyone waiting on threadpool
                         _waitNotifier.notify_all();

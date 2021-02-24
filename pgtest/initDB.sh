@@ -29,7 +29,7 @@ export GLOG_log_dir=/tmp
 rm -rf pgroot/data
 mkdir -p pgroot/data
 
-./run_k2_platform.sh 
-sleep 2
+./run_k2_platform.sh
+sleep 5
 
 /build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data

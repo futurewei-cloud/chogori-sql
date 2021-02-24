@@ -35,6 +35,7 @@ namespace gate {
 struct BeginTxnRequest {
     k2::K2TxnOptions opts;
     std::promise<K23SITxn> prom;
+    k2::TimePoint startTime;
     K2_DEF_FMT(BeginTxnRequest, opts);
 };
 

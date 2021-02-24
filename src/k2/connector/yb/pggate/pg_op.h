@@ -236,7 +236,7 @@ protected:
 
     // Future object to fetch a response from storage after sending a request.
     // Only one RunAsync() can be called to sent storage at a time.
-    std::future<Status> requestAsyncRunResult_;
+    CBFuture<Status> requestAsyncRunResult_;
 
     // Executed row count.
     int32_t rows_affected_count_ = 0;

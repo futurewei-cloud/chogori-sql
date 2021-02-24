@@ -67,8 +67,7 @@ GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<Session
     GetClusterInfoResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr_);
     record.serializeNext<k2::String>(cluster_id);
-    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
-    k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
+    auto read_result = context->GetTxn()->read(std::move(record)).get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         K2LOG_D(log::catalog, "Cluster info record does not exist");
         response.clusterInfo = nullptr;

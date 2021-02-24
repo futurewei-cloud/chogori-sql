@@ -34,8 +34,7 @@ PgTxnHandler::PgTxnHandler(std::shared_ptr<K2Adapter> adapter) : adapter_(adapte
 PgTxnHandler::~PgTxnHandler() {
   // Abort the transaction before the transaction handler gets destroyed.
   if (txn_ != nullptr) {
-    std::future<k2::EndResult> result_future = txn_->endTxn(false);
-    k2::EndResult result = result_future.get();
+    auto result = txn_->endTxn(false).get();
     if (!result.status.is2xxOK()) {
       K2LOG_E(log::pg, "In progress transaction abortion failed due to: {}", result.status.message);
     }
@@ -58,8 +57,7 @@ Status PgTxnHandler::RestartTransaction() {
   // TODO: how do we decide whether a transaction is restart required?
 
   if (txn_ != nullptr) {
-    std::future<k2::EndResult> result_future = txn_->endTxn(false);
-    k2::EndResult result = result_future.get();
+    auto result = txn_->endTxn(false).get();
     if (!result.status.is2xxOK()) {
       return STATUS_FORMAT(RuntimeError, "Transaction abort failed with error code $0 and message $1", result.status.code, result.status.message);
     }
@@ -86,8 +84,7 @@ Status PgTxnHandler::CommitTransaction() {
 
   K2LOG_D(log::pg, "Committing transaction.");
   // Use synchronous call for now until PG supports additional state check after this call
-  std::future<k2::EndResult> result_future = txn_->endTxn(true);
-  k2::EndResult result = result_future.get();
+  auto result = txn_->endTxn(true).get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
    K2LOG_W(log::pg, "Transaction commit failed due to: {}", result.status);
@@ -107,8 +104,7 @@ Status PgTxnHandler::AbortTransaction() {
     return Status::OK();
   }
   // Use synchronous call for now until PG supports additional state check after this call
-  std::future<k2::EndResult> result_future = txn_->endTxn(false);
-  k2::EndResult result = result_future.get();
+  auto result = txn_->endTxn(false).get();
   ResetTransaction();
   if (!result.status.is2xxOK()) {
     K2LOG_W(log::pg, "Transaction abort failed due to: {}", result.status);
@@ -160,7 +156,7 @@ void PgTxnHandler::ResetTransaction() {
 
 void PgTxnHandler::StartNewTransaction() {
   // TODO: add error handling for status check if the status is available
-  std::future<K23SITxn> txn_future = adapter_->beginTransaction();
+  auto txn_future = adapter_->beginTransaction();
   auto txn_tmp = std::make_shared<K23SITxn>(txn_future.get());
   txn_ = txn_tmp;
 }

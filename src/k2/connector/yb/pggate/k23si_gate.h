@@ -45,17 +45,18 @@ public:
     // Ctor: creates a new library instance. The library just proxies calls over request queues to the
     // seastar counterpart. All configuration relevant to the k2 client is performed in the seastar client (k23si_app.h)
     K23SIGate();
+    ~K23SIGate();
     static constexpr auto ANY_VERSION = k2::K23SIClient::ANY_VERSION;
 
     // Starts a new transaction with the given options.
     // the result future is eventually satisfied with a valid transaction handle, or with an exception if the library
     // is unable to start a transaction
-    std::future<K23SITxn> beginTxn(const k2::K2TxnOptions& txnOpts);
-    std::future<k2::GetSchemaResult> getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion);
-    std::future<k2::CreateSchemaResult> createSchema(const k2::String& collectionName, k2::dto::Schema schema);
-    std::future<k2::Status> createCollection(k2::dto::CollectionCreateRequest&& ccr);
+    CBFuture<K23SITxn> beginTxn(const k2::K2TxnOptions& txnOpts);
+    CBFuture<k2::GetSchemaResult> getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion);
+    CBFuture<k2::CreateSchemaResult> createSchema(const k2::String& collectionName, k2::dto::Schema schema);
+    CBFuture<k2::Status> createCollection(k2::dto::CollectionCreateRequest&& ccr);
     // TODO: Add DeleteColection later when it is supported on CPO/K23si
-    std::future<CreateScanReadResult> createScanRead(const k2::String& collectionName,
+    CBFuture<CreateScanReadResult> createScanRead(const k2::String& collectionName,
                                                      const k2::String& schemaName);
 private:
     bool _syncFinalize;
