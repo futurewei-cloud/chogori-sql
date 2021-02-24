@@ -1389,12 +1389,13 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	}
 
 	ybc_state->is_exec_done = false;
+	PgFdwScanPlanData scan_plan;
+	memset(&scan_plan, 0, sizeof(scan_plan));
 
-	PgFdwScanPlan scan_plan = (PgFdwScanPlan *) palloc0(sizeof(PgFdwScanPlan));
-	scan_plan->target_relation = relation;
-	pgLoadTableInfo(relation, scan_plan);
-	scan_plan->bind_desc = RelationGetDescr(relation);
-	pgBindScanKeys(relation, ybc_state, scan_plan);
+	scan_plan.target_relation = relation;
+	pgLoadTableInfo(relation, &scan_plan);
+	scan_plan.bind_desc = RelationGetDescr(relation);
+	pgBindScanKeys(relation, ybc_state, &scan_plan);
 
 	/* Set the current syscatalog version (will check that we are up to date) */
 	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
