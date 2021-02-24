@@ -138,12 +138,52 @@ typedef struct FDWEqualCond
 } FDWEqualCond;
 
 typedef struct foreign_expr_cxt {
-	PlannerInfo *root;			/* global planner state */
-	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
-	Relids		relids;			/* relids of base relations in the underlying
-								 * scan */
 	List *equal_conds;          /* equal conditions */
 } foreign_expr_cxt;
+
+/*
+ * FDW-specific information for ForeignScanState.fdw_state.
+ */
+typedef struct YbFdwExecState
+{
+	/* The handle for the internal YB Select statement. */
+	YBCPgStatement	handle;
+	ResourceOwner	stmt_owner;
+
+	Relation index;
+
+	List *remote_exprs;
+
+	/* Oid of the table being scanned */
+	Oid tableOid;
+
+	/* Kept query-plan control to pass it to PgGate during preparation */
+	YBCPgPrepareParameters prepare_params;
+
+	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
+	bool is_exec_done; /* Each statement should be executed exactly one time */
+} YbFdwExecState;
+
+typedef struct PgFdwScanPlanData
+{
+	/* The relation where to read data from */
+	Relation target_relation;
+
+	int nkeys; // number of keys
+
+	/* Primary and hash key columns of the referenced table/relation. */
+	Bitmapset *primary_key;
+	Bitmapset *hash_key;
+
+	/* Set of key columns whose values will be used for scanning. */
+	Bitmapset *sk_cols;
+
+	/* Description and attnums of the columns to bind */
+	TupleDesc bind_desc;
+	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+} PgFdwScanPlanData;
+
+typedef PgFdwScanPlanData *PgFdwScanPlan;
 
 /*
  * Functions to determine whether an expression can be evaluated safely on
@@ -165,13 +205,13 @@ static void classify_conditions(PlannerInfo *root,
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
 
-static void parse_expr(Expr *node, Relids relids, List *column_refs, List *const_values);
+static void parse_expr(Expr *node, List *column_refs, List *const_values);
 
-static void parse_op_expr(OpExpr *node, Relids relids, List *column_refs, List *const_values);
+static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values);
 
-static void parse_var(Var *node, Relids relids, List *column_refs, List *const_values);
+static void parse_var(Var *node, List *column_refs, List *const_values);
 
-static void parse_const(Const *node, Relids relids, List *column_refs, List *const_values);
+static void parse_const(Const *node, List *column_refs, List *const_values);
 
 static bool
 is_foreign_expr(PlannerInfo *root,
@@ -819,7 +859,6 @@ classify_conditions(PlannerInfo *root,
 }
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
-	Relids relids = expr_cxt->relids;
 	ListCell   *lc;
 	foreach(lc, exprs)
 	{
@@ -831,11 +870,11 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		}
 
 		// parse a single clause
-		List *column_refs;
-		List *const_values;
+		List *column_refs = NIL;
+		List *const_values = NIL;
 		linitial(column_refs);
 		linitial(const_values);
-		parse_expr(expr, relids, column_refs, const_values);
+		parse_expr(expr, column_refs, const_values);
 		if (list_length(column_refs) == 1 && list_length(const_values)) {
 			// found a binary condition
 			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
@@ -848,20 +887,20 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 	}
 }
 
-static void parse_expr(Expr *node, Relids relids, List *column_refs, List *const_values) {
+static void parse_expr(Expr *node, List *column_refs, List *const_values) {
 	if (node == NULL)
 		return;
 
 	switch (nodeTag(node))
 	{
 		case T_Var:
-			parse_var((Var *) node, relids, column_refs, const_values);
+			parse_var((Var *) node, column_refs, const_values);
 			break;
 		case T_Const:
-			parse_const((Const *) node, relids, column_refs, const_values);
+			parse_const((Const *) node, column_refs, const_values);
 			break;
 		case T_OpExpr:
-			parse_op_expr((OpExpr *) node, relids, column_refs, const_values);
+			parse_op_expr((OpExpr *) node, column_refs, const_values);
 			break;
 		default:
 			elog(WARNING, "unsupported expression type for expr: %d", (int) nodeTag(node));
@@ -869,7 +908,7 @@ static void parse_expr(Expr *node, Relids relids, List *column_refs, List *const
 	}
 }
 
-static void parse_op_expr(OpExpr *node, Relids relids, List *column_refs, List *const_values) {
+static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values) {
 	if (list_length(node->args) != 2) {
 		elog(WARNING, "we only handle binary opclause, actual args length: %d", list_length(node->args));
 		return;
@@ -879,20 +918,20 @@ static void parse_op_expr(OpExpr *node, Relids relids, List *column_refs, List *
 	switch (get_oprrest(node->opno))
 	{
 		case F_EQSEL: // only handle equal condition for now
-		foreach(lc, node->args)
-		{
-			Expr *arg = (Expr *) lfirst(lc);
-			parse_expr(arg, relids, column_refs, const_values);
-		}
-		break;
+			foreach(lc, node->args)
+			{
+				Expr *arg = (Expr *) lfirst(lc);
+				parse_expr(arg, column_refs, const_values);
+			}
+			break;
 		default:
-		break;
+			break;
 	}
 }
 
-static void parse_var(Var *node, Relids relids, List *column_refs, List *const_values) {
+static void parse_var(Var *node, List *column_refs, List *const_values) {
 	// the condition is at the current level
-	if (bms_is_member(node->varno, relids) && node->varlevelsup == 0) {
+	if (node->varlevelsup == 0) {
 		FDWColumnRef *col_ref = (FDWColumnRef *)palloc0(sizeof(FDWColumnRef));
 		col_ref->attno = node->varno;
 		col_ref->attr_num = node->varattno;
@@ -902,12 +941,216 @@ static void parse_var(Var *node, Relids relids, List *column_refs, List *const_v
 	}
 }
 
-static void parse_const(Const *node, Relids relids, List *column_refs, List *const_values) {
+static void parse_const(Const *node, List *column_refs, List *const_values) {
 	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
 	val->atttypid = node->consttype;
 	val->value = node->constvalue;
 	val->is_null = node->constisnull;
 	const_values = lappend(const_values, val);
+}
+
+static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
+{
+  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+  if (bms_is_member(idx, scan_plan->primary_key))
+    scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
+}
+
+/*
+ * Checks if an attribute is a hash or primary key column and note it in
+ * the scan plan.
+ */
+static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
+										YBCPgTableDesc  ybc_table_desc,
+										AttrNumber      attnum)
+{
+	bool is_primary = false;
+	bool is_hash    = false;
+
+	/*
+	 * TODO(neil) We shouldn't need to upload YugaByte table descriptor here because the structure
+	 * Postgres::Relation already has all information.
+	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
+	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
+	 * - Number of all columns: IndexRelation->rd_index->indnatts
+	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
+	 */
+	HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_table_desc,
+											   attnum,
+											   &is_primary,
+											   &is_hash), ybc_table_desc);
+
+	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+	if (is_hash)
+	{
+		scan_plan->hash_key = bms_add_member(scan_plan->hash_key, idx);
+		scan_plan->nkeys++;
+	}
+	if (is_primary)
+	{
+		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
+		scan_plan->nkeys++;
+	}
+}
+
+/*
+ * Get k2Sql-specific table metadata and load it into the scan_plan.
+ * Currently only the hash and primary key info.
+ */
+static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
+{
+	Oid            dboid          = YBCGetDatabaseOid(relation);
+	Oid            relid          = RelationGetRelid(relation);
+	YBCPgTableDesc ybc_table_desc = NULL;
+
+	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
+
+	scan_plan->nkeys = 0;
+	// number of attributes in the relation tuple
+	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, attnum);
+	}
+	// we generate OIDs for rows of relation
+	if (relation->rd_rel->relhasoids)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, ObjectIdAttributeNumber);
+	}
+}
+
+static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
+{
+	Oid	atttypid;
+
+	if (attnum > 0)
+	{
+		/* Get the type from the description */
+		atttypid = TupleDescAttr(bind_desc, attnum - 1)->atttypid;
+	}
+	else
+	{
+		/* This must be an OID column. */
+		atttypid = OIDOID;
+	}
+
+  return atttypid;
+}
+
+/*
+ * Bind a scan key.
+ */
+static void pgBindColumn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
+													fdw_state->handle,
+													fdw_state->stmt_owner);
+}
+
+void pgBindColumnCondEq(YbFdwExecState *fdw_state, bool is_hash_key, TupleDesc bind_desc,
+						 AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
+
+	if (is_hash_key)
+		HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
+	else
+		HandleYBStatusWithOwner(YBCPgDmlBindColumnCondEq(fdw_state->handle, attnum, ybc_expr),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
+}
+
+static void pgBindColumnCondBetween(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
+                                     bool start_valid, Datum value, bool end_valid, Datum value_end)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(fdw_state->handle, atttypid, value,
+      false /* isnull */) : NULL;
+	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(fdw_state->handle, atttypid, value_end,
+      false /* isnull */) : NULL;
+
+    HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(fdw_state->handle, attnum, ybc_expr,
+														ybc_expr_end),
+													fdw_state->handle,
+													fdw_state->stmt_owner);
+}
+
+/*
+ * Bind an array of scan keys for a column.
+ */
+static void pgBindColumnCondIn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
+                                int nvalues, Datum *values)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
+	for (int i = 0; i < nvalues; i++) {
+		/*
+		 * For IN we are removing all null values in ybcBindScanKeys before
+		 * getting here (relying on btree/lsm operators being strict).
+		 * So we can safely set is_null to false for all options left here.
+		 */
+		ybc_exprs[i] = YBCNewConstant(fdw_state->handle, atttypid, values[i], false /* is_null */);
+	}
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumnCondIn(fdw_state->handle, attnum, nvalues, ybc_exprs),
+	                                                 fdw_state->handle,
+	                                                 fdw_state->stmt_owner);
+}
+
+// search for the column in the equal conditions, the performance is fine for small number of equal conditions
+static FDWEqualCond *findEqualCondition(foreign_expr_cxt context, int index) {
+	ListCell *lc = NULL;;
+	foreach (lc, context.equal_conds) {
+		FDWEqualCond *first = (FDWEqualCond *) lfirst(lc);
+		if (first->ref->attno == index) {
+			return first;
+		}
+	}
+
+	return NULL;
+}
+
+static void pgBindScanKeys(Relation relation,
+							YbFdwExecState *fdw_state,
+							PgFdwScanPlan scan_plan) {
+	if (list_length(fdw_state->remote_exprs) == 0) {
+		elog(WARNING, "No remote exprs to bind keys for relation: %d", relation->rd_id);
+		return;
+	}
+	foreign_expr_cxt context;
+	context.equal_conds = NIL;
+
+	parse_conditions(fdw_state->remote_exprs, &context);
+	if (list_length(context.equal_conds) == 0) {
+		elog(WARNING, "No equal conditions are found to bind keys for relation: %d", relation->rd_id);
+		return;
+	}
+
+	/* Bind the scan keys */
+	for (int i = 0; i < scan_plan->nkeys; i++)
+	{
+		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+		if (bms_is_member(idx, scan_plan->sk_cols))
+		{
+			// check if the key is in the equal conditions
+			FDWEqualCond *equal_cond = findEqualCondition(context, idx);
+			if (equal_cond != NULL) {
+				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
+			 				  equal_cond->val->value, equal_cond->val->is_null);
+			}
+		}
+	}
 }
 
 /*
@@ -993,7 +1236,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 				  List *scan_clauses,
 				  Plan *outer_plan)
 {
-	YbFdwPlanState *yb_plan_state = (YbFdwPlanState *) baserel->fdw_private;
+	YbFdwPlanState *fdw_plan_state = (YbFdwPlanState *) baserel->fdw_private;
 	Index          scan_relid     = baserel->relid;
 	ListCell       *lc;
 	List	   *local_exprs = NIL;
@@ -1018,9 +1261,9 @@ ybcGetForeignPlan(PlannerInfo *root,
 		if (rinfo->pseudoconstant)
 			continue;
 
-		if (list_member_ptr(yb_plan_state->remote_conds, rinfo))
+		if (list_member_ptr(fdw_plan_state->remote_conds, rinfo))
 			remote_exprs = lappend(remote_exprs, rinfo->clause);
-		else if (list_member_ptr(yb_plan_state->local_conds, rinfo))
+		else if (list_member_ptr(fdw_plan_state->local_conds, rinfo))
 			local_exprs = lappend(local_exprs, rinfo->clause);
 		else if (is_foreign_expr(root, baserel, rinfo->clause))
 			remote_exprs = lappend(remote_exprs, rinfo->clause);
@@ -1034,7 +1277,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 		Expr *expr = (Expr *) lfirst(lc);
 		pull_varattnos_min_attr((Node *) expr,
 		                        baserel->relid,
-		                        &yb_plan_state->target_attrs,
+		                        &fdw_plan_state->target_attrs,
 		                        baserel->min_attr);
 	}
 
@@ -1043,7 +1286,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 		Expr *expr = (Expr *) lfirst(lc);
 		pull_varattnos_min_attr((Node *) expr,
 		                        baserel->relid,
-		                        &yb_plan_state->target_attrs,
+		                        &fdw_plan_state->target_attrs,
 		                        baserel->min_attr);
 	}
 
@@ -1053,7 +1296,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 	for (AttrNumber attnum = baserel->min_attr; attnum <= baserel->max_attr; attnum++)
 	{
 		int bms_idx = attnum - baserel->min_attr + 1;
-		if (wholerow || bms_is_member(bms_idx, yb_plan_state->target_attrs))
+		if (wholerow || bms_is_member(bms_idx, fdw_plan_state->target_attrs))
 		{
 			switch (attnum)
 			{
@@ -1104,220 +1347,6 @@ ybcGetForeignPlan(PlannerInfo *root,
 /*  Scanning functions */
 
 /*
- * FDW-specific information for ForeignScanState.fdw_state.
- */
-typedef struct YbFdwExecState
-{
-	/* The handle for the internal YB Select statement. */
-	YBCPgStatement	handle;
-	ResourceOwner	stmt_owner;
-
-	Relation index;
-
-	int nkeys;
-	ScanKey key;
-
-	/* Oid of the table being scanned */
-	Oid tableOid;
-
-	/* Kept query-plan control to pass it to PgGate during preparation */
-	YBCPgPrepareParameters prepare_params;
-
-	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
-	bool is_exec_done; /* Each statement should be executed exactly one time */
-} YbFdwExecState;
-
-typedef struct PgFdwScanPlanData
-{
-	/* The relation where to read data from */
-	Relation target_relation;
-
-	/* Primary and hash key columns of the referenced table/relation. */
-	Bitmapset *primary_key;
-	Bitmapset *hash_key;
-
-	/* Set of key columns whose values will be used for scanning. */
-	Bitmapset *sk_cols;
-
-	/* Description and attnums of the columns to bind */
-	TupleDesc bind_desc;
-	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
-} PgFdwScanPlanData;
-
-typedef PgFdwScanPlanData *PgFdwScanPlan;
-
-static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
-{
-  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
-
-  if (bms_is_member(idx, scan_plan->primary_key))
-    scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
-}
-
-/*
- * Checks if an attribute is a hash or primary key column and note it in
- * the scan plan.
- */
-static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
-										YBCPgTableDesc  ybc_table_desc,
-										AttrNumber      attnum)
-{
-	bool is_primary = false;
-	bool is_hash    = false;
-
-	/*
-	 * TODO(neil) We shouldn't need to upload YugaByte table descriptor here because the structure
-	 * Postgres::Relation already has all information.
-	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
-	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
-	 * - Number of all columns: IndexRelation->rd_index->indnatts
-	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
-	 */
-	HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_table_desc,
-											   attnum,
-											   &is_primary,
-											   &is_hash), ybc_table_desc);
-
-	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
-
-	if (is_hash)
-	{
-		scan_plan->hash_key = bms_add_member(scan_plan->hash_key, idx);
-	}
-	if (is_primary)
-	{
-		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
-	}
-}
-
-/*
- * Get k2Sql-specific table metadata and load it into the scan_plan.
- * Currently only the hash and primary key info.
- */
-static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
-{
-	Oid            dboid          = YBCGetDatabaseOid(relation);
-	Oid            relid          = RelationGetRelid(relation);
-	YBCPgTableDesc ybc_table_desc = NULL;
-
-	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
-
-	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
-	{
-		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, attnum);
-	}
-	if (relation->rd_rel->relhasoids)
-	{
-		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, ObjectIdAttributeNumber);
-	}
-}
-
-static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
-{
-	Oid	atttypid;
-
-	if (attnum > 0)
-	{
-		/* Get the type from the description */
-		atttypid = TupleDescAttr(bind_desc, attnum - 1)->atttypid;
-	}
-	else
-	{
-		/* This must be an OID column. */
-		atttypid = OIDOID;
-	}
-
-  return atttypid;
-}
-
-/*
- * Bind a scan key.
- */
-static void pgBindColumn(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
-
-	HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
-													ybScan->handle,
-													ybScan->stmt_owner);
-}
-
-void pgBindColumnCondEq(YbFdwExecState *ybScan, bool is_hash_key, TupleDesc bind_desc,
-						 AttrNumber attnum, Datum value, bool is_null)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
-
-	if (is_hash_key)
-		HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
-														ybScan->handle,
-														ybScan->stmt_owner);
-	else
-		HandleYBStatusWithOwner(YBCPgDmlBindColumnCondEq(ybScan->handle, attnum, ybc_expr),
-														ybScan->handle,
-														ybScan->stmt_owner);
-}
-
-static void pgBindColumnCondBetween(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum,
-                                     bool start_valid, Datum value, bool end_valid, Datum value_end)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(ybScan->handle, atttypid, value,
-      false /* isnull */) : NULL;
-	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
-      false /* isnull */) : NULL;
-
-    HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
-														ybc_expr_end),
-													ybScan->handle,
-													ybScan->stmt_owner);
-}
-
-/*
- * Bind an array of scan keys for a column.
- */
-static void pgBindColumnCondIn(YbFdwExecState *ybScan, TupleDesc bind_desc, AttrNumber attnum,
-                                int nvalues, Datum *values)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
-	for (int i = 0; i < nvalues; i++) {
-		/*
-		 * For IN we are removing all null values in ybcBindScanKeys before
-		 * getting here (relying on btree/lsm operators being strict).
-		 * So we can safely set is_null to false for all options left here.
-		 */
-		ybc_exprs[i] = YBCNewConstant(ybScan->handle, atttypid, values[i], false /* is_null */);
-	}
-
-	HandleYBStatusWithOwner(YBCPgDmlBindColumnCondIn(ybScan->handle, attnum, nvalues, ybc_exprs),
-	                                                 ybScan->handle,
-	                                                 ybScan->stmt_owner);
-}
-
-static void pgBindScanKeys(Relation relation,
-							YbFdwExecState *ybScan,
-							PgFdwScanPlan scan_plan) {
-	/* Bind the scan keys */
-	for (int i = 0; i < ybScan->nkeys; i++)
-	{
-		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
-		if (bms_is_member(idx, scan_plan->sk_cols))
-		{
-			bool is_null = (ybScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
-
-			pgBindColumn(ybScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
-							  ybScan->key[i].sk_argument, is_null);
-		}
-	}
-}
-
-/*
  * ybcBeginForeignScan
  *		Initiate access to the Yugabyte by allocating a Select handle.
  */
@@ -1326,6 +1355,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	EState      *estate      = node->ss.ps.state;
 	Relation    relation     = node->ss.ss_currentRelation;
+	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 
 	YbFdwExecState *ybc_state = NULL;
 
@@ -1345,6 +1375,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, ybc_state->handle);
 	ybc_state->stmt_owner = CurrentResourceOwner;
 	ybc_state->exec_params = &estate->yb_exec_params;
+	ybc_state->remote_exprs = foreignScan->fdw_exprs;
 
 	ybc_state->exec_params->rowmark = -1;
 	ListCell   *l;
