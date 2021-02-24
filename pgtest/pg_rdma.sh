@@ -23,7 +23,7 @@ echo "{
             \"range_ends\": [\"\"],
             \"endpoints\": [\"tcp+k2rpc://${REMOTE_IP}:10003\"]
         }
-    }
+    },
     \"force_sync_finalize\": false
 }
 " > k2config_rdma.json

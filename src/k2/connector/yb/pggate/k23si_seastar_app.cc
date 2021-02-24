@@ -197,7 +197,7 @@ seastar::future<> PGK2Client::_pollReadQ() {
 
         // Must wait for any active writes before servicing a read
         seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
-        return active_writes
+        active_writes = active_writes
         .then([this, &req] () {
             auto it = _txns.find(req.mtr);
 
@@ -217,6 +217,10 @@ seastar::future<> PGK2Client::_pollReadQ() {
                 req.prom.set_value(std::move(readResult));
             });
         });
+
+        seastar::future<> f = std::move(active_writes);
+        _activeWrites.insert_or_assign(req.mtr, seastar::make_ready_future());
+        return f;
     });
 }
 
@@ -248,7 +252,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
 
         // Must wait for any active writes before servicing a scan
         seastar::future<>& active_writes = _activeWrites.find(req.mtr)->second;
-        return active_writes
+        active_writes = active_writes
         .then([this, &req] () {
             req.query->copyPayloads();
             auto it = _txns.find(req.mtr);
@@ -258,6 +262,10 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
                 req.prom.set_value(std::move(queryResult));
             });
         });
+
+        seastar::future<> f = std::move(active_writes);
+        _activeWrites.insert_or_assign(req.mtr, seastar::make_ready_future());
+        return f;
     });
 }
 
