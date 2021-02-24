@@ -117,27 +117,32 @@ typedef struct foreign_loc_cxt
 	FDWCollateState state;		/* state of current collation choice */
 } foreign_loc_cxt;
 
-typedef struct column_ref {
+typedef struct FDWColumnRef {
 	AttrNumber attr_num;
 	int attno;
 	int attr_typid;
 	int atttypmod;
-} column_ref;
+} FDWColumnRef;
 
-typedef struct const_value
+typedef struct FDWConstValue
 {
 	Oid	atttypid;
 	Datum value;
 	bool is_null;
-} const_value;
+} FDWConstValue;
+
+typedef struct FDWEqualCond
+{
+	FDWColumnRef *ref; // column reference
+	FDWConstValue *val; // column value
+} FDWEqualCond;
 
 typedef struct foreign_expr_cxt {
 	PlannerInfo *root;			/* global planner state */
 	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
 	Relids		relids;			/* relids of base relations in the underlying
 								 * scan */
-	List *column_refs;
-	List *const_values;
+	List *equal_conds;          /* equal conditions */
 } foreign_expr_cxt;
 
 /*
@@ -160,13 +165,13 @@ static void classify_conditions(PlannerInfo *root,
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
 
-static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt);
+static void parse_expr(Expr *node, Relids relids, List *column_refs, List *const_values);
 
-static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt);
+static void parse_op_expr(OpExpr *node, Relids relids, List *column_refs, List *const_values);
 
-static void parse_var(Var *node, foreign_expr_cxt *expr_cxt);
+static void parse_var(Var *node, Relids relids, List *column_refs, List *const_values);
 
-static void parse_const(Const *node, foreign_expr_cxt *expr_cxt);
+static void parse_const(Const *node, Relids relids, List *column_refs, List *const_values);
 
 static bool
 is_foreign_expr(PlannerInfo *root,
@@ -814,32 +819,49 @@ classify_conditions(PlannerInfo *root,
 }
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
+	Relids relids = expr_cxt->relids;
 	ListCell   *lc;
 	foreach(lc, exprs)
 	{
 		Expr	   *expr = (Expr *) lfirst(lc);
 
 		/* Extract clause from RestrictInfo, if required */
-		if (IsA(expr, RestrictInfo))
+		if (IsA(expr, RestrictInfo)) {
 			expr = ((RestrictInfo *) expr)->clause;
-		parse_expr(expr, expr_cxt);
+		}
+
+		// parse a single clause
+		List *column_refs;
+		List *const_values;
+		linitial(column_refs);
+		linitial(const_values);
+		parse_expr(expr, relids, column_refs, const_values);
+		if (list_length(column_refs) == 1 && list_length(const_values)) {
+			// found a binary condition
+			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
+			eq_cond->ref = (FDWColumnRef *) list_head(column_refs);
+			eq_cond->val = (FDWConstValue *) list_head(const_values);
+			expr_cxt->equal_conds = lappend(expr_cxt->equal_conds, eq_cond);
+		}
+		list_free(column_refs);
+		list_free(const_values);
 	}
 }
 
-static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt) {
+static void parse_expr(Expr *node, Relids relids, List *column_refs, List *const_values) {
 	if (node == NULL)
 		return;
 
 	switch (nodeTag(node))
 	{
 		case T_Var:
-			parse_var((Var *) node, expr_cxt);
+			parse_var((Var *) node, relids, column_refs, const_values);
 			break;
 		case T_Const:
-			parse_const((Const *) node, expr_cxt);
+			parse_const((Const *) node, relids, column_refs, const_values);
 			break;
 		case T_OpExpr:
-			parse_op_expr((OpExpr *) node, expr_cxt);
+			parse_op_expr((OpExpr *) node, relids, column_refs, const_values);
 			break;
 		default:
 			elog(WARNING, "unsupported expression type for expr: %d", (int) nodeTag(node));
@@ -847,7 +869,7 @@ static void parse_expr(Expr *node, foreign_expr_cxt *expr_cxt) {
 	}
 }
 
-static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt) {
+static void parse_op_expr(OpExpr *node, Relids relids, List *column_refs, List *const_values) {
 	if (list_length(node->args) != 2) {
 		elog(WARNING, "we only handle binary opclause, actual args length: %d", list_length(node->args));
 		return;
@@ -860,7 +882,7 @@ static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt) {
 		foreach(lc, node->args)
 		{
 			Expr *arg = (Expr *) lfirst(lc);
-			parse_expr(arg, expr_cxt);
+			parse_expr(arg, relids, column_refs, const_values);
 		}
 		break;
 		default:
@@ -868,27 +890,24 @@ static void parse_op_expr(OpExpr *node, foreign_expr_cxt *expr_cxt) {
 	}
 }
 
-static void parse_var(Var *node, foreign_expr_cxt *expr_cxt) {
-	Relids		relids = expr_cxt->relids;
-
-	/* Qualify columns when multiple relations are involved. */
-	bool qualify_col = (bms_num_members(relids) > 1);
+static void parse_var(Var *node, Relids relids, List *column_refs, List *const_values) {
+	// the condition is at the current level
 	if (bms_is_member(node->varno, relids) && node->varlevelsup == 0) {
-		column_ref col_ref;
-		col_ref.attno = node->varno;
-		col_ref.attr_num = node->varattno;
-		col_ref.attr_typid = node->vartype;
-		col_ref.atttypmod = node->vartypmod;
-		expr_cxt->column_refs = lappend(expr_cxt->column_refs, &col_ref);
+		FDWColumnRef *col_ref = (FDWColumnRef *)palloc0(sizeof(FDWColumnRef));
+		col_ref->attno = node->varno;
+		col_ref->attr_num = node->varattno;
+		col_ref->attr_typid = node->vartype;
+		col_ref->atttypmod = node->vartypmod;
+		column_refs = lappend(column_refs, col_ref);
 	}
 }
 
-static void parse_const(Const *node, foreign_expr_cxt *expr_cxt) {
-	const_value val;
-	val.atttypid = node->consttype;
-	val.value = node->constvalue;
-	val.is_null = node->constisnull;
-	expr_cxt->const_values = lappend(expr_cxt->const_values, &val);
+static void parse_const(Const *node, Relids relids, List *column_refs, List *const_values) {
+	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
+	val->atttypid = node->consttype;
+	val->value = node->constvalue;
+	val->is_null = node->constisnull;
+	const_values = lappend(const_values, val);
 }
 
 /*
@@ -900,9 +919,9 @@ ybcGetForeignRelSize(PlannerInfo *root,
 					 RelOptInfo *baserel,
 					 Oid foreigntableid)
 {
-	YbFdwPlanState		*ybc_plan = NULL;
+	YbFdwPlanState		*fdw_plan = NULL;
 
-	ybc_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
+	fdw_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
 
 	/* Set the estimate for the total number of rows (tuples) in this table. */
 	baserel->tuples = YBC_DEFAULT_NUM_ROWS;
@@ -914,10 +933,10 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	 */
 	baserel->rows = baserel->tuples;
 
-	baserel->fdw_private = ybc_plan;
+	baserel->fdw_private = fdw_plan;
 
 	classify_conditions(root, baserel, baserel->baserestrictinfo,
-						   &ybc_plan->remote_conds, &ybc_plan->local_conds);
+						   &fdw_plan->remote_conds, &fdw_plan->local_conds);
 	/*
 	 * Test any indexes of rel for applicability also.
 	 */
