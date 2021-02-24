@@ -1254,21 +1254,22 @@ ybcGetForeignPlan(PlannerInfo *root,
 	foreach(lc, scan_clauses)
 	{
 		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+		// seems there are other node types such as T_NullTest in scan_clauses
+		// only handle T_RestrictInfo here
+		if (IsA(rinfo, RestrictInfo)) {
+			/* Ignore pseudoconstants, they are dealt with elsewhere */
+			if (rinfo->pseudoconstant)
+				continue;
 
-		Assert(IsA(rinfo, RestrictInfo));
-
-		/* Ignore pseudoconstants, they are dealt with elsewhere */
-		if (rinfo->pseudoconstant)
-			continue;
-
-		if (list_member_ptr(fdw_plan_state->remote_conds, rinfo))
-			remote_exprs = lappend(remote_exprs, rinfo->clause);
-		else if (list_member_ptr(fdw_plan_state->local_conds, rinfo))
-			local_exprs = lappend(local_exprs, rinfo->clause);
-		else if (is_foreign_expr(root, baserel, rinfo->clause))
-			remote_exprs = lappend(remote_exprs, rinfo->clause);
-		else
-			local_exprs = lappend(local_exprs, rinfo->clause);
+			if (list_member_ptr(fdw_plan_state->remote_conds, rinfo))
+				remote_exprs = lappend(remote_exprs, rinfo->clause);
+			else if (list_member_ptr(fdw_plan_state->local_conds, rinfo))
+				local_exprs = lappend(local_exprs, rinfo->clause);
+			else if (is_foreign_expr(root, baserel, rinfo->clause))
+				remote_exprs = lappend(remote_exprs, rinfo->clause);
+			else
+				local_exprs = lappend(local_exprs, rinfo->clause);
+		}
 	}
 
 	/* Get the target columns that need to be retrieved from YugaByte */
