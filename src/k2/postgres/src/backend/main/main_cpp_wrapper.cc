@@ -3,14 +3,15 @@
 #include <k2/common/Log.h>
 #include <k2/tso/client/tso_clientlib.h>
 
+#include <filesystem>
 #include <string>
 #include <thread>
 
 #include "postmaster/postmaster_hook.h"
 #include "yb/pggate/k23si_seastar_app.h"
 #include "yb/pggate/k2_config.h"
-#include "yb/pggate/k2_session_metrics.h"
 #include "yb/pggate/k2_log_init.h"
+#include "yb/pggate/k2_session_metrics.h"
 
 namespace k2pg::log {
 inline thread_local k2::logging::Logger main("k2::pg_main");
@@ -30,16 +31,28 @@ static bool inited = false;
 
 static void
 killK2App(int, unsigned long) {
+    K2LOG_I(k2pg::log::main, "shutting down K2 app");
     if (k2thread.joinable()) {
         pthread_kill(k2thread.native_handle(), SIGINT);
         k2thread.join();
     }
 
     sleep(10); // sleep in order to allow for metrics to be collected by prometheus before we shutdown
-    prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
-    if (prom_daemon) MHD_stop_daemon(prom_daemon);
-    if (prom_pusher) promhttp_stop_push_metrics(prom_pusher);
+    if (prom_daemon) {
+        K2LOG_D(k2pg::log::main, "shutting down prometheus http server");
+        MHD_stop_daemon(prom_daemon);
+    }
+    if (prom_pusher) {
+        K2LOG_D(k2pg::log::main, "shutting down prometheus push thread");
+        promhttp_stop_push_metrics(prom_pusher);
+    }
+
+    K2LOG_D(k2pg::log::main, "shutting down k2pg session metrics");
     k2pg::session::stop();
+
+    K2LOG_D(k2pg::log::main, "shutting down prometheuscollector registry");
+    prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
+
 }
 
 const std::string& getHostName() {
@@ -48,6 +61,7 @@ const std::string& getHostName() {
     static std::string hostname(size, '\0');
     if (hostname[0] == '\0') {
         ::gethostname(hostname.data(), size - 1);
+        hostname.resize(strlen(hostname.c_str()));
     }
 
     return hostname;
@@ -82,7 +96,7 @@ void startK2App(int argc, char** argv) {
     }
 
     if (prometheus_address.size() > 0) {
-        prometheus_push_url = "http://" + prometheus_address + "/metrics/job/k2pg_gate/instance/" + getHostName() + ":" + std::to_string(::getpid());
+        prometheus_push_url = "http://" + prometheus_address + "/metrics/job/k2pg_gate/instance/" + getHostName();
         K2LOG_I(k2pg::log::main, "Creating prometheus push thread to url: {}, pushing every {}ms", prometheus_push_url, prometheus_push_interval_ms);
         prom_pusher = promhttp_start_push_metrics(prometheus_push_url.c_str(), prometheus_push_interval_ms);
         K2ASSERT(k2pg::log::main, prom_pusher != NULL, "Unable to create metrics pusher");
@@ -167,7 +181,9 @@ int PostgresServerProcessMain(int argc, char** argv);
 
 int main(int argc, char** argv) {
 	// setup the k2 hook in pg backend so that we can initialize k2 when PG forks to handle a new client
-	k2_init_func = startK2App;
+    k2::logging::Logger::procName = std::filesystem::path(argv[0]).filename().c_str();
+
+    k2_init_func = startK2App;
     k2_kill_func = killK2App;
     auto code= PostgresServerProcessMain(argc, argv);
     K2LOG_I(k2pg::log::main, "PG process exiting...")

@@ -44,6 +44,8 @@ public:
     // Ctor: creates a new transaction with the given mtr.
     K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime);
 
+    ~K23SITxn();
+
     // Scans records from K2.
     // The result future is eventually satisfied with the resulting SKVRecords of the scan.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
