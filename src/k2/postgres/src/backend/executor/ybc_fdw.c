@@ -197,12 +197,6 @@ static bool is_foreign_expr(PlannerInfo *root,
 				RelOptInfo *baserel,
 				Expr *expr);
 
-static void classify_conditions(PlannerInfo *root,
-				   RelOptInfo *baserel,
-				   List *input_conds,
-				   List **remote_conds,
-				   List **local_conds);
-
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
 
 static void parse_expr(Expr *node, List *column_refs, List *const_values);
@@ -829,35 +823,6 @@ foreign_expr_walker(Node *node,
 	return true;
 }
 
-/*
- * Examine each qual clause in input_conds, and classify them into two groups,
- * which are returned as two lists:
- *	- remote_conds contains expressions that can be evaluated remotely
- *	- local_conds contains expressions that can't be evaluated remotely
- */
-void
-classify_conditions(PlannerInfo *root,
-				   RelOptInfo *baserel,
-				   List *input_conds,
-				   List **remote_conds,
-				   List **local_conds)
-{
-	ListCell   *lc;
-
-	*remote_conds = NIL;
-	*local_conds = NIL;
-
-	foreach(lc, input_conds)
-	{
-		RestrictInfo *ri = lfirst_node(RestrictInfo, lc);
-
-		if (is_foreign_expr(root, baserel, ri->clause))
-			*remote_conds = lappend(*remote_conds, ri);
-		else
-			*local_conds = lappend(*local_conds, ri);
-	}
-}
-
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 	ListCell   *lc;
 	foreach(lc, exprs)
@@ -1178,8 +1143,18 @@ ybcGetForeignRelSize(PlannerInfo *root,
 
 	baserel->fdw_private = fdw_plan;
 
-	classify_conditions(root, baserel, baserel->baserestrictinfo,
-						   &fdw_plan->remote_conds, &fdw_plan->local_conds);
+	ListCell   *lc = NULL;
+
+	foreach(lc, baserel->baserestrictinfo)
+	{
+		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
+
+		if (is_foreign_expr(root, baserel, ri->clause))
+			fdw_plan->remote_conds = lappend(fdw_plan->remote_conds, ri);
+		else
+			fdw_plan->local_conds = lappend(fdw_plan->local_conds, ri);
+	}
+
 	/*
 	 * Test any indexes of rel for applicability also.
 	 */
