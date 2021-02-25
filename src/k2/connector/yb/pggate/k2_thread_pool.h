@@ -48,6 +48,8 @@ public:
     // One possible issue to consider is that if threads are pinned on hyperthreads, the performance may be worse
     // due to cache misses.
     ThreadPool(int threadCount, int firstCPUPin=-1) {
+        K2LOG_D(log::pg, "thread pool ctor");
+
         for (int i = 0; i < threadCount; ++i) {
             _workers.push_back(std::thread([i, firstCPUPin, this,
                      modLogLevels=k2::logging::Logger::moduleLevels,
@@ -93,6 +95,7 @@ public:
                         _qNotifier.wait(lock);
                     }
                 }
+                K2LOG_D(log::pg, "thread pool asked to stop");
             }));
         }
     }
@@ -100,6 +103,7 @@ public:
     // enqueue a new task to be executed. The task can be a lambda or std::function
     template <typename Func>
     void enqueue(Func&& task) {
+        K2LOG_D(log::pg, "thread pool add task");
         {
             std::lock_guard lock{_qMutex};
             _tasks.push_back(std::forward<Func>(task));
@@ -110,14 +114,17 @@ public:
 
     // Wait for all tasks in this pool to complete. Blocks the caller until all tasks have completed
     void wait() {
+        K2LOG_D(log::pg, "thread pool wait");
         while (1) {
             std::unique_lock lock(_qMutex);
             if (_tasks.empty()) break;
             _waitNotifier.wait(lock);
         }
+        K2LOG_D(log::pg, "thread pool wait done");
     }
 
     ~ThreadPool() {
+        K2LOG_D(log::pg, "thread pool dtor");
         _stop = true;
         _qNotifier.notify_all(); // notify all threads so that they can check the stop flag
         for (auto& w : _workers) {

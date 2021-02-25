@@ -30,8 +30,6 @@ using namespace k2;
 
 K23SITxn::K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime):_mtr(std::move(mtr)), _startTime(startTime){
     K2LOG_D(log::pg, "starting txn {} at time: {}", _mtr, _startTime);
-    session::in_flight_txns->add(1);
-    session::txn_begin_latency->observe(Clock::now() - _startTime);
 }
 
 K23SITxn::~K23SITxn() {

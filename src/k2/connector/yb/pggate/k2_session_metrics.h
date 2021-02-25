@@ -36,6 +36,11 @@ inline std::unique_ptr<Counter> txn_abort_count;
 
 inline std::unique_ptr<Histogram> thread_pool_task_duration;
 
+inline std::unique_ptr<Histogram> gate_get_schema_latency;
+inline std::unique_ptr<Histogram> gate_create_schema_latency;
+inline std::unique_ptr<Histogram> gate_create_collection_latency;
+inline std::unique_ptr<Histogram> gate_create_scanread_latency;
+
 inline void start() {
     K2LOG_D(log::pg, "creating session metrics");
     write_op_latency.reset(new Histogram("write_op_latency", "latency of write ops in usec", 1, 1.2, 90, {}));
@@ -57,6 +62,11 @@ inline void start() {
     txn_abort_count.reset(new Counter("total_aborted_txns", "total txns aborted", {}));
 
     thread_pool_task_duration.reset(new Histogram("thread_pool_task_duration", "latency of tasks executed in threadpool", 1, 1.3, 87, {}));
+
+    gate_get_schema_latency.reset(new Histogram("gate_get_schema_latency", "latency of schema get in usec", 1, 1.3, 78, {}));
+    gate_create_schema_latency.reset(new Histogram("gate_create_schema_latency", "latency of schema create in usec", 1, 1.3, 78, {}));
+    gate_create_collection_latency.reset(new Histogram("gate_create_collection_latency", "latency of collection create in usec", 1, 1.3, 78, {}));
+    gate_create_scanread_latency.reset(new Histogram("gate_create_scanread_latency", "latency of scan read create in usec", 1, 1.3, 78, {}));
 }
 
 inline void stop() {
@@ -80,5 +90,10 @@ inline void stop() {
     txn_abort_count.reset(nullptr);
 
     thread_pool_task_duration.reset(nullptr);
+
+    gate_get_schema_latency.reset(nullptr);
+    gate_create_schema_latency.reset(nullptr);
+    gate_create_collection_latency.reset(nullptr);
+    gate_create_scanread_latency.reset(nullptr);
 }
 }
