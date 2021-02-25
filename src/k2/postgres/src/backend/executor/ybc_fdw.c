@@ -868,14 +868,14 @@ static void parse_expr(Expr *node, List *column_refs, List *const_values) {
 			parse_op_expr((OpExpr *) node, column_refs, const_values);
 			break;
 		default:
-			elog(WARNING, "unsupported expression type for expr: %d", (int) nodeTag(node));
+			elog(WARNING, "FDW: unsupported expression type for expr: %s", (int) nodeToString(node));
 			break;
 	}
 }
 
 static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values) {
 	if (list_length(node->args) != 2) {
-		elog(WARNING, "we only handle binary opclause, actual args length: %d", list_length(node->args));
+		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d", list_length(node->args));
 		return;
 	}
 
@@ -1090,15 +1090,17 @@ static void pgBindScanKeys(Relation relation,
 							YbFdwExecState *fdw_state,
 							PgFdwScanPlan scan_plan) {
 	if (list_length(fdw_state->remote_exprs) == 0) {
-		elog(WARNING, "No remote exprs to bind keys for relation: %d", relation->rd_id);
+		elog(WARNING, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
 		return;
+	} else {
+		elog(LOG, "FDW: trying to bind %d remote exprs for relation: %d", list_length(fdw_state->remote_exprs), relation->rd_id);
 	}
 	foreign_expr_cxt context;
 	context.equal_conds = NIL;
 
 	parse_conditions(fdw_state->remote_exprs, &context);
 	if (list_length(context.equal_conds) == 0) {
-		elog(WARNING, "No equal conditions are found to bind keys for relation: %d", relation->rd_id);
+		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
 		return;
 	}
 
@@ -1111,7 +1113,7 @@ static void pgBindScanKeys(Relation relation,
 			// check if the key is in the equal conditions
 			FDWEqualCond *equal_cond = findEqualCondition(context, idx);
 			if (equal_cond != NULL) {
-				elog(INFO, "FDW Binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
+				elog(LOG, "FDW: Binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
 				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
 			 				  equal_cond->val->value, equal_cond->val->is_null);
 			}
@@ -1142,19 +1144,23 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	 */
 	baserel->rows = baserel->tuples;
 
-	baserel->fdw_private = fdw_plan;
+	baserel->fdw_private = (void *) fdw_plan;
+	fdw_plan->remote_conds = NIL;
+	fdw_plan->local_conds = NIL;
 
 	ListCell   *lc = NULL;
+	elog(LOG, "FDW: classifying %d base restrictinfos", list_length(baserel->baserestrictinfo));
 
 	foreach(lc, baserel->baserestrictinfo)
 	{
 		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
-
+		elog(LOG, "FDW: classing baserestrictinfo: %s", nodeToString(ri->clause));
 		if (is_foreign_expr(root, baserel, ri->clause))
 			fdw_plan->remote_conds = lappend(fdw_plan->remote_conds, ri);
 		else
 			fdw_plan->local_conds = lappend(fdw_plan->local_conds, ri);
 	}
+	elog(LOG, "FDW: classified %d remote_conds, %d local_conds", list_length(fdw_plan->remote_conds), list_length(fdw_plan->local_conds));
 
 	/*
 	 * Test any indexes of rel for applicability also.
@@ -1232,6 +1238,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
 		// seems there are other node types such as T_NullTest in scan_clauses
 		// only handle T_RestrictInfo here
+		elog(LOG, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
 		if (IsA(rinfo, RestrictInfo)) {
 			/* Ignore pseudoconstants, they are dealt with elsewhere */
 			if (rinfo->pseudoconstant)
@@ -1247,6 +1254,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 				local_exprs = lappend(local_exprs, rinfo->clause);
 		}
 	}
+	elog(LOG, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d", list_length(scan_clauses), foreigntableid, list_length(remote_exprs), list_length(local_exprs));
 
 	/* Get the target columns that need to be retrieved from YugaByte */
 	foreach(lc, baserel->reltarget->exprs)
@@ -1353,6 +1361,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ybc_state->stmt_owner = CurrentResourceOwner;
 	ybc_state->exec_params = &estate->yb_exec_params;
 	ybc_state->remote_exprs = foreignScan->fdw_exprs;
+	elog(LOG, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
 
 	ybc_state->exec_params->rowmark = -1;
 	ListCell   *l;
