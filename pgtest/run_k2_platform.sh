@@ -10,11 +10,11 @@ rm -rf ${CPODIR}
 export PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 --heartbeat_deadline=30s &
+cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 --heartbeat_deadline=60s &
 cpo_child_pid=$!
 
 # start nodepool
-nodepool -c4 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --reactor-backend epoll --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} -m16G &
+nodepool -c4 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --reactor-backend epoll --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} -m20G &
 nodepool_child_pid=$!
 
 # start persistence
@@ -22,5 +22,5 @@ persistence -c1 --tcp_endpoints ${PERSISTENCE} --enable_tx_checksum true --react
 persistence_child_pid=$!
 
 # start tso
-tso -c2 --tcp_endpoints ${K2_TSO_ADDRESS} 13001 --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63003 &
+tso -c3 --tcp_endpoints ${K2_TSO_ADDRESS} 13001 --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63003 &
 tso_child_pid=$!
