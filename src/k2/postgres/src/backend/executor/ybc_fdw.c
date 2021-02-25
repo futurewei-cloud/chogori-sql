@@ -1111,6 +1111,7 @@ static void pgBindScanKeys(Relation relation,
 			// check if the key is in the equal conditions
 			FDWEqualCond *equal_cond = findEqualCondition(context, idx);
 			if (equal_cond != NULL) {
+				elog(INFO, "FDW Binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
 				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
 			 				  equal_cond->val->value, equal_cond->val->is_null);
 			}
