@@ -71,6 +71,7 @@
 
 #define DEFAULT_COLLATION_OID 100
 #define ProcedureRelationId 1255
+#define FirstBootstrapObjectId	10000
 
 /* -------------------------------------------------------------------------- */
 /*  Planner/Optimizer functions */
@@ -93,8 +94,8 @@ typedef struct foreign_glob_cxt
 {
 	PlannerInfo *root;			/* global planner state */
 	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
-	Relids		relids;			/* relids of base relations in the underlying
-								 * scan */
+//	Relids		relids;			/* relids of base relations in the underlying
+//								 * scan */
 } foreign_glob_cxt;
 
 /*
@@ -206,6 +207,28 @@ static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values);
 static void parse_var(Var *node, List *column_refs, List *const_values);
 
 static void parse_const(Const *node, List *column_refs, List *const_values);
+/*
+ * Return true if given object is one of PostgreSQL's built-in objects.
+ *
+ * We use FirstBootstrapObjectId as the cutoff, so that we only consider
+ * objects with hand-assigned OIDs to be "built in", not for instance any
+ * function or type defined in the information_schema.
+ *
+ * Our constraints for dealing with types are tighter than they are for
+ * functions or operators: we want to accept only types that are in pg_catalog,
+ * else deparse_type_name might incorrectly fail to schema-qualify their names.
+ * Thus we must exclude information_schema types.
+ *
+ * XXX there is a problem with this, which is that the set of built-in
+ * objects expands over time.  Something that is built-in to us might not
+ * be known to the remote server, if it's of an older version.  But keeping
+ * track of that would be a huge exercise.
+ */
+bool
+is_builtin(Oid objectId)
+{
+	return (objectId < FirstBootstrapObjectId);
+}
 
 static bool
 is_foreign_expr(PlannerInfo *root,
@@ -223,17 +246,6 @@ is_foreign_expr(PlannerInfo *root,
 	glob_cxt.root = root;
 	glob_cxt.foreignrel = baserel;
 
-	/*
-	 * We only support simply scan on the base relation
-	 *
-	 * For an upper relation, use relids from its underneath scan relation,
-	 * because the upperrel's own relids currently aren't set to anything
-	 * meaningful by the core code.  For other relation, use their own relids.
-	 */
-	if (IS_UPPER_REL(baserel))
-		return false;
-	else
-		glob_cxt.relids = baserel->relids;
 	loc_cxt.collation = InvalidOid;
 	loc_cxt.state = FDW_COLLATE_NONE;
 
@@ -305,26 +317,13 @@ foreign_expr_walker(Node *node,
 				 * If the Var is from the foreign table, we consider its
 				 * collation (if any) safe to use.  If it is from another
 				 * table, we treat its collation the same way as we would a
-				 * Param's collation, ie it's not safe for it to have a
+				 * Param's collation, i.e. it's not safe for it to have a
 				 * non-default collation.
 				 */
-				if (bms_is_member(var->varno, glob_cxt->relids) &&
+				if (var->varno == glob_cxt->foreignrel->relid &&
 					var->varlevelsup == 0)
 				{
 					/* Var belongs to foreign table */
-
-					/*
-					 * System columns other than ctid and oid should not be
-					 * sent to the remote, since we don't make any effort to
-					 * ensure that local and remote values match (tableoid, in
-					 * particular, almost certainly doesn't match).
-					 */
-					if (var->varattno < 0 &&
-						var->varattno != SelfItemPointerAttributeNumber &&
-						var->varattno != ObjectIdAttributeNumber)
-						return false;
-
-					/* Else check the collation */
 					collation = var->varcollid;
 					state = OidIsValid(collation) ? FDW_COLLATE_SAFE : FDW_COLLATE_NONE;
 				}
@@ -332,6 +331,10 @@ foreign_expr_walker(Node *node,
 				{
 					/* Var belongs to some other table */
 					collation = var->varcollid;
+					if (var->varcollid != InvalidOid &&
+						var->varcollid != DEFAULT_COLLATION_OID)
+						return false;
+
 					if (collation == InvalidOid ||
 						collation == DEFAULT_COLLATION_OID)
 					{
@@ -429,14 +432,6 @@ foreign_expr_walker(Node *node,
 				FuncExpr   *fe = (FuncExpr *) node;
 
 				/*
-				 * If function used by the expression is not shippable, it
-				 * can't be sent to remote because it might have incompatible
-				 * semantics on remote side.
-				 */
-				// if (!is_shippable(fe->funcid, ProcedureRelationId, fpinfo))
-				// 	return false;
-
-				/*
 				 * Recurse to input subexpressions.
 				 */
 				if (!foreign_expr_walker((Node *) fe->args,
@@ -477,14 +472,6 @@ foreign_expr_walker(Node *node,
 				OpExpr	   *oe = (OpExpr *) node;
 
 				/*
-				 * Similarly, only shippable operators can be sent to remote.
-				 * (If the operator is shippable, we assume its underlying
-				 * function is too.)
-				 */
-				// if (!is_shippable(oe->opno, OperatorRelationId, fpinfo))
-				// 	return false;
-
-				/*
 				 * Recurse to input subexpressions.
 				 */
 				if (!foreign_expr_walker((Node *) oe->args,
@@ -517,12 +504,6 @@ foreign_expr_walker(Node *node,
 		case T_ScalarArrayOpExpr:
 			{
 				ScalarArrayOpExpr *oe = (ScalarArrayOpExpr *) node;
-
-				/*
-				 * Again, only shippable operators can be sent to remote.
-				 */
-				// if (!is_shippable(oe->opno, OperatorRelationId, fpinfo))
-				// 	return false;
 
 				/*
 				 * Recurse to input subexpressions.
@@ -671,10 +652,6 @@ foreign_expr_walker(Node *node,
 				if (agg->aggsplit != AGGSPLIT_SIMPLE)
 					return false;
 
-				/* As usual, it must be shippable. */
-				// if (!is_shippable(agg->aggfnoid, ProcedureRelationId, fpinfo))
-				// 	return false;
-
 				/*
 				 * Recurse to input args. aggdirectargs, aggorder and
 				 * aggdistinct are all present in args, so no need to check
@@ -768,10 +745,10 @@ foreign_expr_walker(Node *node,
 	}
 
 	/*
-	 * If result type of given expression is not shippable, it can't be sent
-	 * to remote because it might have incompatible semantics on remote side.
+	 * If result type of given expression is not built-in, it can't be sent to
+	 * remote because it might have incompatible semantics on remote side.
 	 */
-	if (check_type /* && !is_shippable(exprType(node), TypeRelationId, fpinfo) */)
+	if (check_type && !is_builtin(exprType(node)))
 		return false;
 
 	/*
@@ -824,6 +801,7 @@ foreign_expr_walker(Node *node,
 }
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
+	elog(LOG, "FDW: parsing %d remote expressions", list_length(exprs));
 	ListCell   *lc;
 	foreach(lc, exprs)
 	{
@@ -833,12 +811,10 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		if (IsA(expr, RestrictInfo)) {
 			expr = ((RestrictInfo *) expr)->clause;
 		}
-
+		elog(LOG, "FDW: parsing expression: %s", nodeToString(expr));
 		// parse a single clause
 		List *column_refs = NIL;
 		List *const_values = NIL;
-//		linitial(column_refs);
-//		linitial(const_values);
 		parse_expr(expr, column_refs, const_values);
 		if (list_length(column_refs) == 1 && list_length(const_values)) {
 			// found a binary condition
@@ -1153,8 +1129,8 @@ ybcGetForeignRelSize(PlannerInfo *root,
 
 	foreach(lc, baserel->baserestrictinfo)
 	{
-		RestrictInfo *ri = (RestrictInfo *) lfirst(lc);
-		elog(LOG, "FDW: classing baserestrictinfo: %s", nodeToString(ri->clause));
+		RestrictInfo *ri = lfirst_node(RestrictInfo, lc);
+		elog(LOG, "FDW: classing baserestrictinfo: %s", nodeToString(ri));
 		if (is_foreign_expr(root, baserel, ri->clause))
 			fdw_plan->remote_conds = lappend(fdw_plan->remote_conds, ri);
 		else
@@ -1219,13 +1195,17 @@ ybcGetForeignPlan(PlannerInfo *root,
 				  Plan *outer_plan)
 {
 	YbFdwPlanState *fdw_plan_state = (YbFdwPlanState *) baserel->fdw_private;
-	Index          scan_relid     = baserel->relid;
+	Index          scan_relid;
 	ListCell       *lc;
 	List	   *local_exprs = NIL;
 	List	   *remote_exprs = NIL;
 
+	elog(LOG, "FDW: fdw_private %d remote_conds and %d local_conds for foreign relation %d",
+			list_length(fdw_plan_state->remote_conds), list_length(fdw_plan_state->local_conds), foreigntableid);
+
 	if (IS_SIMPLE_REL(baserel))
 	{
+		scan_relid     = baserel->relid;
 		/*
 		* Separate the restrictionClauses into those that can be executed remotely
 		* and those that can't.  baserestrictinfo clauses that were previously
@@ -1254,6 +1234,26 @@ ybcGetForeignPlan(PlannerInfo *root,
 		}
 		elog(LOG, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d",
 				list_length(scan_clauses), scan_relid, list_length(remote_exprs), list_length(local_exprs));
+	}
+	else
+	{
+		/*
+		 * Join relation or upper relation - set scan_relid to 0.
+		 */
+		scan_relid = 0;
+		/*
+		 * For a join rel, baserestrictinfo is NIL and we are not considering
+		 * parameterization right now, so there should be no scan_clauses for
+		 * a joinrel or an upper rel either.
+		 */
+		Assert(!scan_clauses);
+
+		/*
+		 * Instead we get the conditions to apply from the fdw_private
+		 * structure.
+		 */
+		remote_exprs = extract_actual_clauses(fdw_plan_state->remote_conds, false);
+		local_exprs = extract_actual_clauses(fdw_plan_state->local_conds, false);
 	}
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
