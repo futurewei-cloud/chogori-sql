@@ -46,13 +46,6 @@ killK2App(int, unsigned long) {
         K2LOG_D(k2pg::log::main, "shutting down prometheus push thread");
         promhttp_stop_push_metrics(prom_pusher);
     }
-
-    K2LOG_D(k2pg::log::main, "shutting down k2pg session metrics");
-    k2pg::session::stop();
-
-    K2LOG_D(k2pg::log::main, "shutting down prometheuscollector registry");
-    prom_collector_registry_destroy(PROM_COLLECTOR_REGISTRY_DEFAULT);
-
 }
 
 const std::string& getHostName() {
@@ -96,7 +89,7 @@ void startK2App(int argc, char** argv) {
     }
 
     if (prometheus_address.size() > 0) {
-        prometheus_push_url = "http://" + prometheus_address + "/metrics/job/k2pg_gate/instance/" + getHostName();
+        prometheus_push_url = "http://" + prometheus_address + "/metrics/job/k2pg_gate/instance/" + getHostName() + ":" + std::to_string(::getpid());
         K2LOG_I(k2pg::log::main, "Creating prometheus push thread to url: {}, pushing every {}ms", prometheus_push_url, prometheus_push_interval_ms);
         prom_pusher = promhttp_start_push_metrics(prometheus_push_url.c_str(), prometheus_push_interval_ms);
         K2ASSERT(k2pg::log::main, prom_pusher != NULL, "Unable to create metrics pusher");

@@ -59,7 +59,7 @@ inline void start() {
     in_flight_txns.reset(new Gauge("in_flight_txns", "total txns in flight", {}));
 
     txn_commit_count.reset(new Counter("txn_commit_count", "total txns committed", {}));
-    txn_abort_count.reset(new Counter("total_aborted_txns", "total txns aborted", {}));
+    txn_abort_count.reset(new Counter("txn_abort_count", "total txns aborted", {}));
 
     thread_pool_task_duration.reset(new Histogram("thread_pool_task_duration", "latency of tasks executed in threadpool", 1, 1.3, 87, {}));
 
@@ -69,31 +69,4 @@ inline void start() {
     gate_create_scanread_latency.reset(new Histogram("gate_create_scanread_latency", "latency of scan read create in usec", 1, 1.3, 78, {}));
 }
 
-inline void stop() {
-    K2LOG_I(log::pg, "destroying session metrics");
-    write_op_latency.reset(nullptr);
-    read_op_latency.reset(nullptr);
-    scan_op_latency.reset(nullptr);
-    txn_latency.reset(nullptr);
-    txn_begin_latency.reset(nullptr);
-    txn_end_latency.reset(nullptr);
-
-    txn_ops.reset(nullptr);
-    txn_read_ops.reset(nullptr);
-    txn_write_ops.reset(nullptr);
-    txn_scan_ops.reset(nullptr);
-
-    in_flight_ops.reset(nullptr);
-    in_flight_txns.reset(nullptr);
-
-    txn_commit_count.reset(nullptr);
-    txn_abort_count.reset(nullptr);
-
-    thread_pool_task_duration.reset(nullptr);
-
-    gate_get_schema_latency.reset(nullptr);
-    gate_create_schema_latency.reset(nullptr);
-    gate_create_collection_latency.reset(nullptr);
-    gate_create_scanread_latency.reset(nullptr);
-}
 }
