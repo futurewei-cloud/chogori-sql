@@ -214,7 +214,7 @@ is_foreign_expr(PlannerInfo *root,
 {
 	foreign_glob_cxt glob_cxt;
 	foreign_loc_cxt loc_cxt;
-	YbFdwPlanState *fpinfo = (YbFdwPlanState *) (baserel->fdw_private);
+//	YbFdwPlanState *fpinfo = (YbFdwPlanState *) (baserel->fdw_private);
 
 	/*
 	 * Check that the expression consists of nodes that are safe to execute
@@ -236,6 +236,7 @@ is_foreign_expr(PlannerInfo *root,
 		glob_cxt.relids = baserel->relids;
 	loc_cxt.collation = InvalidOid;
 	loc_cxt.state = FDW_COLLATE_NONE;
+
 	if (!foreign_expr_walker((Node *) expr, &glob_cxt, &loc_cxt))
 		return false;
 
@@ -279,7 +280,6 @@ foreign_expr_walker(Node *node,
 					foreign_loc_cxt *outer_cxt)
 {
 	bool		check_type = true;
-	YbFdwPlanState *fpinfo;
 	foreign_loc_cxt inner_cxt;
 	Oid			collation;
 	FDWCollateState state;
@@ -289,7 +289,7 @@ foreign_expr_walker(Node *node,
 		return true;
 
 	/* May need server info from baserel's fdw_private struct */
-	fpinfo = (YbFdwPlanState *) (glob_cxt->foreignrel->fdw_private);
+//	YbFdwPlanState *fpinfo = (YbFdwPlanState *) (glob_cxt->foreignrel->fdw_private);
 
 	/* Set up inner_cxt for possible recursion to child nodes */
 	inner_cxt.collation = InvalidOid;
@@ -837,8 +837,8 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		// parse a single clause
 		List *column_refs = NIL;
 		List *const_values = NIL;
-		linitial(column_refs);
-		linitial(const_values);
+//		linitial(column_refs);
+//		linitial(const_values);
 		parse_expr(expr, column_refs, const_values);
 		if (list_length(column_refs) == 1 && list_length(const_values)) {
 			// found a binary condition
@@ -868,7 +868,7 @@ static void parse_expr(Expr *node, List *column_refs, List *const_values) {
 			parse_op_expr((OpExpr *) node, column_refs, const_values);
 			break;
 		default:
-			elog(WARNING, "FDW: unsupported expression type for expr: %s", (int) nodeToString(node));
+			elog(WARNING, "FDW: unsupported expression type for expr: %s", nodeToString(node));
 			break;
 	}
 }
@@ -879,7 +879,7 @@ static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values) {
 		return;
 	}
 
-	ListCell *lc = NULL;
+	ListCell *lc;
 	switch (get_oprrest(node->opno))
 	{
 		case F_EQSEL: // only handle equal condition for now
@@ -1148,8 +1148,8 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	fdw_plan->remote_conds = NIL;
 	fdw_plan->local_conds = NIL;
 
-	ListCell   *lc = NULL;
-	elog(LOG, "FDW: classifying %d base restrictinfos", list_length(baserel->baserestrictinfo));
+	ListCell   *lc;
+	elog(LOG, "FDW: ybcGetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
 
 	foreach(lc, baserel->baserestrictinfo)
 	{
@@ -1224,22 +1224,21 @@ ybcGetForeignPlan(PlannerInfo *root,
 	List	   *local_exprs = NIL;
 	List	   *remote_exprs = NIL;
 
-	scan_clauses = extract_actual_clauses(scan_clauses, false);
-
-	/*
-	 * Separate the restrictionClauses into those that can be executed remotely
-	 * and those that can't.  baserestrictinfo clauses that were previously
-	 * determined to be safe or unsafe are shown in fpinfo->remote_conds and
-	 * fpinfo->local_conds.  Anything else in the restrictionClauses list will
-	 * be a join clause, which we have to check for remote-safety.
-	 */
-	foreach(lc, scan_clauses)
+	if (IS_SIMPLE_REL(baserel))
 	{
-		RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
-		// seems there are other node types such as T_NullTest in scan_clauses
-		// only handle T_RestrictInfo here
-		elog(LOG, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
-		if (IsA(rinfo, RestrictInfo)) {
+		/*
+		* Separate the restrictionClauses into those that can be executed remotely
+		* and those that can't.  baserestrictinfo clauses that were previously
+		* determined to be safe or unsafe are shown in fpinfo->remote_conds and
+		* fpinfo->local_conds.  Anything else in the restrictionClauses list will
+		* be a join clause, which we have to check for remote-safety.
+		*/
+		elog(LOG, "FDW: GetForeignPlan with %d scan_clauses for simple relation %d", list_length(scan_clauses), scan_relid);
+		foreach(lc, scan_clauses)
+		{
+			RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+			elog(LOG, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
+
 			/* Ignore pseudoconstants, they are dealt with elsewhere */
 			if (rinfo->pseudoconstant)
 				continue;
@@ -1253,8 +1252,11 @@ ybcGetForeignPlan(PlannerInfo *root,
 			else
 				local_exprs = lappend(local_exprs, rinfo->clause);
 		}
+		elog(LOG, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d",
+				list_length(scan_clauses), scan_relid, list_length(remote_exprs), list_length(local_exprs));
 	}
-	elog(LOG, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d", list_length(scan_clauses), foreigntableid, list_length(remote_exprs), list_length(local_exprs));
+
+	scan_clauses = extract_actual_clauses(scan_clauses, false);
 
 	/* Get the target columns that need to be retrieved from YugaByte */
 	foreach(lc, baserel->reltarget->exprs)
