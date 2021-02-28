@@ -210,7 +210,9 @@ AuxiliaryProcessMain(int argc, char *argv[])
 	 */
 	if (!IsUnderPostmaster)
 		InitStandaloneProcess(argv[0]);
-
+	else {
+		InitK23siWorker();
+	}
 	/*
 	 * process command arguments
 	 */

@@ -95,6 +95,8 @@ private: // fields
     uint32_t _readOps{0};
     uint32_t _writeOps{0};
     uint32_t _scanOps{0};
+    uint32_t _inFlightOps{0};
+    static inline uint32_t _inFlightTxns{0};
  };  // class K23SITxn
 
 } // ns gate

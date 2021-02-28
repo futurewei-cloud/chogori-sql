@@ -73,8 +73,8 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
     const YBCPgTypeEntity *type_entity = &YBCDataTypeArray[idx];
     type_map_[type_entity->type_oid] = type_entity;
   }
-  catalog_manager_->Start();
   k2_adapter_->Init();
+  catalog_manager_->Start();
 }
 
 std::shared_ptr<K2Adapter> PgGateApiImpl::CreateK2Adapter() {

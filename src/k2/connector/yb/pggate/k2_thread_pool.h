@@ -78,7 +78,7 @@ public:
                         auto start = k2::Clock::now();
                         try {
                             K2LOG_D(log::pg, "Running task");
-                            task();
+                            task(start);
                             K2LOG_D(log::pg, "Task completed");
                         }
                         catch(const std::exception& exc) {
@@ -106,7 +106,10 @@ public:
         K2LOG_D(log::pg, "thread pool add task");
         {
             std::lock_guard lock{_qMutex};
-            _tasks.push_back(std::forward<Func>(task));
+            _tasks.push_back([st = k2::Clock::now(), task = std::move(task)](k2::TimePoint now) {
+                session::thread_pool_qwait->observe(now - st);
+                task();
+            });
         }
         // notify new task
         _qNotifier.notify_one();
@@ -145,7 +148,7 @@ public:
 
 private:
     std::vector<std::thread> _workers;
-    std::deque<std::function<void()>> _tasks;
+    std::deque<std::function<void(k2::TimePoint)>> _tasks;
     std::atomic<bool> _stop{false};
     std::condition_variable _qNotifier;
     std::mutex _qMutex;

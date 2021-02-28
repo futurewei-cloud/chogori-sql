@@ -30,6 +30,8 @@ using namespace k2;
 
 K23SITxn::K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime):_mtr(std::move(mtr)), _startTime(startTime){
     K2LOG_D(log::pg, "starting txn {} at time: {}", _mtr, _startTime);
+    _inFlightTxns++;
+    session::in_flight_txns->observe(_inFlightTxns);
 }
 
 K23SITxn::~K23SITxn() {
@@ -39,11 +41,14 @@ K23SITxn::~K23SITxn() {
 CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     _shouldCommit = shouldCommit;
     EndTxnRequest qr{.mtr=_mtr, .shouldCommit = shouldCommit, .prom={}};
-    session::in_flight_ops->add(1);
+    _inFlightOps ++;
+    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<EndResult>(qr.prom.get_future(), [this, shouldCommit, st=_startTime, endRequestTime=Clock::now()] {
         auto now = Clock::now();
         K2LOG_D(log::pg, "ended txn {} started at {}", _mtr, _startTime);
-        session::in_flight_ops->add(-1);
+        _inFlightOps --;
+        _inFlightTxns--;
+
         session::txn_latency->observe(now - st);
         session::txn_end_latency->observe(now - endRequestTime);
         if (shouldCommit)
@@ -62,10 +67,11 @@ CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
 CBFuture<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query) {
     _scanOps++;
     ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
-    session::in_flight_ops->add(1);
 
-    auto result = CBFuture<QueryResult>(sr.prom.get_future(), [st=Clock::now()] {
-        session::in_flight_ops->add(-1);
+    _inFlightOps++;
+    session::in_flight_ops->observe(_inFlightOps);
+    auto result = CBFuture<QueryResult>(sr.prom.get_future(), [this, st = Clock::now()] {
+        _inFlightOps--;
         session::scan_op_latency->observe(Clock::now() - st);
     });
 
@@ -78,9 +84,10 @@ CBFuture<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     _readOps++;
     ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .key=k2::dto::Key(), .collectionName="", .prom={}};
 
-    session::in_flight_ops->add(1);
-    auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [st=Clock::now()] {
-        session::in_flight_ops->add(-1);
+    _inFlightOps++;
+    session::in_flight_ops->observe(_inFlightOps);
+    auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [this, st = Clock::now()] {
+        _inFlightOps--;
         session::read_op_latency->observe(Clock::now() - st);
     });
 
@@ -100,9 +107,10 @@ CBFuture<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::st
     ReadRequest qr {.mtr = _mtr, .record=k2::dto::SKVRecord(), .key=std::move(key),
                     .collectionName=std::move(collectionName), .prom={}};
 
-    session::in_flight_ops->add(1);
-    auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [st=Clock::now()] {
-        session::in_flight_ops->add(-1);
+    _inFlightOps++;
+    session::in_flight_ops->observe(_inFlightOps);
+    auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [this, st = Clock::now()] {
+        _inFlightOps--;
         session::read_op_latency->observe(Clock::now() - st);
     });
 
@@ -119,9 +127,10 @@ CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rej
     _writeOps++;
     WriteRequest qr{.mtr = _mtr, .erase=erase, .rejectIfExists=rejectIfExists, .record=std::move(rec), .prom={}};
 
-    session::in_flight_ops->add(1);
-    auto result = CBFuture<WriteResult>(qr.prom.get_future(), [st=Clock::now()] {
-        session::in_flight_ops->add(-1);
+    _inFlightOps++;
+    session::in_flight_ops->observe(_inFlightOps);
+    auto result = CBFuture<WriteResult>(qr.prom.get_future(), [this, st = Clock::now()] {
+        _inFlightOps--;
         session::write_op_latency->observe(Clock::now() - st);
     });
 
@@ -154,9 +163,10 @@ CBFuture<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
     UpdateRequest qr{.mtr = _mtr, .record=std::move(rec), .fieldsForUpdate=std::move(fieldsForUpdate),
                      .key=std::move(key), .prom={}};
 
-    session::in_flight_ops->add(1);
-    auto result = CBFuture<PartialUpdateResult>(qr.prom.get_future(), [st=Clock::now()] {
-        session::in_flight_ops->add(-1);
+    _inFlightOps++;
+    session::in_flight_ops->observe(_inFlightOps);
+    auto result = CBFuture<PartialUpdateResult>(qr.prom.get_future(), [this, st = Clock::now()] {
+        _inFlightOps--;
         session::write_op_latency->observe(Clock::now() - st);
     });
 
@@ -181,7 +191,6 @@ void K23SITxn::_reportEndMetrics(k2::TimePoint now) {
     session::txn_read_ops->observe(_readOps);
     session::txn_write_ops->observe(_writeOps);
     session::txn_scan_ops->observe(_scanOps);
-    session::in_flight_txns->add(-1);
 };
 
 } // ns gate

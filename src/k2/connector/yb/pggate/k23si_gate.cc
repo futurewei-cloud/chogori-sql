@@ -41,7 +41,6 @@ CBFuture<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
     qr.opts.syncFinalize = _syncFinalize;
 
     auto result = CBFuture<K23SITxn>(qr.prom.get_future(), [start] {
-        session::in_flight_txns->add(1);
         session::txn_begin_latency->observe(Clock::now() - start);
     });
     K2LOG_D(log::pg, "starting txn: enqueue");

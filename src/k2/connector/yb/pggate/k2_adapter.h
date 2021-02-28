@@ -26,9 +26,9 @@
 #include "yb/pggate/k23si_txn.h"
 #include "yb/pggate/pg_op_api.h"
 #include "yb/pggate/pg_env.h"
-
 #include "k2_thread_pool.h"
 #include "k2_log.h"
+#include "k2_config.h"
 
 namespace k2pg {
 namespace gate {
@@ -37,9 +37,9 @@ using yb::Status;
 
 // an adapter between SQL layer operations and K2 SKV storage
 class K2Adapter {
- public:
+public:
   // TODO make thead pool size configurable and investigate best number of threads
-  K2Adapter():threadPool_(2) {
+  K2Adapter():threadPool_(conf_.get("thread_pool_size", 2)) {
     k23si_ = std::make_shared<K23SIGate>();
   };
 
@@ -69,6 +69,8 @@ class K2Adapter {
 
   private:
   std::shared_ptr<K23SIGate> k23si_;
+  Config conf_;
+
   ThreadPool threadPool_;
 
   CBFuture<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);

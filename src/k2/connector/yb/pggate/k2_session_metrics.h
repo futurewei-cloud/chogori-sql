@@ -9,33 +9,26 @@ histogram examples:
 2. latency from 1us to 1min: st=1, factor=1.3, count=70
 3. latency from 1us to 10min: st=1, factor=1.3, count=78
 4. latency from 1us to 100min: st=1, factor=1.3, count=87
-
 */
 namespace k2pg::session {
 using namespace metrics;
 
-// latency histograms
 inline std::unique_ptr<Histogram> write_op_latency;
 inline std::unique_ptr<Histogram> read_op_latency;
 inline std::unique_ptr<Histogram> scan_op_latency;
 inline std::unique_ptr<Histogram> txn_latency;
 inline std::unique_ptr<Histogram> txn_begin_latency;
 inline std::unique_ptr<Histogram> txn_end_latency;
-
-// in each txn, report the total ops we saw
 inline std::unique_ptr<Histogram> txn_ops;
 inline std::unique_ptr<Histogram> txn_read_ops;
 inline std::unique_ptr<Histogram> txn_write_ops;
 inline std::unique_ptr<Histogram> txn_scan_ops;
-
-inline std::unique_ptr<Gauge> in_flight_ops;
-inline std::unique_ptr<Gauge> in_flight_txns;
-
+inline std::unique_ptr<Histogram> in_flight_ops;
+inline std::unique_ptr<Histogram> in_flight_txns;
 inline std::unique_ptr<Counter> txn_commit_count;
 inline std::unique_ptr<Counter> txn_abort_count;
-
 inline std::unique_ptr<Histogram> thread_pool_task_duration;
-
+inline std::unique_ptr<Histogram> thread_pool_qwait;
 inline std::unique_ptr<Histogram> gate_get_schema_latency;
 inline std::unique_ptr<Histogram> gate_create_schema_latency;
 inline std::unique_ptr<Histogram> gate_create_collection_latency;
@@ -54,19 +47,19 @@ inline void start() {
     txn_read_ops.reset(new Histogram("txn_read_ops", "count of read ops in txn", 1, 1.3, 50, {}));
     txn_write_ops.reset(new Histogram("txn_write_ops", "count of write ops in txn", 1, 1.3, 50, {}));
     txn_scan_ops.reset(new Histogram("txn_scan_ops", "count of scan ops in txn", 1, 1.3, 50, {}));
-
-    in_flight_ops.reset(new Gauge("in_flight_ops", "total ops in flight", {}));
-    in_flight_txns.reset(new Gauge("in_flight_txns", "total txns in flight", {}));
+    in_flight_ops.reset(new Histogram("in_flight_ops", "total ops in flight", 1, 1.3, 50, {}));
+    in_flight_txns.reset(new Histogram("in_flight_txns", "total txns in flight", 1, 1.3, 50, {}));
 
     txn_commit_count.reset(new Counter("txn_commit_count", "total txns committed", {}));
     txn_abort_count.reset(new Counter("txn_abort_count", "total txns aborted", {}));
 
     thread_pool_task_duration.reset(new Histogram("thread_pool_task_duration", "latency of tasks executed in threadpool", 1, 1.3, 87, {}));
-
+    thread_pool_qwait.reset(new Histogram("thread_pool_qwait", "Queue wait time for k2 thread pool", 1, 1.3, 87, {}));
     gate_get_schema_latency.reset(new Histogram("gate_get_schema_latency", "latency of schema get in usec", 1, 1.3, 78, {}));
     gate_create_schema_latency.reset(new Histogram("gate_create_schema_latency", "latency of schema create in usec", 1, 1.3, 78, {}));
     gate_create_collection_latency.reset(new Histogram("gate_create_collection_latency", "latency of collection create in usec", 1, 1.3, 78, {}));
     gate_create_scanread_latency.reset(new Histogram("gate_create_scanread_latency", "latency of scan read create in usec", 1, 1.3, 78, {}));
+
 }
 
 }

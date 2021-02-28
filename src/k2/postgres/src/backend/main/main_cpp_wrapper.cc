@@ -32,20 +32,35 @@ static bool inited = false;
 static void
 killK2App(int, unsigned long) {
     K2LOG_I(k2pg::log::main, "shutting down K2 app");
+    if (!inited) {
+        K2LOG_E(k2pg::log::main, "asked to shutdown but was never initialized");
+        return;
+    }
     if (k2thread.joinable()) {
         pthread_kill(k2thread.native_handle(), SIGINT);
         k2thread.join();
     }
 
-    sleep(10); // sleep in order to allow for metrics to be collected by prometheus before we shutdown
+    if (prom_daemon || prom_pusher) {
+        sleep(10); // sleep in order to allow for metrics to be collected by prometheus before we shutdown
+    }
     if (prom_daemon) {
-        K2LOG_D(k2pg::log::main, "shutting down prometheus http server");
+        K2LOG_I(k2pg::log::main, "shutting down prometheus http server");
         MHD_stop_daemon(prom_daemon);
     }
     if (prom_pusher) {
-        K2LOG_D(k2pg::log::main, "shutting down prometheus push thread");
+        K2LOG_I(k2pg::log::main, "shutting down prometheus push thread");
         promhttp_stop_push_metrics(prom_pusher);
     }
+
+    K2LOG_I(k2pg::log::main, "cleaning up metrics");
+    auto* registry = PROM_COLLECTOR_REGISTRY_DEFAULT;
+    PROM_COLLECTOR_REGISTRY_DEFAULT = NULL;
+    K2LOG_I(k2pg::log::main, "replacing collector registry");
+    promhttp_set_active_collector_registry(NULL);
+    K2LOG_I(k2pg::log::main, "deleting collector registry");
+    prom_collector_registry_destroy(registry);
+    K2LOG_I(k2pg::log::main, "done cleaning up");
 }
 
 const std::string& getHostName() {
@@ -72,10 +87,10 @@ void startK2App(int argc, char** argv) {
     k2::logging::Logger::threadLocalLogLevel = k2::logging::LogLevel::INFO;
 
     k2pg::gate::Config conf;
-    int promport = conf()["prometheus_port"];
-    int prometheus_push_interval_ms = conf()["prometheus_push_interval_ms"];
+    int promport = conf.get("prometheus_port", -1);
+    int prometheus_push_interval_ms = conf.get("prometheus_push_interval_ms", 10000);
     // make these static so that it sticks around while the thread is working on it
-    static std::string prometheus_address = conf()["prometheus_push_address"];
+    static std::string prometheus_address = conf.get("prometheus_push_address", std::string{});
     static std::string prometheus_push_url;
 
     prom_collector_registry_default_init();
@@ -95,7 +110,6 @@ void startK2App(int argc, char** argv) {
         K2ASSERT(k2pg::log::main, prom_pusher != NULL, "Unable to create metrics pusher");
     }
     K2LOG_I(k2pg::log::main, "Creating PG-K2 thread");
-    inited = true;
 
     // in order to pass the args to the seastar thread, we need to copy them into a new array as their storage will
     // disappear.
@@ -166,6 +180,7 @@ void startK2App(int argc, char** argv) {
     });
 
     K2LOG_I(k2pg::log::main, "PG-K2 thread created");
+    inited = true;
 }
 
 int PostgresServerProcessMain(int argc, char** argv);

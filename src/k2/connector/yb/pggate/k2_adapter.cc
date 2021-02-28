@@ -8,7 +8,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 #include "k2_adapter.h"
-#include "k2_config.h"
 
 #include "yb/pggate/pg_gate_defaults.h"
 #include <seastar/core/resource.hh>
@@ -499,16 +498,15 @@ CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_n
 {
     auto start = k2::Clock::now();
     K2LOG_I(log::pg, "Create collection: name={}, ns={}", collection_name, nsName);
-    Config conf;
 
     // Working around json conversion to/from k2::String which uses b64
-    std::vector<std::string> stdRangeEnds = conf()["create_collections"][nsName]["range_ends"];
+    std::vector<std::string> stdRangeEnds = conf_()["create_collections"][nsName]["range_ends"];
     std::vector<k2::String> rangeEnds;
     for (const std::string& end : stdRangeEnds) {
         rangeEnds.emplace_back(end);
     }
 
-    std::vector<std::string> stdEndpoints = conf()["create_collections"][nsName]["endpoints"];
+    std::vector<std::string> stdEndpoints = conf_()["create_collections"][nsName]["endpoints"];
     std::vector<k2::String> endpoints;
     for (const std::string& ep : stdEndpoints) {
         endpoints.emplace_back(ep);
