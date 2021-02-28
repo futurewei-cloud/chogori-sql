@@ -132,6 +132,12 @@ typedef struct FDWConstValue
 	bool is_null;
 } FDWConstValue;
 
+typedef struct FDWExprRefValues
+{
+	List *column_refs;
+	List *const_values;
+} FDWExprRefValues;
+
 typedef struct FDWEqualCond
 {
 	FDWColumnRef *ref; // column reference
@@ -200,13 +206,16 @@ static bool is_foreign_expr(PlannerInfo *root,
 
 static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
 
-static void parse_expr(Expr *node, List *column_refs, List *const_values);
+static void parse_expr(Expr *node, FDWExprRefValues *ref_values);
 
-static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values);
+static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values);
 
-static void parse_var(Var *node, List *column_refs, List *const_values);
+static void parse_var(Var *node, FDWExprRefValues *ref_values);
 
-static void parse_const(Const *node, List *column_refs, List *const_values);
+static void parse_const(Const *node, FDWExprRefValues *ref_values);
+
+static void parse_param(Param *node, FDWExprRefValues *ref_values);
+
 /*
  * Return true if given object is one of PostgreSQL's built-in objects.
  *
@@ -813,35 +822,47 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		}
 		elog(LOG, "FDW: parsing expression: %s", nodeToString(expr));
 		// parse a single clause
-		List *column_refs = NIL;
-		List *const_values = NIL;
-		parse_expr(expr, column_refs, const_values);
-		if (list_length(column_refs) == 1 && list_length(const_values)) {
-			// found a binary condition
+		FDWExprRefValues ref_values;
+		ref_values.column_refs = NIL;
+		ref_values.const_values = NIL;
+		parse_expr(expr, &ref_values);
+		if (list_length(ref_values.column_refs) == 1 && list_length(ref_values.const_values) == 1) {
 			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
-			eq_cond->ref = (FDWColumnRef *) list_head(column_refs);
-			eq_cond->val = (FDWConstValue *) list_head(const_values);
+			// found a binary condition
+			ListCell   *rlc;
+			foreach(rlc, ref_values.column_refs) {
+				eq_cond->ref = (FDWColumnRef *)lfirst(rlc);
+			}
+
+			foreach(rlc, ref_values.const_values) {
+				eq_cond->val = (FDWConstValue *)lfirst(rlc);
+			}
+//			eq_cond->ref = (FDWColumnRef *) list_head(ref_values.column_refs);
+//			eq_cond->val = (FDWConstValue *) list_head(ref_values.const_values);
 			expr_cxt->equal_conds = lappend(expr_cxt->equal_conds, eq_cond);
 		}
-		list_free(column_refs);
-		list_free(const_values);
+//		list_free(ref_values.column_refs);
+//		list_free(ref_values.const_values);
 	}
 }
 
-static void parse_expr(Expr *node, List *column_refs, List *const_values) {
+static void parse_expr(Expr *node, FDWExprRefValues *ref_values) {
 	if (node == NULL)
 		return;
 
 	switch (nodeTag(node))
 	{
 		case T_Var:
-			parse_var((Var *) node, column_refs, const_values);
+			parse_var((Var *) node, ref_values);
 			break;
 		case T_Const:
-			parse_const((Const *) node, column_refs, const_values);
+			parse_const((Const *) node, ref_values);
 			break;
 		case T_OpExpr:
-			parse_op_expr((OpExpr *) node, column_refs, const_values);
+			parse_op_expr((OpExpr *) node, ref_values);
+			break;
+		case T_Param:
+			parse_param((Param *) node, ref_values);
 			break;
 		default:
 			elog(WARNING, "FDW: unsupported expression type for expr: %s", nodeToString(node));
@@ -849,28 +870,33 @@ static void parse_expr(Expr *node, List *column_refs, List *const_values) {
 	}
 }
 
-static void parse_op_expr(OpExpr *node, List *column_refs, List *const_values) {
+static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 	if (list_length(node->args) != 2) {
-		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d", list_length(node->args));
+		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d for node %s", list_length(node->args), nodeToString(node));
 		return;
+	} else {
+		elog(LOG, "FDW: handing binary opclause for node %s", nodeToString(node));
 	}
 
 	ListCell *lc;
 	switch (get_oprrest(node->opno))
 	{
 		case F_EQSEL: // only handle equal condition for now
+			elog(LOG, "FDW: parsing equal OpExpr: %d", get_oprrest(node->opno));
 			foreach(lc, node->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
-				parse_expr(arg, column_refs, const_values);
+				parse_expr(arg, ref_values);
 			}
 			break;
 		default:
+			elog(LOG, "FDW: unsupported OpExpr type: %d", get_oprrest(node->opno));
 			break;
 	}
 }
 
-static void parse_var(Var *node, List *column_refs, List *const_values) {
+static void parse_var(Var *node, FDWExprRefValues *ref_values) {
+	elog(LOG, "FDW: parsing Var %s", nodeToString(node));
 	// the condition is at the current level
 	if (node->varlevelsup == 0) {
 		FDWColumnRef *col_ref = (FDWColumnRef *)palloc0(sizeof(FDWColumnRef));
@@ -878,16 +904,22 @@ static void parse_var(Var *node, List *column_refs, List *const_values) {
 		col_ref->attr_num = node->varattno;
 		col_ref->attr_typid = node->vartype;
 		col_ref->atttypmod = node->vartypmod;
-		column_refs = lappend(column_refs, col_ref);
+		ref_values->column_refs = lappend(ref_values->column_refs, col_ref);
 	}
 }
 
-static void parse_const(Const *node, List *column_refs, List *const_values) {
+static void parse_const(Const *node, FDWExprRefValues *ref_values) {
+	elog(LOG, "FDW: parsing Const %s", nodeToString(node));
 	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
 	val->atttypid = node->consttype;
 	val->value = node->constvalue;
 	val->is_null = node->constisnull;
-	const_values = lappend(const_values, val);
+	ref_values->const_values = lappend(ref_values->const_values, val);
+}
+
+static void parse_param(Param *node, FDWExprRefValues *ref_values) {
+	elog(LOG, "FDW: parsing Param %s", nodeToString(node));
+
 }
 
 static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
@@ -927,11 +959,14 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 	if (is_hash)
 	{
 		scan_plan->hash_key = bms_add_member(scan_plan->hash_key, idx);
-		scan_plan->nkeys++;
 	}
 	if (is_primary)
 	{
 		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
+	}
+	if (is_hash || is_primary) {
+		scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
+		scan_plan->bind_key_attnums[scan_plan->nkeys] = attnum;
 		scan_plan->nkeys++;
 	}
 }
@@ -1068,13 +1103,13 @@ static void pgBindScanKeys(Relation relation,
 	if (list_length(fdw_state->remote_exprs) == 0) {
 		elog(WARNING, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
 		return;
-	} else {
-		elog(LOG, "FDW: trying to bind %d remote exprs for relation: %d", list_length(fdw_state->remote_exprs), relation->rd_id);
 	}
+
 	foreign_expr_cxt context;
 	context.equal_conds = NIL;
 
 	parse_conditions(fdw_state->remote_exprs, &context);
+	elog(LOG, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
 	if (list_length(context.equal_conds) == 0) {
 		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
 		return;
@@ -1089,7 +1124,7 @@ static void pgBindScanKeys(Relation relation,
 			// check if the key is in the equal conditions
 			FDWEqualCond *equal_cond = findEqualCondition(context, idx);
 			if (equal_cond != NULL) {
-				elog(LOG, "FDW: Binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
+				elog(LOG, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
 				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
 			 				  equal_cond->val->value, equal_cond->val->is_null);
 			}
