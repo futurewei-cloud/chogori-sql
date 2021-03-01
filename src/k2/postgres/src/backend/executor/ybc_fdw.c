@@ -180,7 +180,6 @@ typedef struct PgFdwScanPlanData
 
 	/* Primary and hash key columns of the referenced table/relation. */
 	Bitmapset *primary_key;
-	Bitmapset *hash_key;
 
 	/* Set of key columns whose values will be used for scanning. */
 	Bitmapset *sk_cols;
@@ -956,15 +955,9 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 
 	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
-	if (is_hash)
-	{
-		scan_plan->hash_key = bms_add_member(scan_plan->hash_key, idx);
-	}
-	if (is_primary)
+	if (is_hash || is_primary)
 	{
 		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
-	}
-	if (is_hash || is_primary) {
 		scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
 		scan_plan->bind_key_attnums[scan_plan->nkeys] = attnum;
 		scan_plan->nkeys++;
@@ -1085,11 +1078,11 @@ static void pgBindColumnCondIn(YbFdwExecState *fdw_state, TupleDesc bind_desc, A
 }
 
 // search for the column in the equal conditions, the performance is fine for small number of equal conditions
-static FDWEqualCond *findEqualCondition(foreign_expr_cxt context, int index) {
+static FDWEqualCond *findEqualCondition(foreign_expr_cxt context, int attr_num) {
 	ListCell *lc = NULL;;
 	foreach (lc, context.equal_conds) {
 		FDWEqualCond *first = (FDWEqualCond *) lfirst(lc);
-		if (first->ref->attno == index) {
+		if (first->ref->attr_num == attr_num) {
 			return first;
 		}
 	}
@@ -1122,7 +1115,7 @@ static void pgBindScanKeys(Relation relation,
 		if (bms_is_member(idx, scan_plan->sk_cols))
 		{
 			// check if the key is in the equal conditions
-			FDWEqualCond *equal_cond = findEqualCondition(context, idx);
+			FDWEqualCond *equal_cond = findEqualCondition(context, scan_plan->bind_key_attnums[i]);
 			if (equal_cond != NULL) {
 				elog(LOG, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
 				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
