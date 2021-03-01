@@ -136,6 +136,7 @@ typedef struct FDWExprRefValues
 {
 	List *column_refs;
 	List *const_values;
+	ParamListInfo paramLI; // parameters binding information for prepare statements
 } FDWExprRefValues;
 
 typedef struct FDWEqualCond
@@ -184,6 +185,9 @@ typedef struct PgFdwScanPlanData
 	/* Set of key columns whose values will be used for scanning. */
 	Bitmapset *sk_cols;
 
+	// ParamListInfo structures are used to pass parameters into the executor for parameterized plans
+	ParamListInfo paramLI;
+
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
 	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
@@ -203,7 +207,7 @@ static bool is_foreign_expr(PlannerInfo *root,
 				RelOptInfo *baserel,
 				Expr *expr);
 
-static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt);
+static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cxt *expr_cxt);
 
 static void parse_expr(Expr *node, FDWExprRefValues *ref_values);
 
@@ -808,7 +812,7 @@ foreign_expr_walker(Node *node,
 	return true;
 }
 
-static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
+static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cxt *expr_cxt) {
 	elog(LOG, "FDW: parsing %d remote expressions", list_length(exprs));
 	ListCell   *lc;
 	foreach(lc, exprs)
@@ -824,6 +828,7 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 		FDWExprRefValues ref_values;
 		ref_values.column_refs = NIL;
 		ref_values.const_values = NIL;
+		ref_values.paramLI = paramLI;
 		parse_expr(expr, &ref_values);
 		if (list_length(ref_values.column_refs) == 1 && list_length(ref_values.const_values) == 1) {
 			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
@@ -836,12 +841,8 @@ static void parse_conditions(List *exprs, foreign_expr_cxt *expr_cxt) {
 			foreach(rlc, ref_values.const_values) {
 				eq_cond->val = (FDWConstValue *)lfirst(rlc);
 			}
-//			eq_cond->ref = (FDWColumnRef *) list_head(ref_values.column_refs);
-//			eq_cond->val = (FDWConstValue *) list_head(ref_values.const_values);
 			expr_cxt->equal_conds = lappend(expr_cxt->equal_conds, eq_cond);
 		}
-//		list_free(ref_values.column_refs);
-//		list_free(ref_values.const_values);
 	}
 }
 
@@ -918,7 +919,36 @@ static void parse_const(Const *node, FDWExprRefValues *ref_values) {
 
 static void parse_param(Param *node, FDWExprRefValues *ref_values) {
 	elog(LOG, "FDW: parsing Param %s", nodeToString(node));
+	ParamExternData *prm = NULL;
+	ParamExternData prmdata;
+	if (ref_values->paramLI->paramFetch != NULL)
+		prm = ref_values->paramLI->paramFetch(ref_values->paramLI, node->paramid,
+				true, &prmdata);
+	else
+		prm = &ref_values->paramLI->params[node->paramid - 1];
 
+	if (!OidIsValid(prm->ptype) ||
+		prm->ptype != node->paramtype ||
+		!(prm->pflags & PARAM_FLAG_CONST))
+	{
+		/* Planner should ensure this does not happen */
+		elog(ERROR, "Invalid parameter: %s", nodeToString(node));
+	}
+
+	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
+	val->atttypid = prm->ptype;
+	val->is_null = prm->isnull;
+	int16		typLen = 0;
+	bool		typByVal = false;
+	val->value = 0;
+
+	get_typlenbyval(node->paramtype, &typLen, &typByVal);
+	if (prm->isnull || typByVal)
+		val->value = prm->value;
+	else
+		val->value = datumCopy(prm->value, typByVal, typLen);
+
+	ref_values->const_values = lappend(ref_values->const_values, val);
 }
 
 static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
@@ -1101,7 +1131,7 @@ static void pgBindScanKeys(Relation relation,
 	foreign_expr_cxt context;
 	context.equal_conds = NIL;
 
-	parse_conditions(fdw_state->remote_exprs, &context);
+	parse_conditions(fdw_state->remote_exprs, scan_plan->paramLI, &context);
 	elog(LOG, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
 	if (list_length(context.equal_conds) == 0) {
 		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
@@ -1405,13 +1435,6 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	}
 
 	ybc_state->is_exec_done = false;
-	PgFdwScanPlanData scan_plan;
-	memset(&scan_plan, 0, sizeof(scan_plan));
-
-	scan_plan.target_relation = relation;
-	pgLoadTableInfo(relation, &scan_plan);
-	scan_plan.bind_desc = RelationGetDescr(relation);
-	pgBindScanKeys(relation, ybc_state, &scan_plan);
 
 	/* Set the current syscatalog version (will check that we are up to date) */
 	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
@@ -1629,6 +1652,16 @@ ybcIterateForeignScan(ForeignScanState *node)
 	 * - The subsequent fetches don't need to setup the query with these operations again.
 	 */
 	if (!ybc_state->is_exec_done) {
+		PgFdwScanPlanData scan_plan;
+		memset(&scan_plan, 0, sizeof(scan_plan));
+
+		Relation relation = node->ss.ss_currentRelation;
+		scan_plan.target_relation = relation;
+		scan_plan.paramLI = node->ss.ps.state->es_param_list_info;
+		pgLoadTableInfo(relation, &scan_plan);
+		scan_plan.bind_desc = RelationGetDescr(relation);
+		pgBindScanKeys(relation, ybc_state, &scan_plan);
+
 		ybcSetupScanTargets(node);
 		HandleYBStatusWithOwner(YBCPgExecSelect(ybc_state->handle, ybc_state->exec_params),
 								ybc_state->handle,
