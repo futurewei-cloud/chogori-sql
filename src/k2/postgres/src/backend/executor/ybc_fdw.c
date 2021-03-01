@@ -912,8 +912,14 @@ static void parse_const(Const *node, FDWExprRefValues *ref_values) {
 	elog(LOG, "FDW: parsing Const %s", nodeToString(node));
 	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
 	val->atttypid = node->consttype;
-	val->value = node->constvalue;
 	val->is_null = node->constisnull;
+
+	val->value = 0;
+	if (node->constisnull || node->constbyval)
+		val->value = node->constvalue;
+	else
+		val->value = datumCopy(node->constvalue, node->constbyval, node->constlen);
+
 	ref_values->const_values = lappend(ref_values->const_values, val);
 }
 
