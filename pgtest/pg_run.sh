@@ -26,4 +26,4 @@ cp pg_hba.conf pgroot/data/
 chown root pgroot/data/pg_hba.conf
 chmod 0700 pgroot/data/pg_hba.conf
 
-/build/src/k2/postgres/bin/postgres -E -D pgroot/data -p5433 -h "*"
+/build/src/k2/postgres/bin/postgres -D pgroot/data -p5433 -h "*"

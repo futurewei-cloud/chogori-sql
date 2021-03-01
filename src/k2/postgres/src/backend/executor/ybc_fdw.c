@@ -813,7 +813,7 @@ foreign_expr_walker(Node *node,
 }
 
 static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cxt *expr_cxt) {
-	elog(LOG, "FDW: parsing %d remote expressions", list_length(exprs));
+	elog(DEBUG4, "FDW: parsing %d remote expressions", list_length(exprs));
 	ListCell   *lc;
 	foreach(lc, exprs)
 	{
@@ -823,7 +823,7 @@ static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cx
 		if (IsA(expr, RestrictInfo)) {
 			expr = ((RestrictInfo *) expr)->clause;
 		}
-		elog(LOG, "FDW: parsing expression: %s", nodeToString(expr));
+		elog(DEBUG4, "FDW: parsing expression: %s", nodeToString(expr));
 		// parse a single clause
 		FDWExprRefValues ref_values;
 		ref_values.column_refs = NIL;
@@ -875,14 +875,14 @@ static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d for node %s", list_length(node->args), nodeToString(node));
 		return;
 	} else {
-		elog(LOG, "FDW: handing binary opclause for node %s", nodeToString(node));
+		elog(DEBUG4, "FDW: handing binary opclause for node %s", nodeToString(node));
 	}
 
 	ListCell *lc;
 	switch (get_oprrest(node->opno))
 	{
 		case F_EQSEL: // only handle equal condition for now
-			elog(LOG, "FDW: parsing equal OpExpr: %d", get_oprrest(node->opno));
+			elog(DEBUG4, "FDW: parsing equal OpExpr: %d", get_oprrest(node->opno));
 			foreach(lc, node->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
@@ -890,13 +890,13 @@ static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 			}
 			break;
 		default:
-			elog(LOG, "FDW: unsupported OpExpr type: %d", get_oprrest(node->opno));
+			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", get_oprrest(node->opno));
 			break;
 	}
 }
 
 static void parse_var(Var *node, FDWExprRefValues *ref_values) {
-	elog(LOG, "FDW: parsing Var %s", nodeToString(node));
+	elog(DEBUG4, "FDW: parsing Var %s", nodeToString(node));
 	// the condition is at the current level
 	if (node->varlevelsup == 0) {
 		FDWColumnRef *col_ref = (FDWColumnRef *)palloc0(sizeof(FDWColumnRef));
@@ -909,7 +909,7 @@ static void parse_var(Var *node, FDWExprRefValues *ref_values) {
 }
 
 static void parse_const(Const *node, FDWExprRefValues *ref_values) {
-	elog(LOG, "FDW: parsing Const %s", nodeToString(node));
+	elog(DEBUG4, "FDW: parsing Const %s", nodeToString(node));
 	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
 	val->atttypid = node->consttype;
 	val->is_null = node->constisnull;
@@ -924,7 +924,7 @@ static void parse_const(Const *node, FDWExprRefValues *ref_values) {
 }
 
 static void parse_param(Param *node, FDWExprRefValues *ref_values) {
-	elog(LOG, "FDW: parsing Param %s", nodeToString(node));
+	elog(DEBUG4, "FDW: parsing Param %s", nodeToString(node));
 	ParamExternData *prm = NULL;
 	ParamExternData prmdata;
 	if (ref_values->paramLI->paramFetch != NULL)
@@ -1138,7 +1138,7 @@ static void pgBindScanKeys(Relation relation,
 	context.equal_conds = NIL;
 
 	parse_conditions(fdw_state->remote_exprs, scan_plan->paramLI, &context);
-	elog(LOG, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
+	elog(DEBUG4, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
 	if (list_length(context.equal_conds) == 0) {
 		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
 		return;
@@ -1153,7 +1153,7 @@ static void pgBindScanKeys(Relation relation,
 			// check if the key is in the equal conditions
 			FDWEqualCond *equal_cond = findEqualCondition(context, scan_plan->bind_key_attnums[i]);
 			if (equal_cond != NULL) {
-				elog(LOG, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
+				elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
 				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
 			 				  equal_cond->val->value, equal_cond->val->is_null);
 			}
@@ -1189,18 +1189,18 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	fdw_plan->local_conds = NIL;
 
 	ListCell   *lc;
-	elog(LOG, "FDW: ybcGetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
+	elog(DEBUG4, "FDW: ybcGetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
 
 	foreach(lc, baserel->baserestrictinfo)
 	{
 		RestrictInfo *ri = lfirst_node(RestrictInfo, lc);
-		elog(LOG, "FDW: classing baserestrictinfo: %s", nodeToString(ri));
+		elog(DEBUG4, "FDW: classing baserestrictinfo: %s", nodeToString(ri));
 		if (is_foreign_expr(root, baserel, ri->clause))
 			fdw_plan->remote_conds = lappend(fdw_plan->remote_conds, ri);
 		else
 			fdw_plan->local_conds = lappend(fdw_plan->local_conds, ri);
 	}
-	elog(LOG, "FDW: classified %d remote_conds, %d local_conds", list_length(fdw_plan->remote_conds), list_length(fdw_plan->local_conds));
+	elog(DEBUG4, "FDW: classified %d remote_conds, %d local_conds", list_length(fdw_plan->remote_conds), list_length(fdw_plan->local_conds));
 
 	/*
 	 * Test any indexes of rel for applicability also.
@@ -1264,7 +1264,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 	List	   *local_exprs = NIL;
 	List	   *remote_exprs = NIL;
 
-	elog(LOG, "FDW: fdw_private %d remote_conds and %d local_conds for foreign relation %d",
+	elog(DEBUG4, "FDW: fdw_private %d remote_conds and %d local_conds for foreign relation %d",
 			list_length(fdw_plan_state->remote_conds), list_length(fdw_plan_state->local_conds), foreigntableid);
 
 	if (IS_SIMPLE_REL(baserel))
@@ -1277,11 +1277,11 @@ ybcGetForeignPlan(PlannerInfo *root,
 		* fpinfo->local_conds.  Anything else in the restrictionClauses list will
 		* be a join clause, which we have to check for remote-safety.
 		*/
-		elog(LOG, "FDW: GetForeignPlan with %d scan_clauses for simple relation %d", list_length(scan_clauses), scan_relid);
+		elog(DEBUG4, "FDW: GetForeignPlan with %d scan_clauses for simple relation %d", list_length(scan_clauses), scan_relid);
 		foreach(lc, scan_clauses)
 		{
 			RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
-			elog(LOG, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
+			elog(DEBUG4, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
 
 			/* Ignore pseudoconstants, they are dealt with elsewhere */
 			if (rinfo->pseudoconstant)
@@ -1296,7 +1296,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 			else
 				local_exprs = lappend(local_exprs, rinfo->clause);
 		}
-		elog(LOG, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d",
+		elog(DEBUG4, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d",
 				list_length(scan_clauses), scan_relid, list_length(remote_exprs), list_length(local_exprs));
 	}
 	else
@@ -1427,7 +1427,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ybc_state->stmt_owner = CurrentResourceOwner;
 	ybc_state->exec_params = &estate->yb_exec_params;
 	ybc_state->remote_exprs = foreignScan->fdw_exprs;
-	elog(LOG, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
+	elog(DEBUG4, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
 
 	ybc_state->exec_params->rowmark = -1;
 	ListCell   *l;
