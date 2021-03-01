@@ -94,8 +94,6 @@ typedef struct foreign_glob_cxt
 {
 	PlannerInfo *root;			/* global planner state */
 	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
-//	Relids		relids;			/* relids of base relations in the underlying
-//								 * scan */
 } foreign_glob_cxt;
 
 /*
@@ -249,7 +247,6 @@ is_foreign_expr(PlannerInfo *root,
 {
 	foreign_glob_cxt glob_cxt;
 	foreign_loc_cxt loc_cxt;
-//	YbFdwPlanState *fpinfo = (YbFdwPlanState *) (baserel->fdw_private);
 
 	/*
 	 * Check that the expression consists of nodes that are safe to execute
@@ -311,9 +308,6 @@ foreign_expr_walker(Node *node,
 	/* Need do nothing for empty subexpressions */
 	if (node == NULL)
 		return true;
-
-	/* May need server info from baserel's fdw_private struct */
-//	YbFdwPlanState *fpinfo = (YbFdwPlanState *) (glob_cxt->foreignrel->fdw_private);
 
 	/* Set up inner_cxt for possible recursion to child nodes */
 	inner_cxt.collation = InvalidOid;
@@ -977,8 +971,6 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 	bool is_hash    = false;
 
 	/*
-	 * TODO(neil) We shouldn't need to upload YugaByte table descriptor here because the structure
-	 * Postgres::Relation already has all information.
 	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
 	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
 	 * - Number of all columns: IndexRelation->rd_index->indnatts

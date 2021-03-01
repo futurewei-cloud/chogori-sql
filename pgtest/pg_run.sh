@@ -12,8 +12,8 @@ export K2_PG_CORES=10
 #export K2_PG_CORES="1 2 4 10"
 
 export K2_PG_MEM=2G
-export K2_CPO_TIMEOUT=200ms
-export K2_CPO_BACKOFF=200ms
+export K2_CPO_TIMEOUT=100ms
+export K2_CPO_BACKOFF=100ms
 export K2_MSG_CHECKSUM=TRUE
 export K2_CONFIG_FILE=/build/pgtest/k2config.json
 export K2_LOG_LEVEL="INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
