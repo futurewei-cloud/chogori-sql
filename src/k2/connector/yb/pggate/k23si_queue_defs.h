@@ -35,6 +35,7 @@ namespace gate {
 struct BeginTxnRequest {
     k2::K2TxnOptions opts;
     std::promise<K23SITxn> prom;
+    k2::TimePoint startTime;
     K2_DEF_FMT(BeginTxnRequest, opts);
 };
 
@@ -131,25 +132,33 @@ public:
 
 
 // mutex for locking outgoing request queues
-extern LFMutex requestQMutex;
+inline LFMutex requestQMutex;
+
+// signal between consumer and producers that the queue processing is shutdown
+inline volatile bool shutdown{false};
 
 // Shared queues for submitting requests to the seastar thread
-extern std::queue<BeginTxnRequest> beginTxQ;
-extern std::queue<EndTxnRequest> endTxQ;
-extern std::queue<SchemaGetRequest> schemaGetTxQ;
-extern std::queue<SchemaCreateRequest> schemaCreateTxQ;
-extern std::queue<CollectionCreateRequest> collectionCreateTxQ;
-extern std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
-extern std::queue<ScanReadRequest> scanReadTxQ;
-extern std::queue<ReadRequest> readTxQ;
-extern std::queue<WriteRequest> writeTxQ;
-extern std::queue<UpdateRequest> updateTxQ;
+inline std::queue<BeginTxnRequest> beginTxQ;
+inline std::queue<EndTxnRequest> endTxQ;
+inline std::queue<SchemaGetRequest> schemaGetTxQ;
+inline std::queue<SchemaCreateRequest> schemaCreateTxQ;
+inline std::queue<CollectionCreateRequest> collectionCreateTxQ;
+inline std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
+inline std::queue<ScanReadRequest> scanReadTxQ;
+inline std::queue<ReadRequest> readTxQ;
+inline std::queue<WriteRequest> writeTxQ;
+inline std::queue<UpdateRequest> updateTxQ;
 
 // Helper function used to push an item onto a request queue safely.
 template <typename Q, typename Request>
 void pushQ(Q& queue, Request&& r) {
     std::lock_guard lock{requestQMutex};
-    queue.push(std::forward<Request>(r));
+    if (shutdown) {
+        r.prom.set_exception(std::make_exception_ptr(std::runtime_error("queue processing has been shutdown")));
+    }
+    else {
+        queue.push(std::forward<Request>(r));
+    }
 }
 
 }  // namespace gate

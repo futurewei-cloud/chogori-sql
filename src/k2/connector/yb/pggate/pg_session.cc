@@ -265,8 +265,7 @@ Status PgSession::FlushBufferedOperations() {
 
   K2ASSERT(log::pg, false, "FlushBufferedOperations - flush is not supported and there are indeed buffered ops!!! See issue #145");
   RunHelper runner(this, k2_adapter_, true);
-  std::future<Status> result = VERIFY_RESULT(runner.Flush());
-  return result.get();
+  return VERIFY_RESULT(runner.Flush()).get();
 }
 
 void PgSession::DropBufferedOperations() {
@@ -309,7 +308,7 @@ PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter
   }
 }
 
-Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
+Result<CBFuture<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
                          const PgObjectId& relation_id,
                          uint64_t* read_time,
@@ -322,7 +321,7 @@ Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::share
     // send new operations
     if (ops_count < 1) {
       // invalid, do nothing
-      return std::future<Status>();
+      return CBFuture<Status>();
     } else if (ops_count == 1) {
       // run a single operation
       std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
@@ -369,14 +368,14 @@ Result<std::future<Status>> PgSession::RunHelper::ApplyAndFlush(const std::share
       return Flush();
     } else {
       // buffer the operations and return
-      return std::future<Status>();
+      return CBFuture<Status>();
     }
   }
 }
 
-Result<std::future<Status>> PgSession::RunHelper::Flush() {
+Result<CBFuture<Status>> PgSession::RunHelper::Flush() {
   if (buffered_ops_.size() == 0) {
-    return std::future<Status>();
+    return CBFuture<Status>();
   }
 
   K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145");
@@ -391,7 +390,7 @@ Result<std::future<Status>> PgSession::RunHelper::Flush() {
     ops.push_back(op);
   }
   std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only);
-  std::future<Status> result = client_->BatchExec(k23SITxn, ops);
+  auto result = client_->BatchExec(k23SITxn, ops);
   // wait for the batch to complete
   result.get();
 

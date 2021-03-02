@@ -1320,8 +1320,7 @@ namespace catalog {
     }
 
     std::shared_ptr<SessionTransactionContext> SqlCatalogManager::NewTransactionContext() {
-        std::future<K23SITxn> txn_future = k2_adapter_->beginTransaction();
-        std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(txn_future.get());
+        std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(k2_adapter_->beginTransaction().get());
         std::shared_ptr<SessionTransactionContext> context = std::make_shared<SessionTransactionContext>(txn);
         return context;
     }

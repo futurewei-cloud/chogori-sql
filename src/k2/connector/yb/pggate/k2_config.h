@@ -11,6 +11,7 @@
 
 #include <nlohmann/json.hpp>
 #include "k2_log.h"
+#include <string>
 
 namespace k2pg {
 namespace gate {
@@ -21,6 +22,17 @@ public:
     ~Config();
     nlohmann::json& operator()() {
         return _config;
+    }
+
+    template<typename T>
+    T get(const std::string& key, T defaultV) {
+        auto iter = _config.find(key);
+        if (iter != _config.end()) {
+            return iter.value();
+        }
+        else {
+            return std::move(defaultV);
+        }
     }
 private:
     nlohmann::json _config;

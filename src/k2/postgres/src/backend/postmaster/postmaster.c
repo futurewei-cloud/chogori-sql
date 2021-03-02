@@ -4175,7 +4175,7 @@ report_fork_failure_to_client(Port *port, int errnum)
 void
 InitK23siWorker()
 {
-	elog(LOG, "Starting K23SI Worker");
+	elog(LOG, "Starting K23SI Worker from process: %d", getpid());
 	/* initialize k2 */
 	if (k2_init_func) {
 		const int MAX_K2_ARGS = 64;

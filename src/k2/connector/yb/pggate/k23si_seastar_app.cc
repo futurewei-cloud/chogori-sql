@@ -42,8 +42,19 @@ PGK2Client::~PGK2Client() {
 
 seastar::future<> PGK2Client::gracefulStop() {
     K2LOG_I(log::k2ss, "Stopping");
+    {
+        std::unique_lock lock(requestQMutex);
+        shutdown = true;
+    }
     _stop = true;
-    return std::move(_poller).then([this] () { return _client->gracefulStop(); });
+    return std::move(_poller)
+        .then([this] {
+            return _client->gracefulStop();
+        })
+        .then([this] {
+            // drain all queue items and fail them due to shutdown
+            return _pollForWork();
+        });
 }
 
 seastar::future<> PGK2Client::start() {
@@ -78,7 +89,8 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
     while (!q.empty()) {
         K2LOG_V(log::k2ss, "Found op in queue");
         futs.push_back(
-            seastar::do_with(std::move(q.front()), std::forward<Func>(visitor), [](auto& req, auto& visitor) {
+            seastar::do_with(std::move(q.front()), std::forward<Func>(visitor),
+            [] (auto& req, auto& visitor) {
                 try {
                     return visitor(req)
                         .handle_exception([&req](auto exc) {
@@ -105,13 +117,15 @@ seastar::future<> pollQ(Q& q, Func&& visitor) {
 seastar::future<> PGK2Client::_pollBeginQ() {
     return pollQ(beginTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Begin txn...");
-
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         return _client->beginTxn(req.opts)
             .then([this, &req](auto&& txn) {
                 K2LOG_D(log::k2ss, "txn: {}", txn.mtr());
                 auto mtr = txn.mtr();
                 (*_txns)[txn.mtr()] = std::move(txn);
-                req.prom.set_value(K23SITxn(mtr));  // send a copy to the promise
+                req.prom.set_value(K23SITxn(mtr, req.startTime));  // send a copy to the promise
 
             });
     });
@@ -120,6 +134,9 @@ seastar::future<> PGK2Client::_pollBeginQ() {
 seastar::future<> PGK2Client::_pollEndQ() {
     return pollQ(endTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "End txn...");
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
@@ -139,6 +156,9 @@ seastar::future<> PGK2Client::_pollEndQ() {
 seastar::future<> PGK2Client::_pollSchemaGetQ() {
     return pollQ(schemaGetTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Schema get {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         // Strings will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->getSchema(req.collectionName, req.schemaName, req.schemaVersion)
             .then([this, &req](auto&& result) {
@@ -151,6 +171,9 @@ seastar::future<> PGK2Client::_pollSchemaGetQ() {
 seastar::future<> PGK2Client::_pollSchemaCreateQ() {
     return pollQ(schemaCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Schema create... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->createSchema(req.collectionName, req.schema)
             .then([this, &req](auto&& result) {
@@ -163,6 +186,9 @@ seastar::future<> PGK2Client::_pollSchemaCreateQ() {
 seastar::future<> PGK2Client::_pollCreateCollectionQ() {
     return pollQ(collectionCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Collection create... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints),
                                        std::move(req.ccr.rangeEnds))
             .then([this, &req](auto&& result) {
@@ -175,6 +201,9 @@ seastar::future<> PGK2Client::_pollCreateCollectionQ() {
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Read... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
@@ -203,6 +232,9 @@ seastar::future<> PGK2Client::_pollReadQ() {
 seastar::future<> PGK2Client::_pollCreateScanReadQ() {
     return pollQ(scanReadCreateTxQ, [this](auto& req) {
         K2LOG_D(log::k2ss, "Create scan... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         // Parameters will be copied into a payload by transport so will be RDMA safe without extra copy
         return _client->createQuery(req.collectionName, req.schemaName)
             .then([this, &req](auto&& result) {
@@ -219,6 +251,9 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Scan... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
@@ -237,6 +272,9 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
 seastar::future<> PGK2Client::_pollWriteQ() {
     return pollQ(writeTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Write... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
@@ -257,6 +295,9 @@ seastar::future<> PGK2Client::_pollWriteQ() {
 seastar::future<> PGK2Client::_pollUpdateQ() {
     return pollQ(updateTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Update... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
@@ -275,8 +316,11 @@ seastar::future<> PGK2Client::_pollUpdateQ() {
 
 seastar::future<> PGK2Client::_pollForWork() {
     return seastar::when_all_succeed(
-        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(), _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(), _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ(),
-        _pollCreateCollectionQ()).discard_result();  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
+        _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(),
+        _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(),
+        _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ(),
+        _pollCreateCollectionQ())
+        .discard_result();  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
 }
 
 }  // namespace gate

@@ -343,7 +343,7 @@ Status PgOpResult::ProcessSystemColumns() {
 PgOp::PgOp(const std::shared_ptr<PgSession>& pg_session,
                 const std::shared_ptr<PgTableDesc>& table_desc,
                 const PgObjectId& relation_id)
-    : pg_session_(pg_session),  table_desc_(table_desc), relation_id_(relation_id) {
+    : pg_session_(pg_session), table_desc_(table_desc), relation_id_(relation_id) {
     exec_params_.limit_count = 0;
     exec_params_.limit_offset = 0;
     exec_params_.limit_use_default = false;

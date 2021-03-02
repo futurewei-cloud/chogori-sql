@@ -54,8 +54,7 @@ SessionTransactionContext::~SessionTransactionContext() {
 }
 
 void SessionTransactionContext::EndTransaction(bool should_commit) {
-    std::future<k2::EndResult> txn_result_future = txn_->endTxn(should_commit);
-    k2::EndResult txn_result = txn_result_future.get();
+    auto txn_result = txn_->endTxn(should_commit).get();
     if (!txn_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to commit transaction due to {}", txn_result.status);
         throw std::runtime_error("Failed to end transaction, should_commit: " + should_commit);

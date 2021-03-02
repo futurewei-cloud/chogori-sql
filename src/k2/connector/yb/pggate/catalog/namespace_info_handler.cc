@@ -43,8 +43,7 @@ NamespaceInfoHandler::~NamespaceInfoHandler() {
 // Called only once in sql_catalog_manager::InitPrimaryCluster()
 InitNamespaceTableResult NamespaceInfoHandler::InitNamespaceTable() {
     // check to make sure the schema doesn't exists
-    std::future<k2::GetSchemaResult> schema_result_future = k2_adapter_->GetSchema(collection_name_, schema_name_, 1);
-    k2::GetSchemaResult schema_result = schema_result_future.get();
+    auto schema_result = k2_adapter_->GetSchema(collection_name_, schema_name_, 1).get();
     InitNamespaceTableResult response;
     // TODO: double check if this check is valid for schema
     CHECK(schema_result.status == k2::dto::K23SIStatus::KeyNotFound);
@@ -78,8 +77,7 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<SessionTra
     GetNamespaceResult response;
     k2::dto::SKVRecord record(collection_name_, schema_ptr_);
     record.serializeNext<k2::String>(namespace_id);
-    std::future<k2::ReadResult<k2::dto::SKVRecord>> read_result_future = context->GetTxn()->read(std::move(record));
-    k2::ReadResult<k2::dto::SKVRecord> read_result = read_result_future.get();
+    auto read_result = context->GetTxn()->read(std::move(record)).get();
     if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
         K2LOG_D(log::catalog, "SKV record does not exist for namespace {}", namespace_id);
         response.namespaceInfo = nullptr;
@@ -106,8 +104,7 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<SessionTra
 
 ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<SessionTransactionContext> context) {
     ListNamespacesResult response;
-    std::future<CreateScanReadResult> create_result_future = k2_adapter_->CreateScanRead(collection_name_, schema_name_);
-    CreateScanReadResult create_result = create_result_future.get();
+    auto create_result = k2_adapter_->CreateScanRead(collection_name_, schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
         response.status.code = StatusCode::INTERNAL_ERROR;
@@ -120,8 +117,7 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Sessio
         // For a forward full schema scan in SKV, we need to explictly set the start record
         query->startScanRecord.serializeNext<k2::String>("");
 
-        std::future<k2::QueryResult> query_result_future = context->GetTxn()->scanRead(query);
-        k2::QueryResult query_result = query_result_future.get();
+        auto query_result = context->GetTxn()->scanRead(query).get();
         if (!query_result.status.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
             response.status.code = StatusCode::INTERNAL_ERROR;
