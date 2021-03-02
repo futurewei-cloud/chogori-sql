@@ -50,9 +50,6 @@ inline void start() {
     in_flight_ops.reset(new Histogram("in_flight_ops", "total ops in flight", 1, 1.3, 50, {}));
     in_flight_txns.reset(new Histogram("in_flight_txns", "total txns in flight", 1, 1.3, 50, {}));
 
-    txn_commit_count.reset(new Counter("txn_commit_count", "total txns committed", {}));
-    txn_abort_count.reset(new Counter("txn_abort_count", "total txns aborted", {}));
-
     thread_pool_task_duration.reset(new Histogram("thread_pool_task_duration", "latency of tasks executed in threadpool", 1, 1.3, 87, {}));
     thread_pool_qwait.reset(new Histogram("thread_pool_qwait", "Queue wait time for k2 thread pool", 1, 1.3, 87, {}));
     gate_get_schema_latency.reset(new Histogram("gate_get_schema_latency", "latency of schema get in usec", 1, 1.3, 78, {}));

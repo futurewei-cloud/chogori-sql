@@ -39,11 +39,10 @@ K23SITxn::~K23SITxn() {
 }
 
 CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
-    _shouldCommit = shouldCommit;
     EndTxnRequest qr{.mtr=_mtr, .shouldCommit = shouldCommit, .prom={}};
     _inFlightOps ++;
     session::in_flight_ops->observe(_inFlightOps);
-    auto result = CBFuture<EndResult>(qr.prom.get_future(), [this, shouldCommit, st=_startTime, endRequestTime=Clock::now()] {
+    auto result = CBFuture<EndResult>(qr.prom.get_future(), [this, st=_startTime, endRequestTime=Clock::now()] {
         auto now = Clock::now();
         K2LOG_D(log::pg, "ended txn {} started at {}", _mtr, _startTime);
         _inFlightOps --;
@@ -51,10 +50,6 @@ CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
 
         session::txn_latency->observe(now - st);
         session::txn_end_latency->observe(now - endRequestTime);
-        if (shouldCommit)
-            session::txn_commit_count->add(1);
-        else
-            session::txn_abort_count->add(1);
         _reportEndMetrics(now);
     });
 

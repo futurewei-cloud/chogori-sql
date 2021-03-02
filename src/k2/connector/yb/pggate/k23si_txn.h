@@ -89,9 +89,6 @@ private: // fields
     // the time at which SQL asked to start this txn
     k2::TimePoint _startTime;
 
-    // remember if we were asked to end with commit or not
-    bool _shouldCommit{false};
-
     uint32_t _readOps{0};
     uint32_t _writeOps{0};
     uint32_t _scanOps{0};
