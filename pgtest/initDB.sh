@@ -9,7 +9,7 @@ export YB_PG_ALLOW_RUNNING_AS_ANY_USER=1
 #export K2_HUGE_PAGES=TRUE
 export K2_CPO_ADDRESS=tcp+k2rpc://0.0.0.0:9000
 export K2_TSO_ADDRESS=tcp+k2rpc://0.0.0.0:13000
-export K2_PG_CORES=10
+export K2_PG_CORES=1
 #export K2_PG_CORES="1 2 4 10"
 
 export K2_PG_MEM=1G
@@ -30,6 +30,6 @@ rm -rf pgroot/data
 mkdir -p pgroot/data
 
 ./run_k2_platform.sh
-sleep 2
+sleep 5
 
 /build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data
