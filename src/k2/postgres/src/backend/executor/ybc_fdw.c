@@ -52,6 +52,8 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/sampling.h"
+#include "utils/typcache.h"
+#include "utils/fmgroids.h"
 
 /*  YB includes. */
 #include "commands/dbcommands.h"
@@ -67,6 +69,10 @@
 
 #include "utils/resowner_private.h"
 
+#define DEFAULT_COLLATION_OID 100
+#define ProcedureRelationId 1255
+#define FirstBootstrapObjectId	10000
+
 /* -------------------------------------------------------------------------- */
 /*  Planner/Optimizer functions */
 
@@ -74,8 +80,1078 @@ typedef struct YbFdwPlanState
 {
 	/* Bitmap of attribute (column) numbers that we need to fetch from YB. */
 	Bitmapset *target_attrs;
-
+	/*
+	 * Restriction clauses, divided into safe and unsafe to pushdown subsets.
+	 */
+	List	   *remote_conds;
+	List	   *local_conds;
 } YbFdwPlanState;
+
+/*
+ * Global context for foreign_expr_walker's search of an expression tree.
+ */
+typedef struct foreign_glob_cxt
+{
+	PlannerInfo *root;			/* global planner state */
+	RelOptInfo *foreignrel;		/* the foreign relation we are planning for */
+} foreign_glob_cxt;
+
+/*
+ * Local (per-tree-level) context for foreign_expr_walker's search.
+ * This is concerned with identifying collations used in the expression.
+ */
+typedef enum
+{
+	FDW_COLLATE_NONE,			/* expression is of a noncollatable type, or
+								 * it has default collation that is not
+								 * traceable to a foreign Var */
+	FDW_COLLATE_SAFE,			/* collation derives from a foreign Var */
+	FDW_COLLATE_UNSAFE			/* collation is non-default and derives from
+								 * something other than a foreign Var */
+} FDWCollateState;
+
+typedef struct foreign_loc_cxt
+{
+	Oid			collation;		/* OID of current collation, if any */
+	FDWCollateState state;		/* state of current collation choice */
+} foreign_loc_cxt;
+
+typedef struct FDWColumnRef {
+	AttrNumber attr_num;
+	int attno;
+	int attr_typid;
+	int atttypmod;
+} FDWColumnRef;
+
+typedef struct FDWConstValue
+{
+	Oid	atttypid;
+	Datum value;
+	bool is_null;
+} FDWConstValue;
+
+typedef struct FDWExprRefValues
+{
+	List *column_refs;
+	List *const_values;
+	ParamListInfo paramLI; // parameters binding information for prepare statements
+} FDWExprRefValues;
+
+typedef struct FDWEqualCond
+{
+	FDWColumnRef *ref; // column reference
+	FDWConstValue *val; // column value
+} FDWEqualCond;
+
+typedef struct foreign_expr_cxt {
+	List *equal_conds;          /* equal conditions */
+} foreign_expr_cxt;
+
+/*
+ * FDW-specific information for ForeignScanState.fdw_state.
+ */
+typedef struct YbFdwExecState
+{
+	/* The handle for the internal YB Select statement. */
+	YBCPgStatement	handle;
+	ResourceOwner	stmt_owner;
+
+	Relation index;
+
+	List *remote_exprs;
+
+	/* Oid of the table being scanned */
+	Oid tableOid;
+
+	/* Kept query-plan control to pass it to PgGate during preparation */
+	YBCPgPrepareParameters prepare_params;
+
+	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
+	bool is_exec_done; /* Each statement should be executed exactly one time */
+} YbFdwExecState;
+
+typedef struct PgFdwScanPlanData
+{
+	/* The relation where to read data from */
+	Relation target_relation;
+
+	int nkeys; // number of keys
+
+	/* Primary and hash key columns of the referenced table/relation. */
+	Bitmapset *primary_key;
+
+	/* Set of key columns whose values will be used for scanning. */
+	Bitmapset *sk_cols;
+
+	// ParamListInfo structures are used to pass parameters into the executor for parameterized plans
+	ParamListInfo paramLI;
+
+	/* Description and attnums of the columns to bind */
+	TupleDesc bind_desc;
+	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+} PgFdwScanPlanData;
+
+typedef PgFdwScanPlanData *PgFdwScanPlan;
+
+/*
+ * Functions to determine whether an expression can be evaluated safely on
+ * remote server.
+ */
+static bool foreign_expr_walker(Node *node,
+					foreign_glob_cxt *glob_cxt,
+					foreign_loc_cxt *outer_cxt);
+
+static bool is_foreign_expr(PlannerInfo *root,
+				RelOptInfo *baserel,
+				Expr *expr);
+
+static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cxt *expr_cxt);
+
+static void parse_expr(Expr *node, FDWExprRefValues *ref_values);
+
+static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values);
+
+static void parse_var(Var *node, FDWExprRefValues *ref_values);
+
+static void parse_const(Const *node, FDWExprRefValues *ref_values);
+
+static void parse_param(Param *node, FDWExprRefValues *ref_values);
+
+/*
+ * Return true if given object is one of PostgreSQL's built-in objects.
+ *
+ * We use FirstBootstrapObjectId as the cutoff, so that we only consider
+ * objects with hand-assigned OIDs to be "built in", not for instance any
+ * function or type defined in the information_schema.
+ *
+ * Our constraints for dealing with types are tighter than they are for
+ * functions or operators: we want to accept only types that are in pg_catalog,
+ * else deparse_type_name might incorrectly fail to schema-qualify their names.
+ * Thus we must exclude information_schema types.
+ *
+ * XXX there is a problem with this, which is that the set of built-in
+ * objects expands over time.  Something that is built-in to us might not
+ * be known to the remote server, if it's of an older version.  But keeping
+ * track of that would be a huge exercise.
+ */
+bool
+is_builtin(Oid objectId)
+{
+	return (objectId < FirstBootstrapObjectId);
+}
+
+static bool
+is_foreign_expr(PlannerInfo *root,
+				RelOptInfo *baserel,
+				Expr *expr)
+{
+	foreign_glob_cxt glob_cxt;
+	foreign_loc_cxt loc_cxt;
+
+	/*
+	 * Check that the expression consists of nodes that are safe to execute
+	 * remotely.
+	 */
+	glob_cxt.root = root;
+	glob_cxt.foreignrel = baserel;
+
+	loc_cxt.collation = InvalidOid;
+	loc_cxt.state = FDW_COLLATE_NONE;
+
+	if (!foreign_expr_walker((Node *) expr, &glob_cxt, &loc_cxt))
+		return false;
+
+	/*
+	 * If the expression has a valid collation that does not arise from a
+	 * foreign var, the expression can not be sent over.
+	 */
+	if (loc_cxt.state == FDW_COLLATE_UNSAFE)
+		return false;
+
+	/*
+	 * An expression which includes any mutable functions can't be sent over
+	 * because its result is not stable.  For example, sending now() remote
+	 * side could cause confusion from clock offsets.  Future versions might
+	 * be able to make this choice with more granularity.  (We check this last
+	 * because it requires a lot of expensive catalog lookups.)
+	 */
+	if (contain_mutable_functions((Node *) expr))
+		return false;
+
+	/* OK to evaluate on the remote server */
+	return true;
+}
+
+/*
+ * Check if expression is safe to execute remotely, and return true if so.
+ *
+ * In addition, *outer_cxt is updated with collation information.
+ *
+ * We must check that the expression contains only node types we can deparse,
+ * that all types/functions/operators are safe to send (they are "shippable"),
+ * and that all collations used in the expression derive from Vars of the
+ * foreign table.  Because of the latter, the logic is pretty close to
+ * assign_collations_walker() in parse_collate.c, though we can assume here
+ * that the given expression is valid.  Note function mutability is not
+ * currently considered here.
+ */
+static bool
+foreign_expr_walker(Node *node,
+					foreign_glob_cxt *glob_cxt,
+					foreign_loc_cxt *outer_cxt)
+{
+	bool		check_type = true;
+	foreign_loc_cxt inner_cxt;
+	Oid			collation;
+	FDWCollateState state;
+
+	/* Need do nothing for empty subexpressions */
+	if (node == NULL)
+		return true;
+
+	/* Set up inner_cxt for possible recursion to child nodes */
+	inner_cxt.collation = InvalidOid;
+	inner_cxt.state = FDW_COLLATE_NONE;
+
+	switch (nodeTag(node))
+	{
+		case T_Var:
+			{
+				Var		   *var = (Var *) node;
+
+				/*
+				 * If the Var is from the foreign table, we consider its
+				 * collation (if any) safe to use.  If it is from another
+				 * table, we treat its collation the same way as we would a
+				 * Param's collation, i.e. it's not safe for it to have a
+				 * non-default collation.
+				 */
+				if (var->varno == glob_cxt->foreignrel->relid &&
+					var->varlevelsup == 0)
+				{
+					/* Var belongs to foreign table */
+					collation = var->varcollid;
+					state = OidIsValid(collation) ? FDW_COLLATE_SAFE : FDW_COLLATE_NONE;
+				}
+				else
+				{
+					/* Var belongs to some other table */
+					collation = var->varcollid;
+					if (var->varcollid != InvalidOid &&
+						var->varcollid != DEFAULT_COLLATION_OID)
+						return false;
+
+					if (collation == InvalidOid ||
+						collation == DEFAULT_COLLATION_OID)
+					{
+						/*
+						 * It's noncollatable, or it's safe to combine with a
+						 * collatable foreign Var, so set state to NONE.
+						 */
+						state = FDW_COLLATE_NONE;
+					}
+					else
+					{
+						/*
+						 * Do not fail right away, since the Var might appear
+						 * in a collation-insensitive context.
+						 */
+						state = FDW_COLLATE_UNSAFE;
+					}
+				}
+			}
+			break;
+		case T_Const:
+			{
+				Const	   *c = (Const *) node;
+
+				/*
+				 * If the constant has nondefault collation, either it's of a
+				 * non-builtin type, or it reflects folding of a CollateExpr.
+				 * It's unsafe to send to the remote unless it's used in a
+				 * non-collation-sensitive context.
+				 */
+				collation = c->constcollid;
+				if (collation == InvalidOid ||
+					collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_Param:
+			{
+				Param	   *p = (Param *) node;
+
+				/*
+				 * Collation rule is same as for Consts and non-foreign Vars.
+				 */
+				collation = p->paramcollid;
+				if (collation == InvalidOid ||
+					collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_ArrayRef:
+			{
+				ArrayRef   *ar = (ArrayRef *) node;
+
+				/* Assignment should not be in restrictions. */
+				if (ar->refassgnexpr != NULL)
+					return false;
+
+				/*
+				 * Recurse to remaining subexpressions.  Since the array
+				 * subscripts must yield (noncollatable) integers, they won't
+				 * affect the inner_cxt state.
+				 */
+				if (!foreign_expr_walker((Node *) ar->refupperindexpr,
+										 glob_cxt, &inner_cxt))
+					return false;
+				if (!foreign_expr_walker((Node *) ar->reflowerindexpr,
+										 glob_cxt, &inner_cxt))
+					return false;
+				if (!foreign_expr_walker((Node *) ar->refexpr,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * Array subscripting should yield same collation as input,
+				 * but for safety use same logic as for function nodes.
+				 */
+				collation = ar->refcollid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_FuncExpr:
+			{
+				FuncExpr   *fe = (FuncExpr *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) fe->args,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * If function's input collation is not derived from a foreign
+				 * Var, it can't be sent to remote.
+				 */
+				if (fe->inputcollid == InvalidOid)
+					 /* OK, inputs are all noncollatable */ ;
+				else if (inner_cxt.state != FDW_COLLATE_SAFE ||
+						 fe->inputcollid != inner_cxt.collation)
+					return false;
+
+				/*
+				 * Detect whether node is introducing a collation not derived
+				 * from a foreign Var.  (If so, we just mark it unsafe for now
+				 * rather than immediately returning false, since the parent
+				 * node might not care.)
+				 */
+				collation = fe->funccollid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_OpExpr:
+		case T_DistinctExpr:	/* struct-equivalent to OpExpr */
+			{
+				OpExpr	   *oe = (OpExpr *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) oe->args,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * If operator's input collation is not derived from a foreign
+				 * Var, it can't be sent to remote.
+				 */
+				if (oe->inputcollid == InvalidOid)
+					 /* OK, inputs are all noncollatable */ ;
+				else if (inner_cxt.state != FDW_COLLATE_SAFE ||
+						 oe->inputcollid != inner_cxt.collation)
+					return false;
+
+				/* Result-collation handling is same as for functions */
+				collation = oe->opcollid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_ScalarArrayOpExpr:
+			{
+				ScalarArrayOpExpr *oe = (ScalarArrayOpExpr *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) oe->args,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * If operator's input collation is not derived from a foreign
+				 * Var, it can't be sent to remote.
+				 */
+				if (oe->inputcollid == InvalidOid)
+					 /* OK, inputs are all noncollatable */ ;
+				else if (inner_cxt.state != FDW_COLLATE_SAFE ||
+						 oe->inputcollid != inner_cxt.collation)
+					return false;
+
+				/* Output is always boolean and so noncollatable. */
+				collation = InvalidOid;
+				state = FDW_COLLATE_NONE;
+			}
+			break;
+		case T_RelabelType:
+			{
+				RelabelType *r = (RelabelType *) node;
+
+				/*
+				 * Recurse to input subexpression.
+				 */
+				if (!foreign_expr_walker((Node *) r->arg,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * RelabelType must not introduce a collation not derived from
+				 * an input foreign Var (same logic as for a real function).
+				 */
+				collation = r->resultcollid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_BoolExpr:
+			{
+				BoolExpr   *b = (BoolExpr *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) b->args,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/* Output is always boolean and so noncollatable. */
+				collation = InvalidOid;
+				state = FDW_COLLATE_NONE;
+			}
+			break;
+		case T_NullTest:
+			{
+				NullTest   *nt = (NullTest *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) nt->arg,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/* Output is always boolean and so noncollatable. */
+				collation = InvalidOid;
+				state = FDW_COLLATE_NONE;
+			}
+			break;
+		case T_ArrayExpr:
+			{
+				ArrayExpr  *a = (ArrayExpr *) node;
+
+				/*
+				 * Recurse to input subexpressions.
+				 */
+				if (!foreign_expr_walker((Node *) a->elements,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * ArrayExpr must not introduce a collation not derived from
+				 * an input foreign Var (same logic as for a function).
+				 */
+				collation = a->array_collid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		case T_List:
+			{
+				List	   *l = (List *) node;
+				ListCell   *lc;
+
+				/*
+				 * Recurse to component subexpressions.
+				 */
+				foreach(lc, l)
+				{
+					if (!foreign_expr_walker((Node *) lfirst(lc),
+											 glob_cxt, &inner_cxt))
+						return false;
+				}
+
+				/*
+				 * When processing a list, collation state just bubbles up
+				 * from the list elements.
+				 */
+				collation = inner_cxt.collation;
+				state = inner_cxt.state;
+
+				/* Don't apply exprType() to the list. */
+				check_type = false;
+			}
+			break;
+		case T_Aggref:
+			{
+				Aggref	   *agg = (Aggref *) node;
+				ListCell   *lc;
+
+				/* Not safe to pushdown when not in grouping context */
+				if (!IS_UPPER_REL(glob_cxt->foreignrel))
+					return false;
+
+				/* Only non-split aggregates are pushable. */
+				if (agg->aggsplit != AGGSPLIT_SIMPLE)
+					return false;
+
+				/*
+				 * Recurse to input args. aggdirectargs, aggorder and
+				 * aggdistinct are all present in args, so no need to check
+				 * their shippability explicitly.
+				 */
+				foreach(lc, agg->args)
+				{
+					Node	   *n = (Node *) lfirst(lc);
+
+					/* If TargetEntry, extract the expression from it */
+					if (IsA(n, TargetEntry))
+					{
+						TargetEntry *tle = (TargetEntry *) n;
+
+						n = (Node *) tle->expr;
+					}
+
+					if (!foreign_expr_walker(n, glob_cxt, &inner_cxt))
+						return false;
+				}
+
+				/*
+				 * For aggorder elements, check whether the sort operator, if
+				 * specified, is shippable or not.
+				 */
+				if (agg->aggorder)
+				{
+					ListCell   *lc;
+
+					foreach(lc, agg->aggorder)
+					{
+						SortGroupClause *srt = (SortGroupClause *) lfirst(lc);
+						Oid			sortcoltype;
+						TypeCacheEntry *typentry;
+						TargetEntry *tle;
+
+						tle = get_sortgroupref_tle(srt->tleSortGroupRef,
+												   agg->args);
+						sortcoltype = exprType((Node *) tle->expr);
+						typentry = lookup_type_cache(sortcoltype,
+													 TYPECACHE_LT_OPR | TYPECACHE_GT_OPR);
+						/* Check shippability of non-default sort operator. */
+						if (srt->sortop != typentry->lt_opr &&
+							srt->sortop != typentry->gt_opr /* &&
+							!is_shippable(srt->sortop, OperatorRelationId,
+										  fpinfo) */)
+							return false;
+					}
+				}
+
+				/* Check aggregate filter */
+				if (!foreign_expr_walker((Node *) agg->aggfilter,
+										 glob_cxt, &inner_cxt))
+					return false;
+
+				/*
+				 * If aggregate's input collation is not derived from a
+				 * foreign Var, it can't be sent to remote.
+				 */
+				if (agg->inputcollid == InvalidOid)
+					 /* OK, inputs are all noncollatable */ ;
+				else if (inner_cxt.state != FDW_COLLATE_SAFE ||
+						 agg->inputcollid != inner_cxt.collation)
+					return false;
+
+				/*
+				 * Detect whether node is introducing a collation not derived
+				 * from a foreign Var.  (If so, we just mark it unsafe for now
+				 * rather than immediately returning false, since the parent
+				 * node might not care.)
+				 */
+				collation = agg->aggcollid;
+				if (collation == InvalidOid)
+					state = FDW_COLLATE_NONE;
+				else if (inner_cxt.state == FDW_COLLATE_SAFE &&
+						 collation == inner_cxt.collation)
+					state = FDW_COLLATE_SAFE;
+				else if (collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		default:
+
+			/*
+			 * If it's anything else, assume it's unsafe.  This list can be
+			 * expanded later, but don't forget to add deparse support below.
+			 */
+			return false;
+	}
+
+	/*
+	 * If result type of given expression is not built-in, it can't be sent to
+	 * remote because it might have incompatible semantics on remote side.
+	 */
+	if (check_type && !is_builtin(exprType(node)))
+		return false;
+
+	/*
+	 * Now, merge my collation information into my parent's state.
+	 */
+	if (state > outer_cxt->state)
+	{
+		/* Override previous parent state */
+		outer_cxt->collation = collation;
+		outer_cxt->state = state;
+	}
+	else if (state == outer_cxt->state)
+	{
+		/* Merge, or detect error if there's a collation conflict */
+		switch (state)
+		{
+			case FDW_COLLATE_NONE:
+				/* Nothing + nothing is still nothing */
+				break;
+			case FDW_COLLATE_SAFE:
+				if (collation != outer_cxt->collation)
+				{
+					/*
+					 * Non-default collation always beats default.
+					 */
+					if (outer_cxt->collation == DEFAULT_COLLATION_OID)
+					{
+						/* Override previous parent state */
+						outer_cxt->collation = collation;
+					}
+					else if (collation != DEFAULT_COLLATION_OID)
+					{
+						/*
+						 * Conflict; show state as indeterminate.  We don't
+						 * want to "return false" right away, since parent
+						 * node might not care about collation.
+						 */
+						outer_cxt->state = FDW_COLLATE_UNSAFE;
+					}
+				}
+				break;
+			case FDW_COLLATE_UNSAFE:
+				/* We're still conflicted ... */
+				break;
+		}
+	}
+
+	/* It looks OK */
+	return true;
+}
+
+static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cxt *expr_cxt) {
+	elog(DEBUG4, "FDW: parsing %d remote expressions", list_length(exprs));
+	ListCell   *lc;
+	foreach(lc, exprs)
+	{
+		Expr	   *expr = (Expr *) lfirst(lc);
+
+		/* Extract clause from RestrictInfo, if required */
+		if (IsA(expr, RestrictInfo)) {
+			expr = ((RestrictInfo *) expr)->clause;
+		}
+		elog(DEBUG4, "FDW: parsing expression: %s", nodeToString(expr));
+		// parse a single clause
+		FDWExprRefValues ref_values;
+		ref_values.column_refs = NIL;
+		ref_values.const_values = NIL;
+		ref_values.paramLI = paramLI;
+		parse_expr(expr, &ref_values);
+		if (list_length(ref_values.column_refs) == 1 && list_length(ref_values.const_values) == 1) {
+			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
+			// found a binary condition
+			ListCell   *rlc;
+			foreach(rlc, ref_values.column_refs) {
+				eq_cond->ref = (FDWColumnRef *)lfirst(rlc);
+			}
+
+			foreach(rlc, ref_values.const_values) {
+				eq_cond->val = (FDWConstValue *)lfirst(rlc);
+			}
+			expr_cxt->equal_conds = lappend(expr_cxt->equal_conds, eq_cond);
+		}
+	}
+}
+
+static void parse_expr(Expr *node, FDWExprRefValues *ref_values) {
+	if (node == NULL)
+		return;
+
+	switch (nodeTag(node))
+	{
+		case T_Var:
+			parse_var((Var *) node, ref_values);
+			break;
+		case T_Const:
+			parse_const((Const *) node, ref_values);
+			break;
+		case T_OpExpr:
+			parse_op_expr((OpExpr *) node, ref_values);
+			break;
+		case T_Param:
+			parse_param((Param *) node, ref_values);
+			break;
+		default:
+			elog(WARNING, "FDW: unsupported expression type for expr: %s", nodeToString(node));
+			break;
+	}
+}
+
+static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
+	if (list_length(node->args) != 2) {
+		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d for node %s", list_length(node->args), nodeToString(node));
+		return;
+	} else {
+		elog(DEBUG4, "FDW: handing binary opclause for node %s", nodeToString(node));
+	}
+
+	ListCell *lc;
+	switch (get_oprrest(node->opno))
+	{
+		case F_EQSEL: // only handle equal condition for now
+			elog(DEBUG4, "FDW: parsing equal OpExpr: %d", get_oprrest(node->opno));
+			foreach(lc, node->args)
+			{
+				Expr *arg = (Expr *) lfirst(lc);
+				parse_expr(arg, ref_values);
+			}
+			break;
+		default:
+			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", get_oprrest(node->opno));
+			break;
+	}
+}
+
+static void parse_var(Var *node, FDWExprRefValues *ref_values) {
+	elog(DEBUG4, "FDW: parsing Var %s", nodeToString(node));
+	// the condition is at the current level
+	if (node->varlevelsup == 0) {
+		FDWColumnRef *col_ref = (FDWColumnRef *)palloc0(sizeof(FDWColumnRef));
+		col_ref->attno = node->varno;
+		col_ref->attr_num = node->varattno;
+		col_ref->attr_typid = node->vartype;
+		col_ref->atttypmod = node->vartypmod;
+		ref_values->column_refs = lappend(ref_values->column_refs, col_ref);
+	}
+}
+
+static void parse_const(Const *node, FDWExprRefValues *ref_values) {
+	elog(DEBUG4, "FDW: parsing Const %s", nodeToString(node));
+	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
+	val->atttypid = node->consttype;
+	val->is_null = node->constisnull;
+
+	val->value = 0;
+	if (node->constisnull || node->constbyval)
+		val->value = node->constvalue;
+	else
+		val->value = datumCopy(node->constvalue, node->constbyval, node->constlen);
+
+	ref_values->const_values = lappend(ref_values->const_values, val);
+}
+
+static void parse_param(Param *node, FDWExprRefValues *ref_values) {
+	elog(DEBUG4, "FDW: parsing Param %s", nodeToString(node));
+	ParamExternData *prm = NULL;
+	ParamExternData prmdata;
+	if (ref_values->paramLI->paramFetch != NULL)
+		prm = ref_values->paramLI->paramFetch(ref_values->paramLI, node->paramid,
+				true, &prmdata);
+	else
+		prm = &ref_values->paramLI->params[node->paramid - 1];
+
+	if (!OidIsValid(prm->ptype) ||
+		prm->ptype != node->paramtype ||
+		!(prm->pflags & PARAM_FLAG_CONST))
+	{
+		/* Planner should ensure this does not happen */
+		elog(ERROR, "Invalid parameter: %s", nodeToString(node));
+	}
+
+	FDWConstValue *val = (FDWConstValue *)palloc0(sizeof(FDWConstValue));
+	val->atttypid = prm->ptype;
+	val->is_null = prm->isnull;
+	int16		typLen = 0;
+	bool		typByVal = false;
+	val->value = 0;
+
+	get_typlenbyval(node->paramtype, &typLen, &typByVal);
+	if (prm->isnull || typByVal)
+		val->value = prm->value;
+	else
+		val->value = datumCopy(prm->value, typByVal, typLen);
+
+	ref_values->const_values = lappend(ref_values->const_values, val);
+}
+
+static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
+{
+  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+  if (bms_is_member(idx, scan_plan->primary_key))
+    scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
+}
+
+/*
+ * Checks if an attribute is a hash or primary key column and note it in
+ * the scan plan.
+ */
+static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
+										YBCPgTableDesc  ybc_table_desc,
+										AttrNumber      attnum)
+{
+	bool is_primary = false;
+	bool is_hash    = false;
+
+	/*
+	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
+	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
+	 * - Number of all columns: IndexRelation->rd_index->indnatts
+	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
+	 */
+	HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_table_desc,
+											   attnum,
+											   &is_primary,
+											   &is_hash), ybc_table_desc);
+
+	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+
+	if (is_hash || is_primary)
+	{
+		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
+		scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
+		scan_plan->bind_key_attnums[scan_plan->nkeys] = attnum;
+		scan_plan->nkeys++;
+	}
+}
+
+/*
+ * Get k2Sql-specific table metadata and load it into the scan_plan.
+ * Currently only the hash and primary key info.
+ */
+static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
+{
+	Oid            dboid          = YBCGetDatabaseOid(relation);
+	Oid            relid          = RelationGetRelid(relation);
+	YBCPgTableDesc ybc_table_desc = NULL;
+
+	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
+
+	scan_plan->nkeys = 0;
+	// number of attributes in the relation tuple
+	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, attnum);
+	}
+	// we generate OIDs for rows of relation
+	if (relation->rd_rel->relhasoids)
+	{
+		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, ObjectIdAttributeNumber);
+	}
+}
+
+static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
+{
+	Oid	atttypid;
+
+	if (attnum > 0)
+	{
+		/* Get the type from the description */
+		atttypid = TupleDescAttr(bind_desc, attnum - 1)->atttypid;
+	}
+	else
+	{
+		/* This must be an OID column. */
+		atttypid = OIDOID;
+	}
+
+  return atttypid;
+}
+
+/*
+ * Bind a scan key.
+ */
+static void pgBindColumn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
+													fdw_state->handle,
+													fdw_state->stmt_owner);
+}
+
+void pgBindColumnCondEq(YbFdwExecState *fdw_state, bool is_hash_key, TupleDesc bind_desc,
+						 AttrNumber attnum, Datum value, bool is_null)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
+
+	if (is_hash_key)
+		HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
+	else
+		HandleYBStatusWithOwner(YBCPgDmlBindColumnCondEq(fdw_state->handle, attnum, ybc_expr),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
+}
+
+static void pgBindColumnCondBetween(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
+                                     bool start_valid, Datum value, bool end_valid, Datum value_end)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(fdw_state->handle, atttypid, value,
+      false /* isnull */) : NULL;
+	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(fdw_state->handle, atttypid, value_end,
+      false /* isnull */) : NULL;
+
+    HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(fdw_state->handle, attnum, ybc_expr,
+														ybc_expr_end),
+													fdw_state->handle,
+													fdw_state->stmt_owner);
+}
+
+/*
+ * Bind an array of scan keys for a column.
+ */
+static void pgBindColumnCondIn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
+                                int nvalues, Datum *values)
+{
+	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
+
+	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
+	for (int i = 0; i < nvalues; i++) {
+		/*
+		 * For IN we are removing all null values in ybcBindScanKeys before
+		 * getting here (relying on btree/lsm operators being strict).
+		 * So we can safely set is_null to false for all options left here.
+		 */
+		ybc_exprs[i] = YBCNewConstant(fdw_state->handle, atttypid, values[i], false /* is_null */);
+	}
+
+	HandleYBStatusWithOwner(YBCPgDmlBindColumnCondIn(fdw_state->handle, attnum, nvalues, ybc_exprs),
+	                                                 fdw_state->handle,
+	                                                 fdw_state->stmt_owner);
+}
+
+// search for the column in the equal conditions, the performance is fine for small number of equal conditions
+static FDWEqualCond *findEqualCondition(foreign_expr_cxt context, int attr_num) {
+	ListCell *lc = NULL;;
+	foreach (lc, context.equal_conds) {
+		FDWEqualCond *first = (FDWEqualCond *) lfirst(lc);
+		if (first->ref->attr_num == attr_num) {
+			return first;
+		}
+	}
+
+	return NULL;
+}
+
+static void pgBindScanKeys(Relation relation,
+							YbFdwExecState *fdw_state,
+							PgFdwScanPlan scan_plan) {
+	if (list_length(fdw_state->remote_exprs) == 0) {
+		elog(WARNING, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
+		return;
+	}
+
+	foreign_expr_cxt context;
+	context.equal_conds = NIL;
+
+	parse_conditions(fdw_state->remote_exprs, scan_plan->paramLI, &context);
+	elog(DEBUG4, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
+	if (list_length(context.equal_conds) == 0) {
+		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
+		return;
+	}
+
+	/* Bind the scan keys */
+	for (int i = 0; i < scan_plan->nkeys; i++)
+	{
+		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+		if (bms_is_member(idx, scan_plan->sk_cols))
+		{
+			// check if the key is in the equal conditions
+			FDWEqualCond *equal_cond = findEqualCondition(context, scan_plan->bind_key_attnums[i]);
+			if (equal_cond != NULL) {
+				elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
+				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
+			 				  equal_cond->val->value, equal_cond->val->is_null);
+			}
+		}
+	}
+}
 
 /*
  * ybcGetForeignRelSize
@@ -86,9 +1162,9 @@ ybcGetForeignRelSize(PlannerInfo *root,
 					 RelOptInfo *baserel,
 					 Oid foreigntableid)
 {
-	YbFdwPlanState		*ybc_plan = NULL;
+	YbFdwPlanState		*fdw_plan = NULL;
 
-	ybc_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
+	fdw_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
 
 	/* Set the estimate for the total number of rows (tuples) in this table. */
 	baserel->tuples = YBC_DEFAULT_NUM_ROWS;
@@ -100,7 +1176,23 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	 */
 	baserel->rows = baserel->tuples;
 
-	baserel->fdw_private = ybc_plan;
+	baserel->fdw_private = (void *) fdw_plan;
+	fdw_plan->remote_conds = NIL;
+	fdw_plan->local_conds = NIL;
+
+	ListCell   *lc;
+	elog(DEBUG4, "FDW: ybcGetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
+
+	foreach(lc, baserel->baserestrictinfo)
+	{
+		RestrictInfo *ri = lfirst_node(RestrictInfo, lc);
+		elog(DEBUG4, "FDW: classing baserestrictinfo: %s", nodeToString(ri));
+		if (is_foreign_expr(root, baserel, ri->clause))
+			fdw_plan->remote_conds = lappend(fdw_plan->remote_conds, ri);
+		else
+			fdw_plan->local_conds = lappend(fdw_plan->local_conds, ri);
+	}
+	elog(DEBUG4, "FDW: classified %d remote_conds, %d local_conds", list_length(fdw_plan->remote_conds), list_length(fdw_plan->local_conds));
 
 	/*
 	 * Test any indexes of rel for applicability also.
@@ -158,9 +1250,67 @@ ybcGetForeignPlan(PlannerInfo *root,
 				  List *scan_clauses,
 				  Plan *outer_plan)
 {
-	YbFdwPlanState *yb_plan_state = (YbFdwPlanState *) baserel->fdw_private;
-	Index          scan_relid     = baserel->relid;
+	YbFdwPlanState *fdw_plan_state = (YbFdwPlanState *) baserel->fdw_private;
+	Index          scan_relid;
 	ListCell       *lc;
+	List	   *local_exprs = NIL;
+	List	   *remote_exprs = NIL;
+
+	elog(DEBUG4, "FDW: fdw_private %d remote_conds and %d local_conds for foreign relation %d",
+			list_length(fdw_plan_state->remote_conds), list_length(fdw_plan_state->local_conds), foreigntableid);
+
+	if (IS_SIMPLE_REL(baserel))
+	{
+		scan_relid     = baserel->relid;
+		/*
+		* Separate the restrictionClauses into those that can be executed remotely
+		* and those that can't.  baserestrictinfo clauses that were previously
+		* determined to be safe or unsafe are shown in fpinfo->remote_conds and
+		* fpinfo->local_conds.  Anything else in the restrictionClauses list will
+		* be a join clause, which we have to check for remote-safety.
+		*/
+		elog(DEBUG4, "FDW: GetForeignPlan with %d scan_clauses for simple relation %d", list_length(scan_clauses), scan_relid);
+		foreach(lc, scan_clauses)
+		{
+			RestrictInfo *rinfo = (RestrictInfo *) lfirst(lc);
+			elog(DEBUG4, "FDW: classifying scan_clause: %s", nodeToString(rinfo));
+
+			/* Ignore pseudoconstants, they are dealt with elsewhere */
+			if (rinfo->pseudoconstant)
+				continue;
+
+			if (list_member_ptr(fdw_plan_state->remote_conds, rinfo))
+				remote_exprs = lappend(remote_exprs, rinfo->clause);
+			else if (list_member_ptr(fdw_plan_state->local_conds, rinfo))
+				local_exprs = lappend(local_exprs, rinfo->clause);
+			else if (is_foreign_expr(root, baserel, rinfo->clause))
+				remote_exprs = lappend(remote_exprs, rinfo->clause);
+			else
+				local_exprs = lappend(local_exprs, rinfo->clause);
+		}
+		elog(DEBUG4, "FDW: classified %d scan_clauses for relation %d: remote_exprs: %d, local_exprs: %d",
+				list_length(scan_clauses), scan_relid, list_length(remote_exprs), list_length(local_exprs));
+	}
+	else
+	{
+		/*
+		 * Join relation or upper relation - set scan_relid to 0.
+		 */
+		scan_relid = 0;
+		/*
+		 * For a join rel, baserestrictinfo is NIL and we are not considering
+		 * parameterization right now, so there should be no scan_clauses for
+		 * a joinrel or an upper rel either.
+		 */
+		Assert(!scan_clauses);
+
+		/*
+		 * Instead we get the conditions to apply from the fdw_private
+		 * structure.
+		 */
+		remote_exprs = extract_actual_clauses(fdw_plan_state->remote_conds, false);
+		local_exprs = extract_actual_clauses(fdw_plan_state->local_conds, false);
+	}
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 
@@ -170,7 +1320,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 		Expr *expr = (Expr *) lfirst(lc);
 		pull_varattnos_min_attr((Node *) expr,
 		                        baserel->relid,
-		                        &yb_plan_state->target_attrs,
+		                        &fdw_plan_state->target_attrs,
 		                        baserel->min_attr);
 	}
 
@@ -179,7 +1329,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 		Expr *expr = (Expr *) lfirst(lc);
 		pull_varattnos_min_attr((Node *) expr,
 		                        baserel->relid,
-		                        &yb_plan_state->target_attrs,
+		                        &fdw_plan_state->target_attrs,
 		                        baserel->min_attr);
 	}
 
@@ -189,7 +1339,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 	for (AttrNumber attnum = baserel->min_attr; attnum <= baserel->max_attr; attnum++)
 	{
 		int bms_idx = attnum - baserel->min_attr + 1;
-		if (wholerow || bms_is_member(bms_idx, yb_plan_state->target_attrs))
+		if (wholerow || bms_is_member(bms_idx, fdw_plan_state->target_attrs))
 		{
 			switch (attnum)
 			{
@@ -227,9 +1377,9 @@ ybcGetForeignPlan(PlannerInfo *root,
 
 	/* Create the ForeignScan node */
 	return make_foreignscan(tlist,  /* target list */
-	                        scan_clauses,
+	                        scan_clauses,  /* ideally we should use local_exprs here, still use the whole list in case the FDW cannot process some remote exprs*/
 	                        scan_relid,
-	                        NIL,    /* expressions YB may evaluate (none) */
+	                        remote_exprs,    /* expressions YB may evaluate */
 	                        target_attrs,  /* fdw_private data for YB */
 	                        NIL,    /* custom YB target list (none for now) */
 	                        NIL,    /* custom YB target list (none for now) */
@@ -240,18 +1390,6 @@ ybcGetForeignPlan(PlannerInfo *root,
 /*  Scanning functions */
 
 /*
- * FDW-specific information for ForeignScanState.fdw_state.
- */
-typedef struct YbFdwExecState
-{
-	/* The handle for the internal YB Select statement. */
-	YBCPgStatement	handle;
-	ResourceOwner	stmt_owner;
-	YBCPgExecParameters *exec_params; /* execution control parameters for YugaByte */
-	bool is_exec_done; /* Each statement should be executed exactly one time */
-} YbFdwExecState;
-
-/*
  * ybcBeginForeignScan
  *		Initiate access to the Yugabyte by allocating a Select handle.
  */
@@ -260,6 +1398,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 {
 	EState      *estate      = node->ss.ps.state;
 	Relation    relation     = node->ss.ss_currentRelation;
+	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 
 	YbFdwExecState *ybc_state = NULL;
 
@@ -279,6 +1418,8 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, ybc_state->handle);
 	ybc_state->stmt_owner = CurrentResourceOwner;
 	ybc_state->exec_params = &estate->yb_exec_params;
+	ybc_state->remote_exprs = foreignScan->fdw_exprs;
+	elog(DEBUG4, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
 
 	ybc_state->exec_params->rowmark = -1;
 	ListCell   *l;
@@ -509,6 +1650,16 @@ ybcIterateForeignScan(ForeignScanState *node)
 	 * - The subsequent fetches don't need to setup the query with these operations again.
 	 */
 	if (!ybc_state->is_exec_done) {
+		PgFdwScanPlanData scan_plan;
+		memset(&scan_plan, 0, sizeof(scan_plan));
+
+		Relation relation = node->ss.ss_currentRelation;
+		scan_plan.target_relation = relation;
+		scan_plan.paramLI = node->ss.ps.state->es_param_list_info;
+		pgLoadTableInfo(relation, &scan_plan);
+		scan_plan.bind_desc = RelationGetDescr(relation);
+		pgBindScanKeys(relation, ybc_state, &scan_plan);
+
 		ybcSetupScanTargets(node);
 		HandleYBStatusWithOwner(YBCPgExecSelect(ybc_state->handle, ybc_state->exec_params),
 								ybc_state->handle,
