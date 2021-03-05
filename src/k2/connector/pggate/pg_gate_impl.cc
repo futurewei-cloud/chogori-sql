@@ -710,7 +710,7 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
     case StmtOp::STMT_TRUNCATE:
       {
         auto dml_write = down_cast<PgDmlWrite *>(handle);
-        RETURN_NOT_OK(dml_write->Exec(true /* force_non_bufferable */));
+        RETURN_NOT_OK(dml_write->Exec());
         if (rows_affected_count) {
           *rows_affected_count = dml_write->GetRowsAffectedCount();
         }
@@ -917,7 +917,7 @@ Status PgGateApiImpl::ExecInsert(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgInsert*>(handle)->Exec(true /*force_non_bufferable*/);
+  return down_cast<PgInsert*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
@@ -956,7 +956,7 @@ Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgUpdate*>(handle)->Exec(true /*force_non_bufferable*/);
+  return down_cast<PgUpdate*>(handle)->Exec();
 }
 
 // Delete ------------------------------------------------------------------------------------------
@@ -976,7 +976,7 @@ Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDelete*>(handle)->Exec(true /*force_non_bufferable*/);
+  return down_cast<PgDelete*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::BeginTransaction() {

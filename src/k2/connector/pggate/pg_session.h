@@ -263,29 +263,26 @@ class PgSession {
   // Conversion to shared_ptr<PgOpTemplate> will be done later and result will re-used with move.
   Result<CBFuture<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>& op,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
-    return RunAsync(&op, 1, relation_id, read_time, force_non_bufferable);
+                                           uint64_t* read_time) {
+    return RunAsync(&op, 1, relation_id, read_time);
   }
 
   // Run list of given operations to read and write database content.
   Result<CBFuture<Status>> RunAsync(const std::vector<std::shared_ptr<PgOpTemplate>>& ops,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
+                                           uint64_t* read_time) {
     DCHECK(!ops.empty());
-    return RunAsync(ops.data(), ops.size(), relation_id, read_time, force_non_bufferable);
+    return RunAsync(ops.data(), ops.size(), relation_id, read_time);
   }
 
   // Run multiple operations.
   Result<CBFuture<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>* op,
                                            size_t ops_count,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
+                                           uint64_t* read_time) {
     DCHECK_GT(ops_count, 0);
     RunHelper runner(this, k2_adapter_, ShouldHandleTransactionally(**op));
-    return runner.ApplyAndFlush(op, ops_count, relation_id, read_time, force_non_bufferable);
+    return runner.ApplyAndFlush(op, ops_count, relation_id, read_time);
   }
 
   CHECKED_STATUS HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id);
@@ -326,8 +323,7 @@ class PgSession {
     Result<CBFuture<Status>> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
                          const PgObjectId& relation_id,
-                         uint64_t* read_time,
-                         bool force_non_bufferable);
+                         uint64_t* read_time);
    private:
     PgSession *pg_session_;
     std::shared_ptr<K2Adapter> client_;

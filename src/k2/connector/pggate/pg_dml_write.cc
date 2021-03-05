@@ -88,7 +88,7 @@ void PgDmlWrite::PrepareColumns() {
   }
 }
 
-Status PgDmlWrite::Exec(bool force_non_bufferable) {
+Status PgDmlWrite::Exec() {
   // Delete allocated binds that are not associated with a value.
   RETURN_NOT_OK(DeleteEmptyPrimaryBinds());
 
@@ -107,7 +107,7 @@ Status PgDmlWrite::Exec(bool force_non_bufferable) {
 
   // Execute the statement. If the request has been sent, get the result and handle any rows
   // returned.
-  if (VERIFY_RESULT(sql_op_->Execute(force_non_bufferable)) == RequestSent::kTrue) {
+  if (VERIFY_RESULT(sql_op_->Execute()) == RequestSent::kTrue) {
     RETURN_NOT_OK(sql_op_->GetResult(&rowsets_));
 
     // Save the number of rows affected by the op.

@@ -311,9 +311,8 @@ PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter
 Result<CBFuture<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
                          const PgObjectId& relation_id,
-                         uint64_t* read_time,
-                         bool force_non_bufferable) {
-  if (!pg_session_->buffering_enabled_ || force_non_bufferable) {
+                         uint64_t* read_time) {
+  if (!pg_session_->buffering_enabled_ ) {
     // first flush any previous buffered operations if there is any;
     // TODO: need to consider the scenario that the flush fails due to some reason
     Flush();
