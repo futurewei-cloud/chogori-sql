@@ -8,10 +8,10 @@
 #include <thread>
 
 #include "postmaster/postmaster_hook.h"
-#include "yb/pggate/k23si_seastar_app.h"
-#include "yb/pggate/k2_config.h"
-#include "yb/pggate/k2_log_init.h"
-#include "yb/pggate/k2_session_metrics.h"
+#include "pggate/k23si_seastar_app.h"
+#include "pggate/k2_config.h"
+#include "pggate/k2_log_init.h"
+#include "pggate/k2_session_metrics.h"
 
 namespace k2pg::log {
 inline thread_local k2::logging::Logger main("k2::pg_main");

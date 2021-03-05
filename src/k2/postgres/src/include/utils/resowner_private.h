@@ -24,7 +24,7 @@
 #include "utils/resowner.h"
 #include "utils/snapshot.h"
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "pggate/pg_gate_typedefs.h"
 
 /* support for buffer refcount management */
 extern void ResourceOwnerEnlargeBuffers(ResourceOwner owner);

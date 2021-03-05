@@ -27,7 +27,7 @@
 #include "catalog/dependency.h"
 #include "nodes/parsenodes.h"
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "pggate/pg_gate_typedefs.h"
 
 /*
  * Constants for OIDs of supported Postgres native types (that do not have an
