@@ -98,7 +98,7 @@
 
 #include "access/xact.h"
 #include "libpq/yb_pqcomm_extensions.h"
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 
 /*
  * Cope with the various platform-specific ways to spell TCP keepalive socket

@@ -1,5 +1,5 @@
 #!/bin/bash
-export LD_LIBRARY_PATH=/build/build/src/k2/connector/yb/common/:/build/build/src/k2/connector/yb/entities/:/build/src/k2/postgres/lib
+export LD_LIBRARY_PATH=/build/build/src/k2/connector/common/:/build/build/src/k2/connector/entities/:/build/src/k2/postgres/lib
 export YB_ENABLED_IN_POSTGRES=1
 export YB_PG_TRANSACTIONS_ENABLED=1
 export YB_PG_ALLOW_RUNNING_AS_ANY_USER=1

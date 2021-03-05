@@ -79,7 +79,7 @@
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/memutils.h"
-#include "yb/server/pgsql_webserver_wrapper.h"
+#include "server/pgsql_webserver_wrapper.h"
 
 PG_MODULE_MAGIC;
 
@@ -454,13 +454,13 @@ _PG_fini(void)
 	ProcessUtility_hook = prev_ProcessUtility;
 }
 
-static void 
+static void
 resetYsqlStatementStats()
 {
   pg_stat_statements_reset(NULL);
 }
 
-static void 
+static void
 getYsqlStatementStats(void *cb_arg)
 {
 	HASH_SEQ_STATUS hash_seq;

@@ -31,7 +31,7 @@
 #include "storage/lock.h"
 #include "utils/relcache.h"
 
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 
 /* K2 Cluster Fuctions -------------------------------------------------------------------------- */
 extern void K2InitPGCluster();

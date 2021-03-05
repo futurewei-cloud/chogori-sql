@@ -19,7 +19,7 @@
  * NOTES:
  *   - For performance reasons, some expressions must be sent to YugaByte for execution.
  *   - This module constructs expression tree to be sent to YBC API.
- *   - In the future, we can move a portion of Postgres datum and engine to /yb/common such that
+ *   - In the future, we can move a portion of Postgres datum and engine to /common such that
  *     DocDB can execute Postgres expression without constructing YBC tree.  That involves a lot
  *     more work, so we limit this work to construct a few simple expressions.
  *--------------------------------------------------------------------------------------------------
@@ -28,9 +28,9 @@
 #ifndef YBCEXPR_H
 #define YBCEXPR_H
 
-#include "yb/pggate/pg_gate_typedefs.h"
+#include "pggate/pg_gate_typedefs.h"
 
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 
 // Construct column reference expression.
 extern YBCPgExpr YBCNewColumnRef(YBCPgStatement ybc_stmt, int16_t attr_num, int attr_typid,

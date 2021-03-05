@@ -19,7 +19,7 @@
 
 #include "nodes/memnodes.h"
 
-#include "yb/common/ybc_util.h"
+#include "common/ybc_util.h"
 
 /*
  * MaxAllocSize, MaxAllocHugeSize

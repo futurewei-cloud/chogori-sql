@@ -25,7 +25,7 @@
 #include "miscadmin.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 #include "pg_yb_utils.h"
 
 /*****************************************************************************

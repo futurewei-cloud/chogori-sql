@@ -25,7 +25,7 @@
 #include "nodes/pg_list.h"
 #include "nodes/readfuncs.h"
 #include "nodes/value.h"
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 
 /* Static state for pg_strtok */
 static char *pg_strtok_ptr = NULL;

@@ -64,7 +64,7 @@
 #include "fe_utils/connect.h"
 #include "fe_utils/string_utils.h"
 
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 
 /* Temporary disable YB calls in ASAN build due to linking issues. */
 #ifdef ADDRESS_SANITIZER

@@ -1,7 +1,7 @@
 This document describes the plan to integrate the k2 software with the PG-YB codebase.
 
 # Introduction
-At a high level, the current PG-YB integration was done by the YDB team by introducing the PGGATE component. We're taking the same approach and have refactored the necessary interface in src/k2/connector/yb/pggate
+At a high level, the current PG-YB integration was done by the YDB team by introducing the PGGATE component. We're taking the same approach and have refactored the necessary interface in src/k2/connector/pggate
 
 Our goals with this integration are:
 - Reuse K2 DTO interface. When we communicate with K2, we need to use the K2 DTO-based interface which specifies the objects and APIs of the interface. For example, a record is represented as a SKVRecord,

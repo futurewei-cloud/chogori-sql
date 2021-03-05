@@ -36,7 +36,7 @@
 #include "utils/builtins.h"
 #include "utils/datetime.h"
 #include "utils/syscache.h"
-#include "yb/server/pgsql_webserver_wrapper.h"
+#include "server/pgsql_webserver_wrapper.h"
 
 #include "pg_yb_utils.h"
 
@@ -118,7 +118,7 @@ set_metric_names(void)
  * Function to calculate milliseconds elapsed from start_time to stop_time.
  */
 int64
-getElapsedMs(TimestampTz start_time, TimestampTz stop_time) 
+getElapsedMs(TimestampTz start_time, TimestampTz stop_time)
 {
   long secs;
   int microsecs;
@@ -182,7 +182,7 @@ pullRpczEntries(void)
 
       rpcz[i].process_start_timestamp = beentry->st_proc_start_timestamp;
       rpcz[i].transaction_start_timestamp = beentry->st_xact_start_timestamp;
-      rpcz[i].query_start_timestamp = beentry->st_activity_start_timestamp; 
+      rpcz[i].query_start_timestamp = beentry->st_activity_start_timestamp;
 
       rpcz[i].backend_type = (char *) palloc(40);
       strcpy(rpcz[i].backend_type, pgstat_get_backend_desc(beentry->st_backendType));

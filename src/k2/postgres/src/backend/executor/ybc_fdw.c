@@ -62,7 +62,7 @@
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
 
-#include "yb/pggate/pg_gate_api.h"
+#include "pggate/pg_gate_api.h"
 #include "pg_yb_utils.h"
 #include "access/ybcam.h"
 #include "executor/ybcExpr.h"
