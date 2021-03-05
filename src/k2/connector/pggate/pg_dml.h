@@ -128,6 +128,8 @@ class PgDml : public PgStatement {
 
   bool has_aggregate_targets();
 
+  // Note: Seems has_sql_op means this DML is normal SQL dml statement (against user database objects)
+  // otherwise, it is bootstrap dml statement(used e.g. for creating system catalogs during InitDB)
   bool has_sql_op() {
     return sql_op_ != nullptr;
   }

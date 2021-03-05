@@ -238,43 +238,6 @@ void PgSession::InvalidateTableCache(const PgObjectId& table_obj_id) {
   table_cache_.erase(pg_table_uuid);
 }
 
-void PgSession::StartOperationsBuffering() {
-  DCHECK(!buffering_enabled_);
-  DCHECK(buffered_keys_.empty());
-  buffering_enabled_ = true;
-}
-
-Status PgSession::StopOperationsBuffering() {
-  DCHECK(buffering_enabled_);
-  buffering_enabled_ = false;
-  return FlushBufferedOperations();
-}
-
-Status PgSession::ResetOperationsBuffering() {
-  SCHECK(buffered_keys_.empty(),
-         IllegalState,
-         Format("Pending operations are not expected, $0 found", buffered_keys_.size()));
-  buffering_enabled_ = false;
-  return Status::OK();
-}
-
-Status PgSession::FlushBufferedOperations() {
-  if (buffered_ops_.empty()) {
-    return Status::OK();
-  }
-
-  K2ASSERT(log::pg, false, "FlushBufferedOperations - flush is not supported and there are indeed buffered ops!!! See issue #145");
-  RunHelper runner(this, k2_adapter_, true);
-  return VERIFY_RESULT(runner.Flush()).get();
-}
-
-void PgSession::DropBufferedOperations() {
-  VLOG_IF(1, !buffered_keys_.empty())
-          << "Dropping " << buffered_keys_.size() << " pending operations";
-  buffered_keys_.clear();
-  buffered_ops_.clear();
-}
-
 Status PgSession::HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id) {
   if (op.succeeded()) {
     return Status::OK();
@@ -301,8 +264,7 @@ bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
 PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional)
     :  pg_session_(pg_session),
        client_(client),
-       transactional_(transactional),
-       buffered_ops_(pg_session_->buffered_ops_) {
+       transactional_(transactional) {
   if (!transactional_) {
     pg_session_->InvalidateForeignKeyReferenceCache();
   }
@@ -312,96 +274,23 @@ Result<CBFuture<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_p
                          size_t ops_count,
                          const PgObjectId& relation_id,
                          uint64_t* read_time) {
-  if (!pg_session_->buffering_enabled_ ) {
-    // first flush any previous buffered operations if there is any;
-    // TODO: need to consider the scenario that the flush fails due to some reason
-    Flush();
-
-    // send new operations
-    if (ops_count < 1) {
-      // invalid, do nothing
-      return CBFuture<Status>();
-    } else if (ops_count == 1) {
-      // run a single operation
-      std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
-      return client_->Exec(k23SITxn, *op);
-    } else {
-      // run multiple operations in a batch
-      std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
-      std::vector<std::shared_ptr<PgOpTemplate>> ops;
-      for (auto end = op + ops_count; op != end; ++op) {
-        ops.push_back(*op);
-      }
-      return client_->BatchExec(k23SITxn, ops);
-    }
-  } else {
-    K2ASSERT(log::pg, false, "Should not try to buffer operation as it is overridden and not necessary. See issue #145");
-
-    auto& buffered_keys = pg_session_->buffered_keys_;
-    bool read_op_included = false;
-    std::vector<std::shared_ptr<PgOpTemplate>> ops;
-    // first add ops to the buffer
-    for (auto end = op + ops_count; op != end; ++op) {
-       if (buffered_ops_.size() >= default_session_max_batch_size) {
-        // we need to flush the buffer if we honor the batch size for
-        Flush();
-      }
-      if ((*op)->type() == PgOpTemplate::Type::WRITE) {
-        const auto& wop = down_cast<PgWriteOpTemplate*>((*op).get());
-        std::string row_id = client_->GetRowId(wop->request());
-        std::string table_id = wop->request()->table_id;
-        // check if we have already have a write op for the same row
-        if (PREDICT_FALSE(!buffered_keys.insert(RowIdentifier(table_id, row_id)).second)) {
-          // if we have a write op for the same row, then we need to flush the buffer first
-          // so that the two write ops for the same row are not in the same batch
-          Flush();
-          // then try to insert the new write for this row
-          buffered_keys.insert(RowIdentifier(table_id, row_id));
-        }
-      } else {
-        read_op_included = true;
-      }
-      buffered_ops_.push_back({std::move(*op), relation_id});
-    }
-    if (read_op_included || buffered_ops_.size() >= default_session_max_batch_size) {
-      return Flush();
-    } else {
-      // buffer the operations and return
-      return CBFuture<Status>();
-    }
-  }
-}
-
-Result<CBFuture<Status>> PgSession::RunHelper::Flush() {
-  if (buffered_ops_.size() == 0) {
+  // send new operations
+  if (ops_count < 1) {
+    // invalid, do nothing
     return CBFuture<Status>();
-  }
-
-  K2ASSERT(log::pg, false, "Flush should not be triggered with buffered operations. See issue #145");
-
-  bool read_only = true;
-  std::vector<std::shared_ptr<PgOpTemplate>> ops;
-  for (auto buffered_op : buffered_ops_) {
-    const auto& op = buffered_op.operation;
-    if (!op->read_only()) {
-      read_only = false;
+  } else if (ops_count == 1) {
+    // run a single operation
+    std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
+    return client_->Exec(k23SITxn, *op);
+  } else {
+    // run multiple operations in a batch
+    std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
+    std::vector<std::shared_ptr<PgOpTemplate>> ops;
+    for (auto end = op + ops_count; op != end; ++op) {
+      ops.push_back(*op);
     }
-    ops.push_back(op);
+    return client_->BatchExec(k23SITxn, ops);
   }
-  std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(true, read_only);
-  auto result = client_->BatchExec(k23SITxn, ops);
-  // wait for the batch to complete
-  result.get();
-
-  // TODO: add logic to handle any failure in the batch
-  for (const auto& buffered_op : buffered_ops_) {
-    // combine errors if there is any and return them in the final status
-    pg_session_->HandleResponse(*buffered_op.operation, buffered_op.relation_id);
-  }
-  // clear up buffer
-  buffered_ops_.clear();
-  pg_session_->buffered_keys_.clear();
-  return result;
 }
 
 Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& table_object_id) {

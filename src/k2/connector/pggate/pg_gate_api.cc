@@ -634,42 +634,8 @@ YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDesc
   return ToYBCStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, ybctid));
 }
 
-// DB Operations: WHERE, ORDER_BY, GROUP_BY, etc.
-// + The following operations are run by DocDB.
-//   - Not yet
-//
-// + The following operations are run by Postgres layer. An API might be added to move these
-//   operations to DocDB.
-//   - API for "where_expr"
-//   - API for "order_by_expr"
-//   - API for "group_by_expr"
-
-
-// Buffer write operations.
-void YBCPgStartOperationsBuffering() {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgStartOperationsBuffering");
-  api_impl->StartOperationsBuffering();
-}
-
-YBCStatus YBCPgStopOperationsBuffering() {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgStopOperationsBuffering");
-  return ToYBCStatus(api_impl->StopOperationsBuffering());
-}
-
-YBCStatus YBCPgResetOperationsBuffering() {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgResetOperationsBuffering");
-  return ToYBCStatus(api_impl->ResetOperationsBuffering());
-}
-
-YBCStatus YBCPgFlushBufferedOperations() {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgFlushBufferedOperations");
-  return ToYBCStatus(api_impl->FlushBufferedOperations());
-}
-
-void YBCPgDropBufferedOperations() {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgDropBufferedOperations");
-  api_impl->DropBufferedOperations();
-}
+// DB Operations: WHERE(partially supported by K2-SKV)
+// TODO: ORDER_BY, GROUP_BY, etc.
 
 // INSERT ------------------------------------------------------------------------------------------
 

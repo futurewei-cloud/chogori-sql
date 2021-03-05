@@ -834,26 +834,6 @@ Status PgGateApiImpl::OperatorAppendArg(PgExpr *op_handle, PgExpr *arg) {
   return Status::OK();
 }
 
-void PgGateApiImpl::StartOperationsBuffering() {
-  pg_session_->StartOperationsBuffering();
-}
-
-Status PgGateApiImpl::StopOperationsBuffering() {
-  return pg_session_->StopOperationsBuffering();
-}
-
-Status PgGateApiImpl::ResetOperationsBuffering() {
-  return pg_session_->ResetOperationsBuffering();
-}
-
-Status PgGateApiImpl::FlushBufferedOperations() {
-  return pg_session_->FlushBufferedOperations();
-}
-
-void PgGateApiImpl::DropBufferedOperations() {
-  pg_session_->DropBufferedOperations();
-}
-
 // Select ------------------------------------------------------------------------------------------
 
 Status PgGateApiImpl::NewSelect(const PgObjectId& table_object_id,
@@ -1012,19 +992,10 @@ Status PgGateApiImpl::SetTransactionDeferrable(bool deferrable) {
 }
 
 Status PgGateApiImpl::EnterSeparateDdlTxnMode() {
-  // Flush all buffered operations as ddl txn use its own transaction session.
-  RETURN_NOT_OK(pg_session_->FlushBufferedOperations());
   return pg_txn_handler_->EnterSeparateDdlTxnMode();
 }
 
 Status PgGateApiImpl::ExitSeparateDdlTxnMode(bool success) {
-  // Flush all buffered operations as ddl txn use its own transaction session.
-  if (success) {
-    RETURN_NOT_OK(pg_session_->FlushBufferedOperations());
-  } else {
-    pg_session_->DropBufferedOperations();
-  }
-
   return pg_txn_handler_->ExitSeparateDdlTxnMode(success);
 }
 

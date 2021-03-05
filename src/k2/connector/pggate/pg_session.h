@@ -240,22 +240,6 @@ class PgSession {
   // Deletes the row referenced by ybctid from FK reference cache.
   CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
 
-  // Start operation buffering. Buffering must not be in progress.
-  void StartOperationsBuffering();
-  // Flush all pending buffered operation and stop further buffering.
-  // Buffering must be in progress.
-  CHECKED_STATUS StopOperationsBuffering();
-  // Stop further buffering. Buffering may be in any state,
-  // but pending buffered operations are not allowed.
-  CHECKED_STATUS ResetOperationsBuffering();
-
-  // Flush all pending buffered operations. Buffering mode remain unchanged.
-  // This would be called when PG commits a transaction and it needs to flush all buffered operations
-  // at that point of time.
-  CHECKED_STATUS FlushBufferedOperations();
-  // Drop all pending buffered operations. Buffering mode remain unchanged.
-  void DropBufferedOperations();
-
   // Run the given operation to read and write database content.
   // Template is used here to handle all kind of derived operations
   // (shared_ptr<PgReadOpTemplate>, shared_ptr<PgWriteOpTemplate>)
@@ -318,7 +302,6 @@ class PgSession {
   class RunHelper {
    public:
     RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional);
-    Result<CBFuture<Status>> Flush();
 
     Result<CBFuture<Status>> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
                          size_t ops_count,
@@ -328,7 +311,7 @@ class PgSession {
     PgSession *pg_session_;
     std::shared_ptr<K2Adapter> client_;
     bool transactional_;
-    PgsqlOpBuffer& buffered_ops_;
+
   };
 
   // Flush buffered write operations from the given buffer.
@@ -356,13 +339,6 @@ class PgSession {
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
-
-  // Should write operations be buffered?
-  bool buffering_enabled_ = false;
-  // use a single buffer for all operations since SKV requests are always transactional
-  // no need to use separate buffers for transactional and non-transactional operations
-  PgsqlOpBuffer buffered_ops_;
-  std::unordered_set<RowIdentifier, boost::hash<RowIdentifier>> buffered_keys_;
 
   const YBCPgCallbacks& pg_callbacks_;
 
