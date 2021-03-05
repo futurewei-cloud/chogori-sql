@@ -1,0 +1,42 @@
+{
+    "create_collections": {
+        "PG_DEFAULT_CLUSTER": {
+            "range_ends": [""],
+            "endpoints": ["tcp+k2rpc://127.0.0.1:10000"]
+        },
+        "template1": {
+            "range_ends": [""],
+            "endpoints": ["tcp+k2rpc://127.0.0.1:10001"]
+        },
+        "template0": {
+            "range_ends": [""],
+            "endpoints": ["tcp+k2rpc://127.0.0.1:10002"]
+        },
+        "postgres": {
+            "range_ends": [""],
+            "endpoints": ["tcp+k2rpc://127.0.0.1:10003"]
+        }
+    },
+    "thread_pool_size": 2,
+    "force_sync_finalize": true,
+
+    "prometheus_port": -1,
+    "prometheus_push_interval_ms": 10000,
+    "prometheus_push_address": "127.0.0.1:9091",
+
+    "cpo": "tcp+k2rpc://0.0.0.0:9000",
+    "tso_endpoint": "tcp+k2rpc://0.0.0.0:13000",
+    "partition_request_timeout": "100ms",
+    "cpo_request_timeout": "100ms",
+    "cpo_request_backoff": "100ms",
+
+    "smp": 1,
+    "memory": "1G",
+    "hugepages": false,
+    "rdma": "",
+    "thread-affinity": false,
+    "reactor-backend": "epoll",
+    "poll-mode": true,
+    "enable_tx_checksum": false,
+    "log_level": "INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
+}
