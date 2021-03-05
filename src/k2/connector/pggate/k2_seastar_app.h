@@ -21,8 +21,8 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 #pragma once
-#include <k2/appbase/AppEssentials.h>
-#include <k2/common/Log.h>
+#include "k2_includes.h"
+
 namespace k2 {
     class K2TxnHandle;
     class K23SIClient;

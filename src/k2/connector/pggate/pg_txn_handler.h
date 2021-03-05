@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <atomic>
 
 #include "common/result.h"
-#include "pggate/k23si_txn.h"
+#include "pggate/k2_txn.h"
 #include "pggate/k2_adapter.h"
 #include "k2_log.h"
 namespace k2pg {

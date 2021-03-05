@@ -22,9 +22,6 @@ Copyright(c) 2020 Futurewei Cloud
 */
 #pragma once
 
-#include "k2_includes.h"
-#include "k2_config.h"
-
 #include <pthread.h>
 
 #include <atomic>
@@ -34,7 +31,10 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <seastar/core/resource.hh>
 #include <seastar/core/memory.hh>
+
 #include "k2_log.h"
+#include "k2_includes.h"
+#include "k2_config.h"
 #include "k2_session_metrics.h"
 
 namespace k2pg {

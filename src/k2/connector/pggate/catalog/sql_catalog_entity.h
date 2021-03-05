@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <assert.h>
 
-#include "pggate/k23si_txn.h"
+#include "pggate/k2_txn.h"
 #include "catalog_log.h"
 #include <k2/common/FormattingUtils.h>
 

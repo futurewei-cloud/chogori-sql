@@ -9,9 +9,10 @@
 //
 #include "k2_adapter.h"
 
-#include "pggate/pg_gate_defaults.h"
-#include <seastar/core/resource.hh>
 #include <seastar/core/memory.hh>
+#include <seastar/core/resource.hh>
+
+#include "pg_gate_defaults.h"
 
 namespace k2pg {
 namespace gate {

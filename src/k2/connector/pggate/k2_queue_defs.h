@@ -21,14 +21,13 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 #pragma once
-#include "k2_includes.h"
-#include <k2/common/FormattingUtils.h>
 
 #include <atomic>
 #include <future>
 #include <queue>
 
-#include "k23si_txn.h"
+#include "k2_includes.h"
+#include "k2_txn.h"
 
 namespace k2pg {
 namespace gate {

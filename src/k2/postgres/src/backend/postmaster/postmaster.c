@@ -204,9 +204,6 @@ char	   *Unix_socket_directories;
 /* The TCP listen address(es) */
 char	   *ListenAddresses;
 
-/* Keeps track of the current forked backend. Used to load-balance K2-Seastar core usage */
-unsigned long int 		forkedBackends;
-
 /* we support 10^ this number of cores */
 #define MAX_K2_CORE_DIGITS 4
 
@@ -589,8 +586,6 @@ PostmasterMain(int argc, char *argv[])
 	bool		listen_addr_saved = false;
 	int			i;
 	char	   *output_config_variable = NULL;
-
-	forkedBackends = 0;
 
 	MyProcPid = PostmasterPid = getpid();
 
@@ -1744,7 +1739,6 @@ ServerLoop(void)
 					if (port)
 					{
 						/* one more backend was started */
-						forkedBackends++;
 						BackendStartup(port);
 
 						/*
@@ -4178,110 +4172,7 @@ InitK23siWorker()
 	elog(LOG, "Starting K23SI Worker from process: %d", getpid());
 	/* initialize k2 */
 	if (k2_init_func) {
-		const int MAX_K2_ARGS = 64;
-		/* example "mlx5_1" */
-		const char* rdmaDevice = getenv("K2_RDMA_DEVICE");
-
-		/* example "rrdma+k2rpc://fffffff" */
-		const char* cpoAddress = getenv("K2_CPO_ADDRESS");
-		if (NULL == cpoAddress) {
-			ereport(LOG, (errmsg("missing env variable K2_CPO_ADDRESS")));
-			proc_exit(1);
-		}
-
-		/* example "rrdma+k2rpc://fffffff" */
-		const char* tsoAddress = getenv("K2_TSO_ADDRESS");
-		if (NULL == tsoAddress) {
-			ereport(LOG, (errmsg("missing env variable K2_TSO_ADDRESS")));
-			proc_exit(1);
-		}
-
-		/* example "0 1 2 5 10 12 14 40" */
-		const char* k2Cores = getenv("K2_PG_CORES");
-		const char* coreToUse = "0";
-		if (NULL != k2Cores) {
-			/* see how many cores are given in the space-delimited list (count spaces) */
-			char coreStr[MAX_K2_CORE_DIGITS+1] = {'\0'};
-			unsigned long int nCores = 1;
-			for(char*p = k2Cores; *p != '\0'; ++p) {
-				if (*p == ' ') ++nCores;
-			}
-
-			unsigned long int coreID = forkedBackends % nCores; /* RR the next core from the list */
-
-			/* find the string for the chosen core */
-			char* ptr= k2Cores;
-			while(*ptr != '\0' && coreID > 0) {
-				if (*ptr == ' ') --coreID;
-				++ptr;
-			}
-			for(int i = 0; i < MAX_K2_CORE_DIGITS; ++i) {
-				if (*ptr == '\0' || *ptr == ' ') break;
-				coreStr[i] = *ptr;
-				++ptr;
-			}
-			if (*ptr != ' ' && *ptr != '\0') {
-				ereport(LOG, (errmsg("Only up-to 4-digit core identifiers are supported")));
-				proc_exit(1);
-			}
-			if (coreStr[0] == '\0') {
-				ereport(LOG, (errmsg("Invalid string given for K2_CORE")));
-				proc_exit(1);
-			}
-
-			coreToUse = coreStr;
-		}
-
-		/* example: "200m" */
-		const char* memToUse = getenv("K2_PG_MEM");
-		if (NULL == memToUse) {
-			memToUse="200M";
-		}
-
-		/* example: "10ms" */
-		const char* cpoTimeout = getenv("K2_CPO_TIMEOUT");
-		if (NULL == cpoTimeout) {
-			cpoTimeout = "100ms";
-		}
-
-		/* if this is set to anything, then enable it */
-		const char* hugepages = getenv("K2_HUGE_PAGES");
-		if (NULL != hugepages) {
-			hugepages = "--hugepages";
-		}
-
-		/* if this is set to anything, then it will be enabled */
-		const char* msgChecksum = getenv("K2_MSG_CHECKSUM");
-
-		/* example: "10ms" */
-		const char* cpoBackoff = getenv("K2_CPO_BACKOFF");
-		if (NULL == cpoBackoff) {
-			cpoBackoff = "10ms";
-		}
-
-		const char* logLevel = getenv("K2_LOG_LEVEL");
-		if (NULL == logLevel) {
-			logLevel = "INFO";
-		}
-
-		const char* pollMode = getenv("K2_POLL_MODE");
-
-		char* argv[MAX_K2_ARGS];
-		int argc = 0;
-		argv[argc++] = "k2_pg";
-		argv[argc++] = "--log_level"; argv[argc++] = logLevel;
-		argv[argc++] = "--cpuset"; argv[argc++] = coreToUse;
-		if (NULL != hugepages) argv[argc++] = hugepages;
-		if (NULL != rdmaDevice) { argv[argc++] = "--rdma"; argv[argc++] = rdmaDevice;}
-		argv[argc++] = "-m"; argv[argc++] = memToUse;
-		argv[argc++] = "--partition_request_timeout"; argv[argc++] = cpoTimeout;
-		argv[argc++] = "--cpo"; argv[argc++] = cpoAddress;
-		argv[argc++] = "--tso_endpoint"; argv[argc++] = tsoAddress;
-		argv[argc++] = "--cpo_request_timeout"; argv[argc++] = cpoTimeout;
-		argv[argc++] = "--cpo_request_backoff"; argv[argc++] = cpoBackoff;
-        if (NULL != pollMode) { argv[argc++] = pollMode; }
-		if (NULL != msgChecksum) { argv[argc++] = "--enable_tx_checksum"; argv[argc++] = "true"; }
-		k2_init_func(argc, argv);
+		k2_init_func();
         on_shmem_exit(k2_kill_func, (Datum)0);
     }
 }
