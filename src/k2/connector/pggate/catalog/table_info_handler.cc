@@ -25,8 +25,6 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <stdexcept>
 
-#include <glog/logging.h>
-
 namespace k2pg {
 namespace sql {
 namespace catalog {

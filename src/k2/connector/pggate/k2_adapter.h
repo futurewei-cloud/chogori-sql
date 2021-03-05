@@ -16,19 +16,19 @@
 //
 
 #pragma once
-#include "k2_includes.h"
 #include <boost/function.hpp>
 
 #include "common/concurrent/async_util.h"
 #include "common/status.h"
 #include "entities/schema.h"
-#include "pggate/k23si_gate.h"
-#include "pggate/k23si_txn.h"
-#include "pggate/pg_op_api.h"
-#include "pggate/pg_env.h"
-#include "k2_thread_pool.h"
-#include "k2_log.h"
 #include "k2_config.h"
+#include "k2_gate.h"
+#include "k2_includes.h"
+#include "k2_log.h"
+#include "k2_thread_pool.h"
+#include "k2_txn.h"
+#include "pg_env.h"
+#include "pg_op_api.h"
 
 namespace k2pg {
 namespace gate {

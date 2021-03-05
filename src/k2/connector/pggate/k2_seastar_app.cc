@@ -21,10 +21,11 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "k23si_seastar_app.h"
-#include "k23si_queue_defs.h"
-#include "k23si_txn.h"
-#include <k2/module/k23si/client/k23si_client.h>
+#include "k2_seastar_app.h"
+
+#include "k2_includes.h"
+#include "k2_queue_defs.h"
+#include "k2_txn.h"
 
 namespace k2pg {
 namespace gate {

@@ -24,7 +24,29 @@ echo "{
             \"endpoints\": [\"${PROTO}://${REMOTE_IP}:10003\"]
         }
     },
-    \"force_sync_finalize\": true
+    \"force_sync_finalize\": true,
+    \"thread_pool_size\": 2,
+
+    \"prometheus_port\": -1,
+    \"prometheus_push_interval_ms\": 10000,
+    \"prometheus_push_address\": \"127.0.0.1:9091\",
+
+    \"cpo\": \"${PROTO}://192.168.1.8:7000\",
+    \"tso_endpoint\": \"${PROTO}://192.168.1.8:8000\",
+    \"partition_request_timeout\": \"900ms\",
+    \"cpo_request_timeout\": \"900ms\",
+    \"cpo_request_backoff\": \"300ms\",
+
+    \"smp\": 1,
+    \"memory\": \"1G\",
+    \"hugepages\": true,
+    \"rdma\": \"mlx5_0\",
+    \"thread-affinity\": false,
+    \"reactor-backend\": \"epoll\",
+    \"poll-mode\": true,
+    \"enable_tx_checksum\": false,
+    \"log_level\": \"INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO\"
+
 }
 " > k2config_rdma.json
 
@@ -32,23 +54,8 @@ export LD_LIBRARY_PATH=/build/build/src/k2/connector/common/:/build/build/src/k2
 export YB_ENABLED_IN_POSTGRES=1
 export YB_PG_TRANSACTIONS_ENABLED=1
 export YB_PG_ALLOW_RUNNING_AS_ANY_USER=1
-#export GLOG_logtostderr=1
 
-export K2_RDMA_DEVICE=mlx5_0
-export K2_HUGE_PAGES=TRUE
-export K2_CPO_ADDRESS=${PROTO}://192.168.1.8:7000
-export K2_TSO_ADDRESS=${PROTO}://192.168.1.8:8000
-export K2_PG_CORES=11
-#export K2_PG_CORES="1 2 4 10"
-
-export K2_PG_MEM=1G
-export K2_CPO_TIMEOUT=900ms
-export K2_CPO_BACKOFF=300ms
-#export K2_MSG_CHECKSUM=FALSE
-export K2_POLL_MODE="--poll-mode"
 export K2_CONFIG_FILE=/build/pgtest/k2config_rdma.json
-export K2_LOG_LEVEL="INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
-#export K2_LOG_LEVEL="DEBUG"
 
 export GLOG_logtostderr=1 # log all to stderr
 export GLOG_v=5 #

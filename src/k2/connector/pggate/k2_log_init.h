@@ -1,7 +1,8 @@
 #pragma once
 
-#include <k2/common/Log.h>
 #include <sstream>
+
+#include "k2_includes.h"
 
 namespace k2pg {
 template<typename Visitor>

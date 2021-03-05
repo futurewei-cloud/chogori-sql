@@ -20,8 +20,9 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-#include "k23si_txn.h"
-#include "k23si_queue_defs.h"
+#include "k2_txn.h"
+
+#include "k2_queue_defs.h"
 #include "k2_session_metrics.h"
 
 namespace k2pg {
