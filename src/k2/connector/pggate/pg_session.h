@@ -259,21 +259,17 @@ class PgSession {
     return RunAsync(ops.data(), ops.size(), relation_id, read_time);
   }
 
-  // Run multiple operations.
+  // Run operation(s).
   Result<CBFuture<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>* op,
                                            size_t ops_count,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time) {
-    DCHECK_GT(ops_count, 0);
-    RunHelper runner(this, k2_adapter_, ShouldHandleTransactionally(**op));
-    return runner.ApplyAndFlush(op, ops_count, relation_id, read_time);
-  }
+                                           uint64_t* read_time);
 
   CHECKED_STATUS HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id);
 
   // Returns the appropriate session to use, in most cases the one used by the current transaction.
   // read_only - whether this is being done in the context of a read-only operation.
-  std::shared_ptr<K23SITxn> GetTxnHandler(bool transactional, bool read_onl);
+  std::shared_ptr<K23SITxn> GetTxnHandler(bool read_only);
 
   Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
       const PgObjectId& table_object_id,
@@ -296,27 +292,6 @@ class PgSession {
   }
 
   private:
-  // Helper class to run multiple operations on single session.
-  // This class allows to keep implementation of RunAsync template method simple
-  // without moving its implementation details into header file.
-  class RunHelper {
-   public:
-    RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional);
-
-    Result<CBFuture<Status>> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
-                         size_t ops_count,
-                         const PgObjectId& relation_id,
-                         uint64_t* read_time);
-   private:
-    PgSession *pg_session_;
-    std::shared_ptr<K2Adapter> client_;
-    bool transactional_;
-
-  };
-
-  // Flush buffered write operations from the given buffer.
-  Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);
-
   // Whether we should use transactional or non-transactional session.
   bool ShouldHandleTransactionally(const PgOpTemplate& op);
 

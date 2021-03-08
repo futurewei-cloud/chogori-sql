@@ -261,35 +261,27 @@ bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
   return op.IsTransactional() && !YBCIsInitDbModeEnvVarSet();
 }
 
-PgSession::RunHelper::RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional)
-    :  pg_session_(pg_session),
-       client_(client),
-       transactional_(transactional) {
-  if (!transactional_) {
-    pg_session_->InvalidateForeignKeyReferenceCache();
-  }
-}
+Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>* op,
+                                           size_t ops_count,
+                                           const PgObjectId& relation_id,
+                                           uint64_t* read_time) {
+  DCHECK_GT(ops_count, 0);
 
-Result<CBFuture<Status>> PgSession::RunHelper::ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
-                         size_t ops_count,
-                         const PgObjectId& relation_id,
-                         uint64_t* read_time) {
-  // send new operations
-  if (ops_count < 1) {
-    // invalid, do nothing
-    return CBFuture<Status>();
-  } else if (ops_count == 1) {
+  if (!ShouldHandleTransactionally(**op)) {
+    InvalidateForeignKeyReferenceCache();
+  } 
+  
+  std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler((*op)->read_only());                           
+  if (ops_count == 1) {
     // run a single operation
-    std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
-    return client_->Exec(k23SITxn, *op);
-  } else {
+    return k2_adapter_->Exec(k23SITxn, *op);
+  } else {  // ops_count > 1
     // run multiple operations in a batch
-    std::shared_ptr<K23SITxn> k23SITxn = pg_session_->GetTxnHandler(transactional_, (*op)->read_only());
     std::vector<std::shared_ptr<PgOpTemplate>> ops;
     for (auto end = op + ops_count; op != end; ++op) {
       ops.push_back(*op);
     }
-    return client_->BatchExec(k23SITxn, ops);
+    return k2_adapter_->BatchExec(k23SITxn, ops);
   }
 }
 
@@ -373,7 +365,7 @@ Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& yb
   return Status::OK();
 }
 
-std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool transactional, bool read_only) {
+std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool read_only) {
   return pg_txn_handler_->GetNewTransactionIfNecessary(read_only);
 }
 
