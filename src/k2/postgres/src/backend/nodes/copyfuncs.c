@@ -3326,7 +3326,6 @@ _copyOptSplit(const OptSplit *from)
 	OptSplit *newnode = makeNode(OptSplit);
 
 	COPY_SCALAR_FIELD(split_type);
-	COPY_SCALAR_FIELD(num_tablets);
 	COPY_NODE_FIELD(split_points);
 
 	return newnode;

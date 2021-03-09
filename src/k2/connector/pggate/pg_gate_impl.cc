@@ -350,17 +350,6 @@ Status PgGateApiImpl::CreateTableAddColumn(PgStatement *handle, const char *attr
       is_hash, is_range, is_desc, is_nulls_first);
 }
 
-Status PgGateApiImpl::CreateTableAddSplitRow(PgStatement *handle, int num_cols,
-                                           YBCPgTypeEntity **types, uint64_t *data) {
-  if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_TABLE)) {
-    // Invalid handle.
-    return STATUS(InvalidArgument, "Invalid statement handle");
-  }
-
-  // do nothing here since we don't support pre-split table
-  return Status::OK();
-}
-
 Status PgGateApiImpl::ExecCreateTable(PgStatement *handle) {
   if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_TABLE)) {
     // Invalid handle.
@@ -556,16 +545,6 @@ Status PgGateApiImpl::CreateIndexAddColumn(PgStatement *handle, const char *attr
 
   return AddColumn(down_cast<PgCreateIndex*>(handle), attr_name, attr_num, attr_type,
       is_hash, is_range, is_desc, is_nulls_first);
-}
-
-Status PgGateApiImpl::CreateIndexAddSplitRow(PgStatement *handle, int num_cols,
-                                         YBCPgTypeEntity **types, uint64_t *data) {
-  SCHECK(PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX),
-      InvalidArgument,
-      "Invalid statement handle");
-
-  // do nothing here since we don't support pre-split table
-  return Status::OK();
 }
 
 Status PgGateApiImpl::ExecCreateIndex(PgStatement *handle) {

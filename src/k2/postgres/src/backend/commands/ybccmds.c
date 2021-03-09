@@ -285,114 +285,6 @@ CreateSplitPointDatums(ParseState *pstate,
 	return datums;
 }
 
-/* Utility function to handle split points */
-static void CreateTableHandleSplitOptions(YBCPgStatement handle,
-										  TupleDesc desc,
-										  OptSplit *split_options,
-										  Constraint *primary_key)
-{
-	/* Address both types of split options */
-	switch (split_options->split_type)
-	{
-		case NUM_TABLETS: ;
-			/* Make sure we have HASH columns */
-			ListCell *head = list_head(primary_key->yb_index_params);
-			IndexElem *index_elem = (IndexElem*) lfirst(head);
-			if (!index_elem ||
-				!(index_elem->ordering == SORTBY_HASH ||
-				  index_elem->ordering == SORTBY_DEFAULT))
-			{
-				ereport(ERROR, (errmsg("HASH columns must be present to "
-									   "split by number of tablets")));
-			}
-
-			/* Tell pggate about it */
-			HandleYBStatus(YBCPgCreateTableSetNumTablets(handle, split_options->num_tablets));
-			break;
-		case SPLIT_POINTS: ;
-			/* Number of columns used in the primary key */
-			int num_key_cols = list_length(primary_key->keys);
-
-			/* Get the type information on each column of the primary key,
-			 * and verify none are HASH columns */
-			Oid *col_attrtypes = palloc(sizeof(Oid) * num_key_cols);
-			int32 *col_attrtypmods = palloc(sizeof(int32) * num_key_cols);
-			YBCPgTypeEntity **type_entities = palloc(sizeof(YBCPgTypeEntity *) * num_key_cols);
-
-			bool *skips = palloc0(sizeof(bool) * desc->natts);
-			int col_num = 0;
-			ListCell *cell;
-			foreach(cell, primary_key->yb_index_params)
-			{
-				/* Column constraint for the primary key */
-				IndexElem *index_elem = (IndexElem *) lfirst(cell);
-
-				/* Locate the table column that matches */
-				for (int i = 0; i < desc->natts; i++)
-				{
-					if (skips[i]) continue;
-
-					Form_pg_attribute att = TupleDescAttr(desc, i);
-					char *attname = NameStr(att->attname);
-
-					/* Found it */
-					if (strcmp(attname, index_elem->name) == 0)
-					{
-						/* Prohibit the use of HASH columns */
-						if (index_elem->ordering == SORTBY_HASH ||
-							(col_num == 0 && index_elem->ordering == SORTBY_DEFAULT))
-						{
-							ereport(ERROR, (errmsg("HASH columns cannot be used for "
-												   "split points")));
-						}
-
-						/* Record information on the attribute */
-						col_attrtypes[col_num] = att->atttypid;
-						col_attrtypmods[col_num] = att->atttypmod;
-						type_entities[col_num] = (YBCPgTypeEntity*)YBCDataTypeFromOidMod(
-								att->attnum, att->atttypid);
-
-						/* Know to skip this in any future searches */
-						skips[i] = true;
-						break;
-					}
-				}
-
-				/* Next primary key column */
-				col_num++;
-			}
-
-			/* Parser state for type conversion and validation */
-			ParseState *pstate = make_parsestate(NULL);
-
-			/* Ensure that each split point matches the primary key columns
-			 * in number and type, and are in order */
-			ListCell *cell1;
-			foreach(cell1, split_options->split_points)
-			{
-				List *split_point = (List *) lfirst(cell1);
-				int split_columns = list_length(split_point);
-
-				if (split_columns > num_key_cols)
-				{
-					ereport(ERROR, (errmsg("Split points cannot be more than the number of "
-										   "primary key columns")));
-				}
-
-				Datum *datums = CreateSplitPointDatums(
-					pstate, split_point, col_attrtypes, col_attrtypmods);
-
-				HandleYBStatus(YBCPgCreateTableAddSplitRow(
-					handle, split_columns, type_entities, (uint64_t *)datums));
-			}
-
-			break;
-		default:
-			ereport(ERROR, (errmsg("Illegal memory state for SPLIT options")));
-			break;
-	}
-}
-
 void
 YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, Oid namespaceId)
 {
@@ -471,19 +363,6 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 									   &handle));
 
 	CreateTableAddColumns(handle, desc, primary_key, colocated);
-
-	/* Handle SPLIT statement, if present */
-	OptSplit *split_options = stmt->split_options;
-	if (split_options)
-	{
-		/* Illegal without primary key */
-		if (primary_key == NULL)
-		{
-			ereport(ERROR, (errmsg("Cannot have SPLIT options in the absence of a primary key")));
-		}
-
-		CreateTableHandleSplitOptions(handle, desc, split_options, primary_key);
-	}
 
 	/* Create the table. */
 	HandleYBStatus(YBCPgExecCreateTable(handle));
@@ -617,74 +496,6 @@ YBCTruncateTable(Relation rel) {
 	list_free(indexlist);
 }
 
-/* Utility function to handle split points */
-static void
-CreateIndexHandleSplitOptions(YBCPgStatement handle,
-                              TupleDesc desc,
-                              OptSplit *split_options,
-                              int16 * coloptions)
-{
-	/* Address both types of split options */
-	switch (split_options->split_type)
-	{
-	case NUM_TABLETS:
-		/* Make sure we have HASH columns */
-		if (!(coloptions[0] & INDOPTION_HASH))
-			ereport(ERROR, (errmsg("HASH columns must be present to split by number of tablets")));
-
-		HandleYBStatus(YBCPgCreateIndexSetNumTablets(handle, split_options->num_tablets));
-		break;
-	case SPLIT_POINTS:
-		{
-			/*
-			 * Get the type information on each column of the index key,
-			 * and verify none are HASH columns
-			 */
-			Oid *col_attrtypes = palloc(sizeof(Oid) * desc->natts);
-			int32 *col_attrtypmods = palloc(sizeof(int32) * desc->natts);
-			YBCPgTypeEntity **type_entities = palloc(sizeof(YBCPgTypeEntity *) * desc->natts);
-
-			for (int col_num = 0; col_num < desc->natts; ++col_num)
-			{
-				Form_pg_attribute att = TupleDescAttr(desc, col_num);
-				/* Prohibit the use of HASH columns */
-				if (coloptions[col_num] & INDOPTION_HASH)
-					ereport(ERROR, (errmsg("HASH columns cannot be used for split points")));
-
-				/* Record information on the attribute */
-				col_attrtypes[col_num] = att->atttypid;
-				col_attrtypmods[col_num] = att->atttypmod;
-				type_entities[col_num] = (YBCPgTypeEntity*)YBCDataTypeFromOidMod(
-					att->attnum, att->atttypid);
-			}
-
-			/* Parser state for type conversion and validation */
-			ParseState *pstate = make_parsestate(NULL);
-
-			ListCell *cell1;
-			foreach(cell1, split_options->split_points)
-			{
-				List *split_point = (List *)lfirst(cell1);
-				int split_columns = list_length(split_point);
-
-				if (split_columns > desc->natts)
-					ereport(ERROR, (errmsg("Split points cannot be more than the number of "
-					                       "index columns")));
-
-				Datum *datums = CreateSplitPointDatums(
-					pstate, split_point, col_attrtypes, col_attrtypmods);
-
-				HandleYBStatus(YBCPgCreateIndexAddSplitRow(
-					handle, split_columns, type_entities, (uint64_t *)datums));
-			}
-		}
-		break;
-	default:
-		ereport(ERROR, (errmsg("Illegal memory state for SPLIT options")));
-		break;
-	}
-}
-
 void
 YBCCreateIndex(const char *indexName,
 			   IndexInfo *indexInfo,
@@ -765,10 +576,6 @@ YBCCreateIndex(const char *indexName,
 																						 is_desc,
 																						 is_nulls_first));
 	}
-
-	/* Handle SPLIT statement, if present */
-	if (split_options)
-		CreateIndexHandleSplitOptions(handle, indexTupleDesc, split_options, coloptions);
 
 	/* Create the index. */
 	HandleYBStatus(YBCPgExecCreateIndex(handle));

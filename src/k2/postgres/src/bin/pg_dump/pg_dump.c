@@ -15883,16 +15883,6 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 				fprintf(stderr, "Colocated tables are not supported yet.\n");
 				exit_nicely(1);
 			}
-
-			if (properties.num_hash_key_columns > 0)
-				/* For hash-table. */
-				appendPQExpBuffer(q, "\nSPLIT INTO %u TABLETS", properties.num_tablets);
-			else if(properties.num_tablets > 1)
-			{
-				/* For range-table. */
-				fprintf(stderr, "Pre-split range tables are not supported yet.\n");
-				exit_nicely(1);
-			}
 			/* else - single shard table - supported, no need to add anything */
 		}
 #endif  /* DISABLE_YB_EXTENTIONS */
