@@ -18,7 +18,7 @@ rm -rf ${CPODIR}
 export PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --prometheus_port 63000 --heartbeat_deadline=30s ${RDMA[@]} -m1G &
+cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --prometheus_port 63000 --heartbeat_deadline=1s ${RDMA[@]} -m1G &
 cpo_child_pid=$!
 
 # start nodepool
