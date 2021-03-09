@@ -326,23 +326,8 @@ YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_coun
 YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid);
 
-// DB Operations: WHERE, ORDER_BY, GROUP_BY, etc.
-// + The following operations are run by DocDB.
-//   - Not yet
-//
-// + The following operations are run by Postgres layer. An API might be added to move these
-//   operations to DocDB.
-//   - API for "where_expr"
-//   - API for "order_by_expr"
-//   - API for "group_by_expr"
-
-
-// Buffer write operations.
-void YBCPgStartOperationsBuffering();
-YBCStatus YBCPgStopOperationsBuffering();
-YBCStatus YBCPgResetOperationsBuffering();
-YBCStatus YBCPgFlushBufferedOperations();
-void YBCPgDropBufferedOperations();
+// DB Operations: WHERE(partially supported by K2-SKV)
+// TODO: ORDER_BY, GROUP_BY, etc.
 
 // INSERT ------------------------------------------------------------------------------------------
 YBCStatus YBCPgNewInsert(YBCPgOid database_oid,

@@ -240,22 +240,6 @@ class PgSession {
   // Deletes the row referenced by ybctid from FK reference cache.
   CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
 
-  // Start operation buffering. Buffering must not be in progress.
-  void StartOperationsBuffering();
-  // Flush all pending buffered operation and stop further buffering.
-  // Buffering must be in progress.
-  CHECKED_STATUS StopOperationsBuffering();
-  // Stop further buffering. Buffering may be in any state,
-  // but pending buffered operations are not allowed.
-  CHECKED_STATUS ResetOperationsBuffering();
-
-  // Flush all pending buffered operations. Buffering mode remain unchanged.
-  // This would be called when PG commits a transaction and it needs to flush all buffered operations
-  // at that point of time.
-  CHECKED_STATUS FlushBufferedOperations();
-  // Drop all pending buffered operations. Buffering mode remain unchanged.
-  void DropBufferedOperations();
-
   // Run the given operation to read and write database content.
   // Template is used here to handle all kind of derived operations
   // (shared_ptr<PgReadOpTemplate>, shared_ptr<PgWriteOpTemplate>)
@@ -263,36 +247,29 @@ class PgSession {
   // Conversion to shared_ptr<PgOpTemplate> will be done later and result will re-used with move.
   Result<CBFuture<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>& op,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
-    return RunAsync(&op, 1, relation_id, read_time, force_non_bufferable);
+                                           uint64_t* read_time) {
+    return RunAsync(&op, 1, relation_id, read_time);
   }
 
   // Run list of given operations to read and write database content.
   Result<CBFuture<Status>> RunAsync(const std::vector<std::shared_ptr<PgOpTemplate>>& ops,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
+                                           uint64_t* read_time) {
     DCHECK(!ops.empty());
-    return RunAsync(ops.data(), ops.size(), relation_id, read_time, force_non_bufferable);
+    return RunAsync(ops.data(), ops.size(), relation_id, read_time);
   }
 
-  // Run multiple operations.
+  // Run operation(s).
   Result<CBFuture<Status>> RunAsync(const std::shared_ptr<PgOpTemplate>* op,
                                            size_t ops_count,
                                            const PgObjectId& relation_id,
-                                           uint64_t* read_time,
-                                           bool force_non_bufferable) {
-    DCHECK_GT(ops_count, 0);
-    RunHelper runner(this, k2_adapter_, ShouldHandleTransactionally(**op));
-    return runner.ApplyAndFlush(op, ops_count, relation_id, read_time, force_non_bufferable);
-  }
+                                           uint64_t* read_time);
 
   CHECKED_STATUS HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id);
 
   // Returns the appropriate session to use, in most cases the one used by the current transaction.
   // read_only - whether this is being done in the context of a read-only operation.
-  std::shared_ptr<K23SITxn> GetTxnHandler(bool transactional, bool read_onl);
+  std::shared_ptr<K23SITxn> GetTxnHandler(bool read_only);
 
   Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
       const PgObjectId& table_object_id,
@@ -315,29 +292,6 @@ class PgSession {
   }
 
   private:
-  // Helper class to run multiple operations on single session.
-  // This class allows to keep implementation of RunAsync template method simple
-  // without moving its implementation details into header file.
-  class RunHelper {
-   public:
-    RunHelper(PgSession *pg_session, std::shared_ptr<K2Adapter> client, bool transactional);
-    Result<CBFuture<Status>> Flush();
-
-    Result<CBFuture<Status>> ApplyAndFlush(const std::shared_ptr<PgOpTemplate>* op,
-                         size_t ops_count,
-                         const PgObjectId& relation_id,
-                         uint64_t* read_time,
-                         bool force_non_bufferable);
-   private:
-    PgSession *pg_session_;
-    std::shared_ptr<K2Adapter> client_;
-    bool transactional_;
-    PgsqlOpBuffer& buffered_ops_;
-  };
-
-  // Flush buffered write operations from the given buffer.
-  Status FlushBufferedWriteOperations(PgsqlOpBuffer* write_ops, bool transactional);
-
   // Whether we should use transactional or non-transactional session.
   bool ShouldHandleTransactionally(const PgOpTemplate& op);
 
@@ -360,13 +314,6 @@ class PgSession {
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
-
-  // Should write operations be buffered?
-  bool buffering_enabled_ = false;
-  // use a single buffer for all operations since SKV requests are always transactional
-  // no need to use separate buffers for transactional and non-transactional operations
-  PgsqlOpBuffer buffered_ops_;
-  std::unordered_set<RowIdentifier, boost::hash<RowIdentifier>> buffered_keys_;
 
   const YBCPgCallbacks& pg_callbacks_;
 

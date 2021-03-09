@@ -298,8 +298,4 @@ int YBGetDdlNestingLevel();
 void YBIncrementDdlNestingLevel();
 void YBDecrementDdlNestingLevel(bool success);
 
-extern void YBBeginOperationsBuffering();
-extern void YBEndOperationsBuffering();
-extern void YBResetOperationsBuffering();
-
 #endif /* PG_YB_UTILS_H */

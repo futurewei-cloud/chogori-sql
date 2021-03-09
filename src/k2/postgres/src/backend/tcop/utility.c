@@ -3488,6 +3488,7 @@ GetCommandLogLevel(Node *parsetree)
 	return lev;
 }
 
+// TODO: as this hook become the standard_ProcessUtility, consider removing this Hook later.
 void
 YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
                             const char *queryString,
@@ -3497,13 +3498,5 @@ YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
                             DestReceiver *dest,
                             char *completionTag)
 {
-	if (IsYugaByteEnabled() && !(IsA(pstmt->utilityStmt, ExecuteStmt) ||
-			IsA(pstmt->utilityStmt, PrepareStmt) || IsA(pstmt->utilityStmt, DeallocateStmt) ||
-			IsA(pstmt->utilityStmt, ExplainStmt))) {
-		YBBeginOperationsBuffering();
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
-		YBEndOperationsBuffering();
-  } else {
-		standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
-	}
+	standard_ProcessUtility(pstmt, queryString, context, params, queryEnv, dest, completionTag);
 }

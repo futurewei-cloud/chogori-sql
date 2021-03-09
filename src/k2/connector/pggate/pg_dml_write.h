@@ -70,8 +70,7 @@ class PgDmlWrite : public PgDml {
   // Setup internal structures for binding values during prepare.
   void PrepareColumns();
 
-  // force_non_bufferable flag indicates this operation should not be buffered.
-  CHECKED_STATUS Exec(bool force_non_bufferable);
+  CHECKED_STATUS Exec();
 
   void SetIsSystemCatalogChange() {
       ysql_catalog_change_ = true;

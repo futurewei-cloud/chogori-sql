@@ -357,22 +357,8 @@ class PgGateApiImpl {
   CHECKED_STATUS DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                    int32_t nattrs, uint64_t *ybctid);
 
-  // DB Operations: SET, WHERE, ORDER_BY, GROUP_BY, etc.
-  // + The following operations are run by DocDB.
-  //   - API for "set_clause" (not yet implemented).
-  //
-  // + The following operations are run by Postgres layer. An API might be added to move these
-  //   operations to DocDB.
-  //   - API for "where_expr"
-  //   - API for "order_by_expr"
-  //   - API for "group_by_expr"
-
-  // Buffer write operations.
-  void StartOperationsBuffering();
-  CHECKED_STATUS StopOperationsBuffering();
-  CHECKED_STATUS ResetOperationsBuffering();
-  CHECKED_STATUS FlushBufferedOperations();
-  void DropBufferedOperations();
+// DB Operations: WHERE(partially supported by K2-SKV)
+// TODO: ORDER_BY, GROUP_BY, etc.
 
   //------------------------------------------------------------------------------------------------
   // Select.

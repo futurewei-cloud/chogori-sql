@@ -160,7 +160,7 @@ public:
     virtual void ExecuteInit(const PgExecParameters *exec_params);
 
     // Execute the op. Return true if the request has been sent and is awaiting the result.
-    virtual Result<RequestSent> Execute(bool force_non_bufferable);
+    virtual Result<RequestSent> Execute();
 
     // Instruct this sql_op_ to abandon execution and querying data by setting end_of_data_ to 'true'.
     // - This op will not send request to storage layer.
@@ -197,9 +197,9 @@ protected:
     Result<std::list<PgOpResult>> ProcessResponseResult();
 
 private:
-    CHECKED_STATUS SendRequest(bool force_non_bufferable);
+    CHECKED_STATUS SendRequest();
 
-    virtual CHECKED_STATUS SendRequestImpl(bool force_non_bufferable);
+    virtual CHECKED_STATUS SendRequestImpl();
 
     Result<std::list<PgOpResult>> ProcessResponse(const Status& exec_status);
 

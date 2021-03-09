@@ -367,7 +367,6 @@ YBCCommitTransaction()
 	if (!IsYugaByteEnabled())
 		return;
 
-	HandleYBStatus(YBCPgFlushBufferedOperations());
 	HandleYBStatus(YBCPgCommitTransaction());
 }
 
@@ -376,8 +375,6 @@ YBCAbortTransaction()
 {
 	if (!IsYugaByteEnabled())
 		return;
-
-	YBCPgDropBufferedOperations();
 
 	if (YBTransactionsEnabled())
 		HandleYBStatus(YBCPgAbortTransaction());
@@ -885,26 +882,4 @@ static void YBCInstallTxnDdlHook() {
 		prev_ProcessUtility = ProcessUtility_hook;
 		ProcessUtility_hook = YBTxnDdlProcessUtility;
 	}
-};
-
-static int buffering_nesting_level = 0;
-
-void YBBeginOperationsBuffering() {
-	if (++buffering_nesting_level == 1) {
-		YBCPgStartOperationsBuffering();
-	}
-}
-
-void YBEndOperationsBuffering() {
-	// buffering_nesting_level could be 0 because YBResetOperationsBuffering was called
-	// on starting new query and postgres calls standard_ExecutorFinish on non finished executor
-	// from previous failed query.
-	if (buffering_nesting_level && !--buffering_nesting_level) {
-		HandleYBStatus(YBCPgStopOperationsBuffering());
-	}
-}
-
-void YBResetOperationsBuffering() {
-	buffering_nesting_level = 0;
-	YBCPgResetOperationsBuffering();
 }

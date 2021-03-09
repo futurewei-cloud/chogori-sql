@@ -365,9 +365,9 @@ void PgOp::ExecuteInit(const PgExecParameters *exec_params) {
     }
 }
 
-Result<RequestSent> PgOp::Execute(bool force_non_bufferable) {
+Result<RequestSent> PgOp::Execute() {
     // SKV is stateless and we have to call query execution every time, i.e., Exec & Fetch, Exec & Fetch
-    exec_status_ = SendRequest(force_non_bufferable);
+    exec_status_ = SendRequest();
     RETURN_NOT_OK(exec_status_);
     return RequestSent(requestAsyncRunResult_.valid());
 }
@@ -380,7 +380,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
         // Send request now in case prefetching was suppressed.
         if (suppress_next_result_prefetching_ && !requestAsyncRunResult_.valid()) {
             K2LOG_D(log::pg, "suppress_next_result_prefetching_: {} send request...", suppress_next_result_prefetching_);
-            exec_status_ = SendRequest(true /* force_non_bufferable */);
+            exec_status_ = SendRequest();
             RETURN_NOT_OK(exec_status_);
         }
 
@@ -396,7 +396,7 @@ Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
             K2LOG_D(log::pg,
                 "Not done, end_of_data_: {}, suppress_next_result_prefetching_:{}, continue sending request...",
                 end_of_data_, suppress_next_result_prefetching_);
-            exec_status_ = SendRequest(true /* force_non_bufferable */);
+            exec_status_ = SendRequest();
             RETURN_NOT_OK(exec_status_);
         }
     } else {
@@ -458,23 +458,21 @@ void PgOp::MoveInactiveOpsOutside() {
     active_op_count_ = left_iter;
 }
 
-Status PgOp::SendRequest(bool force_non_bufferable) {
-    K2LOG_D(log::pg, "PgOp sends request with force_non_bufferable {}", force_non_bufferable);
+Status PgOp::SendRequest() {
     DCHECK(exec_status_.ok());
     DCHECK(!requestAsyncRunResult_.valid());
     DCHECK(!end_of_data_);
-    exec_status_ = SendRequestImpl(force_non_bufferable);
+    exec_status_ = SendRequestImpl();
     return exec_status_;
 }
 
-Status PgOp::SendRequestImpl(bool force_non_bufferable) {
+Status PgOp::SendRequestImpl() {
     // Populate collected information into requests before sending to SKV.
     RETURN_NOT_OK(CreateRequests());
 
     // Send at most "parallelism_level_" number of requests at one time.
     int32_t send_count = std::min(parallelism_level_, active_op_count_);
-    requestAsyncRunResult_ = VERIFY_RESULT(pg_session_->RunAsync(pgsql_ops_.data(), send_count, relation_id_,
-                                                    &read_time_, force_non_bufferable));
+    requestAsyncRunResult_ = VERIFY_RESULT(pg_session_->RunAsync(pgsql_ops_.data(), send_count, relation_id_, &read_time_));
 
     return Status::OK();
 }

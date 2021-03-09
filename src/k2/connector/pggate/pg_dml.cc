@@ -297,7 +297,7 @@ Result<bool> PgDml::FetchDataFromServer() {
     }
 
     // Execute sql_op_ again for the new set of WHERE condition from the nested query.
-    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute(true)), RequestSent::kTrue, IllegalState,
+    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute()), RequestSent::kTrue, IllegalState,
               "SQL read operation was not sent");
 
     // Get the rowsets from sql operator.
