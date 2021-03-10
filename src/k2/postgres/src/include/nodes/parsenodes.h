@@ -2183,7 +2183,6 @@ typedef struct Constraint
 
 typedef enum
 {
-	NUM_TABLETS = 0,
 	SPLIT_POINTS = 1
 } yb_split_type;
 
@@ -2192,7 +2191,6 @@ typedef struct OptSplit
 	NodeTag type;
 
 	yb_split_type split_type;
-	int num_tablets;
 	List *split_points;
 } OptSplit;
 

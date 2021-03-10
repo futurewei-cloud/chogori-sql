@@ -162,11 +162,6 @@ YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first);
 
-YBCStatus YBCPgCreateTableSetNumTablets(YBCPgStatement handle, int32_t num_tablets);
-
-YBCStatus YBCPgCreateTableAddSplitRow(YBCPgStatement handle, int num_cols,
-                                        YBCPgTypeEntity **types, uint64_t *data);
-
 YBCStatus YBCPgExecCreateTable(YBCPgStatement handle);
 
 YBCStatus YBCPgNewAlterTable(YBCPgOid database_oid,
@@ -240,11 +235,6 @@ YBCStatus YBCPgNewCreateIndex(const char *database_name,
 YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
                                     const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first);
-
-YBCStatus YBCPgCreateIndexSetNumTablets(YBCPgStatement handle, int32_t num_tablets);
-
-YBCStatus YBCPgCreateIndexAddSplitRow(YBCPgStatement handle, int num_cols,
-                                      YBCPgTypeEntity **types, uint64_t *data);
 
 YBCStatus YBCPgExecCreateIndex(YBCPgStatement handle);
 

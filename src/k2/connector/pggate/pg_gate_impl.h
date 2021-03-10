@@ -194,9 +194,6 @@ class PgGateApiImpl {
                                       const YBCPgTypeEntity *attr_type, bool is_hash,
                                       bool is_range, bool is_desc, bool is_nulls_first);
 
-  CHECKED_STATUS CreateTableAddSplitRow(PgStatement *handle, int num_cols,
-                                        YBCPgTypeEntity **types, uint64_t *data);
-
   CHECKED_STATUS ExecCreateTable(PgStatement *handle);
 
   CHECKED_STATUS NewAlterTable(const PgObjectId& table_object_id,
@@ -252,9 +249,6 @@ class PgGateApiImpl {
   CHECKED_STATUS CreateIndexAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
                                       const YBCPgTypeEntity *attr_type, bool is_hash,
                                       bool is_range, bool is_desc, bool is_nulls_first);
-
-  CHECKED_STATUS CreateIndexAddSplitRow(PgStatement *handle, int num_cols,
-                                        YBCPgTypeEntity **types, uint64_t *data);
 
   CHECKED_STATUS ExecCreateIndex(PgStatement *handle);
 

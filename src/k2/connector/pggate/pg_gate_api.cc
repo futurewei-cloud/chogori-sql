@@ -315,19 +315,6 @@ YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
 
-YBCStatus YBCPgCreateTableSetNumTablets(YBCPgStatement handle, int32_t num_tablets) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgCreateTableSetNumTablets");
-  // no-op for setting up num_tablets
-  // TODO: remove this api from PG
-  return YBCStatusOK();
-}
-
-YBCStatus YBCPgCreateTableAddSplitRow(YBCPgStatement handle, int num_cols,
-                                        YBCPgTypeEntity **types, uint64_t *data) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgCreateTableAddSplitRow {}", num_cols);
-  return ToYBCStatus(api_impl->CreateTableAddSplitRow(handle, num_cols, types, data));
-}
-
 YBCStatus YBCPgExecCreateTable(YBCPgStatement handle) {
   K2LOG_V(log::pg, "PgGateAPI: YBCPgExecCreateTable");
   return ToYBCStatus(api_impl->ExecCreateTable(handle));
@@ -414,7 +401,6 @@ YBCStatus YBCPgGetColumnInfo(YBCPgTableDesc table_desc,
 YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
                                   YBCPgTableProperties *properties){
   K2LOG_V(log::pg, "PgGateAPI: YBCPgGetTableProperties");
-  CHECK_NOTNULL(properties)->num_tablets = table_desc->num_hash_key_columns();
   properties->num_hash_key_columns = table_desc->num_hash_key_columns();
   properties->is_colocated = false;
   return YBCStatusOK();
@@ -478,17 +464,6 @@ YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name
   K2LOG_V(log::pg, "PgGateAPI: YBCPgCreateIndexAddColumn (name: {}, order: {}, is_hash: {}, is_range: {})", attr_name, attr_num, is_hash, is_range);
   return ToYBCStatus(api_impl->CreateIndexAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
-}
-
-YBCStatus YBCPgCreateIndexSetNumTablets(YBCPgStatement handle, int32_t num_tablets){
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgCreateIndexSetNumTablets");
-  return YBCStatusOK();
-}
-
-YBCStatus YBCPgCreateIndexAddSplitRow(YBCPgStatement handle, int num_cols,
-                                      YBCPgTypeEntity **types, uint64_t *data){
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgCreateIndexAddSplitRow");
-  return ToYBCStatus(api_impl->CreateIndexAddSplitRow(handle, num_cols, types, data));
 }
 
 YBCStatus YBCPgExecCreateIndex(YBCPgStatement handle){
