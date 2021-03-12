@@ -22,7 +22,7 @@ FROM pg_depend
 WHERE classid = 'pg_operator'::regclass AND
       objid = '===(bool,bool)'::regoperator
 ORDER BY 1;
-                          ref                          | deptype 
+                          ref                          | deptype
 -------------------------------------------------------+---------
  function alter_op_test_fn(boolean,boolean)            | n
  function customcontsel(internal,oid,internal,integer) | n
@@ -36,7 +36,7 @@ ALTER OPERATOR === (boolean, boolean) SET (RESTRICT = NONE);
 ALTER OPERATOR === (boolean, boolean) SET (JOIN = NONE);
 SELECT oprrest, oprjoin FROM pg_operator WHERE oprname = '==='
   AND oprleft = 'boolean'::regtype AND oprright = 'boolean'::regtype;
- oprrest | oprjoin 
+ oprrest | oprjoin
 ---------+---------
  -       | -
 (1 row)
@@ -46,7 +46,7 @@ FROM pg_depend
 WHERE classid = 'pg_operator'::regclass AND
       objid = '===(bool,bool)'::regoperator
 ORDER BY 1;
-                    ref                     | deptype 
+                    ref                     | deptype
 --------------------------------------------+---------
  function alter_op_test_fn(boolean,boolean) | n
  schema public                              | n
@@ -56,7 +56,7 @@ ALTER OPERATOR === (boolean, boolean) SET (RESTRICT = contsel);
 ALTER OPERATOR === (boolean, boolean) SET (JOIN = contjoinsel);
 SELECT oprrest, oprjoin FROM pg_operator WHERE oprname = '==='
   AND oprleft = 'boolean'::regtype AND oprright = 'boolean'::regtype;
- oprrest |   oprjoin   
+ oprrest |   oprjoin
 ---------+-------------
  contsel | contjoinsel
 (1 row)
@@ -66,7 +66,7 @@ FROM pg_depend
 WHERE classid = 'pg_operator'::regclass AND
       objid = '===(bool,bool)'::regoperator
 ORDER BY 1;
-                    ref                     | deptype 
+                    ref                     | deptype
 --------------------------------------------+---------
  function alter_op_test_fn(boolean,boolean) | n
  schema public                              | n
@@ -75,7 +75,7 @@ ORDER BY 1;
 ALTER OPERATOR === (boolean, boolean) SET (RESTRICT = NONE, JOIN = NONE);
 SELECT oprrest, oprjoin FROM pg_operator WHERE oprname = '==='
   AND oprleft = 'boolean'::regtype AND oprright = 'boolean'::regtype;
- oprrest | oprjoin 
+ oprrest | oprjoin
 ---------+---------
  -       | -
 (1 row)
@@ -85,7 +85,7 @@ FROM pg_depend
 WHERE classid = 'pg_operator'::regclass AND
       objid = '===(bool,bool)'::regoperator
 ORDER BY 1;
-                    ref                     | deptype 
+                    ref                     | deptype
 --------------------------------------------+---------
  function alter_op_test_fn(boolean,boolean) | n
  schema public                              | n
@@ -94,7 +94,7 @@ ORDER BY 1;
 ALTER OPERATOR === (boolean, boolean) SET (RESTRICT = customcontsel, JOIN = contjoinsel);
 SELECT oprrest, oprjoin FROM pg_operator WHERE oprname = '==='
   AND oprleft = 'boolean'::regtype AND oprright = 'boolean'::regtype;
-    oprrest    |   oprjoin   
+    oprrest    |   oprjoin
 ---------------+-------------
  customcontsel | contjoinsel
 (1 row)
@@ -104,7 +104,7 @@ FROM pg_depend
 WHERE classid = 'pg_operator'::regclass AND
       objid = '===(bool,bool)'::regoperator
 ORDER BY 1;
-                          ref                          | deptype 
+                          ref                          | deptype
 -------------------------------------------------------+---------
  function alter_op_test_fn(boolean,boolean)            | n
  function customcontsel(internal,oid,internal,integer) | n
@@ -153,7 +153,7 @@ SELECT oprrest FROM pg_operator WHERE oprname = '==='
 
 -- Cleanup
 RESET SESSION AUTHORIZATION;
-ALTER OPERATOR === (boolean, boolean) OWNER TO yugabyte;
+ALTER OPERATOR === (boolean, boolean) OWNER TO postgres;
 DROP USER regress_alter_op_user;
 --
 -- Test SET SCHEMA

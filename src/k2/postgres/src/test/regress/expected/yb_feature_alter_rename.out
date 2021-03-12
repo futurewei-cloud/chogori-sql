@@ -9,17 +9,17 @@ create table foo(a int primary key, b int);
 insert into foo (a, b) values (1, 2);
 \d
         List of relations
- Schema | Name | Type  |  Owner   
+ Schema | Name | Type  |  Owner
 --------+------+-------+----------
- public | foo  | table | yugabyte
+ public | foo  | table | postgres
 (1 row)
 
 \d foo
                 Table "public.foo"
- Column |  Type   | Collation | Nullable | Default 
+ Column |  Type   | Collation | Nullable | Default
 --------+---------+-----------+----------+---------
- a      | integer |           | not null | 
- b      | integer |           |          | 
+ a      | integer |           | not null |
+ b      | integer |           |          |
 Indexes:
     "foo_pkey" PRIMARY KEY, lsm (a HASH)
 
@@ -29,7 +29,7 @@ ERROR:  column "b" does not exist
 LINE 1: select a, b from foo;
                   ^
 select a, c from foo;
- a | c 
+ a | c
 ---+---
  1 | 2
 (1 row)
@@ -41,10 +41,10 @@ LINE 1: insert into foo (a, b) values (2, 3);
 insert into foo (a, c) values (3, 4);
 \d foo
                 Table "public.foo"
- Column |  Type   | Collation | Nullable | Default 
+ Column |  Type   | Collation | Nullable | Default
 --------+---------+-----------+----------+---------
- a      | integer |           | not null | 
- c      | integer |           |          | 
+ a      | integer |           | not null |
+ c      | integer |           |          |
 Indexes:
     "foo_pkey" PRIMARY KEY, lsm (a HASH)
 
@@ -54,7 +54,7 @@ ERROR:  relation "foo" does not exist
 LINE 1: select * from foo;
                       ^
 select * from bar;
- a | c 
+ a | c
 ---+---
  1 | 2
  3 | 4
@@ -62,9 +62,9 @@ select * from bar;
 
 \d
         List of relations
- Schema | Name | Type  |  Owner   
+ Schema | Name | Type  |  Owner
 --------+------+-------+----------
- public | bar  | table | yugabyte
+ public | bar  | table | postgres
 (1 row)
 
 \c test_rename1;
@@ -73,16 +73,15 @@ alter database test_rename2 rename to postgres; -- fail
 ERROR:  database "postgres" already exists
 \l
                                    List of databases
-      Name       |  Owner   | Encoding | Collate |    Ctype    |   Access privileges   
+      Name       |  Owner   | Encoding | Collate |    Ctype    |   Access privileges
 -----------------+----------+----------+---------+-------------+-----------------------
- postgres        | postgres | UTF8     | C       | en_US.UTF-8 | 
- system_platform | postgres | UTF8     | C       | en_US.UTF-8 | 
+ postgres        | postgres | UTF8     | C       | en_US.UTF-8 |
+ system_platform | postgres | UTF8     | C       | en_US.UTF-8 |
  template0       | postgres | UTF8     | C       | en_US.UTF-8 | =c/postgres          +
                  |          |          |         |             | postgres=CTc/postgres
  template1       | postgres | UTF8     | C       | en_US.UTF-8 | =c/postgres          +
                  |          |          |         |             | postgres=CTc/postgres
- test_rename1    | yugabyte | UTF8     | C       | en_US.UTF-8 | 
- test_rename2    | yugabyte | UTF8     | C       | en_US.UTF-8 | 
- yugabyte        | postgres | UTF8     | C       | en_US.UTF-8 | 
+ test_rename1    | postgres | UTF8     | C       | en_US.UTF-8 |
+ test_rename2    | postgres | UTF8     | C       | en_US.UTF-8 |
 (7 rows)
 

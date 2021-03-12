@@ -231,43 +231,43 @@ CREATE INDEX idx_range5 ON tab_range_nonkey5 (a);
                  List of relations
  Schema |          Name          | Type  |  Owner
 --------+------------------------+-------+----------
- public | tab_key                | table | yugabyte
- public | tab_nonkey             | table | yugabyte
- public | tab_nonkey_noco        | table | yugabyte
- public | tab_range              | table | yugabyte
- public | tab_range_colo         | table | yugabyte
- public | tab_range_nonkey       | table | yugabyte
- public | tab_range_nonkey2      | table | yugabyte
- public | tab_range_nonkey3      | table | yugabyte
- public | tab_range_nonkey4      | table | yugabyte
- public | tab_range_nonkey5      | table | yugabyte
- public | tab_range_nonkey_noco  | table | yugabyte
- public | tab_range_nonkey_noco2 | table | yugabyte
- public | tab_range_nonkey_noco3 | table | yugabyte
- public | tab_range_range        | table | yugabyte
+ public | tab_key                | table | postgres
+ public | tab_nonkey             | table | postgres
+ public | tab_nonkey_noco        | table | postgres
+ public | tab_range              | table | postgres
+ public | tab_range_colo         | table | postgres
+ public | tab_range_nonkey       | table | postgres
+ public | tab_range_nonkey2      | table | postgres
+ public | tab_range_nonkey3      | table | postgres
+ public | tab_range_nonkey4      | table | postgres
+ public | tab_range_nonkey5      | table | postgres
+ public | tab_range_nonkey_noco  | table | postgres
+ public | tab_range_nonkey_noco2 | table | postgres
+ public | tab_range_nonkey_noco3 | table | postgres
+ public | tab_range_range        | table | postgres
 (14 rows)
 
 \di
                                 List of relations
  Schema |            Name             | Type  |  Owner   |         Table
 --------+-----------------------------+-------+----------+------------------------
- public | idx_range                   | index | yugabyte | tab_range_nonkey2
- public | idx_range2                  | index | yugabyte | tab_range_nonkey_noco
- public | idx_range3                  | index | yugabyte | tab_range_nonkey_noco2
- public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
- public | idx_range5                  | index | yugabyte | tab_range_nonkey5
- public | tab_key_pkey                | index | yugabyte | tab_key
- public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
- public | tab_range_nonkey2_pkey      | index | yugabyte | tab_range_nonkey2
- public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
- public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
- public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
- public | tab_range_nonkey_noco2_pkey | index | yugabyte | tab_range_nonkey_noco2
- public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
- public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
- public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
- public | tab_range_pkey              | index | yugabyte | tab_range
- public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+ public | idx_range                   | index | postgres | tab_range_nonkey2
+ public | idx_range2                  | index | postgres | tab_range_nonkey_noco
+ public | idx_range3                  | index | postgres | tab_range_nonkey_noco2
+ public | idx_range4                  | index | postgres | tab_range_nonkey_noco3
+ public | idx_range5                  | index | postgres | tab_range_nonkey5
+ public | tab_key_pkey                | index | postgres | tab_key
+ public | tab_range_colo_pkey         | index | postgres | tab_range_colo
+ public | tab_range_nonkey2_pkey      | index | postgres | tab_range_nonkey2
+ public | tab_range_nonkey3_pkey      | index | postgres | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | postgres | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | postgres | tab_range_nonkey5
+ public | tab_range_nonkey_noco2_pkey | index | postgres | tab_range_nonkey_noco2
+ public | tab_range_nonkey_noco3_pkey | index | postgres | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | postgres | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | postgres | tab_range_nonkey
+ public | tab_range_pkey              | index | postgres | tab_range
+ public | tab_range_range_pkey        | index | postgres | tab_range_range
 (17 rows)
 
 -- TRUNCATE TABLE
@@ -336,43 +336,43 @@ SELECT * FROM tab_range_nonkey_noco2;
                  List of relations
  Schema |          Name          | Type  |  Owner
 --------+------------------------+-------+----------
- public | tab_key                | table | yugabyte
- public | tab_nonkey             | table | yugabyte
- public | tab_nonkey_noco        | table | yugabyte
- public | tab_range              | table | yugabyte
- public | tab_range_colo         | table | yugabyte
- public | tab_range_nonkey       | table | yugabyte
- public | tab_range_nonkey2      | table | yugabyte
- public | tab_range_nonkey3      | table | yugabyte
- public | tab_range_nonkey4      | table | yugabyte
- public | tab_range_nonkey5      | table | yugabyte
- public | tab_range_nonkey_noco  | table | yugabyte
- public | tab_range_nonkey_noco2 | table | yugabyte
- public | tab_range_nonkey_noco3 | table | yugabyte
- public | tab_range_range        | table | yugabyte
+ public | tab_key                | table | postgres
+ public | tab_nonkey             | table | postgres
+ public | tab_nonkey_noco        | table | postgres
+ public | tab_range              | table | postgres
+ public | tab_range_colo         | table | postgres
+ public | tab_range_nonkey       | table | postgres
+ public | tab_range_nonkey2      | table | postgres
+ public | tab_range_nonkey3      | table | postgres
+ public | tab_range_nonkey4      | table | postgres
+ public | tab_range_nonkey5      | table | postgres
+ public | tab_range_nonkey_noco  | table | postgres
+ public | tab_range_nonkey_noco2 | table | postgres
+ public | tab_range_nonkey_noco3 | table | postgres
+ public | tab_range_range        | table | postgres
 (14 rows)
 
 \di
                                 List of relations
  Schema |            Name             | Type  |  Owner   |         Table
 --------+-----------------------------+-------+----------+------------------------
- public | idx_range                   | index | yugabyte | tab_range_nonkey2
- public | idx_range2                  | index | yugabyte | tab_range_nonkey_noco
- public | idx_range3                  | index | yugabyte | tab_range_nonkey_noco2
- public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
- public | idx_range5                  | index | yugabyte | tab_range_nonkey5
- public | tab_key_pkey                | index | yugabyte | tab_key
- public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
- public | tab_range_nonkey2_pkey      | index | yugabyte | tab_range_nonkey2
- public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
- public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
- public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
- public | tab_range_nonkey_noco2_pkey | index | yugabyte | tab_range_nonkey_noco2
- public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
- public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
- public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
- public | tab_range_pkey              | index | yugabyte | tab_range
- public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+ public | idx_range                   | index | postgres | tab_range_nonkey2
+ public | idx_range2                  | index | postgres | tab_range_nonkey_noco
+ public | idx_range3                  | index | postgres | tab_range_nonkey_noco2
+ public | idx_range4                  | index | postgres | tab_range_nonkey_noco3
+ public | idx_range5                  | index | postgres | tab_range_nonkey5
+ public | tab_key_pkey                | index | postgres | tab_key
+ public | tab_range_colo_pkey         | index | postgres | tab_range_colo
+ public | tab_range_nonkey2_pkey      | index | postgres | tab_range_nonkey2
+ public | tab_range_nonkey3_pkey      | index | postgres | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | postgres | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | postgres | tab_range_nonkey5
+ public | tab_range_nonkey_noco2_pkey | index | postgres | tab_range_nonkey_noco2
+ public | tab_range_nonkey_noco3_pkey | index | postgres | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | postgres | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | postgres | tab_range_nonkey
+ public | tab_range_pkey              | index | postgres | tab_range
+ public | tab_range_range_pkey        | index | postgres | tab_range_range
 (17 rows)
 
 -- ALTER TABLE
@@ -471,36 +471,36 @@ EXPLAIN SELECT * FROM tab_range_nonkey5 WHERE a = 1;
                  List of relations
  Schema |          Name          | Type  |  Owner
 --------+------------------------+-------+----------
- public | tab_key                | table | yugabyte
- public | tab_nonkey             | table | yugabyte
- public | tab_range_colo         | table | yugabyte
- public | tab_range_nonkey       | table | yugabyte
- public | tab_range_nonkey3      | table | yugabyte
- public | tab_range_nonkey4      | table | yugabyte
- public | tab_range_nonkey5      | table | yugabyte
- public | tab_range_nonkey_noco  | table | yugabyte
- public | tab_range_nonkey_noco3 | table | yugabyte
- public | tab_range_range        | table | yugabyte
+ public | tab_key                | table | postgres
+ public | tab_nonkey             | table | postgres
+ public | tab_range_colo         | table | postgres
+ public | tab_range_nonkey       | table | postgres
+ public | tab_range_nonkey3      | table | postgres
+ public | tab_range_nonkey4      | table | postgres
+ public | tab_range_nonkey5      | table | postgres
+ public | tab_range_nonkey_noco  | table | postgres
+ public | tab_range_nonkey_noco3 | table | postgres
+ public | tab_range_range        | table | postgres
 (10 rows)
 
 \di
                                 List of relations
  Schema |            Name             | Type  |  Owner   |         Table
 --------+-----------------------------+-------+----------+------------------------
- public | idx_range4                  | index | yugabyte | tab_range_nonkey_noco3
- public | tab_key_pkey                | index | yugabyte | tab_key
- public | tab_range_colo_pkey         | index | yugabyte | tab_range_colo
- public | tab_range_nonkey3_pkey      | index | yugabyte | tab_range_nonkey3
- public | tab_range_nonkey4_pkey      | index | yugabyte | tab_range_nonkey4
- public | tab_range_nonkey5_pkey      | index | yugabyte | tab_range_nonkey5
- public | tab_range_nonkey_noco3_pkey | index | yugabyte | tab_range_nonkey_noco3
- public | tab_range_nonkey_noco_pkey  | index | yugabyte | tab_range_nonkey_noco
- public | tab_range_nonkey_pkey       | index | yugabyte | tab_range_nonkey
- public | tab_range_range_pkey        | index | yugabyte | tab_range_range
+ public | idx_range4                  | index | postgres | tab_range_nonkey_noco3
+ public | tab_key_pkey                | index | postgres | tab_key
+ public | tab_range_colo_pkey         | index | postgres | tab_range_colo
+ public | tab_range_nonkey3_pkey      | index | postgres | tab_range_nonkey3
+ public | tab_range_nonkey4_pkey      | index | postgres | tab_range_nonkey4
+ public | tab_range_nonkey5_pkey      | index | postgres | tab_range_nonkey5
+ public | tab_range_nonkey_noco3_pkey | index | postgres | tab_range_nonkey_noco3
+ public | tab_range_nonkey_noco_pkey  | index | postgres | tab_range_nonkey_noco
+ public | tab_range_nonkey_pkey       | index | postgres | tab_range_nonkey
+ public | tab_range_range_pkey        | index | postgres | tab_range_range
 (10 rows)
 
 -- drop database
-\c yugabyte
+\c postgres
 DROP DATABASE colocation_test;
 \c colocation_test
 \connect: FATAL:  database "colocation_test" does not exist
