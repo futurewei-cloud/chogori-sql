@@ -1,7 +1,6 @@
 --
 -- FOREIGN KEY
 --
--- TODO: Run this test with REPEATABLE READ isolation level:                                                                                                                                                            --       https://github.com/yugabyte/yugabyte-db/issues/2604
 --
 -- MATCH FULL
 --
@@ -48,7 +47,7 @@ SELECT * FROM FKTABLE ORDER BY ftest1;
 -- Update a row from PK TABLE
 UPDATE PKTABLE SET ptest1=1 WHERE ptest1=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Check FKTABLE for update of matched row
 SELECT * FROM FKTABLE ORDER BY ftest1;
  ftest1 | ftest2
@@ -137,7 +136,7 @@ SELECT * FROM FKTABLE ORDER BY ftest1, ftest2, ftest3;
 -- Update a row from PK TABLE
 UPDATE PKTABLE SET ptest1=1 WHERE ptest1=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Check FKTABLE for update of matched row
 SELECT * FROM FKTABLE ORDER BY ftest1, ftest2, ftest3;
  ftest1 | ftest2 | ftest3
@@ -154,12 +153,12 @@ ALTER TABLE PKTABLE ALTER COLUMN ptest1 TYPE bigint;
 ERROR:  ALTER TABLE ALTER column not supported yet
 LINE 1: ALTER TABLE PKTABLE ALTER COLUMN ptest1 TYPE bigint;
                             ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 ALTER TABLE FKTABLE ALTER COLUMN ftest1 TYPE bigint;
 ERROR:  ALTER TABLE ALTER column not supported yet
 LINE 1: ALTER TABLE FKTABLE ALTER COLUMN ftest1 TYPE bigint;
                             ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 SELECT * FROM PKTABLE ORDER BY ptest1, ptest2;
  ptest1 | ptest2 | ptest3
 --------+--------+---------
@@ -256,7 +255,7 @@ SELECT * FROM FKTABLE ORDER BY ftest1, ftest2;
 -- Update a row from PK TABLE
 UPDATE PKTABLE SET ptest1=1 WHERE ptest1=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Check FKTABLE for update of matched row
 SELECT * FROM FKTABLE ORDER BY ftest1, ftest2;
  ftest1 | ftest2 | ftest3
@@ -336,11 +335,11 @@ SELECT * FROM PKTABLE ORDER BY ptest1, ptest2;
 -- Update a row from PK TABLE (should fail)
 UPDATE PKTABLE SET ptest1=0 WHERE ptest1=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Update a row from PK TABLE (should succeed)
 UPDATE PKTABLE SET ptest1=0 WHERE ptest1=4;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Check PKTABLE for updates
 SELECT * FROM PKTABLE ORDER BY ptest1, ptest2;
  ptest1 | ptest2
@@ -387,11 +386,11 @@ SELECT * from FKTABLE ORDER BY ftest1, ftest2, ftest3;
 -- Try to update something that should fail
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to update something that should succeed
 UPDATE PKTABLE set ptest1=1 WHERE ptest2=3;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to delete something that should fail
 DELETE FROM PKTABLE where ptest1=1 and ptest2=2 and ptest3=3;
 ERROR:  update or delete on table "pktable" violates foreign key constraint "constrname3" on table "fktable"
@@ -452,11 +451,11 @@ SELECT * from FKTABLE ORDER BY ftest1, ftest2, ftest3;
 -- Try to update something that will cascade
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to update something that should not cascade
 UPDATE PKTABLE set ptest1=1 WHERE ptest2=3;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE ORDER BY ptest1, ptest2, ptest3;
  ptest1 | ptest2 | ptest3 | ptest4
@@ -553,11 +552,11 @@ SELECT * from FKTABLE ORDER BY ftest1, ftest2, ftest3;
 -- Try to update something that will set null
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to update something that should not set null
 UPDATE PKTABLE set ptest2=2 WHERE ptest2=3 and ptest1=1;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE ORDER BY ptest1, ptest2, ptest3;
  ptest1 | ptest2 | ptest3 | ptest4
@@ -663,18 +662,18 @@ SELECT * from FKTABLE ORDER BY ftest1, ftest2, ftest3;
 -- Try to update something that will fail
 UPDATE PKTABLE set ptest2=5 where ptest2=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to update something that will set default
 UPDATE PKTABLE set ptest1=0, ptest2=-1, ptest3=-2 where ptest2=2;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 UPDATE PKTABLE set ptest2=10 where ptest2=4;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Try to update something that should not set default
 UPDATE PKTABLE set ptest2=2 WHERE ptest2=3 and ptest1=1;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 -- Show PKTABLE and FKTABLE
 SELECT * from PKTABLE ORDER BY ptest1, ptest2, ptest3;
  ptest1 | ptest2 | ptest3 | ptest4
@@ -893,7 +892,7 @@ create table pktable (ptest1 int, primary key(base1), unique(base1, ptest1)) inh
 ERROR:  INHERITS not supported yet
 LINE 1: ...1 int, primary key(base1), unique(base1, ptest1)) inherits (...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1129. Click '+' on the description to raise its priority
+HINT:
 /*
 create table fktable (ftest1 int references pktable(base1));
 -- now some ins, upd, del
@@ -1177,7 +1176,7 @@ SAVEPOINT savept1;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT savept1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 -- don't change FK
 UPDATE fktable SET id = id + 1;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -1189,7 +1188,7 @@ SAVEPOINT savept1;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT savept1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 -- doesn't match PK, but no error yet
 INSERT INTO fktable VALUES (0, 20);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -1197,7 +1196,7 @@ RELEASE SAVEPOINT savept1;
 ERROR:  RELEASE SAVEPOINT <transaction> not supported yet
 LINE 1: RELEASE SAVEPOINT savept1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 -- don't change FK
 UPDATE fktable SET id = id + 1;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -1211,7 +1210,7 @@ SAVEPOINT savept1;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT savept1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 -- don't change FK
 UPDATE fktable SET id = id + 1;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -1220,7 +1219,7 @@ ROLLBACK TO savept1;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO savept1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 -- should catch error from initial INSERT
 COMMIT;
 --
@@ -1231,7 +1230,7 @@ ALTER TABLE fktable ALTER CONSTRAINT fktable_fk_fkey DEFERRABLE INITIALLY IMMEDI
 ERROR:  ALTER TABLE ALTER CONSTRAINT not supported yet
 LINE 1: ALTER TABLE fktable ALTER CONSTRAINT fktable_fk_fkey DEFERRA...
                             ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 BEGIN;
 -- doesn't match FK, should throw error now
 UPDATE pktable SET id = 10 WHERE id = 5;
@@ -1249,7 +1248,7 @@ ALTER TABLE fktable ALTER CONSTRAINT fktable_fk_fkey NOT DEFERRABLE;
 ERROR:  ALTER TABLE ALTER CONSTRAINT not supported yet
 LINE 1: ALTER TABLE fktable ALTER CONSTRAINT fktable_fk_fkey NOT DEF...
                             ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 -- illegal option
 ALTER TABLE fktable ALTER CONSTRAINT fktable_fk_fkey NOT DEFERRABLE INITIALLY DEFERRED;
 ERROR:  constraint declared INITIALLY DEFERRED must be DEFERRABLE
@@ -1445,7 +1444,7 @@ ERROR:  update or delete on table "pktable2" violates foreign key constraint "fk
 DETAIL:  Key (d, e)=(4, 5) is still referenced from table "fktable2".
 update pktable2 set d = 5;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 drop table pktable2, fktable2;
 --
 -- Test deferred FK check on a tuple deleted by a rolled-back subtransaction
@@ -1459,14 +1458,14 @@ savepoint x;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: savepoint x;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 delete from fktable2;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback to x;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: rollback to x;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 commit;
 begin;
 insert into fktable2 values(2);
@@ -1474,14 +1473,14 @@ savepoint x;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: savepoint x;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 delete from fktable2;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback to x;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: rollback to x;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 commit; -- fail
 --
 -- Test that we prevent dropping FK constraint with pending trigger events
@@ -1510,7 +1509,7 @@ CREATE TABLE fk_partitioned_pk (a int, b int, primary key (a, b))
 ERROR:  PARTITION BY not supported yet
 LINE 2:   PARTITION BY RANGE (a, b);
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:  
 /*
 -- verify with create table first ...
 CREATE TABLE fk_notpartitioned_fk (a int, b int,

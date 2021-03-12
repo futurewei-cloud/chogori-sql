@@ -291,7 +291,7 @@ select * from rtest_v1 ORDER BY a, b;
 -- updates in a mergejoin
 update rtest_v1 set b = rtest_t2.b from rtest_t2 where rtest_v1.a = rtest_t2.a;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 -- TODO(jason): uncomment when issue #738 is closed or closing
 -- select * from rtest_v1 ORDER BY a, b;
 -- insert into rtest_v1 select * from rtest_t3;
@@ -399,7 +399,7 @@ select ename, who = current_user as "matches user", action, newsal, oldsal from 
 update rtest_empmass set salary = salary + '1000.00';
 update rtest_emp set salary = rtest_empmass.salary from rtest_empmass where rtest_emp.ename = rtest_empmass.ename;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 select ename, who = current_user as "matches user", action, newsal, oldsal from rtest_emplog order by ename, action, newsal;
         ename         | matches user |   action   |   newsal   |   oldsal
 ----------------------+--------------+------------+------------+------------
@@ -417,7 +417,7 @@ delete from rtest_emp using rtest_empmass where rtest_emp.ename = rtest_empmass.
 ERROR:  USING clause in DELETE not supported yet
 LINE 1: delete from rtest_emp using rtest_empmass where rtest_emp.en...
                               ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:  
 select ename, who = current_user as "matches user", action, newsal, oldsal from rtest_emplog order by ename, action, newsal;
         ename         | matches user |   action   |   newsal   |   oldsal
 ----------------------+--------------+------------+------------+------------

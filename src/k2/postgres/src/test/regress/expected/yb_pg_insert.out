@@ -169,4 +169,4 @@ create table range_parted (
 ERROR:  PARTITION BY not supported yet
 LINE 4: ) partition by range (a, (b+0));
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:  

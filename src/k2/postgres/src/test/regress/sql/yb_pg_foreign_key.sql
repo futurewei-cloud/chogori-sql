@@ -1,7 +1,6 @@
 --
 -- FOREIGN KEY
 --
--- TODO: Run this test with REPEATABLE READ isolation level:                                                                                                                                                            --       https://github.com/yugabyte/yugabyte-db/issues/2604
 --
 -- MATCH FULL
 --

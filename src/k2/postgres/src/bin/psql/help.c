@@ -145,7 +145,7 @@ usage(unsigned short int pager)
 
 	fprintf(output, _("\nFor more information, type \"\\?\" (for internal commands) or \"\\help\" (for SQL\n"
 					  "commands) from within ysqlsh, or consult the ysqlsh section in YugabyteDB docs.\n\n"));
-	fprintf(output, _("Report bugs on GitHub at https://github.com/YugaByte/yugabyte-db/issues.\n"));
+	fprintf(output, _("Report bugs on GitHub at https://github.com/futurewei-cloud/chogori-sql/issues.\n"));
 
 	ClosePager(output);
 }

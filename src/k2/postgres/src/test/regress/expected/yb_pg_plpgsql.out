@@ -2973,7 +2973,7 @@ end$$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 5: c1 cursor (f1 int) for select 1;
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 drop function shadowtest();
 ERROR:  function shadowtest() does not exist
 -- test errors when shadowing a variable
@@ -3018,7 +3018,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c scroll cursor for select f1 from int4_tbl;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3041,7 +3041,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c no scroll cursor for select f1 from int4_tbl;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();  -- fails because of NO SCROLL specification
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3064,7 +3064,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3087,7 +3087,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3111,7 +3111,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3139,7 +3139,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c cursor for select * from generate_series(1, 10);
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3162,7 +3162,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c cursor for select * from generate_series(1, 10);
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select * from sc_test();
 ERROR:  function sc_test() does not exist
 LINE 1: select * from sc_test();
@@ -3289,7 +3289,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select exc_using(5);
 ERROR:  function exc_using(integer) does not exist
 LINE 1: select exc_using(5);
@@ -3336,7 +3336,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c cursor(r1 integer, r2 integer)
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select forc01();
 ERROR:  function forc01() does not exist
 LINE 1: select forc01();
@@ -3358,7 +3358,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c cursor for select * from forc_test order by i;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select forc01();
 ERROR:  function forc01() does not exist
 LINE 1: select forc01();
@@ -3397,7 +3397,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor := 'fooled_ya';
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 select forc01();
 ERROR:  function forc01() does not exist
 LINE 1: select forc01();
@@ -3433,7 +3433,7 @@ $$ language plpgsql;
 ERROR:  Declare Cursor Variable not supported yet
 LINE 3:   c refcursor;
           ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 -- test RETURN QUERY EXECUTE
 create or replace function return_dquery()
 returns setof int as $$
@@ -4191,14 +4191,14 @@ SAVEPOINT a;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT a;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 select error2('nonexistent.stuffs');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO a;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO a;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 select error2('public.stuffs');
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback;
@@ -4242,7 +4242,7 @@ savepoint s1;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: savepoint s1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 select cast_invoker(20150718);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 select cast_invoker(-1); -- fails
@@ -4251,7 +4251,7 @@ rollback to savepoint s1;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: rollback to savepoint s1;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 select cast_invoker(20150719);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 select cast_invoker(20150720);
@@ -5137,7 +5137,7 @@ CREATE TRIGGER transition_table_base_ins_trig
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS oldtable NEW TABLE AS newtable
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 CREATE TRIGGER transition_table_base_ins_trig
   AFTER INSERT ON transition_table_base
   REFERENCING NEW TABLE AS newtable
@@ -5146,7 +5146,7 @@ CREATE TRIGGER transition_table_base_ins_trig
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING NEW TABLE AS newtable
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 INSERT INTO transition_table_base VALUES (1, 'One'), (2, 'Two');
 INSERT INTO transition_table_base VALUES (3, 'Three'), (4, 'Four');
 CREATE OR REPLACE FUNCTION transition_table_base_upd_func()
@@ -5178,7 +5178,7 @@ CREATE TRIGGER transition_table_base_upd_trig
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS oldtable NEW TABLE AS newtable
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 UPDATE transition_table_base
   SET val = '*' || val || '*'
   WHERE id BETWEEN 2 AND 3;
@@ -5223,7 +5223,7 @@ CREATE TRIGGER transition_table_level1_ri_parent_del_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS p
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 CREATE FUNCTION transition_table_level1_ri_parent_upd_func()
   RETURNS TRIGGER
   LANGUAGE plpgsql
@@ -5254,7 +5254,7 @@ CREATE TRIGGER transition_table_level1_ri_parent_upd_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS d NEW TABLE AS i
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 CREATE FUNCTION transition_table_level2_ri_child_insupd_func()
   RETURNS TRIGGER
   LANGUAGE plpgsql
@@ -5278,7 +5278,7 @@ CREATE TRIGGER transition_table_level2_ri_child_ins_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING NEW TABLE AS i
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 CREATE TRIGGER transition_table_level2_ri_child_upd_trigger
   AFTER UPDATE ON transition_table_level2
   REFERENCING NEW TABLE AS i
@@ -5287,7 +5287,7 @@ CREATE TRIGGER transition_table_level2_ri_child_upd_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING NEW TABLE AS i
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 -- create initial test data
 INSERT INTO transition_table_level1 (level1_no)
   SELECT generate_series(1,200);
@@ -5326,7 +5326,7 @@ CREATE TRIGGER transition_table_level2_bad_usage_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS dx
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 DELETE FROM transition_table_level2
   WHERE level2_no BETWEEN 301 AND 305;
 DROP TRIGGER transition_table_level2_bad_usage_trigger
@@ -5338,7 +5338,7 @@ DELETE FROM transition_table_level1
 UPDATE transition_table_level1 SET level1_no = -1
   WHERE level1_no = 30;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 INSERT INTO transition_table_level2 (level2_no, parent_no)
   VALUES (10000, 10000);
 UPDATE transition_table_level2 SET parent_no = 2000
@@ -5388,7 +5388,7 @@ CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS d NEW TABLE AS i
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 -- should work
 CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
   AFTER UPDATE ON alter_table_under_transition_tables
@@ -5398,7 +5398,7 @@ CREATE TRIGGER alter_table_under_transition_tables_upd_trigger
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 3:   REFERENCING OLD TABLE AS d NEW TABLE AS i
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 INSERT INTO alter_table_under_transition_tables
   VALUES (1, '1'), (2, '2'), (3, '3');
 UPDATE alter_table_under_transition_tables
@@ -5409,7 +5409,7 @@ ALTER TABLE alter_table_under_transition_tables
 ERROR:  ALTER TABLE ALTER column not supported yet
 LINE 2:   ALTER COLUMN name TYPE int USING name::integer;
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 UPDATE alter_table_under_transition_tables
   SET name = (name::text || name::text)::integer;
 -- now drop column 'name'
@@ -5418,7 +5418,7 @@ ALTER TABLE alter_table_under_transition_tables
 UPDATE alter_table_under_transition_tables
   SET id = id;
 ERROR:  Update PRIMARY KEY columns are not yet supported
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/659. Click '+' on the description to raise its priority
+HINT:
 --
 -- Test multiple reference to a transition table
 --
@@ -5439,7 +5439,7 @@ CREATE TRIGGER my_trigger AFTER UPDATE ON multi_test
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 2:   REFERENCING NEW TABLE AS new_test OLD TABLE as old_test
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 UPDATE multi_test SET i = i;
 DROP TABLE multi_test;
 DROP FUNCTION multi_test_trig();
@@ -5450,17 +5450,17 @@ CREATE TABLE partitioned_table (a int, b text) PARTITION BY LIST (a);
 ERROR:  PARTITION BY not supported yet
 LINE 1: CREATE TABLE partitioned_table (a int, b text) PARTITION BY ...
                                                        ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 CREATE TABLE pt_part1 PARTITION OF partitioned_table FOR VALUES IN (1);
 ERROR:  LIST PARTITION not supported yet
 LINE 1: ...ATE TABLE pt_part1 PARTITION OF partitioned_table FOR VALUES...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 CREATE TABLE pt_part2 PARTITION OF partitioned_table FOR VALUES IN (2);
 ERROR:  LIST PARTITION not supported yet
 LINE 1: ...ATE TABLE pt_part2 PARTITION OF partitioned_table FOR VALUES...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:  
 INSERT INTO partitioned_table VALUES (1, 'Row 1');
 ERROR:  relation "partitioned_table" does not exist
 LINE 1: INSERT INTO partitioned_table VALUES (1, 'Row 1');

@@ -74,7 +74,6 @@ SELECT first_value(ten) OVER (PARTITION BY four ORDER BY ten), ten, four FROM te
 
 -- last_value returns the last row of the frame, which is CURRENT ROW in ORDER BY window.
 -- Changed from  original window.sql: ORDER BY unique1 instead of ORDER BY ten
--- See for more information: https://github.com/yugabyte/yugabyte-db/issues/4832
 SELECT last_value(four) OVER (ORDER BY unique1), ten, four FROM tenk1 WHERE unique2 < 10 ORDER by 1,2,3;
 
 SELECT last_value(ten) OVER (PARTITION BY four), ten, four FROM
@@ -214,7 +213,6 @@ SELECT sum(unique1) over (rows between 2 preceding and 2 following exclude ties)
 FROM tenk1 WHERE unique1 < 10  ORDER by 1,2,3;
 
 -- Changed from  original window.sql (lines 218- 252): ORDER BY unique1 added.
--- See for more information: https://github.com/yugabyte/yugabyte-db/issues/4832
 SELECT first_value(unique1) over (ORDER BY unique1 rows between current row and 2 following exclude current row),
     unique1, four
 FROM tenk1 WHERE unique1 < 10  ORDER by 1,2,3;
@@ -225,7 +223,7 @@ FROM tenk1 WHERE unique1 < 10  ORDER by 1,2,3;
 
 SELECT first_value(unique1) over (ORDER BY unique1 rows between current row and 2 following exclude ties),
 	unique1, four
-FROM tenk1 WHERE unique1 < 10  ORDER by 1,2,3; 
+FROM tenk1 WHERE unique1 < 10  ORDER by 1,2,3;
 
 SELECT last_value(unique1) over (order by unique1 rows between current row and 2 following exclude current row),
 	unique1, four
@@ -854,11 +852,11 @@ from t1 where f1 = f2;  -- error, must have order by
 explain (costs off)
 select f1, sum(f1) over (partition by f1 order by f2
                          range between 1 preceding and 1 following)
-from t1 where f1 = f2 
+from t1 where f1 = f2
 ORDER by 1,2;
 select f1, sum(f1) over (partition by f1 order by f2
                          range between 1 preceding and 1 following)
-from t1 where f1 = f2 
+from t1 where f1 = f2
 ORDER by 1,2;
 select f1, sum(f1) over (partition by f1, f1 order by f2
                          range between 2 preceding and 1 preceding)
