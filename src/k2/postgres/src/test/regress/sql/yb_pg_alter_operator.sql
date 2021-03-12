@@ -110,7 +110,7 @@ SELECT oprrest FROM pg_operator WHERE oprname = '==='
 
 -- Cleanup
 RESET SESSION AUTHORIZATION;
-ALTER OPERATOR === (boolean, boolean) OWNER TO yugabyte;
+ALTER OPERATOR === (boolean, boolean) OWNER TO postgres;
 DROP USER regress_alter_op_user;
 
 --

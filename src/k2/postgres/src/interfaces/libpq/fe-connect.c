@@ -5377,8 +5377,8 @@ conninfo_add_defaults(PQconninfoOption *options, PQExpBuffer errorMessage)
 		 */
 		if (strcmp(option->keyword, "user") == 0)
 		{
-		  /* YugaByte default username to "postgres" */
-			option->val = strdup("yugabyte");
+		  /* chogori-sql default username to "postgres" */
+			option->val = strdup("postgres");
 			continue;
 		}
 	}

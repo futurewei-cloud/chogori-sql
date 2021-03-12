@@ -1329,7 +1329,7 @@ setup_config(void)
 
 	free(conflines);
 
-	/* Do not create pg_hba.conf in yugabyte */
+	/* Do not create pg_hba.conf in chogori-sql */
 	if (!IsYugaByteGlobalClusterInitdb() && !IsYugaByteLocalNodeInitdb()) {
 		/* pg_hba.conf */
 
@@ -2183,42 +2183,6 @@ make_postgres(FILE *cmdfd)
 	};
 
 	for (line = postgres_setup; *line; line++)
-		PG_CMD_PUTS(*line);
-}
-
-
-/*
- * Create yugabyte database and user.
- */
-static void
-make_yugabyte(FILE *cmdfd)
-{
-	const char *const *line;
-	static const char *const yugabyte_setup[] = {
-		"CREATE USER yugabyte SUPERUSER INHERIT CREATEROLE CREATEDB LOGIN REPLICATION BYPASSRLS PASSWORD 'yugabyte';\n\n",
-//		"CREATE DATABASE yugabyte;\n\n",
-//		"COMMENT ON DATABASE yugabyte IS 'default administrative connection database';\n\n",
-		NULL
-	};
-
-	for (line = yugabyte_setup; *line; line++)
-		PG_CMD_PUTS(*line);
-}
-
-
-/*
- * Create system_platform database.
- */
-static void
-make_system_platform(FILE *cmdfd) {
-	const char *const *line;
-	static const char *const system_platform_setup[] = {
-		"CREATE DATABASE system_platform;\n\n",
-		"COMMENT ON DATABASE system_platform IS 'system database for YugaByte platform';\n\n",
-		NULL
-	};
-
-	for (line = system_platform_setup; *line; line++)
 		PG_CMD_PUTS(*line);
 }
 
@@ -3244,13 +3208,6 @@ initialize_data_directory(void)
 	fputs(_("make_postgres ...\n "), stdout);
 	fflush(stdout);
 	make_postgres(cmdfd);
-
-	if (IsYugaByteGlobalClusterInitdb())
-	{
-		fputs(_("make_yugabyte ...\n "), stdout);
-		fflush(stdout);
-		make_yugabyte(cmdfd);
-	}
 
 	fputs(_("Finishing initdb steps ...\n "), stdout);
 	fflush(stdout);
