@@ -646,8 +646,7 @@ DefineIndex(Oid relationId,
 		ereport(ERROR,
 				(errmsg("index method \"%s\" not supported yet",
 						accessMethodName),
-				 errhint("See https://github.com/YugaByte/yugabyte-db/issues/1337. "
-						 "Click '+' on the description to raise its priority")));
+				 errhint(" ")));
 
 	accessMethodForm = (Form_pg_am) GETSTRUCT(tuple);
 	amRoutine = GetIndexAmRoutine(accessMethodForm->amhandler);

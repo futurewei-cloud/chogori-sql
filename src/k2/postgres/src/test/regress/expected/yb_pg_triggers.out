@@ -1344,7 +1344,7 @@ UPDATE 1
 UPDATE city_view v1 SET country_name = v2.country_name FROM city_view v2
     WHERE v2.city_name = 'Birmingham' AND v1.city_name = 'London' RETURNING *;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 -- DELETE .. RETURNING
 DELETE FROM city_view WHERE city_name = 'Birmingham' RETURNING *;
  city_id | city_name  | population | country_name | continent
@@ -1436,7 +1436,7 @@ UPDATE city_view v SET population = 599657
     RETURNING co.country_id, v.country_name,
               v.city_id, v.city_name, v.population;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 \set QUIET true
 SELECT * FROM city_view order by city_id;
  city_id |   city_name   | population | country_name |   continent
@@ -1869,7 +1869,7 @@ create trigger my_trigger after update on my_view referencing old table as old_t
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 1: create trigger my_trigger after update on my_view referencin...
                                                           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:
 drop function my_trigger_function();
 drop view my_view;
 drop table my_table;
@@ -1880,7 +1880,7 @@ create table parted_trig (a int) partition by list (a);
 ERROR:  PARTITION BY not supported yet
 LINE 1: create table parted_trig (a int) partition by list (a);
                                          ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 -- TODO When/if (PG-style) partitioned tables are supported in YB enabled the tests below.
 /*
 create function trigger_nothing() returns trigger
@@ -2551,7 +2551,7 @@ create trigger table1_trig
 ERROR:  REFERENCING clause (transition tables) not supported yet
 LINE 2:   after insert on table1 referencing new table as new_table
                                  ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1668. Click '+' on the description to raise its priority
+HINT:  
 -- TODO When transition tables ('REFERENCING' clause) are supported in YB enable the tests below.
 /*
 create trigger table2_trig

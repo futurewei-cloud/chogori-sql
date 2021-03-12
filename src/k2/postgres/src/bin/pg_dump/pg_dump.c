@@ -1053,7 +1053,7 @@ help(const char *progname)
 
 	printf(_("\nIf no database name is supplied, then the PGDATABASE environment\n"
 			 "variable value is used.\n\n"));
-	printf(_("Report bugs on https://github.com/YugaByte/yugabyte-db/issues/new\n"));
+	printf(_("Report bugs on https://github.com/futurewei-cloud/chogori-sql/issues/new\n"));
 }
 
 static void

@@ -17190,7 +17190,7 @@ raise_feature_not_supported_signal(int pos, core_yyscan_t yyscanner, const char 
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
-				 errhint("See https://github.com/YugaByte/yugabyte-db/issues/%d. "
+				 errhint("See https://github.com/futurewei-cloud/chogori-sql/issues/%d. "
 						 "Click '+' on the description to raise its priority", issue),
 				 parser_errposition(pos)));
 
@@ -17201,7 +17201,7 @@ raise_feature_not_supported_signal(int pos, core_yyscan_t yyscanner, const char 
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
 				 errhint("Please report the issue on "
-						 "https://github.com/YugaByte/yugabyte-db/issues"),
+						 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 				 parser_errposition(pos)));
 	}
 }

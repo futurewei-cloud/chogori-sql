@@ -76,8 +76,6 @@ std::vector<uint8_t> RandomBytes(size_t len, std::mt19937_64* rng) {
 }
 
 std::string RandomHumanReadableString(int len, Random* rnd) {
-  // TODO: https://yugabyte.atlassian.net/browse/ENG-1508: Avoid code duplication in yb::Random and
-  // rocksdb::Random. Currently this does not allow to reuse the same function in both code bases.
   std::string ret;
   ret.resize(len);
   for (int i = 0; i < len; ++i) {

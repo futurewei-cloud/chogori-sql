@@ -667,7 +667,7 @@ CREATE TABLE t2 (c float) INHERITS (t1);
 ERROR:  INHERITS not supported yet
 LINE 1: CREATE TABLE t2 (c float) INHERITS (t1);
                                   ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1129. Click '+' on the description to raise its priority
+HINT:
 GRANT ALL ON t2 TO public;
 ERROR:  relation "t2" does not exist
 -- TODO(dmitry): Uncomment when table t2 will be created (ie INHERITS feature will be enabled #1129)
@@ -682,7 +682,7 @@ ALTER TABLE t3 INHERIT t1;
 ERROR:  ALTER TABLE INHERIT not supported yet
 LINE 1: ALTER TABLE t3 INHERIT t1;
                        ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1124. Click '+' on the description to raise its priority
+HINT:
 GRANT ALL ON t3 TO public;
 COPY t3(a,b,c) FROM stdin;
 CREATE POLICY p1 ON t1 FOR ALL TO PUBLIC USING (a % 2 = 0); -- be even number
@@ -851,7 +851,7 @@ CREATE TABLE part_document (
 ERROR:  PARTITION BY not supported yet
 LINE 7: ) PARTITION BY RANGE (cid);
           ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 GRANT ALL ON part_document TO public;
 ERROR:  relation "part_document" does not exist
 -- Create partitions for document categories
@@ -859,17 +859,17 @@ CREATE TABLE part_document_fiction PARTITION OF part_document FOR VALUES FROM (1
 ERROR:  RANGE PARTITION not supported yet
 LINE 1: ... part_document_fiction PARTITION OF part_document FOR VALUES...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 CREATE TABLE part_document_satire PARTITION OF part_document FOR VALUES FROM (55) to (56);
 ERROR:  RANGE PARTITION not supported yet
 LINE 1: ...E part_document_satire PARTITION OF part_document FOR VALUES...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 CREATE TABLE part_document_nonfiction PARTITION OF part_document FOR VALUES FROM (99) to (100);
 ERROR:  RANGE PARTITION not supported yet
 LINE 1: ...rt_document_nonfiction PARTITION OF part_document FOR VALUES...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:
 GRANT ALL ON part_document_fiction TO public;
 ERROR:  relation "part_document_fiction" does not exist
 GRANT ALL ON part_document_satire TO public;
@@ -1381,48 +1381,48 @@ LINE 1: UPDATE t1 SET b = b WHERE f_leak(b) RETURNING oid, *, t1;
 EXPLAIN (COSTS OFF) UPDATE t2 SET b=t2.b FROM t3
 WHERE t2.a = 3 and t3.a = 2 AND f_leak(t2.b) AND f_leak(t3.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 UPDATE t2 SET b=t2.b FROM t3
 WHERE t2.a = 3 and t3.a = 2 AND f_leak(t2.b) AND f_leak(t3.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 EXPLAIN (COSTS OFF) UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 UPDATE t1 SET b=t1.b FROM t2
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 EXPLAIN (COSTS OFF) UPDATE t2 SET b=t2.b FROM t1
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 UPDATE t2 SET b=t2.b FROM t1
 WHERE t1.a = 3 and t2.a = 3 AND f_leak(t1.b) AND f_leak(t2.b);
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 -- updates with from clause self join
 EXPLAIN (COSTS OFF) UPDATE t2 t2_1 SET b = t2_2.b FROM t2 t2_2
 WHERE t2_1.a = 3 AND t2_2.a = t2_1.a AND t2_2.b = t2_1.b
 AND f_leak(t2_1.b) AND f_leak(t2_2.b) RETURNING *, t2_1, t2_2;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 UPDATE t2 t2_1 SET b = t2_2.b FROM t2 t2_2
 WHERE t2_1.a = 3 AND t2_2.a = t2_1.a AND t2_2.b = t2_1.b
 AND f_leak(t2_1.b) AND f_leak(t2_2.b) RETURNING *, t2_1, t2_2;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 EXPLAIN (COSTS OFF) UPDATE t1 t1_1 SET b = t1_2.b FROM t1 t1_2
 WHERE t1_1.a = 4 AND t1_2.a = t1_1.a AND t1_2.b = t1_1.b
 AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 UPDATE t1 t1_1 SET b = t1_2.b FROM t1 t1_2
 WHERE t1_1.a = 4 AND t1_2.a = t1_1.a AND t1_2.b = t1_1.b
 AND f_leak(t1_1.b) AND f_leak(t1_2.b) RETURNING *, t1_1, t1_2;
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 RESET SESSION AUTHORIZATION;
 SET row_security TO OFF;
 SELECT * FROM t1 ORDER BY a,b;
@@ -1480,7 +1480,7 @@ CREATE VIEW bv1 WITH (security_barrier) AS SELECT * FROM b1 WHERE a > 0 WITH CHE
 ERROR:  VIEW WITH CHECK OPTION not supported yet
 LINE 1: ...security_barrier) AS SELECT * FROM b1 WHERE a > 0 WITH CHECK...
                                                              ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 GRANT ALL ON bv1 TO regress_rls_carol;
 ERROR:  relation "bv1" does not exist
 SET SESSION AUTHORIZATION regress_rls_carol;
@@ -2882,31 +2882,31 @@ DECLARE current_check_cursor SCROLL CURSOR FOR SELECT * FROM current_check;
 ERROR:  DECLARE CURSOR not supported yet
 LINE 1: DECLARE current_check_cursor SCROLL CURSOR FOR SELECT * FROM...
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 -- Returns rows that can be seen according to SELECT policy, like plain SELECT
 -- above (even rows)
 FETCH ABSOLUTE 1 FROM current_check_cursor;
 ERROR:  FETCH not supported yet
 LINE 1: FETCH ABSOLUTE 1 FROM current_check_cursor;
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 -- Still cannot UPDATE row 2 through cursor
 UPDATE current_check SET payload = payload || '_new' WHERE CURRENT OF current_check_cursor RETURNING *;
 ERROR:  WHERE CURRENT OF not supported yet
 LINE 1: ...ATE current_check SET payload = payload || '_new' WHERE CURR...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/737. Click '+' on the description to raise its priority
+HINT:
 -- Can update row 4 through cursor, which is the next visible row
 FETCH RELATIVE 1 FROM current_check_cursor;
 ERROR:  FETCH not supported yet
 LINE 1: FETCH RELATIVE 1 FROM current_check_cursor;
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 UPDATE current_check SET payload = payload || '_new' WHERE CURRENT OF current_check_cursor RETURNING *;
 ERROR:  WHERE CURRENT OF not supported yet
 LINE 1: ...ATE current_check SET payload = payload || '_new' WHERE CURR...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/737. Click '+' on the description to raise its priority
+HINT:
 SELECT * FROM current_check;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 -- Plan should be a subquery TID scan
@@ -2914,28 +2914,28 @@ EXPLAIN (COSTS OFF) UPDATE current_check SET payload = payload WHERE CURRENT OF 
 ERROR:  WHERE CURRENT OF not supported yet
 LINE 1: ...S OFF) UPDATE current_check SET payload = payload WHERE CURR...
                                                              ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/737. Click '+' on the description to raise its priority
+HINT:
 -- Similarly can only delete row 4
 FETCH ABSOLUTE 1 FROM current_check_cursor;
 ERROR:  FETCH not supported yet
 LINE 1: FETCH ABSOLUTE 1 FROM current_check_cursor;
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 DELETE FROM current_check WHERE CURRENT OF current_check_cursor RETURNING *;
 ERROR:  WHERE CURRENT OF not supported yet
 LINE 1: DELETE FROM current_check WHERE CURRENT OF current_check_cur...
                                   ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/737. Click '+' on the description to raise its priority
+HINT:
 FETCH RELATIVE 1 FROM current_check_cursor;
 ERROR:  FETCH not supported yet
 LINE 1: FETCH RELATIVE 1 FROM current_check_cursor;
         ^
-HINT:  Please report the issue on https://github.com/YugaByte/yugabyte-db/issues
+HINT:  Please report the issue on https://github.com/futurewei-cloud/chogori-sql/issues
 DELETE FROM current_check WHERE CURRENT OF current_check_cursor RETURNING *;
 ERROR:  WHERE CURRENT OF not supported yet
 LINE 1: DELETE FROM current_check WHERE CURRENT OF current_check_cur...
                                   ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/737. Click '+' on the description to raise its priority
+HINT:
 SELECT * FROM current_check;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 COMMIT;
@@ -3032,68 +3032,68 @@ SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP ROLE regress_rls_eve; --fails due to dependency on POLICY p
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 ALTER POLICY p ON tbl1 TO regress_rls_frank USING (true);
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP ROLE regress_rls_eve; --fails due to dependency on GRANT SELECT
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 REVOKE ALL ON TABLE tbl1 FROM regress_rls_eve;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP ROLE regress_rls_eve; --succeeds
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP ROLE regress_rls_frank; --fails due to dependency on POLICY p
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP POLICY p ON tbl1;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP ROLE regress_rls_frank; -- succeeds
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 ROLLBACK; -- cleanup
 --
 -- Converting table to view
@@ -3106,7 +3106,7 @@ SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 CREATE RULE "_RETURN" AS ON SELECT TO t DO INSTEAD
   SELECT * FROM generate_series(1,5) t0(c); -- fails due to row level security enabled
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -3114,14 +3114,14 @@ ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 ALTER TABLE t DISABLE ROW LEVEL SECURITY;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 SAVEPOINT q;
 ERROR:  SAVEPOINT <transaction> not supported yet
 LINE 1: SAVEPOINT q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 CREATE RULE "_RETURN" AS ON SELECT TO t DO INSTEAD
   SELECT * FROM generate_series(1,5) t0(c); -- fails due to policy p on t
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
@@ -3129,7 +3129,7 @@ ROLLBACK TO q;
 ERROR:  ROLLBACK <transaction> not supported yet
 LINE 1: ROLLBACK TO q;
         ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1125. Click '+' on the description to raise its priority
+HINT:
 DROP POLICY p ON t;
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 CREATE RULE "_RETURN" AS ON SELECT TO t DO INSTEAD
@@ -3201,12 +3201,12 @@ INSERT INTO r1 SELECT a + 1 FROM r2 RETURNING *; -- OK
 
 UPDATE r1 SET a = r2.a + 2 FROM r2 WHERE r1.a = r2.a RETURNING *; -- OK
 ERROR:  FROM clause in UPDATE not supported yet
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 DELETE FROM r1 USING r2 WHERE r1.a = r2.a + 2 RETURNING *; -- OK
 ERROR:  USING clause in DELETE not supported yet
 LINE 1: DELETE FROM r1 USING r2 WHERE r1.a = r2.a + 2 RETURNING *;
                        ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/738. Click '+' on the description to raise its priority
+HINT:
 SELECT * FROM r1;
  a  | k
 ----+---
@@ -3490,7 +3490,7 @@ CREATE TABLE dob_t2 (c1 int) PARTITION BY RANGE (c1);
 ERROR:  PARTITION BY not supported yet
 LINE 1: CREATE TABLE dob_t2 (c1 int) PARTITION BY RANGE (c1);
                                      ^
-HINT:  See https://github.com/YugaByte/yugabyte-db/issues/1126. Click '+' on the description to raise its priority
+HINT:  
 CREATE POLICY p1 ON dob_t1 TO regress_rls_dob_role1 USING (true);
 DROP OWNED BY regress_rls_dob_role1;
 DROP POLICY p1 ON dob_t1; -- should fail, already gone

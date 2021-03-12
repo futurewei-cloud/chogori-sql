@@ -651,7 +651,7 @@ YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
-				 errhint("See https://github.com/YugaByte/yugabyte-db/issues/%d. "
+				 errhint("See https://github.com/futurewei-cloud/chogori-sql/issues/%d. "
 						 "Click '+' on the description to raise its priority", issue_no)));
 	}
 	else
@@ -660,7 +660,7 @@ YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
 				 errhint("Please report the issue on "
-						 "https://github.com/YugaByte/yugabyte-db/issues")));
+						 "https://github.com/futurewei-cloud/chogori-sql/issues")));
 	}
 }
 

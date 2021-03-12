@@ -372,7 +372,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 						 errmsg("Value other than default for %s option is "
 								"not yet supported", option->defname),
 						 errhint("Please report the issue on "
-								 "https://github.com/YugaByte/yugabyte-db"
+								 "https://github.com/futurewei-cloud/chogori-sql"
 								 "/issues"),
 						 parser_errposition(pstate, option->location)));
 		}
@@ -384,7 +384,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 errmsg("Value other than default, template0 or template1 "
 							"for template option is not yet supported"),
 					 errhint("Please report the issue on "
-							 "https://github.com/YugaByte/yugabyte-db/issues"),
+							 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 					 parser_errposition(pstate, dtemplate->location)));
 
 		if (dbistemplate)
@@ -393,7 +393,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 errmsg("Value other than default or false for "
 							"is_template option is not yet supported"),
 					 errhint("Please report the issue on "
-							 "https://github.com/YugaByte/yugabyte-db/issues"),
+							 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 					 parser_errposition(pstate, distemplate->location)));
 
 		if (encoding >= 0 && encoding != PG_UTF8)
@@ -402,7 +402,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 errmsg("Value other than unicode or utf8 for encoding "
 							"option is not yet supported"),
 					 errhint("Please report the issue on "
-							 "https://github.com/yugabyte/yugabyte-db/issues"),
+							 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 					 parser_errposition(pstate, dencoding->location)));
 
 		if (dcollate && dbcollate && strcmp(dbcollate, "C") != 0)
@@ -411,7 +411,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 errmsg("Value other than 'C' for lc_collate "
 							"option is not yet supported"),
 					 errhint("Please report the issue on "
-							 "https://github.com/YugaByte/yugabyte-db/issues"),
+							 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 					 parser_errposition(pstate, dcollate->location)));
 
 		if (dctype && dbctype && strcmp(dbctype, "en_US.UTF-8") != 0)
@@ -420,7 +420,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 errmsg("Value other than 'en_US.UTF-8' for lc_ctype "
 							"option is not yet supported"),
 					 errhint("Please report the issue on "
-							 "https://github.com/YugaByte/yugabyte-db/issues"),
+							 "https://github.com/futurewei-cloud/chogori-sql/issues"),
 					 parser_errposition(pstate, dctype->location)));
 	}
 
@@ -1603,7 +1603,7 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 						 errmsg("Altering %s option is not yet supported",
 								option->defname),
 						 errhint("Please report the issue on "
-								 "https://github.com/YugaByte/yugabyte-db"
+								 "https://github.com/futurewei-cloud/chogori-sql"
 								 "/issues"),
 						 parser_errposition(pstate, option->location)));
 			}

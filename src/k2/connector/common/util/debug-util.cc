@@ -667,8 +667,6 @@ std::string GetStackTrace(StackTraceLineFormat stack_trace_line_format,
     // Avoid multi-threaded access to libbacktrace which causes high memory consumption.
     std::lock_guard<std::mutex> l(*global_backtrace_state->mutex());
 
-    // TODO: https://yugabyte.atlassian.net/browse/ENG-4729
-
     const int backtrace_full_rv = backtrace_full(
         backtrace_state, /* skip = */ num_top_frames_to_skip + 1, BacktraceFullCallback,
         BacktraceErrorCallback, &context);
