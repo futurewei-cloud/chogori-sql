@@ -30,27 +30,29 @@ tests = []
 def makeTable(connFunc, sql):
     conn = connFunc()
     cur = conn.cursor()
+    code = 0
     try:
         cur.execute(sql)
         conn.commit()
     except Exception as exc:
-        print("Test failed, exception: " + exc)
-        return -1
+        print("Test failed, exception: " + str(exc))
+        code = -1
     finally:
         cur.close()
         conn.close()
+    return code
 
 def makeBasicTable(connFunc):
     return makeTable(connFunc, "CREATE TABLE test1 (id integer PRIMARY KEY, dataA integer);")
 
-tests.append(makeBasicTable)
 
 def makeTableWithManyTypes(connFunc):
-    return makeTable(connFunc, "CREATE TABLE test1 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);"
+    return makeTable(connFunc, "CREATE TABLE test2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
 
-tests.append(makeTableWithManyTypes)
 
 def makeTableWithoutPrimaryKey(connFunc):
-    return makeTable(connFunc, "CREATE TABLE test1 (id integer, dataA integer);")
+    return makeTable(connFunc, "CREATE TABLE test3 (id integer, dataA integer);")
 
+tests.append(makeBasicTable)
 tests.append(makeTableWithoutPrimaryKey)
+tests.append(makeTableWithManyTypes)

@@ -38,11 +38,11 @@ parser.add_argument("--test-list", nargs="*", default="", help="Specify which te
 args = parser.parse_args()
 
 def getConn():
-    return psycopg2.connect(dbname=args["db"], user="postgres", port=args["port"], host="localhost")
+    return psycopg2.connect(dbname=args.db, user="postgres", port=args.port, host="localhost")
 
-int i = 1
+i = 1
 for test in dmlsetup.tests:
-    print("Starting test " + i + " of " + len(dmlsetup.tests) + "...", end="")
-    test()
+    print("Starting test " + str(i) + " of " + str(len(dmlsetup.tests)) + ", " + test.__name__ + "...", end="")
+    test(getConn)
     print("Done")
     i += 1
