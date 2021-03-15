@@ -475,7 +475,7 @@ ybpgm_ExecutorEnd(QueryDesc *queryDesc)
 	  ybpgm_Store(Transaction, time);
 
 	if (IsA(queryDesc->planstate, AggState) &&
-		castNode(AggState, queryDesc->planstate)->yb_pushdown_supported)
+		castNode(AggState, queryDesc->planstate)->k2_pushdown_supported)
 	  ybpgm_Store(AggregatePushdown, time);
   }
 
