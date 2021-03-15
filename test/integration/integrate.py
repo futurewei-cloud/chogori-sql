@@ -26,23 +26,47 @@ SOFTWARE.
 
 import argparse
 import psycopg2
+import sys
+
+# Test scripts:
 import dmlsetup
+import ddlbasic
 
 
 parser = argparse.ArgumentParser(description="Runs chogori-sql integration tests")
-parser.add_argument("--stop-on-failure", default=True, help="Stop running tests after the first failure")
-parser.add_argument("--list-tests", default=False, help="Only list the tests, dont run them")
+parser.add_argument("--stop_on_failure", default=True, help="Stop running tests after the first failure")
+parser.add_argument("--list_tests", default=False, help="Only list the tests, dont run them")
 parser.add_argument("--db", default="postgres", help="The database to connect to")
 parser.add_argument("--port", default=5433, help="The port to connect to")
-parser.add_argument("--test-list", nargs="*", default="", help="Specify which tests to run. If not set then run all tests")
+parser.add_argument("--test_list", nargs="*", default="", help="Specify which tests to run. If not set then run all tests")
 args = parser.parse_args()
 
 def getConn():
     return psycopg2.connect(dbname=args.db, user="postgres", port=args.port, host="localhost")
 
+tests = dmlsetup.tests + ddlbasic.tests
 i = 1
-for test in dmlsetup.tests:
-    print("Starting test " + str(i) + " of " + str(len(dmlsetup.tests)) + ", " + test.__name__ + "...", end="")
-    test(getConn)
-    print("Done")
+rcode = 0
+for test in tests:
+    if args.list_tests:
+        print("test " + str(i) + " of " + str(len(tests)) + ", " + test.__name__)
+        i += 1
+        continue
+
+    if len(args.test_list) > 0 and str(i) not in args.test_list:
+        print("Skipping " + str(i))
+        i += 1
+        continue
+
+    print("Starting test " + str(i) + " of " + str(len(tests)) + ", " + test.__name__ + "...", end="")
+    err = test(getConn)
+    if err == 0:
+        print("Done")
+    else:
+        rcode = err
+
+    if err != 0 and args.stop_on_failure:
+        break
     i += 1
+
+sys.exit(rcode)

@@ -23,23 +23,30 @@ SOFTWARE.
 '''
 
 import psycopg2
-from helper import commitSQL
+import inspect
 
-tests = []
+# Helper function for tests. Executes given SQL and commits.
+def commitSQL(connFunc, sql):
+    conn = connFunc()
+    cur = conn.cursor()
+    code = 0
+    try:
+        cur.execute(sql)
+        conn.commit()
+    except Exception as exc:
+        print("Test failed, exception: " + str(exc))
+        code = -1
+    finally:
+        cur.close()
+        conn.close()
+    return code
 
-def makeBasicTable(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test1 (id integer PRIMARY KEY, dataA integer);")
-
-
-def makeTableWithManyTypes(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
-
-
-def makeTableWithoutPrimaryKey(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test3 (id integer, dataA integer);")
-
-# TODO add table already exists error case after #216 is fixed
-
-tests.append(makeBasicTable)
-tests.append(makeTableWithoutPrimaryKey)
-tests.append(makeTableWithManyTypes)
+def expectEQ(actual, expected):
+    if a == b:
+        return
+    upframe = inspect.getframeinfo(inspect.currentframe().f_back)
+    line = upframe.lineno
+    filename = upframe.filename
+    
+    print(filename + ": " + str(line) + " EQ expectation failed, actual: " + str(actual) + " expected: " + str(expected))
+    raise RuntimeError

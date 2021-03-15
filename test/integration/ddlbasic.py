@@ -22,24 +22,36 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+'''
+This file has tests for basic ddl statements (not joins, aggregates, or isolation tests)
+It depends on the dmlsetup tests.
+'''
+
 import psycopg2
-from helper import commitSQL
+from helper import commitSQL, expectEQ
 
 tests = []
 
-def makeBasicTable(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test1 (id integer PRIMARY KEY, dataA integer);")
+def basicRead(connFunc):
+    code = commitSQL(connFunc, "INSERT INTO test1 VALUES (13, 33);")
+    if code < 0:
+        return code
+    try:
+        conn = connFunc()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM test1 WHERE id=13;")
+        result = cur.fetchall()
+        expectEQ(len(result), 1)
+        record = result[0]
+        expectEQ(record[0], 13)
+        expectEQ(record[1], 33)
+    except Exception as exc:
+        print("Test failed, exception: " + str(exc))
+        code = -1
+    finally:
+        cur.close()
+        conn.close()
+    return code
+    
 
-
-def makeTableWithManyTypes(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
-
-
-def makeTableWithoutPrimaryKey(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test3 (id integer, dataA integer);")
-
-# TODO add table already exists error case after #216 is fixed
-
-tests.append(makeBasicTable)
-tests.append(makeTableWithoutPrimaryKey)
-tests.append(makeTableWithManyTypes)
+tests.append(basicRead)
