@@ -424,7 +424,9 @@ do the mapping.
 	PgOperator ("eval_expr_call”)
 
                                      ------ PgConstant (function name/id)
-                                     ------ PgConstant (function argument)
+                                     ------ PgConstant (function argument, could be column reference)
+									 ------ PGConstant (function argument)
+									 ...... more arguments
 
 
   ### 3) PG gate, i.e., K2 Adapter layer will map the PG built-in function name/id to the K2 function name/id and pass the arguments
@@ -434,6 +436,15 @@ do the mapping.
 static Datum evalExpr(YbgExprContext ctx, Expr expr, bool *is_null)
 ```
 
+  ### 5) FDW does not support built-in function pushdown yet, we might want to add the support statements similar to the following one
 
+``` sql
+  SELECT * from T1 where age= $baseAge + 10
+```
+
+## Next Steps
+  ### support function pushdown for update with set (Nice to have)
+  ### support function pushdown for scan via FDW (Nice to have)
+  ### support update multiple records on K2 platform (Not planned yet)
 
 
