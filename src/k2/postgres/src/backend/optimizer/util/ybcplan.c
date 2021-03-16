@@ -231,31 +231,14 @@ void YBCExprInstantiateParams(Expr* expr, ParamListInfo paramLI)
  * The main current limitation is that DocDB's execution layer does not have
  * syscatalog access (cache lookup) so only specific builtins are supported.q
  */
-static bool YBCIsSupportedDocDBFunctionId(Oid funcid, Form_pg_proc pg_proc) {
-	if (!is_builtin_func(funcid))
-	{
-		return false;
-	}
-
-	/*
-	 * Polymorhipc pseduo-types (e.g. anyarray) may require additional
-	 * processing (requiring syscatalog access) to fully resolve to a concrete
-	 * type. Therefore they are not supported by DocDB.
-	 */
-	if (IsPolymorphicType(pg_proc->prorettype))
-	{
-		return false;
-	}
-
-	for (int i = 0; i < pg_proc->pronargs; i++)
-	{
-		if (IsPolymorphicType(pg_proc->proargtypes.values[i]))
-		{
-			return false;
-		}
-	}
-
-	return true;
+static bool IsSupportedK2FunctionId(Oid funcid, Form_pg_proc pg_proc) {
+	// Will add logic to enable the support to push down functions once
+	// K2 platform implements the function support.
+	//
+	// See
+	//   https://github.com/futurewei-cloud/chogori-platform/issues/137
+	//
+	return false;
 }
 
 static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has_vars, bool *has_docdb_unsupported_funcs) {
@@ -322,7 +305,7 @@ static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has
 				return false;
 			}
 
-			if (!YBCIsSupportedDocDBFunctionId(funcid, pg_proc)) {
+			if (!IsSupportedK2FunctionId(funcid, pg_proc)) {
 				*has_docdb_unsupported_funcs = true;
 			}
 			ReleaseSysCache(tuple);
