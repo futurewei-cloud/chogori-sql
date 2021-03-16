@@ -296,8 +296,8 @@ static int find_compatible_pertrans(AggState *aggstate, Aggref *newagg,
 						 Oid aggserialfn, Oid aggdeserialfn,
 						 Datum initValue, bool initValueIsNull,
 						 List *transnos);
-static void yb_agg_pushdown_supported(AggState *aggstate);
-static void yb_agg_pushdown(AggState *aggstate);
+static void k2_agg_pushdown_supported(AggState *aggstate);
+static void k2_agg_pushdown(AggState *aggstate);
 
 
 /*
@@ -1523,136 +1523,25 @@ lookup_hash_entries(AggState *aggstate)
 }
 
 /*
- * Evaluates whether plan supports pushdowns of aggregates to DocDB, and sets
- * yb_pushdown_supported accordingly in AggState.
+ * Evaluates whether plan supports pushdowns of aggregates to K2 platform, and sets
+ * k2_pushdown_supported accordingly in AggState.
  */
 static void
-yb_agg_pushdown_supported(AggState *aggstate)
+k2_agg_pushdown_supported(AggState *aggstate)
 {
-	ForeignScanState *scan_state;
-	ListCell *lc_agg;
-	ListCell *lc_arg;
-
-	/* Initially set pushdown supported to false. */
-	aggstate->yb_pushdown_supported = false;
-
-	/* Phase 0 is a dummy phase, so there should be two phases. */
-	if (aggstate->numphases != 2)
-		return;
-
-	/* Plain agg strategy. */
-	if (aggstate->phase->aggstrategy != AGG_PLAIN)
-		return;
-
-	/* No GROUP BY. */
-	if (aggstate->phase->numsets != 0)
-		return;
-
-	/* Foreign scan outer plan. */
-	if (!IsA(outerPlanState(aggstate), ForeignScanState))
-		return;
-
-	scan_state = castNode(ForeignScanState, outerPlanState(aggstate));
-
-	/* Foreign relation we are scanning is a YB table. */
-	if (!IsYBRelationById(scan_state->ss.ss_currentRelation->rd_id))
-		return;
-
-	/* No WHERE quals. */
-	if (scan_state->ss.ps.qual)
-		return;
-
-	foreach(lc_agg, aggstate->aggs)
-	{
-		AggrefExprState *aggrefstate = (AggrefExprState *) lfirst(lc_agg);
-		Aggref *aggref = aggrefstate->aggref;
-		char *func_name = get_func_name(aggref->aggfnoid);
-
-		/* Only support COUNT/MIN/MAX/SUM. */
-		if (strcmp(func_name, "count") != 0 &&
-			strcmp(func_name, "min") != 0 &&
-			strcmp(func_name, "max") != 0 &&
-			strcmp(func_name, "sum") != 0)
-			return;
-
-		/* No ORDER BY. */
-		if (list_length(aggref->aggorder) != 0)
-			return;
-
-		/* No DISTINCT. */
-		if (list_length(aggref->aggdistinct) != 0)
-			return;
-
-		/* No FILTER. */
-		if (aggref->aggfilter)
-			return;
-
-		/* No array arguments. */
-		if (aggref->aggvariadic)
-			return;
-
-		/* Normal aggregate kind. */
-		if (aggref->aggkind != AGGKIND_NORMAL)
-			return;
-
-		/* Does not belong to outer plan. */
-		if (aggref->agglevelsup != 0)
-			return;
-
-		/* Simple split. */
-		if (aggref->aggsplit != AGGSPLIT_SIMPLE)
-			return;
-
-		/* Aggtranstype is a supported YB key type and is not INTERNAL or NUMERIC. */
-		if (!YBCDataTypeIsValidForKey(aggref->aggtranstype) ||
-			aggref->aggtranstype == INTERNALOID ||
-			aggref->aggtranstype == NUMERICOID)
-			return;
-
-		foreach(lc_arg, aggref->args)
-		{
-			TargetEntry *tle = lfirst_node(TargetEntry, lc_arg);
-
-			/* Only support simple column expressions until DocDB can eval PG exprs. */
-			Oid type = InvalidOid;
-			if (IsA(tle->expr, Var))
-			{
-				type = castNode(Var, tle->expr)->vartype;
-			}
-			else if (IsA(tle->expr, Const))
-			{
-				Const* const_node = castNode(Const, tle->expr);
-				if (const_node->constisnull)
-					/* NULL has a type UNKNOWNOID which isn't very helpful. */
-					type = aggref->aggtranstype;
-				else if (!const_node->constbyval)
-					/* Do not support pointer-based constants yet. */
-					return;
-				else
-					type = const_node->consttype;
-			}
-			else
-				return;
-
-			/*
-			 * Only support types that are allowed to be YB keys as we cannot guarantee
-			 * we can safely perform postgres semantic compatible DocDB aggregate evaluation
-			 * otherwise.
-			 */
-			if (!YBCDataTypeIsValidForKey(type))
-				return;
-		}
-	}
-
-	/* If this is reached, YB pushdown is supported. */
-	aggstate->yb_pushdown_supported = true;
+	// disable aggregation pushdown for now
+	// TODO: re-enable this once K2 platform supports aggregations
+	// such as min, max, sum, count, and so on,
+	//
+	//    https://github.com/futurewei-cloud/chogori-platform/issues/139
+	aggstate->k2_pushdown_supported = false;
 }
 
 /*
  * Populates aggregate pushdown information in the YB foreign scan state.
  */
 static void
-yb_agg_pushdown(AggState *aggstate)
+k2_agg_pushdown(AggState *aggstate)
 {
 	ForeignScanState *scan_state = castNode(ForeignScanState, outerPlanState(aggstate));
 	List *pushdown_aggs = NIL;
@@ -1697,13 +1586,13 @@ ExecAgg(PlanState *pstate)
 		 * Aggregate functions combine multiple rows into one. The final LIMIT can be different from
 		 * the number of rows to be read. As a result, we have to use default prefetch limit.
 		 *
-		 * Pushdown aggregates to DocDB if the plan state meets proper conditions.
+		 * Pushdown aggregates to K2 platform if the plan state meets proper conditions.
 		 */
 		if (IsYugaByteEnabled())
 		{
 			pstate->state->yb_exec_params.limit_use_default = true;
-			if (node->yb_pushdown_supported)
-				yb_agg_pushdown(node);
+			if (node->k2_pushdown_supported)
+				k2_agg_pushdown(node);
 		}
 
 		/* Dispatch based on strategy */
@@ -1889,7 +1778,7 @@ agg_retrieve_direct(AggState *aggstate)
 			Assert(aggstate->projected_set < numGroupingSets);
 			Assert(nextSetSize > 0 || aggstate->input_done);
 		}
-		else if (aggstate->yb_pushdown_supported)
+		else if (aggstate->k2_pushdown_supported)
 		{
 			aggstate->projected_set = 0;
 			currentSet = aggstate->projected_set;
@@ -2704,7 +2593,7 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 	}
 
 	/* Internally set whether plan supports YB agg pushdown. */
-	yb_agg_pushdown_supported(aggstate);
+	k2_agg_pushdown_supported(aggstate);
 
 	/* -----------------
 	 * Perform lookups of aggregate function info, and initialize the
@@ -2935,12 +2824,12 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 		numArguments = get_aggregate_argtypes(aggref, inputTypes);
 
 		/*
-		 * If we support YB agg pushdown we set transition function input types
+		 * If we support K2 agg pushdown we set transition function input types
 		 * to be the same as the transition value that will be the type returned by
-		 * the DocDB aggregate result which we combine using the appropriate transition
+		 * the K2 platform aggregate result which we combine using the appropriate transition
 		 * function. Aggstar (e.g. COUNT(*)) do not have arguments so we skip them.
 		 */
-		if (aggstate->yb_pushdown_supported && !aggref->aggstar)
+		if (aggstate->k2_pushdown_supported && !aggref->aggstar)
 		{
 			/* We currently only support single argument aggregates for YB pushdown. */
 			numArguments = 1;

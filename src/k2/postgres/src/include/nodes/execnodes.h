@@ -142,7 +142,7 @@ typedef struct ExprState
  *		Am					Oid of index AM
  *		AmCache				private cache area for index AM
  *		Context				memory context holding this IndexInfo
- *		SplitOptions		Options to split index into tablets. 
+ *		SplitOptions		Options to split index into tablets.
  *
  * ii_Concurrent, ii_BrokenHotChain, and ii_ParallelWorkers are used only
  * during index build; they're conventionally zeroed otherwise.
@@ -1967,8 +1967,8 @@ typedef struct AggState
 										 * ->hash_pergroup */
 	ProjectionInfo *combinedproj;	/* projection machinery */
 
-	/* YB specific attributes. */
-	bool		yb_pushdown_supported;	/* YB pushdown supported for agg */
+	/* K2 specific attributes. */
+	bool		k2_pushdown_supported;	/* K2 pushdown supported for agg */
 } AggState;
 
 /* ----------------

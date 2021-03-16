@@ -1571,7 +1571,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 					if (IsA(tle->expr, Const))
 					{
 						Const* const_node = castNode(Const, tle->expr);
-						/* Already checked by yb_agg_pushdown_supported */
+						/* Already checked by k2_agg_pushdown_supported */
 						Assert(const_node->constisnull || const_node->constbyval);
 
 						YBCPgExpr const_handle;
