@@ -22,24 +22,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+'''
+This file has tests for basic ddl statements (not joins, aggregates, or isolation tests)
+It depends on the dmlsetup tests.
+'''
+
+import unittest
 import psycopg2
-from helper import commitSQL
+from helper import commitSQL, selectOneRecord, getConn
 
-tests = []
+class TestDMLBasic(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        commitSQL(getConn, "CREATE TABLE dmlbasic (id integer PRIMARY KEY, dataA integer);")
 
-def makeBasicTable(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test1 (id integer PRIMARY KEY, dataA integer);")
+    def test_basicRead(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (13, 33);")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=13;")
+        self.assertEqual(record[0], 13)
+        self.assertEqual(record[1], 33)
+        conn.close()
 
-
-def makeTableWithManyTypes(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
-
-
-def makeTableWithoutPrimaryKey(connFunc):
-    return commitSQL(connFunc, "CREATE TABLE test3 (id integer, dataA integer);")
-
-# TODO add table already exists error case after #216 is fixed
-
-tests.append(makeBasicTable)
-tests.append(makeTableWithoutPrimaryKey)
-tests.append(makeTableWithManyTypes)
+    # TODO delete table on teardown

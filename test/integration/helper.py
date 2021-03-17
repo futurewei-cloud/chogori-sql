@@ -22,31 +22,32 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
+import unittest
 import psycopg2
-import inspect
+import argparse
+
+parser = argparse.ArgumentParser(description="Runs chogori-sql integration tests. Also accepts unittest args")
+parser.add_argument("--db", default="postgres", help="The database to connect to")
+parser.add_argument("--port", default=5433, help="The port to connect to")
+args, unknown = parser.parse_known_args()
+
+def getConn():
+    return psycopg2.connect(dbname=args.db, user="postgres", port=args.port, host="localhost")
 
 # Helper function for tests. Executes given SQL and commits.
 def commitSQL(connFunc, sql):
     conn = connFunc()
-    cur = conn.cursor()
-    code = 0
-    try:
-        cur.execute(sql)
-        conn.commit()
-    except Exception as exc:
-        print("Test failed, exception: " + str(exc))
-        code = -1
-    finally:
-        cur.close()
-        conn.close()
-    return code
+    with conn: # commits at end of context if no errors
+        with conn.cursor() as cur:
+            cur.execute(sql)
+    conn.close()
 
-def expectEQ(actual, expected):
-    if a == b:
-        return
-    upframe = inspect.getframeinfo(inspect.currentframe().f_back)
-    line = upframe.lineno
-    filename = upframe.filename
-    
-    print(filename + ": " + str(line) + " EQ expectation failed, actual: " + str(actual) + " expected: " + str(expected))
-    raise RuntimeError
+# Executes a SQL statement, expected to get one row back and return it
+def selectOneRecord(conn, sql):
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(sql)
+            result = cur.fetchall()
+            if len(result) != 1:
+                raise RuntimeError("Expected one record but did not get it")
+            return result[0]

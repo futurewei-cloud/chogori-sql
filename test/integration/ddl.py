@@ -22,36 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-'''
-This file has tests for basic ddl statements (not joins, aggregates, or isolation tests)
-It depends on the dmlsetup tests.
-'''
-
+import unittest
 import psycopg2
-from helper import commitSQL, expectEQ
+from helper import commitSQL, getConn
 
-tests = []
 
-def basicRead(connFunc):
-    code = commitSQL(connFunc, "INSERT INTO test1 VALUES (13, 33);")
-    if code < 0:
-        return code
-    try:
-        conn = connFunc()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM test1 WHERE id=13;")
-        result = cur.fetchall()
-        expectEQ(len(result), 1)
-        record = result[0]
-        expectEQ(record[0], 13)
-        expectEQ(record[1], 33)
-    except Exception as exc:
-        print("Test failed, exception: " + str(exc))
-        code = -1
-    finally:
-        cur.close()
-        conn.close()
-    return code
-    
+class TestDDL(unittest.TestCase):
+    def test_makeBasicTable(self):
+        commitSQL(getConn, "CREATE TABLE ddltest1 (id integer PRIMARY KEY, dataA integer);")
 
-tests.append(basicRead)
+    def test_makeTableWithManyTypes(self):
+        commitSQL(getConn, "CREATE TABLE ddltest2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
+
+    def test_makeTableWithoutPrimaryKey(self):
+        commitSQL(getConn, "CREATE TABLE ddltest3 (id integer, dataA integer);")
+
+# TODO add table already exists error case after #216 is fixed
+# TODO add drop table
+
