@@ -34,14 +34,110 @@ from helper import commitSQL, selectOneRecord, getConn
 class TestDMLBasic(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        commitSQL(getConn, "CREATE TABLE dmlbasic (id integer PRIMARY KEY, dataA integer);")
+        commitSQL(getConn, "CREATE TABLE dmlbasic (id integer PRIMARY KEY, dataA integer, dataB integer);")
 
-    def test_basicRead(self):
-        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (13, 33);")
+    def test_basicInsertAndRead(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (1, 33, 43);")
         conn = getConn()
-        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=13;")
-        self.assertEqual(record[0], 13)
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=1;")
+        self.assertEqual(record[0], 1)
         self.assertEqual(record[1], 33)
+        self.assertEqual(record[2], 43)
+        conn.close()
+
+    def test_readNonExistentRecord(self):
+        conn = getConn()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM dmlbasic WHERE id=7777;")
+                result = cur.fetchall()
+                self.assertEqual(len(result), 0)
+        conn.close()
+
+    def test_basicProjection(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (2, 1, 777);")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT dataB FROM dmlbasic WHERE id=2;")
+        self.assertEqual(record[0], 777)
+        conn.close()
+
+    def test_singleRecordUpdate(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (3, 33, 43);")
+        commitSQL(getConn, "UPDATE dmlbasic SET dataA=10, dataB=10 WHERE id=3;")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=3;")
+        self.assertEqual(record[0], 3)
+        self.assertEqual(record[1], 10)
+        self.assertEqual(record[2], 10)
+        conn.close()
+
+    def test_insertOverExisting(self):
+        # TODO check this and maybe try vanilla PG to see if there is a more specific error we
+        # should be throwing here: https://www.psycopg.org/docs/errors.html
+        with self.assertRaises(psycopg2.errors.InternalError):
+            commitSQL(getConn, "INSERT INTO dmlbasic VALUES (4, 1, 1);")
+            commitSQL(getConn, "INSERT INTO dmlbasic VALUES (4, 2, 2);")
+
+    def test_insertOverExistingDoNothing(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (5, 1, 1);")
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (5, 2, 2) ON CONFLICT DO NOTHING;")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=5;")
+        self.assertEqual(record[0], 5)
+        self.assertEqual(record[1], 1)
+        self.assertEqual(record[2], 1)
+        conn.close()
+
+    # This tests:
+    # 1. Large scan that requires pagination on the chogori server
+    # 2. >= scan on primary key (as part of 1)
+    # 3. Scan with filter on non-primary key
+    # These are in one test to make the inserts easier and faster
+    def test_scan(self):
+        conn = getConn()
+        offset = 5000 # Try to make it easier to not conflict keys with other tests
+
+        # Insert enough records so that pagination will be needed on Chogori
+        with conn: # commits at end of context if no errors
+            with conn.cursor() as cur:
+                for i in range(1, 151):
+                    cur.execute("INSERT INTO dmlbasic VALUES (%s, %s, 1);", (i+offset, i))
+
+        # Read them all back
+        with conn: # commits at end of context if no errors
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM dmlbasic WHERE id >= %s;", (offset,))
+                for i in range(1, 151):
+                    record = cur.fetchone()
+                    self.assertNotEqual(record, None)
+                    self.assertEqual(record[0], i+offset)
+                    self.assertEqual(record[1], i)
+                    self.assertEqual(record[2], 1)
+
+        # Scan with filter on non-primary key
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id >= 5000 AND dataA = 50;")
+        self.assertEqual(record[0], 50+offset)
+        self.assertEqual(record[1], 50)
+        self.assertEqual(record[2], 1)
+       
+    def test_bulkUpdate(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (6, 1, 1);")
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (7, 1, 1);")
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (8, 1, 1);")
+        commitSQL(getConn, "UPDATE dmlbasic SET dataA=11 WHERE id >= 6 AND id <= 8;")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=6;")
+        self.assertEqual(record[0], 6)
+        self.assertEqual(record[1], 11)
+        self.assertEqual(record[2], 1)
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=7;")
+        self.assertEqual(record[0], 7)
+        self.assertEqual(record[1], 11)
+        self.assertEqual(record[2], 1)
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=8;")
+        self.assertEqual(record[0], 8)
+        self.assertEqual(record[1], 11)
+        self.assertEqual(record[2], 1)
         conn.close()
 
     # TODO delete table on teardown
