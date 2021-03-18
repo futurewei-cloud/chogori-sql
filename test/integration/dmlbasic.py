@@ -23,8 +23,7 @@ SOFTWARE.
 '''
 
 '''
-This file has tests for basic ddl statements (not joins, aggregates, or isolation tests)
-It depends on the dmlsetup tests.
+This file has tests for basic dml statements (not joins, aggregates, or isolation tests)
 '''
 
 import unittest
@@ -170,6 +169,25 @@ class TestDMLBasic(unittest.TestCase):
         self.assertEqual(record[2], 33)
         conn.close()
 
-    # TODO delete record and bulk delete
+    def test_delete(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (14, 1, 1);")
+        commitSQL(getConn, "DELETE FROM dmlbasic WHERE id=14;")
+        conn = getConn()
+        with conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT * FROM dmlbasic WHERE id = 14;")
+                records = cur.fetchall()
+                self.assertEqual(len(records), 0)
+        conn.close()
+
+    def test_null(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (15, NULL, NULL);")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=15;")
+        self.assertEqual(record[0], 15)
+        self.assertEqual(record[1], None)
+        self.assertEqual(record[2], None)
+        conn.close()
+
 
     # TODO delete table on teardown

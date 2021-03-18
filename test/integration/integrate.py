@@ -30,5 +30,8 @@ import unittest
 # Test scripts:
 from ddl import TestDDL
 from dmlbasic import TestDMLBasic
+from compoundkey import TestCompoundKey
+from isolation import TestIsolation
+from aggregate import TestAggregation
 
 unittest.main()
