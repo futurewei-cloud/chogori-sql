@@ -140,4 +140,36 @@ class TestDMLBasic(unittest.TestCase):
         self.assertEqual(record[2], 1)
         conn.close()
 
+    def test_updateWithFieldReference(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (9, 33, 43);")
+        commitSQL(getConn, "UPDATE dmlbasic SET dataA=10+dataA, dataB=10 WHERE id=9;")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id=9;")
+        self.assertEqual(record[0], 9)
+        self.assertEqual(record[1], 43)
+        self.assertEqual(record[2], 10)
+        conn.close()
+
+    def test_selectWithFieldReference(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (10, 33, 33);")
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (11, 4, 33);")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id>=10 AND id <= 11 AND dataA=dataB;")
+        self.assertEqual(record[0], 10)
+        self.assertEqual(record[1], 33)
+        self.assertEqual(record[2], 33)
+        conn.close()
+
+    def test_selectWithFunction(self):
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (12, 32, 33);")
+        commitSQL(getConn, "INSERT INTO dmlbasic VALUES (13, 4, 33);")
+        conn = getConn()
+        record = selectOneRecord(conn, "SELECT * FROM dmlbasic WHERE id>=12 AND id <= 13 AND dataB=dataA+1;")
+        self.assertEqual(record[0], 12)
+        self.assertEqual(record[1], 32)
+        self.assertEqual(record[2], 33)
+        conn.close()
+
+    # TODO delete record and bulk delete
+
     # TODO delete table on teardown
