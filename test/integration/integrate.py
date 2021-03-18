@@ -33,5 +33,6 @@ from dmlbasic import TestDMLBasic
 from compoundkey import TestCompoundKey
 from isolation import TestIsolation
 from aggregate import TestAggregation
+from join import TestJoin
 
 unittest.main()
