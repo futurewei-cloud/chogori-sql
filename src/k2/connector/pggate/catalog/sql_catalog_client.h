@@ -41,6 +41,7 @@ using yb::Status;
 using k2pg::sql::PgObjectId;
 using k2pg::sql::PgOid;
 
+// TODO: This catalog client layer so far doesn't provide value, consider eliminate it later
 class SqlCatalogClient {
     public:
     SqlCatalogClient(std::shared_ptr<SqlCatalogManager> catalog_manager) : catalog_manager_(catalog_manager) {

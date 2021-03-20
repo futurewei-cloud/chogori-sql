@@ -3,4 +3,5 @@
 
 namespace k2pg::log {
 inline thread_local k2::logging::Logger pg("k2::pggate");
+inline thread_local k2::logging::Logger k2Adapter("k2::k2Adapter");
 }

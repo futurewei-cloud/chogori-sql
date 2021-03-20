@@ -59,7 +59,7 @@ CBFuture<k2::GetSchemaResult> K23SIGate::getSchema(const k2::String& collectionN
     return result;
 }
 
-CBFuture<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& collectionName, k2::dto::Schema schema) {
+CBFuture<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& collectionName, k2::dto::Schema& schema) {
     SchemaCreateRequest qr{.collectionName = collectionName, .schema = schema, .prom = {}};
 
     auto result = CBFuture<CreateSchemaResult>(qr.prom.get_future(), [st = Clock::now()] {

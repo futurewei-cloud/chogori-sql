@@ -30,10 +30,10 @@ namespace sql {
 namespace catalog {
 
 NamespaceInfoHandler::NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
-    : BaseHandler(k2_adapter),
-      collection_name_(CatalogConsts::skv_collection_name_sql_primary),
+    : collection_name_(CatalogConsts::skv_collection_name_sql_primary),
       schema_name_(CatalogConsts::skv_schema_name_namespace_info) {
     schema_ptr_ = std::make_shared<k2::dto::Schema>(schema_);
+    k2_adapter_ = k2_adapter;
 }
 
 NamespaceInfoHandler::~NamespaceInfoHandler() {
@@ -42,22 +42,25 @@ NamespaceInfoHandler::~NamespaceInfoHandler() {
 // Verify the Namespace(database)_info corresponding SKVSchema in the PG primary SKVCollection doesn't exist and create it
 // Called only once in sql_catalog_manager::InitPrimaryCluster()
 InitNamespaceTableResult NamespaceInfoHandler::InitNamespaceTable() {
-    // check to make sure the schema doesn't exists
-    auto schema_result = k2_adapter_->GetSchema(collection_name_, schema_name_, 1).get();
     InitNamespaceTableResult response;
-    // TODO: double check if this check is valid for schema
-    CHECK(schema_result.status == k2::dto::K23SIStatus::KeyNotFound);
-    if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        K2LOG_D(log::catalog, "Namespace info table does not exist");
-        // create the table schema since it does not exist
-        RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
-        response.status = std::move(schema_result);
-    } else {
-        K2LOG_E(log::catalog, "Unexpected Namespace SKV schema already exists during init.");
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move("Unexpected Namespace SKV schema already exists during init.");
+    
+    // check to make sure the schema doesn't exists
+    std::shared_ptr<k2::dto::Schema> outSchema = nullptr;
+    Status schema_status = k2_adapter_->SyncGetSchema(collection_name_, schema_name_, 1, outSchema);
+    if (!schema_status.IsNotFound()) {  // expect NotFound
+        if (schema_status.ok()) {
+            K2LOG_E(log::catalog, "Unexpected NamespaceInfo SKV schema already exists during init.");
+            response.status = STATUS(InternalError, "Unexpected NamespaceInfo SKV schema already exists during init.");            
+        } else {  // other read error 
+            K2LOG_E(log::catalog, "Unexpected NamespaceInfo SKV schema read error during init.{}", schema_status.code());
+            response.status = std::move(schema_status);
+        }
         return response;
     }
+
+    K2LOG_D(log::catalog, "Namespace info table does not exist");
+    // create the table schema since it does not exist
+    response.status = k2_adapter_->SyncCreateSchema(collection_name_, schema_ptr_);
     return response;
 }
 
@@ -69,36 +72,27 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     // use int64_t to represent uint32_t since since SKV does not support them
     record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
-    response.status = PersistSKVRecord(context, record);
+    response.status = k2_adapter_->SyncUpsertRecord(context->GetTxn(), record);
     return response;
 }
 
 GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<SessionTransactionContext> context, const std::string& namespace_id) {
     GetNamespaceResult response;
-    k2::dto::SKVRecord record(collection_name_, schema_ptr_);
-    record.serializeNext<k2::String>(namespace_id);
-    auto read_result = context->GetTxn()->read(std::move(record)).get();
-    if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        K2LOG_D(log::catalog, "SKV record does not exist for namespace {}", namespace_id);
-        response.namespaceInfo = nullptr;
-        response.status.Succeed();
-        return response;
-    }
-
-    if (!read_result.status.is2xxOK()) {
-        K2LOG_E(log::catalog, "Failed to read SKV record due to {}", read_result.status);
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(read_result.status.message);
+    k2::dto::SKVRecord recordKey(collection_name_, schema_ptr_);
+    recordKey.serializeNext<k2::String>(namespace_id);
+    k2::dto::SKVRecord resultRecord;
+    response.status = k2_adapter_->SyncReadRecord(context->GetTxn(), recordKey, resultRecord);
+    if (!response.status.ok()) {
+        K2LOG_E(log::catalog, "Failed to read SKV record due to {}", response.status.code());
         return response;
     }
     std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
-    namespace_ptr->SetNamespaceId(read_result.value.deserializeNext<k2::String>().value());
-    namespace_ptr->SetNamespaceName(read_result.value.deserializeNext<k2::String>().value());
+    namespace_ptr->SetNamespaceId(resultRecord.deserializeNext<k2::String>().value());
+    namespace_ptr->SetNamespaceName(resultRecord.deserializeNext<k2::String>().value());
      // use int64_t to represent uint32_t since since SKV does not support them
-    namespace_ptr->SetNamespaceOid(read_result.value.deserializeNext<int64_t>().value());
-    namespace_ptr->SetNextPgOid(read_result.value.deserializeNext<int64_t>().value());
+    namespace_ptr->SetNamespaceOid(resultRecord.deserializeNext<int64_t>().value());
+    namespace_ptr->SetNextPgOid(resultRecord.deserializeNext<int64_t>().value());
     response.namespaceInfo = namespace_ptr;
-    response.status.Succeed();
     return response;
 }
 
@@ -107,8 +101,7 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Sessio
     auto create_result = k2_adapter_->CreateScanRead(collection_name_, schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = std::move(create_result.status.message);
+        response.status = K2Adapter::K2StatusToYBStatus(create_result.status);
         return response;
     }
 
@@ -117,28 +110,25 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<Sessio
         // For a forward full schema scan in SKV, we need to explictly set the start record
         query->startScanRecord.serializeNext<k2::String>("");
 
-        auto query_result = context->GetTxn()->scanRead(query).get();
-        if (!query_result.status.is2xxOK()) {
-            K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
-            response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = std::move(query_result.status.message);
+        std::vector<k2::dto::SKVRecord> outRecords;
+        response.status = k2_adapter_->SyncScanRead(context->GetTxn(), query, outRecords);
+        if (!response.status.ok()) {
+            K2LOG_E(log::catalog, "Failed to run scan read due to {}", response.status.code());
             return response;
         }
 
-        if (!query_result.records.empty()) {
-            for (k2::dto::SKVRecord& record : query_result.records) {
-                std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
-                namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
-                namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
-                // use int64_t to represent uint32_t since since SKV does not support them
-                namespace_ptr->SetNamespaceOid(record.deserializeNext<int64_t>().value());
-                namespace_ptr->SetNextPgOid(record.deserializeNext<int64_t>().value());
-                response.namespaceInfos.push_back(namespace_ptr);
-            }
+        for (auto& record : outRecords) {
+            std::shared_ptr<NamespaceInfo> namespace_ptr = std::make_shared<NamespaceInfo>();
+            namespace_ptr->SetNamespaceId(record.deserializeNext<k2::String>().value());
+            namespace_ptr->SetNamespaceName(record.deserializeNext<k2::String>().value());
+            // use int64_t to represent uint32_t since since SKV does not support them
+            namespace_ptr->SetNamespaceOid(record.deserializeNext<int64_t>().value());
+            namespace_ptr->SetNextPgOid(record.deserializeNext<int64_t>().value());
+            response.namespaceInfos.push_back(namespace_ptr);
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
-    response.status.Succeed();
+    response.status = Status::OK(); 
     return response;
 }
 
@@ -150,22 +140,12 @@ DeleteNamespaceResult NamespaceInfoHandler::DeleteNamespace(std::shared_ptr<Sess
     // use int64_t to represent uint32_t since since SKV does not support them
     record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
-    response.status = DeleteSKVRecord(context, record);
-    return response;
-}
 
-RStatus NamespaceInfoHandler::CreateSKVCollection(const std::string& collection_name, const std::string& nsName)
-{
-    RStatus response;
-
-    auto result = k2_adapter_->CreateCollection(collection_name, nsName).get();
-    if (!result.is2xxOK()) {
-        K2LOG_E(log::catalog, "Failed to create SKV Collection {}, due to {}", collection_name, result);
-        response.code = StatusCode::INTERNAL_ERROR;
-        response.errorMessage = std::move(result.message);
-    } else {
-        response.Succeed();
+    response.status = k2_adapter_->SyncDeleteRecord(context->GetTxn(), record);
+    if (!response.status.ok()) {
+        K2LOG_E(log::catalog, "Failed to delete namespace ID {} in Collection {}, due to {}", namespace_info->GetNamespaceId(), collection_name_, response.status.code());
     }
+
     return response;
 }
 

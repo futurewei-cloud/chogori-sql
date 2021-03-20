@@ -271,17 +271,24 @@ Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>
     InvalidateForeignKeyReferenceCache();
   } 
   
-  std::shared_ptr<K23SITxn> k23SITxn = GetTxnHandler((*op)->read_only());                           
+  // use current session's transaction, which will start new one if it is not started yet.
+  std::shared_ptr<K23SITxn> sessionTxnHandle = nullptr;   
+  Status result = GetSessionTxnHandle((*op)->read_only(), sessionTxnHandle);
+  if (!result.ok())
+  {
+    return result;
+  }                      
+
   if (ops_count == 1) {
     // run a single operation
-    return k2_adapter_->Exec(k23SITxn, *op);
+    return k2_adapter_->Exec(sessionTxnHandle, *op);
   } else {  // ops_count > 1
     // run multiple operations in a batch
     std::vector<std::shared_ptr<PgOpTemplate>> ops;
     for (auto end = op + ops_count; op != end; ++op) {
       ops.push_back(*op);
     }
-    return k2_adapter_->BatchExec(k23SITxn, ops);
+    return k2_adapter_->BatchExec(sessionTxnHandle, ops);
   }
 }
 
@@ -365,8 +372,16 @@ Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& yb
   return Status::OK();
 }
 
-std::shared_ptr<K23SITxn> PgSession::GetTxnHandler(bool read_only) {
-  return pg_txn_handler_->GetNewTransactionIfNecessary(read_only);
+Status PgSession::GetSessionTxnHandle(bool read_only, std::shared_ptr<K23SITxn>& outSessionTxnHandle) {
+  auto result = pg_txn_handler_->StartNewTransactionIfNecessary(read_only);
+  if (!result.ok())
+  {
+    return result;
+  }
+
+  outSessionTxnHandle = pg_txn_handler_->GetTxnHandle();
+  DCHECK(outSessionTxnHandle != nullptr);
+  return Status::OK();
 }
 
 Result<IndexPermissions> PgSession::WaitUntilIndexPermissionsAtLeast(

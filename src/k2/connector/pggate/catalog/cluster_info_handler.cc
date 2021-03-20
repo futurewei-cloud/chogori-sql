@@ -30,10 +30,10 @@ namespace sql {
 namespace catalog {
 
 ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
-    : BaseHandler(k2_adapter),
-      collection_name_(CatalogConsts::skv_collection_name_sql_primary),
+    : collection_name_(CatalogConsts::skv_collection_name_sql_primary),
       schema_name_(CatalogConsts::skv_schema_name_cluster_info) {
     schema_ptr_ = std::make_shared<k2::dto::Schema>(schema_);
+    k2_adapter_ = k2_adapter;
 }
 
 ClusterInfoHandler::~ClusterInfoHandler() {
@@ -42,11 +42,11 @@ ClusterInfoHandler::~ClusterInfoHandler() {
 // Called only once in sql_catalog_manager::InitPrimaryCluster()
 InitClusterInfoResult ClusterInfoHandler::InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info) {
     InitClusterInfoResult response;
-    RStatus schema_result = CreateSKVSchema(collection_name_, schema_ptr_);
-    if (!schema_result.IsSucceeded()) {
-        response.status = std::move(schema_result);
+    response.status = k2_adapter_->SyncCreateSchema(collection_name_, schema_ptr_);
+    if (!response.status.ok()) {
         return response;
     }
+
     UpdateClusterInfoResult result = UpdateClusterInfo(context, cluster_info);
     response.status = std::move(result.status);
     return response;
@@ -59,35 +59,28 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Se
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    response.status = PersistSKVRecord(context, record);
+    response.status = k2_adapter_->SyncUpsertRecord(context->GetTxn(), record);
     return response;
 }
 
-GetClusterInfoResult ClusterInfoHandler::ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id) {
+GetClusterInfoResult ClusterInfoHandler::GetClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id) {
     GetClusterInfoResult response;
-    k2::dto::SKVRecord record(collection_name_, schema_ptr_);
-    record.serializeNext<k2::String>(cluster_id);
-    auto read_result = context->GetTxn()->read(std::move(record)).get();
-    if (read_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        K2LOG_D(log::catalog, "Cluster info record does not exist");
-        response.clusterInfo = nullptr;
-        response.status.Succeed();
+    k2::dto::SKVRecord recordKey(collection_name_, schema_ptr_);
+    recordKey.serializeNext<k2::String>(cluster_id);
+    k2::dto::SKVRecord resultRecord;
+    response.status = k2_adapter_->SyncReadRecord(context->GetTxn(), recordKey, resultRecord);
+    if (!response.status.ok()) {
+        K2LOG_E(log::catalog, "Failed to read SKV record due to {}", response.status.code());
         return response;
     }
 
-    if (!read_result.status.is2xxOK()) {
-       K2LOG_E(log::catalog, "Failed to read SKV record due to {}", read_result.status);
-        response.status.code = StatusCode::INTERNAL_ERROR;
-        response.status.errorMessage = read_result.status.message;
-        return response;
-    }
     std::shared_ptr<ClusterInfo> cluster_info = std::make_shared<ClusterInfo>();
-    cluster_info->SetClusterId(read_result.value.deserializeNext<k2::String>().value());
+    cluster_info->SetClusterId(resultRecord.deserializeNext<k2::String>().value());
     // use signed integers for unsigned integers since SKV does not support them
-    cluster_info->SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
-    cluster_info->SetInitdbDone(read_result.value.deserializeNext<bool>().value());
+    cluster_info->SetCatalogVersion(resultRecord.deserializeNext<int64_t>().value());
+    cluster_info->SetInitdbDone(resultRecord.deserializeNext<bool>().value());
     response.clusterInfo = cluster_info;
-    response.status.Succeed();
+    response.status = Status(); // OK
     return response;
 }
 

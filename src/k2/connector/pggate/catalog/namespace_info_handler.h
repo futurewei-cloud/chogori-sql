@@ -25,7 +25,9 @@ Copyright(c) 2020 Futurewei Cloud
 
 #include <string>
 
-#include "pggate/catalog/base_handler.h"
+#include "pggate/catalog/sql_catalog_defaults.h"
+#include "pggate/catalog/sql_catalog_entity.h"
+#include "pggate/k2_adapter.h"
 #include "catalog_log.h"
 
 namespace k2pg {
@@ -33,30 +35,32 @@ namespace sql {
 namespace catalog {
 
 using k2pg::gate::CreateScanReadResult;
+using k2pg::gate::K2Adapter;
+using yb::Status;
 
 struct InitNamespaceTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct AddOrUpdateNamespaceResult {
-    RStatus status;
+    Status status;
 };
 
 struct GetNamespaceResult {
-    RStatus status;
+    Status status;
     std::shared_ptr<NamespaceInfo> namespaceInfo;
 };
 
 struct ListNamespacesResult {
-    RStatus status;
+    Status status;
     std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;
 };
 
 struct DeleteNamespaceResult {
-    RStatus status;
+    Status status;
 };
 
-class NamespaceInfoHandler : public BaseHandler {
+class NamespaceInfoHandler {
     public:
     typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
 
@@ -88,17 +92,13 @@ class NamespaceInfoHandler : public BaseHandler {
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 
-    // SKV collection utilites.
-    // collection_name is namespace ID for its uniqueueness
-    // nsName(DBName) passed in for later hack finding collection configuration
-    // TODO: pass in other collection configure later
-    // TODO: add delete SKV collection later when cpo/k23si support it.
-    RStatus CreateSKVCollection(const std::string& collection_name, const std::string& nsName);
 
     private:
     std::string collection_name_;
     std::string schema_name_;
     std::shared_ptr<k2::dto::Schema> schema_ptr_;
+
+    std::shared_ptr<K2Adapter> k2_adapter_;
 };
 
 } // namespace catalog

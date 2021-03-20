@@ -36,12 +36,14 @@ namespace catalog {
     using yb::Result;
     using k2pg::gate::K2Adapter;
 
+    // TODO: clean up the exception throwing and handling logic in this class
+
     SqlCatalogManager::SqlCatalogManager(std::shared_ptr<K2Adapter> k2_adapter) :
         cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter),
         thread_pool_(CatalogConsts::catalog_manager_background_task_thread_pool_size) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
         namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
-        table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter_);
+        table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter);
     }
 
     SqlCatalogManager::~SqlCatalogManager() {
@@ -53,26 +55,24 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> ci_context = NewTransactionContext();
         // load cluster info
-        GetClusterInfoResult ciresp = cluster_info_handler_->ReadClusterInfo(ci_context, cluster_id_);
-        if (ciresp.status.IsSucceeded()) {
-            if (ciresp.clusterInfo != nullptr) {
-                init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
-                catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
-                K2LOG_I(log::catalog, "Loaded cluster info record succeeded, init_db_done: {}, catalog_version: {}", init_db_done_, catalog_version_);
-            } else {
+        GetClusterInfoResult ciresp = cluster_info_handler_->GetClusterInfo(ci_context, cluster_id_);
+        if (!ciresp.status.ok()) {
+            if (ciresp.status.IsNotFound()) {
                 ci_context->Abort();  // no difference either abort or commit
                 K2LOG_W(log::catalog, "Empty cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization");
                 // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
                 // keep initted_ to be false;
                 return Status::OK();
+            } else {
+                K2LOG_E(log::catalog, "Failed to read cluster info record due to {}", ciresp.status.code());
+                ci_context->Abort();
+                return ciresp.status;
             }
-        } else {
-            K2LOG_E(log::catalog, "Failed to read cluster info record due to {}", ciresp.status);
-            ci_context->Abort();
-            return STATUS_FORMAT(IOError, "Failed to read cluster info record to error code $0 and message $1",
-                    ciresp.status.code, ciresp.status.errorMessage);
         }
 
+        init_db_done_.store(ciresp.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
+        catalog_version_.store(ciresp.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
+        K2LOG_I(log::catalog, "Loaded cluster info record succeeded, init_db_done: {}, catalog_version: {}", init_db_done_, catalog_version_);
         // end the current transaction so that we use a different one for later operations
         ci_context->Commit();
 
@@ -81,7 +81,7 @@ namespace catalog {
         ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces(ns_context);
         ns_context->Commit();
 
-        if (nsresp.status.IsSucceeded()) {
+        if (nsresp.status.ok()) {
             if (!nsresp.namespaceInfos.empty()) {
                 for (auto ns_ptr : nsresp.namespaceInfos) {
                     // cache namespaces by namespace id and namespace name
@@ -94,8 +94,8 @@ namespace catalog {
             }
         } else {
             K2LOG_E(log::catalog, "Failed to load namespaces due to {}", nsresp.status);
-            return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0 and message $1",
-                nsresp.status.code, nsresp.status.errorMessage);
+            return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0",
+                nsresp.status.code());
         }
 
         // only start background tasks in normal mode, i.e., not in InitDB mode
@@ -137,12 +137,11 @@ namespace catalog {
         CHECK(!initted_.load(std::memory_order_relaxed));
 
         // step 1/4 create the SKV collection for the primary
-        RStatus rs = namespace_info_handler_->CreateSKVCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
-        if (!rs.IsSucceeded())
+        Status rs = k2_adapter_->SyncCreateCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
+        if (!rs.ok())
         {
-            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", rs);
-            return STATUS_FORMAT(IOError, "Failed to create SKV collection during initialization primary PG cluster due to error code $0 and message $1",
-                    rs.code, rs.errorMessage);
+            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", rs.ToString());
+            return rs;
         }
 
         std::shared_ptr<SessionTransactionContext> init_context = NewTransactionContext();
@@ -152,21 +151,17 @@ namespace catalog {
         ClusterInfo cluster_info(cluster_id_, catalog_version_, false /*init_db_done*/);
 
         InitClusterInfoResult initCIRes = cluster_info_handler_->InitClusterInfo(init_context, cluster_info);
-        if (initCIRes.status.IsSucceeded()) {
-            K2LOG_D(log::catalog, "Initialization of cluster info succeeded");
-        } else {
+        if (!initCIRes.status.ok()) {
             init_context->Abort();
-                K2LOG_E(log::catalog, "Failed to initialize cluster info due to {}", initCIRes.status);
-                return STATUS_FORMAT(IOError, "Failed to create cluster info record to error code $0 and message $1",
-                    initCIRes.status.code, initCIRes.status.errorMessage);
+            K2LOG_E(log::catalog, "Failed to initialize cluster info due to {}", initCIRes.status.code());
+            return initCIRes.status;
         }
 
         // step 3/4 Init namespace_info - create the SKVSchema in the primary cluster's SKVcollection for namespace_info
         InitNamespaceTableResult initRes = namespace_info_handler_->InitNamespaceTable();
-        if (!initRes.status.IsSucceeded()) {
-            K2LOG_E(log::catalog, "Failed to initialize creating namespace table due to {}", initRes.status);
-            return STATUS_FORMAT(IOError, "Failed to initialize creating namespace table due to error code $0 and message $1",
-                initRes.status.code, initRes.status.errorMessage);
+        if (!initRes.status.ok()) {
+            K2LOG_E(log::catalog, "Failed to initialize creating namespace table due to {}", initRes.status.code());
+            return initCIRes.status;
         }
 
         init_context->Commit();
@@ -181,7 +176,7 @@ namespace catalog {
         }
         else
         {
-            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", status.ToUserMessage());
+            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", status.code());
         }
 
         return status;
@@ -193,17 +188,11 @@ namespace catalog {
         if (!init_db_done_) {
             std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
             // check the latest cluster info on SKV
-            GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
-            if (!result.status.IsSucceeded()) {
+            GetClusterInfoResult result = cluster_info_handler_->GetClusterInfo(context, cluster_id_);
+            if (!result.status.ok()) {
                 context->Abort();
-                K2LOG_E(log::catalog, "Cannot read cluster info record on SKV due to {}", result.status.errorMessage);
-                return STATUS_FORMAT(IOError, "Cannot read cluster info record on SKV due to error code $0 and message $1",
-                    result.status.code, result.status.errorMessage);
-            }
-            if (result.clusterInfo == nullptr) {
-                context->Abort();
-                K2LOG_E(log::catalog, "Cluster info record is empty on SKV");
-                return STATUS(IOError, "Cluster info record is empty on SKV");
+                K2LOG_E(log::catalog, "Cannot read cluster info record on SKV due to {}", result.status.code());
+                return result.status;
             }
 
             if (result.clusterInfo->IsInitdbDone()) {
@@ -217,11 +206,10 @@ namespace catalog {
             std::shared_ptr<ClusterInfo> new_cluster_info = result.clusterInfo;
             new_cluster_info->SetInitdbDone(true);
             UpdateClusterInfoResult update_result = cluster_info_handler_->UpdateClusterInfo(context, *new_cluster_info.get());
-            if (!update_result.status.IsSucceeded()) {
+            if (!update_result.status.ok()) {
                 context->Abort();
-                K2LOG_E(log::catalog, "Failed to update cluster info due to {}", update_result.status);
-                return STATUS_FORMAT(IOError, "Failed to update cluster info due to error code $0 and message $1",
-                    update_result.status.code, update_result.status.errorMessage);
+                K2LOG_E(log::catalog, "Failed to update cluster info due to {}", update_result.status.code());
+                return update_result.status;
             }
             context->Commit();
             init_db_done_.store(true, std::memory_order_relaxed);
@@ -236,25 +224,26 @@ namespace catalog {
         GetInitDbResponse response;
         if (!init_db_done_) {
             std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-            GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
+            GetClusterInfoResult result = cluster_info_handler_->GetClusterInfo(context, cluster_id_);
             context->Commit();
-            if (result.status.IsSucceeded() && result.clusterInfo != nullptr) {
-                K2LOG_D(log::catalog, "Checked IsInitDbDone from SKV {}", result.clusterInfo->IsInitdbDone());
-                if (result.clusterInfo->IsInitdbDone()) {
-                    init_db_done_.store(result.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
-                }
-                if (result.clusterInfo->GetCatalogVersion() > catalog_version_) {
-                    catalog_version_.store(result.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
-                }
-            } else {
+            if (!result.status.ok()) {
                 K2LOG_E(log::catalog, "Failed to check IsInitDbDone from SKV due to {}", result.status);
                 response.status = std::move(result.status);
                 return response;
             }
+
+            K2LOG_D(log::catalog, "Checked IsInitDbDone from SKV {}", result.clusterInfo->IsInitdbDone());
+            if (result.clusterInfo->IsInitdbDone()) {
+                init_db_done_.store(result.clusterInfo->IsInitdbDone(), std::memory_order_relaxed);
+            }
+            if (result.clusterInfo->GetCatalogVersion() > catalog_version_) {
+                catalog_version_.store(result.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
+            }
+            
         }
         K2LOG_D(log::catalog, "Get InitDBDone successfully {}", init_db_done_);
         response.isInitDbDone = init_db_done_;
-        response.status.Succeed();
+        response.status = Status(); // OK
         return response;
     }
 
@@ -262,8 +251,8 @@ namespace catalog {
         std::lock_guard<std::mutex> l(lock_);
         K2LOG_D(log::catalog, "Checking catalog version...");
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
-        GetClusterInfoResult result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
-        if (!result.status.IsSucceeded() || result.clusterInfo == nullptr) {
+        GetClusterInfoResult result = cluster_info_handler_->GetClusterInfo(context, cluster_id_);
+        if (!result.status.ok()) {
             K2LOG_E(log::catalog, "Failed to check cluster info due to {}", result.status);
             context->Abort();
             return;
@@ -278,7 +267,7 @@ namespace catalog {
     GetCatalogVersionResponse SqlCatalogManager::GetCatalogVersion(const GetCatalogVersionRequest& request) {
         GetCatalogVersionResponse response;
         response.catalogVersion = catalog_version_;
-        response.status.Succeed();
+        response.status = Status(); // OK
         K2LOG_D(log::catalog, "Returned catalog version {}", response.catalogVersion);
         return response;
     }
@@ -288,26 +277,21 @@ namespace catalog {
         IncrementCatalogVersionResponse response;
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background thread to fetch the ClusterInfo record periodically instead of fetching it for each call
-        GetClusterInfoResult read_result = cluster_info_handler_->ReadClusterInfo(context, cluster_id_);
-        if (!read_result.status.IsSucceeded()) {
+        GetClusterInfoResult read_result = cluster_info_handler_->GetClusterInfo(context, cluster_id_);
+        if (!read_result.status.ok()) {
             K2LOG_E(log::catalog, "Failed to check cluster info due to {}", read_result.status);
             context->Abort();
             response.status = std::move(read_result.status);
             return response;
         }
-        if (read_result.clusterInfo == nullptr) {
-            context->Abort();
-            response.status.errorMessage = "Cluster Info record is empty";
-            response.status.code = StatusCode::NOT_FOUND;
-            return response;
-        }
+
         K2LOG_D(log::catalog, "Found SKV catalog version: {}", read_result.clusterInfo->GetCatalogVersion());
         catalog_version_ = read_result.clusterInfo->GetCatalogVersion() + 1;
         // need to update the catalog version on SKV
         // the update frequency could be reduced once we have a single or a quorum of catalog managers
         ClusterInfo cluster_info(cluster_id_, catalog_version_, init_db_done_);
         UpdateClusterInfoResult update_result = cluster_info_handler_->UpdateClusterInfo(context, cluster_info);
-        if (!update_result.status.IsSucceeded()) {
+        if (!update_result.status.ok()) {
             context->Abort();
             response.status = std::move(update_result.status);
             catalog_version_ = read_result.clusterInfo->GetCatalogVersion();
@@ -316,7 +300,7 @@ namespace catalog {
         }
         context->Commit();
         response.version = catalog_version_;
-        response.status.Succeed();
+        response.status = Status(); // OK;
         K2LOG_D(log::catalog, "Increase catalog version to {}", catalog_version_);
         return response;
     }
@@ -332,8 +316,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info != nullptr) {
             K2LOG_E(log::catalog, "Namespace {} has already existed", request.namespaceName);
-            response.status.code = StatusCode::ALREADY_PRESENT;
-            response.status.errorMessage = "Namespace " + request.namespaceName + " has already existed";
+            response.status = std::move(STATUS_FORMAT(AlreadyPresent, "Namespace $0 has already existed", request.namespaceName));
             return response;
         }
 
@@ -345,8 +328,7 @@ namespace catalog {
             source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
             if (source_namespace_info == nullptr) {
                 K2LOG_E(log::catalog, "Failed to find source namespaces {}", request.sourceNamespaceId);
-                response.status.code = StatusCode::ALREADY_PRESENT;
-                response.status.errorMessage = "Namespace " + request.namespaceName + " does not exist";
+                response.status = std::move(STATUS_FORMAT(NotFound, "SounrceNamespace $0 not found", request.sourceNamespaceId));
                 return response;
             }
             t_nextPgOid = source_namespace_info->GetNextPgOid();
@@ -360,8 +342,8 @@ namespace catalog {
         //   Note: using unique immutable namespaceId as SKV collection name
         //   TODO: pass in other collection configurations/parameters later.
         K2LOG_D(log::catalog, "Creating SKV collection for namespace {}", request.namespaceId);
-        response.status = namespace_info_handler_->CreateSKVCollection(request.namespaceId, request.namespaceName);
-        if (!response.status.IsSucceeded())
+        response.status = k2_adapter_->SyncCreateCollection(request.namespaceId, request.namespaceName);
+        if (!response.status.ok())
         {
             K2LOG_E(log::catalog, "Failed to create SKV collection {}", request.namespaceId);
             return response;
@@ -377,7 +359,7 @@ namespace catalog {
         K2LOG_D(log::catalog, "Adding namespace {} on SKV", request.namespaceId);
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, new_ns);
-        if (!add_result.status.IsSucceeded()) {
+        if (!add_result.status.ok()) {
             K2LOG_E(log::catalog, "Failed to add namespace {}, due to {}", request.namespaceId,add_result.status);
             ns_context->Abort();
             response.status = std::move(add_result.status);
@@ -392,9 +374,9 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> target_context = NewTransactionContext();
         K2LOG_D(log::catalog, "Creating system tables for target namespace {}", new_ns->GetNamespaceId());
         CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_context, new_ns->GetNamespaceId());
-        if (!table_result.status.IsSucceeded()) {
+        if (!table_result.status.ok()) {
             K2LOG_E(log::catalog, "Failed to create system tables for target namespace {} due to {}",
-                new_ns->GetNamespaceId(), table_result.status.errorMessage);
+                new_ns->GetNamespaceId(), table_result.status.code());
             target_context->Abort();
             ns_context->Abort();
             response.status = std::move(table_result.status);
@@ -409,8 +391,8 @@ namespace catalog {
             // get the source table ids
             K2LOG_D(log::catalog, "Listing table ids from source namespace {}", request.sourceNamespaceId);
             ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_context, source_namespace_info->GetNamespaceId(), true);
-            if (!list_table_result.status.IsSucceeded()) {
-                K2LOG_E(log::catalog, "Failed to list table ids for namespace {} due to {}", source_namespace_info->GetNamespaceId(), list_table_result.status.errorMessage);
+            if (!list_table_result.status.ok()) {
+                K2LOG_E(log::catalog, "Failed to list table ids for namespace {} due to {}", source_namespace_info->GetNamespaceId(), list_table_result.status.code());
                 source_context->Abort();
                 target_context->Abort();
                 ns_context->Abort();
@@ -431,8 +413,8 @@ namespace catalog {
                     source_namespace_info->GetNamespaceId(),
                     source_namespace_info->GetNamespaceName(),
                     source_table_id);
-                if (!copy_result.status.IsSucceeded()) {
-                    K2LOG_E(log::catalog, "Failed to copy from source table {} due to {}", source_table_id, copy_result.status.errorMessage);
+                if (!copy_result.status.ok()) {
+                    K2LOG_E(log::catalog, "Failed to copy from source table {} due to {}", source_table_id, copy_result.status.code());
                     source_context->Abort();
                     target_context->Abort();
                     ns_context->Abort();
@@ -449,7 +431,7 @@ namespace catalog {
         target_context->Commit();
         ns_context->Commit();
         K2LOG_D(log::catalog, "Created namespace {}", new_ns->GetNamespaceId());
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -458,9 +440,9 @@ namespace catalog {
         K2LOG_D(log::catalog, "Listing namespaces...");
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         ListNamespacesResult result = namespace_info_handler_->ListNamespaces(context);
-        if (!result.status.IsSucceeded()) {
+        if (!result.status.ok()) {
             context->Abort();
-            K2LOG_E(log::catalog, "Failed to list namespaces due to {}", result.status.errorMessage);
+            K2LOG_E(log::catalog, "Failed to list namespaces due to {}", result.status.code());
             response.status = std::move(result.status);
             return response;
         }
@@ -474,7 +456,7 @@ namespace catalog {
             }
         }
         K2LOG_D(log::catalog, "Found {} namespaces", result.namespaceInfos.size());
-        response.status.Succeed();
+        response.status = Status(); // OK
         return response;
     }
 
@@ -484,25 +466,19 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(request.namespaceId);
         if (namespace_info != nullptr) {
             response.namespace_info = namespace_info;
-            response.status.Succeed();
+            response.status = Status(); // OK
             return response;
         }
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
-        if (!result.status.IsSucceeded()) {
+        if (!result.status.ok()) {
             context->Abort();
             K2LOG_E(log::catalog, "Failed to get namespace {}, due to {}", request.namespaceId, result.status);
             response.status = std::move(result.status);
             return response;
         }
-        if (result.namespaceInfo == nullptr) {
-            context->Abort();
-            K2LOG_W(log::catalog, "Cannot find namespace {}", request.namespaceId);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
-            return response;
-        }
+
         context->Commit();
         response.namespace_info = result.namespaceInfo;
 
@@ -510,7 +486,7 @@ namespace catalog {
         namespace_id_map_[response.namespace_info->GetNamespaceId()] = response.namespace_info ;
         namespace_name_map_[response.namespace_info->GetNamespaceName()] = response.namespace_info;
         K2LOG_D(log::catalog, "Found namespace {}", request.namespaceId);
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -521,10 +497,9 @@ namespace catalog {
         // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(context, request.namespaceId);
         context->Commit();
-        if (!result.status.IsSucceeded() || result.namespaceInfo == nullptr) {
-            K2LOG_W(log::catalog, "Cannot find namespace {}", request.namespaceId);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
+        if (!result.status.ok()) {
+            K2LOG_E(log::catalog, "Failed to get deletion target namespace {}.", request.namespaceId);
+            response.status = std::move(result.status);
             return response;
         }
         std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;
@@ -532,7 +507,7 @@ namespace catalog {
         // delete all namespace tables and indexes
         std::shared_ptr<SessionTransactionContext> tb_context = NewTransactionContext();
         ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_context, request.namespaceId, true);
-        if (!list_table_result.status.IsSucceeded()) {
+        if (!list_table_result.status.ok()) {
             response.status = std::move(list_table_result.status);
             tb_context->Abort();
             return response;
@@ -540,21 +515,21 @@ namespace catalog {
         for (auto& table_id : list_table_result.tableIds) {
             GetTableResult table_result = table_info_handler_->GetTable(tb_context, request.namespaceId,
                     request.namespaceName, table_id);
-            if (!table_result.status.IsSucceeded() || table_result.tableInfo == nullptr) {
+            if (!table_result.status.ok() || table_result.tableInfo == nullptr) {
                 response.status = std::move(table_result.status);
                 tb_context->Abort();
                 return response;
             }
             // delete table data
             DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_context, request.namespaceId, table_result.tableInfo);
-            if (!tb_data_result.status.IsSucceeded()) {
+            if (!tb_data_result.status.ok()) {
                 response.status = std::move(tb_data_result.status);
                 tb_context->Abort();
                 return response;
             }
             // delete table schema metadata
             DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_context, request.namespaceId, table_result.tableInfo);
-            if (!tb_metadata_result.status.IsSucceeded()) {
+            if (!tb_metadata_result.status.ok()) {
                 response.status = std::move(tb_metadata_result.status);
                 tb_context->Abort();
                 return response;
@@ -563,7 +538,7 @@ namespace catalog {
 
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(ns_context, namespace_info);
-        if (!del_result.status.IsSucceeded()) {
+        if (!del_result.status.ok()) {
             response.status = std::move(del_result.status);
             tb_context->Abort();
             ns_context->Abort();
@@ -575,7 +550,7 @@ namespace catalog {
         // remove namespace from local cache
         namespace_id_map_.erase(namespace_info->GetNamespaceId());
         namespace_name_map_.erase(namespace_info->GetNamespaceName());
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -585,8 +560,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.databaseName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find database " + request.databaseName;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName));
             return response;
         }
 
@@ -595,12 +569,12 @@ namespace catalog {
             ListTablesRequest req {.namespaceName = request.databaseName, .isSysTableIncluded=true};
             K2LOG_I(log::catalog, "Preloading database {}", req.namespaceName);
             ListTablesResponse result = ListTables(req);
-            if (!result.status.IsSucceeded()) {
-              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.errorMessage);
+            if (!result.status.ok()) {
+              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.code());
             }
         });
 
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -612,8 +586,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName));
             return response;
         }
 
@@ -622,16 +595,16 @@ namespace catalog {
         if (table_info != nullptr) {
             // only create table when it does not exist
             if (request.isNotExist) {
-                response.status.Succeed();
+                response.status = Status(); // OK;
                 response.tableInfo = table_info;
                 // return if the table already exists
                 return response;
             }
 
             // return table already present error if table already exists
-            response.status.code = StatusCode::ALREADY_PRESENT;
-            response.status.errorMessage = "Table " + request.tableName + " has already existed in " + request.namespaceName;
-            K2LOG_E(log::catalog, "{}", response.status);
+           response.status = std::move(STATUS_FORMAT(AlreadyPresent, 
+                "Table $0 has already existed in $1", request.tableName, request.namespaceName));
+            K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.namespaceName);
             return response;
         }
 
@@ -654,7 +627,7 @@ namespace catalog {
             namespace_info->GetNamespaceId(), request.isSharedTable);
         try {
             CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(context, namespace_info->GetNamespaceId(), new_table_info);
-            if (!result.status.IsSucceeded()) {
+            if (!result.status.ok()) {
                 // abort the transaction
                 context->Abort();
                 K2LOG_E(log::catalog, "Failed to create table id: {}, name: {} in {}, due to {}", new_table_info->table_id(), new_table_info->table_name(),
@@ -671,13 +644,13 @@ namespace catalog {
             UpdateTableCache(new_table_info);
 
             // return response
-            response.status.Succeed();
+            response.status = Status(); // OK;
             response.tableInfo = new_table_info;
         }  catch (const std::exception& e) {
             context->Abort();
-            response.status.code = StatusCode::RUNTIME_ERROR;
-            response.status.errorMessage = e.what();
-            K2LOG_E(log::catalog, "Failed to create table {} due to {} in {}", request.tableName, response.status, namespace_info->GetNamespaceId());
+            response.status = std::move(STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2", 
+                request.tableName, namespace_info->GetNamespaceId(), e.what()));
+            K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, namespace_info->GetNamespaceId());
         }
         return response;
     }
@@ -689,8 +662,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
+		    response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName));
             return response;
         }
         // generate table uuid from namespace oid and table oid
@@ -706,7 +678,7 @@ namespace catalog {
         if (base_table_info == nullptr) {
             GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
                 base_table_id);
-            if (table_result.status.IsSucceeded() && table_result.tableInfo != nullptr) {
+            if (table_result.status.ok() && table_result.tableInfo != nullptr) {
                 // update table cache
                 UpdateTableCache(table_result.tableInfo);
                 base_table_info = table_result.tableInfo;
@@ -717,8 +689,7 @@ namespace catalog {
             context->Abort();
             // cannot find the base table
             K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, namespace_info->GetNamespaceId());
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find base table " + base_table_id + " for index " + request.tableName + " in " + namespace_info->GetNamespaceId();
+  		    response.status = std::move(STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, namespace_info->GetNamespaceId()));          
             return response;
         }
 
@@ -731,15 +702,15 @@ namespace catalog {
                 if (request.isNotExist) {
                     const IndexInfo& index_info = itr->second;
                     response.indexInfo = std::make_shared<IndexInfo>(index_info);
-                    response.status.Succeed();
+                    response.status = Status(); // OK;
                     context->Commit();
                     return response;
                 } else {
                     context->Commit();
                     // return index already present error if index already exists
-                    response.status.code = StatusCode::ALREADY_PRESENT;
-                    response.status.errorMessage = "Index " + index_table_id + " has already existed in ns " + namespace_info->GetNamespaceId();
-                    K2LOG_E(log::catalog, "{}", response.status);
+                    response.status = std::move(STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1", 
+                        index_table_id, namespace_info->GetNamespaceId()));
+                    K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, namespace_info->GetNamespaceId());
                     return response;
                 }
             }
@@ -759,7 +730,7 @@ namespace catalog {
                 // create a SKV schema to insert the actual index data
                 CreateUpdateSKVSchemaResult skv_schema_result =
                     table_info_handler_->CreateOrUpdateIndexSKVSchema(context, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
-                if (!skv_schema_result.status.IsSucceeded()) {
+                if (!skv_schema_result.status.ok()) {
                     context->Abort();
                     response.status = std::move(skv_schema_result.status);
                     K2LOG_E(log::catalog, "Failed to persist index SKV schema id: {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
@@ -789,13 +760,14 @@ namespace catalog {
 
             context->Commit();
             response.indexInfo = new_index_info_ptr;
-            response.status.Succeed();
+            response.status = Status(); // OK;
             K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, namespace_info->GetNamespaceId());
         } catch (const std::exception& e) {
             context->Abort();
-            response.status.code = StatusCode::RUNTIME_ERROR;
-            response.status.errorMessage = e.what();
-            K2LOG_E(log::catalog, "Failed to create index {} due to {} in {}", request.tableName, response.status, namespace_info->GetNamespaceId());
+            response.status = std::move(STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}", 
+                request.tableName, e.what(), namespace_info->GetNamespaceId()));
+            K2LOG_E(log::catalog, "Failed to create index {} in {}", 
+                request.tableName, namespace_info->GetNamespaceId());
         }
         return response;
     }
@@ -812,7 +784,7 @@ namespace catalog {
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {}", table_info->table_name(), table_info->table_id());
             response.tableInfo = table_info;
-            response.status.Succeed();
+            response.status = Status(); // OK
             return response;
         }
 
@@ -822,7 +794,7 @@ namespace catalog {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
                 table_info->table_name(), table_info->table_id(), table_uuid);
             response.tableInfo = table_info;
-            response.status.Succeed();
+            response.status = Status(); // OK;
             return response;
         }
 
@@ -830,8 +802,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + namespace_id;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", namespace_id));
             return response;
         }
 
@@ -839,7 +810,7 @@ namespace catalog {
         // fetch the table from SKV
         K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
         GetTableInfoResult table_info_result = table_info_handler_->GetTableInfo(context, namespace_info->GetNamespaceId(), table_id);
-        if (!table_info_result.status.IsSucceeded()) {
+        if (!table_info_result.status.ok()) {
             context->Abort();
             K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
                 table_id, namespace_info->GetNamespaceId(), table_info_result.status);
@@ -860,8 +831,7 @@ namespace catalog {
                 namespace_info = CheckAndLoadNamespaceById(physical_collection);
                 if (namespace_info == nullptr) {
                     K2LOG_E(log::catalog, "Cannot find namespace {} for shared table {}", physical_collection, table_id);
-                    response.status.code = StatusCode::NOT_FOUND;
-                    response.status.errorMessage = "Cannot find namespace " + physical_collection + " for shared table " + table_id;
+                    response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0 for shared table $1", physical_collection, table_id));
                     return response;
                 }
                 // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
@@ -874,7 +844,7 @@ namespace catalog {
             // the table id belongs to a table
             GetTableResult table_result = table_info_handler_->GetTable(context, physical_collection, namespace_info->GetNamespaceName(),
                 table_id);
-            if (!table_result.status.IsSucceeded()) {
+            if (!table_result.status.ok()) {
                 context->Abort();
                 K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
                     table_id, physical_collection, table_result.status);
@@ -885,15 +855,14 @@ namespace catalog {
             if (table_result.tableInfo == nullptr) {
                 context->Commit();
                 K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
-                response.status.code = StatusCode::NOT_FOUND;
-                response.status.errorMessage = "Cannot find table " + table_id + " in ns " + physical_collection;
+                response.status = std::move(STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection));
                 response.tableInfo = nullptr;
                 return response;
             }
 
             response.tableInfo = table_result.tableInfo;
             context->Commit();
-            response.status.Succeed();
+            response.status = Status(); // OK;
             // update table cache
             UpdateTableCache(response.tableInfo);
             K2LOG_D(log::catalog, "Returned schema for table name: {}, id: {}",
@@ -908,10 +877,10 @@ namespace catalog {
         if (index_ptr == nullptr) {
             // not founnd in cache, try to check the base table id from SKV
             GetBaseTableIdResult table_id_result = table_info_handler_->GetBaseTableId(context, physical_collection, table_id);
-            if (!table_id_result.status.IsSucceeded()) {
+            if (!table_id_result.status.ok()) {
                 context->Abort();
                 K2LOG_E(log::catalog, "Failed to check base table id for index {} in {}, due to {}",
-                    table_id, physical_collection, table_id_result.status.errorMessage);
+                    table_id, physical_collection, table_id_result.status.code());
                 response.status = std::move(table_id_result.status);
                 response.tableInfo = nullptr;
                 return response;
@@ -925,8 +894,7 @@ namespace catalog {
             // cannot find the id as either a table id or an index id
             context->Abort();
             K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find base table for index " + table_id + " in " + physical_collection;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection));
             response.tableInfo = nullptr;
             return response;
         }
@@ -934,14 +902,14 @@ namespace catalog {
         K2LOG_D(log::catalog, "Fetching base table schema {} for index {} in {}", base_table_id, table_id, physical_collection);
         GetTableResult base_table_result = table_info_handler_->GetTable(context, physical_collection, namespace_info->GetNamespaceName(),
                 base_table_id);
-        if (!base_table_result.status.IsSucceeded()) {
+        if (!base_table_result.status.ok()) {
             context->Abort();
             response.status = std::move(base_table_result.status);
             response.tableInfo = nullptr;
             return response;
         }
         context->Commit();
-        response.status.Succeed();
+        response.status = Status(); // OK;
         response.tableInfo = base_table_result.tableInfo;
         // update table cache
         UpdateTableCache(response.tableInfo);
@@ -956,8 +924,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceName;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespaceName $0", request.namespaceName));
             return response;
         }
         response.namespaceId = namespace_info->GetNamespaceId();
@@ -965,7 +932,7 @@ namespace catalog {
         std::shared_ptr<SessionTransactionContext> context = NewTransactionContext();
         ListTablesResult tables_result = table_info_handler_->ListTables(context, namespace_info->GetNamespaceId(),
                 namespace_info->GetNamespaceName(), request.isSysTableIncluded);
-        if (!tables_result.status.IsSucceeded()) {
+        if (!tables_result.status.ok()) {
             context->Abort();
             response.status = std::move(tables_result.status);
             return response;
@@ -977,7 +944,7 @@ namespace catalog {
             UpdateTableCache(tableInfo);
             response.tableInfos.push_back(tableInfo);
         }
-        response.status.Succeed();
+        response.status = Status(); // OK;
         K2LOG_D(log::catalog, "Found {} tables in namespace {}", response.tableInfos.size(), request.namespaceName);
         return response;
     }
@@ -998,15 +965,14 @@ namespace catalog {
             std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
             if (namespace_info == nullptr) {
                 K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-                response.status.code = StatusCode::NOT_FOUND;
-                response.status.errorMessage = "Cannot find namespace " + namespace_id;
+                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id));
                 return response;
             }
 
             // fetch the table from SKV
             GetTableResult table_result = table_info_handler_->GetTable(context, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
                 table_id);
-            if (!table_result.status.IsSucceeded()) {
+            if (!table_result.status.ok()) {
                 context->Abort();
                 response.status = std::move(table_result.status);
                 return response;
@@ -1014,8 +980,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 context->Abort();
-                response.status.code = StatusCode::NOT_FOUND;
-                response.status.errorMessage = "Cannot find table " + table_id;
+                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find table $0", table_id));
                 return response;
             }
 
@@ -1025,7 +990,7 @@ namespace catalog {
         // delete indexes and the table itself
         // delete table data
          DeleteTableResult delete_data_result = table_info_handler_->DeleteTableData(context, namespace_id, table_info);
-        if (!delete_data_result.status.IsSucceeded()) {
+        if (!delete_data_result.status.ok()) {
             context->Abort();
             response.status = std::move(delete_data_result.status);
             return response;
@@ -1033,7 +998,7 @@ namespace catalog {
 
         // delete table schema metadata
         DeleteTableResult delete_metadata_result = table_info_handler_->DeleteTableMetadata(context, namespace_id, table_info);
-        if (!delete_metadata_result.status.IsSucceeded()) {
+        if (!delete_metadata_result.status.ok()) {
             context->Abort();
             response.status = std::move(delete_metadata_result.status);
             return response;
@@ -1042,7 +1007,7 @@ namespace catalog {
         context->Commit();
         // clear table cache after table deletion
         ClearTableCache(table_info);
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -1056,8 +1021,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + namespace_id;
+            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id));
             return response;
         }
 
@@ -1066,7 +1030,7 @@ namespace catalog {
         std::string base_table_id;
         if (index_info == nullptr) {
             GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(context, namespace_id, table_id);
-            if (!index_result.status.IsSucceeded()) {
+            if (!index_result.status.ok()) {
                 response.status = std::move(index_result.status);
                 context->Abort();
                 return response;
@@ -1081,7 +1045,7 @@ namespace catalog {
         if (base_table_info == nullptr) {
             GetTableResult table_result = table_info_handler_->GetTable(context, namespace_id, namespace_info->GetNamespaceName(),
                     base_table_id);
-            if (!table_result.status.IsSucceeded()) {
+            if (!table_result.status.ok()) {
                 context->Abort();
                 response.status = std::move(table_result.status);
                 return response;
@@ -1089,8 +1053,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 context->Abort();
-                response.status.code = StatusCode::NOT_FOUND;
-                response.status.errorMessage = "Base table " + base_table_id + " cannot be found";
+                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find Base table $0", base_table_id));
                 return response;
             }
 
@@ -1099,7 +1062,7 @@ namespace catalog {
 
         // delete index data
         DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(context, namespace_id, table_id);
-        if (!delete_data_result.status.IsSucceeded()) {
+        if (!delete_data_result.status.ok()) {
             context->Abort();
             response.status = std::move(delete_data_result.status);
             return response;
@@ -1107,7 +1070,7 @@ namespace catalog {
 
         // delete index metadata
         DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(context, namespace_id, table_id);
-        if (!delete_metadata_result.status.IsSucceeded()) {
+        if (!delete_metadata_result.status.ok()) {
             context->Abort();
             response.status = std::move(delete_metadata_result.status);
             return response;
@@ -1119,7 +1082,7 @@ namespace catalog {
         // update table cache with the index removed, index cache is updated accordingly
         UpdateTableCache(base_table_info);
         response.baseIndexTableOid = base_table_info->table_oid();
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -1129,19 +1092,13 @@ namespace catalog {
             request.nextOid, request.count, request.namespaceId);
         std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
         GetNamespaceResult result = namespace_info_handler_->GetNamespace(ns_context, request.namespaceId);
-        if (!result.status.IsSucceeded()) {
+        if (!result.status.ok()) {
             ns_context->Abort();
             K2LOG_E(log::catalog, "Failed to get namespace {}", request.namespaceId);
             response.status = std::move(result.status);
             return response;
         }
-        if (result.namespaceInfo == nullptr) {
-            ns_context->Abort();
-            K2LOG_E(log::catalog, "Namespace {} is empty", request.namespaceId);
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find namespace " + request.namespaceId;
-            return response;
-        }
+
         uint32_t begin_oid = result.namespaceInfo->GetNextPgOid();
         if (begin_oid < request.nextOid) {
             begin_oid = request.nextOid;
@@ -1149,8 +1106,7 @@ namespace catalog {
         if (begin_oid == std::numeric_limits<uint32_t>::max()) {
             ns_context->Abort();
             K2LOG_W(log::catalog, "No more object identifier is available for Postgres database {}", request.namespaceId);
-            response.status.code = StatusCode::INVALID_ARGUMENT;
-            response.status.errorMessage = "No more object identifier is available for " + request.namespaceId;
+            response.status = std::move(STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.namespaceId));
             return response;
         }
 
@@ -1169,7 +1125,7 @@ namespace catalog {
         updated_ns->SetNextPgOid(end_oid);
         K2LOG_D(log::catalog, "Updating nextPgOid on SKV to {} for namespace {}", end_oid, request.namespaceId);
         AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_context, updated_ns);
-        if (!update_result.status.IsSucceeded()) {
+        if (!update_result.status.ok()) {
             ns_context->Abort();
             K2LOG_E(log::catalog, "Failed to update nextPgOid on SKV due to {}", update_result.status);
             response.status = std::move(update_result.status);
@@ -1181,7 +1137,7 @@ namespace catalog {
         // update namespace caches after persisting to SKV successfully
         namespace_id_map_[updated_ns->GetNamespaceId()] = updated_ns;
         namespace_name_map_[updated_ns->GetNamespaceName()] = updated_ns;
-        response.status.Succeed();
+        response.status = Status(); // OK;
         return response;
     }
 
@@ -1320,7 +1276,12 @@ namespace catalog {
     }
 
     std::shared_ptr<SessionTransactionContext> SqlCatalogManager::NewTransactionContext() {
-        std::shared_ptr<K23SITxn> txn = std::make_shared<K23SITxn>(k2_adapter_->beginTransaction().get());
+        std::shared_ptr<K23SITxn> txn = nullptr;
+        auto result = k2_adapter_->SyncBeginTransaction(txn);
+        if (!result.ok())
+        {
+            throw std::runtime_error("Cannot find start transaction.");
+        }
         std::shared_ptr<SessionTransactionContext> context = std::make_shared<SessionTransactionContext>(txn);
         return context;
     }
@@ -1368,7 +1329,7 @@ namespace catalog {
             std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
             ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
             ns_context->Commit();
-            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+            if (result.status.ok() && !result.namespaceInfos.empty()) {
                 // update namespace caches
                 UpdateNamespaceCache(result.namespaceInfos);
                 // recheck namespace
@@ -1386,7 +1347,7 @@ namespace catalog {
             std::shared_ptr<SessionTransactionContext> ns_context = NewTransactionContext();
             ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_context);
             ns_context->Commit();
-            if (result.status.IsSucceeded() && !result.namespaceInfos.empty()) {
+            if (result.status.ok() && !result.namespaceInfos.empty()) {
                 // update namespace caches
                 UpdateNamespaceCache(result.namespaceInfos);
                 // recheck namespace
@@ -1395,6 +1356,7 @@ namespace catalog {
         }
         return namespace_info;
     }
+
 
 } // namespace catalog
 }  // namespace sql

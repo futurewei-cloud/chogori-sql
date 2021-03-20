@@ -39,6 +39,8 @@ using k2pg::gate::K23SITxn;
 // use the pair <namespace_id, table_name> to reference a table
 typedef std::pair<std::string, std::string> TableNameKey;
 
+// TODO: for each these entity type, add conversion code between them and SKVRecord to move redundant conversion code scattered.
+
 class ClusterInfo {
     public:
     ClusterInfo();
@@ -152,7 +154,7 @@ class SessionTransactionContext {
     SessionTransactionContext(std::shared_ptr<K23SITxn> txn);
     ~SessionTransactionContext();
 
-    std::shared_ptr<K23SITxn> GetTxn() {
+    std::shared_ptr<K23SITxn>& GetTxn() {
         return txn_;
     }
 
@@ -172,53 +174,6 @@ class SessionTransactionContext {
     std::shared_ptr<K23SITxn> txn_;
     bool finished_;
 };
-
-// mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)
-K2_DEF_ENUM(StatusCode,
-    OK,
-    NOT_FOUND,
-    CORRUPTION,
-    NOT_SUPPORTED,
-    INVALID_ARGUMENT,
-    IO_ERROR,
-    ALREADY_PRESENT,
-    RUNTIME_ERROR,
-    NETWORK_ERROR,
-    ILLEGAL_STATE,
-    NOT_AUTHORIZED,
-    ABORTED,
-    REMOTE_ERROR,
-    SERVICE_UNAVAILABLE,
-    TIMED_OUT,
-    UNINITIALIZED,
-    CONFIGURATION_ERROR,
-    INCOMPLETE,
-    END_OF_FILE,
-    INVALID_COMMAND,
-    QUERY_ERROR,
-    INTERNAL_ERROR,
-    EXPIRED
-);
-
-// response status
-struct RStatus {
-    RStatus() = default;
-    ~RStatus() = default;
-
-    StatusCode code;
-    std::string errorMessage;
-
-    void Succeed() {
-        code = StatusCode::OK;
-    }
-
-    bool IsSucceeded() {
-        return code == StatusCode::OK;
-    }
-    K2_DEF_FMT(RStatus, code, errorMessage);
-};
-
-static const inline RStatus StatusOK{.code = StatusCode::OK, .errorMessage=""};
 
 } // namespace catalog
 } // namespace sql

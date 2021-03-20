@@ -66,17 +66,17 @@ class PgTxnHandler {
 
   CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
 
-  std::shared_ptr<K23SITxn> getTxnHandler() {
+  std::shared_ptr<K23SITxn> GetTxnHandle() {
     return txn_;
   }
 
-  std::shared_ptr<K23SITxn> GetNewTransactionIfNecessary(bool read_only);
+  CHECKED_STATUS StartNewTransactionIfNecessary(bool read_only);
 
   private:
 
   void ResetTransaction();
 
-  void StartNewTransaction();
+  CHECKED_STATUS StartNewTransaction();
 
   std::shared_ptr<K23SITxn> txn_ = nullptr;
 
