@@ -69,11 +69,11 @@ class ClusterInfoHandler {
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
 
-    InitClusterInfoResult InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
+    InitClusterInfoResult InitClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, ClusterInfo& cluster_info);
 
-    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
+    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, ClusterInfo& cluster_info);
 
-    GetClusterInfoResult GetClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id);
+    GetClusterInfoResult GetClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& cluster_id);
 
     private:
     std::string collection_name_;

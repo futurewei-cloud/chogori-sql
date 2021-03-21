@@ -41,15 +41,13 @@ namespace gate {
 // https://github.com/futurewei-cloud/chogori-platform/blob/master/src/k2/module/k23si/client/k23si_client.h
 class K23SITxn {
 public:
-// TODO: for SessionTransactionContext, remove this later
-//private: 
-    //friend class K2Adapter;
-    //friend class PGK2Client;
-
     // Ctor: creates a new transaction with the given mtr.
     K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime);
 
     ~K23SITxn();
+private: 
+    friend class K2Adapter;
+    friend class PGK2Client;
 
     // Scans records from K2.
     // The result future is eventually satisfied with the resulting SKVRecords of the scan.
@@ -87,7 +85,7 @@ public:
     // The MTR will be unique in spacetime
     const k2::dto::K23SI_MTR& mtr() const;
 
-private: // fields
+ // fields
     k2::dto::K23SI_MTR _mtr; // mtr for this transaction
     void _reportEndMetrics(k2::TimePoint now);
 

@@ -492,6 +492,8 @@ class PgGateApiImpl {
 
   YBCPgCallbacks pg_callbacks_;
 
+  // TODO: investigate that if the pg_gate_impl need to hold(and share with its session) the txnHandler
+  //       or this handler should only be owned by it session.
   std::shared_ptr<PgTxnHandler> pg_txn_handler_;
 };
 

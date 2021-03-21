@@ -82,13 +82,13 @@ class NamespaceInfoHandler {
 
     InitNamespaceTableResult InitNamespaceTable();
 
-    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info);
+    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<NamespaceInfo> namespace_info);
 
-    GetNamespaceResult GetNamespace(std::shared_ptr<SessionTransactionContext> context, const std::string& namespace_id);
+    GetNamespaceResult GetNamespace(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& namespace_id);
 
-    ListNamespacesResult ListNamespaces(std::shared_ptr<SessionTransactionContext> context);
+    ListNamespacesResult ListNamespaces(std::shared_ptr<PgTxnHandler> txnHandler);
 
-    DeleteNamespaceResult DeleteNamespace(std::shared_ptr<SessionTransactionContext> context, std::shared_ptr<NamespaceInfo> namespace_info);
+    DeleteNamespaceResult DeleteNamespace(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<NamespaceInfo> namespace_info);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 

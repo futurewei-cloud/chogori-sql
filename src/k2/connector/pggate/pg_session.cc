@@ -271,24 +271,25 @@ Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>
     InvalidateForeignKeyReferenceCache();
   } 
   
-  // use current session's transaction, which will start new one if it is not started yet.
-  std::shared_ptr<K23SITxn> sessionTxnHandle = nullptr;   
-  Status result = GetSessionTxnHandle((*op)->read_only(), sessionTxnHandle);
+  // use current session's transaction, which will start new transaction if it is not started yet.
+  auto result = pg_txn_handler_->StartNewTransactionIfNotYet((*op)->read_only());
   if (!result.ok())
   {
     return result;
-  }                      
+  }
+  // we should not have a txn started already
+  CHECK(pg_txn_handler_->GetTxnHandle() != nullptr);
 
   if (ops_count == 1) {
     // run a single operation
-    return k2_adapter_->Exec(sessionTxnHandle, *op);
+    return k2_adapter_->Exec(pg_txn_handler_->GetTxnHandle(), *op);
   } else {  // ops_count > 1
     // run multiple operations in a batch
     std::vector<std::shared_ptr<PgOpTemplate>> ops;
     for (auto end = op + ops_count; op != end; ++op) {
       ops.push_back(*op);
     }
-    return k2_adapter_->BatchExec(sessionTxnHandle, ops);
+    return k2_adapter_->BatchExec(pg_txn_handler_->GetTxnHandle(), ops);
   }
 }
 
@@ -369,18 +370,6 @@ Status PgSession::CacheForeignKeyReference(uint32_t table_oid, std::string&& ybc
 Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid) {
   PgForeignKeyReference reference{table_oid, std::move(ybctid)};
   fk_reference_cache_.erase(reference);
-  return Status::OK();
-}
-
-Status PgSession::GetSessionTxnHandle(bool read_only, std::shared_ptr<K23SITxn>& outSessionTxnHandle) {
-  auto result = pg_txn_handler_->StartNewTransactionIfNecessary(read_only);
-  if (!result.ok())
-  {
-    return result;
-  }
-
-  outSessionTxnHandle = pg_txn_handler_->GetTxnHandle();
-  DCHECK(outSessionTxnHandle != nullptr);
   return Status::OK();
 }
 

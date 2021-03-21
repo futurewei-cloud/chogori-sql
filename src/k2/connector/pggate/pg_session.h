@@ -267,9 +267,9 @@ class PgSession {
 
   CHECKED_STATUS HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id);
 
-  // Returns the appropriate session transaction to use, in most cases the one used by the current transaction.
-  // read_only - whether this is being done in the context of a read-only operation.
-  CHECKED_STATUS GetSessionTxnHandle(bool read_only, std::shared_ptr<K23SITxn>& outSessionTxnHandle);
+  std::shared_ptr<PgTxnHandler>& GetSessionTxnHandler() {
+    return pg_txn_handler_;
+  }
 
   Result<IndexPermissions> WaitUntilIndexPermissionsAtLeast(
       const PgObjectId& table_object_id,
@@ -309,7 +309,7 @@ class PgSession {
 
   std::shared_ptr<K2Adapter> k2_adapter_;
 
-  // A transaction handler allowing to begin/abort/commit transactions.
+  // Session's transaction handler.
   std::shared_ptr<PgTxnHandler> pg_txn_handler_;
 
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;

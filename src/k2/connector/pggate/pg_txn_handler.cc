@@ -94,7 +94,7 @@ Status PgTxnHandler::AbortTransaction() {
   if (!txn_in_progress_) {
     return Status::OK();
   }
-  if (txn_ != nullptr) {
+  if (txn_ != nullptr && read_only_) {
     // This was a read-only transaction, nothing to commit.
     ResetTransaction();
     return Status::OK();
@@ -135,7 +135,7 @@ Status PgTxnHandler::ExitSeparateDdlTxnMode(bool success) {
   return Status::OK();
 }
 
-Status PgTxnHandler::StartNewTransactionIfNecessary(bool read_only) {
+Status PgTxnHandler::StartNewTransactionIfNotYet(bool read_only) {
   // start transaction if not yet started.
   if (txn_ == nullptr) {
     read_only_ = read_only;
