@@ -24,17 +24,24 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn
+from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
 
 class TestIsolation(unittest.TestCase):
+    sharedConn = None
+
     @classmethod
     def setUpClass(cls):
-        commitSQL(getConn, "CREATE TABLE isolation (id integer PRIMARY KEY, dataA integer, dataB integer);")
+        commitSQLWithNewConn(getConn, "CREATE TABLE isolation (id integer PRIMARY KEY, dataA integer, dataB integer);")
+        cls.sharedConn = getConn()
+
+    @classmethod
+    def tearDownClass(cls):
+        # TODO delete table
+        cls.sharedConn.close()
 
     def test_readYourWrite(self):
-        conn = getConn()
-        with conn: # commits at end of context if no errors
-            with conn.cursor() as cur:
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
                 cur.execute("INSERT INTO isolation VALUES (1, 1, 1);")
                 cur.execute("SELECT * FROM isolation WHERE id=1;")
                 records = cur.fetchall()
@@ -43,8 +50,6 @@ class TestIsolation(unittest.TestCase):
                 self.assertEqual(record[0], 1)
                 self.assertEqual(record[1], 1)
                 self.assertEqual(record[2], 1)
-
-        conn.close()
 
     def test_conflict(self):
         conn = getConn()
@@ -65,8 +70,7 @@ class TestIsolation(unittest.TestCase):
         conn2.close()
 
     def test_mvccRead(self):
-        conn = getConn()
-        cur1 = conn.cursor()
+        cur1 = self.sharedConn.cursor()
         cur1.execute("INSERT INTO isolation VALUES (4, 2, 2);")
 
         conn2 = getConn()
@@ -78,25 +82,26 @@ class TestIsolation(unittest.TestCase):
         self.assertEqual(len(records), 0)
         cur1.close()
 
-        conn.commit()
+        self.sharedConn.commit()
         conn2.commit()
-        conn.close()
         conn2.close()
 
     def test_rollback(self):
-        conn = getConn()
-        with conn.cursor() as cur:
+        with self.sharedConn.cursor() as cur:
             cur.execute("INSERT INTO isolation VALUES (6, 1, 1);")
-        conn.rollback()
-        conn.close()
+        self.sharedConn.rollback()
 
-        conn2 = getConn()
-        with conn2.cursor() as cur:
-            cur.execute("SELECT * FROM isolation WHERE id=6;")
-            records = cur.fetchall()
-            self.assertEqual(len(records), 0)
+        with self.sharedConn:
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT * FROM isolation WHERE id=6;")
+                records = cur.fetchall()
+                self.assertEqual(len(records), 0)
 
-        conn.close()
-        conn2.close()
-
-    # TODO delete table on teardown
+    def test_readYourDelete(self):
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                cur.execute("INSERT INTO isolation VALUES (7, 7, 7);")
+                cur.execute("DELETE FROM isolation WHERE id=7;")
+                cur.execute("SELECT * FROM isolation WHERE id=7;")
+                records = cur.fetchall()
+                self.assertEqual(len(records), 0)

@@ -24,20 +24,26 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn
+from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
 
 @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
 class TestCompoundKey(unittest.TestCase):
+    sharedConn = None
+
     @classmethod
     def setUpClass(cls):
-        commitSQL(getConn, "CREATE TABLE compoundkey (id integer, idstr text, id3 integer, dataA integer, PRIMARY KEY(id, idstr, id3));")
+        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkey (id integer, idstr text, id3 integer, dataA integer, PRIMARY KEY(id, idstr, id3));")
+        cls.sharedConn = getConn()
+
+    @classmethod
+    def tearDownClass(cls):
+        # TODO delete table
+        cls.sharedConn.close()
 
     def test_prefixScan(self):
-        conn = getConn()
-
         # Populate some records for the tests
-        with conn: # commits at end of context if no errors
-            with conn.cursor() as cur:
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
                 for i in range(1, 11):
                     cur.execute("INSERT INTO compoundkey VALUES (1, 'sometext', %s, 1);", (i,))
                 for i in range(1, 11):
@@ -46,8 +52,8 @@ class TestCompoundKey(unittest.TestCase):
                     cur.execute("INSERT INTO compoundkey VALUES (3, 'somemoretext', %s, 3);", (i,))
 
         # Prefix scan with first two keys specified with =
-        with conn: # commits at end of context if no errors
-            with conn.cursor() as cur:
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
                 cur.execute("SELECT * FROM compoundkey WHERE id = 2 AND idstr = 'someothertext';")
                 for i in range(1, 11):
                     record = cur.fetchone()
@@ -58,11 +64,10 @@ class TestCompoundKey(unittest.TestCase):
                     self.assertEqual(record[3], 2)
 
         # Partial prefix scan with extra filter that is not a prefix
-        record = selectOneRecord(conn, "SELECT * FROM compoundkey WHERE id = 1 AND id3 = 5;")
+        record = selectOneRecord(self.sharedConn, "SELECT * FROM compoundkey WHERE id = 1 AND id3 = 5;")
         self.assertEqual(record[0], 1)
         self.assertEqual(record[1], "sometext")
         self.assertEqual(record[2], 5)
         self.assertEqual(record[1], 1)
-        conn.close()
-       
-    # TODO delete table on teardown
+
+    # TODO add other key types       

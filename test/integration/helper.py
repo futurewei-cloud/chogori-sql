@@ -35,12 +35,18 @@ def getConn():
     return psycopg2.connect(dbname=args.db, user="postgres", port=args.port, host="localhost")
 
 # Helper function for tests. Executes given SQL and commits.
-def commitSQL(connFunc, sql):
+def commitSQLWithNewConn(connFunc, sql):
     conn = connFunc()
     with conn: # commits at end of context if no errors
         with conn.cursor() as cur:
             cur.execute(sql)
     conn.close()
+
+# Helper function for tests. Executes given SQL and commits.
+def commitSQL(conn, sql):
+    with conn: # commits at end of context if no errors
+        with conn.cursor() as cur:
+            cur.execute(sql)
 
 # Executes a SQL statement, expected to get one row back and return it
 def selectOneRecord(conn, sql):

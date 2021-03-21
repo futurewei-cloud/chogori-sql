@@ -24,41 +24,42 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn
+from helper import commitSQLWithNewConn, selectOneRecord, getConn
 
 class TestJoin(unittest.TestCase):
+    sharedConn = None
+
     @classmethod
     def setUpClass(cls):
-        commitSQL(getConn, "CREATE TABLE join1 (id integer PRIMARY KEY, dataA integer, dataB integer);")
-        commitSQL(getConn, "CREATE TABLE join2 (id integer PRIMARY KEY, dataC integer, dataD integer);")
+        commitSQLWithNewConn(getConn, "CREATE TABLE join1 (id integer PRIMARY KEY, dataA integer, dataB integer);")
+        commitSQLWithNewConn(getConn, "CREATE TABLE join2 (id integer PRIMARY KEY, dataC integer, dataD integer);")
 
-        conn = getConn()
-        with conn: # commits at end of context if no errors
-            with conn.cursor() as cur:
+        cls.sharedConn = getConn()
+        with cls.sharedConn: # commits at end of context if no errors
+            with cls.sharedConn.cursor() as cur:
                 for i in range(1, 1001):
                     cur.execute("INSERT INTO join1 VALUES (%s, %s, 1);", (i, i))
                     cur.execute("INSERT INTO join2 VALUES (%s, %s, 1);", (i, i))
-        conn.close()
+
+    @classmethod
+    def tearDownClass(cls):
+        # TODO delete table
+        cls.sharedConn.close()
 
     # Make sure we can do a basic scan over the tables, so we know that any problems in 
     # other tests are caused by the joins
     def test_joinPreTest(self):
-        conn = getConn()
-        with conn: # commits at end of context if no errors
-            with conn.cursor() as cur:
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
                 cur.execute("SELECT * FROM join1;")
                 records = cur.fetchall()
                 self.assertEqual(len(records), 1000)
 
-        conn.close()
 
     def test_innerJoin(self):
-        conn = getConn()
-        with conn:
-            with conn.cursor() as cur:
+        with self.sharedConn:
+            with self.sharedConn.cursor() as cur:
                 cur.execute("SELECT dataB FROM join1 INNER JOIN join2 ON join1.dataA=join2.dataC AND join1.dataB = join2.dataD;")
                 result = cur.fetchall()
                 self.assertEqual(len(result), 1000)
-        conn.close()
 
-    # TODO delete table on teardown
