@@ -220,7 +220,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> 
         query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
         do {
             std::vector<k2::dto::SKVRecord> outRecords;
-            response.status = k2_adapter_->SyncScanRead(txnHandler->GetTxnHandle(), query, outRecords);
+            response.status = k2_adapter_->SyncScanRead(txnHandler->GetTxn(), query, outRecords);
             if (!response.status.ok()) {
                 K2LOG_E(log::catalog, "Failed to run scan read due to {}", response.status.code());
                 return response;
@@ -383,7 +383,7 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<PgTxnHandler> 
     int count = 0;
     do {
         std::vector<k2::dto::SKVRecord> outRecords;
-        response.status = k2_adapter_->SyncScanRead(source_txnHandler->GetTxnHandle(), query, outRecords);
+        response.status = k2_adapter_->SyncScanRead(source_txnHandler->GetTxn(), query, outRecords);
         if (!response.status.ok()) {
             K2LOG_E(log::catalog, "Failed to run scan read for table {} in {} due to {}", 
                 source_table_id, source_coll_name, response.status.code());
@@ -393,7 +393,7 @@ CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<PgTxnHandler> 
         for (k2::dto::SKVRecord& record : outRecords) {
             // clone and persist SKV record to target table
             k2::dto::SKVRecord target_record = record.cloneToOtherSchema(target_coll_name, outTargetchema);
-            Status table_status = k2_adapter_->SyncUpsertRecord(target_txnHandler->GetTxnHandle(), target_record);
+            Status table_status = k2_adapter_->SyncUpsertRecord(target_txnHandler->GetTxn(), target_record);
             if (!table_status.ok()) {
                 K2LOG_E(log::catalog, "Failed to persist SKV record to table {} in {} due to {}", 
                     target_table_id, target_coll_name, table_status.code());
@@ -477,13 +477,13 @@ PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<PgTxnHan
     try {
         // use sequential SKV writes for now, could optimize this later
         k2::dto::SKVRecord tablelist_table_record = DeriveTableHeadRecord(collection_name, table);
-        response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), tablelist_table_record);
+        response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), tablelist_table_record);
         if (!response.status.ok()) {
             return response;
         }
         std::vector<k2::dto::SKVRecord> table_column_records = DeriveTableColumnRecords(collection_name, table);
         for (auto& table_column_record : table_column_records) {
-            Status column_status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), table_column_record);
+            Status column_status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), table_column_record);
             if (!column_status.ok()) {
                 response.status = std::move(column_status);
                 return response;
@@ -512,7 +512,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<PgTx
         k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
         K2LOG_D(log::catalog, "Persisting SKV record tablelist_index_record id: {}, name: {}",
             index_info.table_id(), index_info.table_name());
-        response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), tablelist_index_record);
+        response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), tablelist_index_record);
         if (!response.status.ok()) {
             return response;
         }
@@ -521,7 +521,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<PgTx
         for (auto& index_column_record : index_column_records) {
             K2LOG_D(log::catalog, "Persisting SKV record index_column_record id: {}, name: {}",
                 index_info.table_id(), index_info.table_name());
-            Status index_status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), index_column_record);
+            Status index_status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), index_column_record);
             if (!index_status.ok()) {
                 response.status = std::move(index_status);
                 return response;
@@ -560,7 +560,7 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHan
         // then delete the table metadata itself
         // first, fetch the table columns
         std::vector<k2::dto::SKVRecord> table_columns = FetchTableColumnSchemaSKVRecords(txnHandler, collection_name, table->table_id());
-        response.status = k2_adapter_->SyncDeleteRecords(txnHandler->GetTxnHandle(), table_columns);
+        response.status = k2_adapter_->SyncDeleteRecords(txnHandler->GetTxn(), table_columns);
         if (!response.status.ok()) {
             return response;
         } 
@@ -572,7 +572,7 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHan
             return response;
         }  
         // then delete table head record
-        response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxnHandle(), table_head);
+        response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxn(), table_head);
         if (!response.status.ok()) {
             return response;
         } 
@@ -604,7 +604,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHan
         // fetch index columns first
         std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(txnHandler, collection_name, index_id);
         // delete index columns first
-        Status columns_result = k2_adapter_->SyncDeleteRecords(txnHandler->GetTxnHandle(), index_columns);
+        Status columns_result = k2_adapter_->SyncDeleteRecords(txnHandler->GetTxn(), index_columns);
         if (!columns_result.ok()) {
             response.status = std::move(columns_result);
             return response;
@@ -617,7 +617,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHan
         {
             return response;
         }  
-        response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxnHandle(), index_head);
+        response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxn(), index_head);
         if (!response.status.ok()) {
             return response;
         }   
@@ -1029,7 +1029,7 @@ Status TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<PgTxnHandler> t
     // table_id
     recordKey.serializeNext<k2::String>(table_id);
     K2LOG_D(log::catalog, "Fetching Tablehead SKV record for table {}", table_id);
-    Status result = k2_adapter_->SyncReadRecord(txnHandler->GetTxnHandle(), recordKey, resultSKVRecord);
+    Status result = k2_adapter_->SyncReadRecord(txnHandler->GetTxn(), recordKey, resultSKVRecord);
     // TODO: add error handling and retry logic in catalog manager
     if (!result.ok()) {
         K2LOG_E(log::catalog, "Error fetching entry {} in {} due to {}",
@@ -1061,7 +1061,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     do {
         K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
         std::vector<k2::dto::SKVRecord> outRecords;
-        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxnHandle(), query, outRecords);
+        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxn(), query, outRecords);
         if (!status.ok()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
                 base_table_id, collection_name, status.code());
@@ -1100,7 +1100,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     query->endScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::vector<k2::dto::SKVRecord> outRecords;
-        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxnHandle(), query, outRecords);
+        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxn(), query, outRecords);
         if (!status.ok()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
                 table_id, collection_name, status.code());
@@ -1139,7 +1139,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     query->endScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     do {
         std::vector<k2::dto::SKVRecord> outRecords;
-        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxnHandle(), query, outRecords);
+        auto status = k2_adapter_->SyncScanRead(txnHandler->GetTxn(), query, outRecords);
         if (!status.ok()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
                 table_id, collection_name, status.code());

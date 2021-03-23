@@ -55,16 +55,11 @@ class PgTxnHandler {
 
   CHECKED_STATUS AbortTransaction();
 
-  // if there is an ongoing transaction, do nothing(i.e. using exist transaction), otherwise, start a new one.
-  CHECKED_STATUS StartNewTransactionIfNotYet(bool read_only);
-
   // if there is an ongoing transaction, abort it first. Always re-start a new transaction with previous txn options.
   CHECKED_STATUS RestartTransaction();
 
-  // K2-3SI txn handle need for transactional SKV operations, nullptr if no transaction is started yet.
-  std::shared_ptr<K23SITxn>& GetTxnHandle() {
-    return txn_;
-  }
+  // get current K2-3SI txn handle need for transactional SKV operations, will start a new transaction if not yet
+  std::shared_ptr<K23SITxn>& GetTxn();
 
   // TODO: implement these options/features later
   CHECKED_STATUS SetIsolationLevel(int isolation);

@@ -59,7 +59,7 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Pg
     // use signed integers for unsigned integers since SKV does not support them
     record.serializeNext<int64_t>(cluster_info.GetCatalogVersion());
     record.serializeNext<bool>(cluster_info.IsInitdbDone());
-    response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), record);
+    response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), record);
     return response;
 }
 
@@ -68,7 +68,7 @@ GetClusterInfoResult ClusterInfoHandler::GetClusterInfo(std::shared_ptr<PgTxnHan
     k2::dto::SKVRecord recordKey(collection_name_, schema_ptr_);
     recordKey.serializeNext<k2::String>(cluster_id);
     k2::dto::SKVRecord resultRecord;
-    response.status = k2_adapter_->SyncReadRecord(txnHandler->GetTxnHandle(), recordKey, resultRecord);
+    response.status = k2_adapter_->SyncReadRecord(txnHandler->GetTxn(), recordKey, resultRecord);
     if (!response.status.ok()) {
         K2LOG_E(log::catalog, "Failed to read SKV record due to {}", response.status.code());
         return response;

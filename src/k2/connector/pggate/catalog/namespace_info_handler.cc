@@ -72,7 +72,7 @@ AddOrUpdateNamespaceResult NamespaceInfoHandler::AddOrUpdateNamespace(std::share
     // use int64_t to represent uint32_t since since SKV does not support them
     record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
-    response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxnHandle(), record);
+    response.status = k2_adapter_->SyncUpsertRecord(txnHandler->GetTxn(), record);
     return response;
 }
 
@@ -81,7 +81,7 @@ GetNamespaceResult NamespaceInfoHandler::GetNamespace(std::shared_ptr<PgTxnHandl
     k2::dto::SKVRecord recordKey(collection_name_, schema_ptr_);
     recordKey.serializeNext<k2::String>(namespace_id);
     k2::dto::SKVRecord resultRecord;
-    response.status = k2_adapter_->SyncReadRecord(txnHandler->GetTxnHandle(), recordKey, resultRecord);
+    response.status = k2_adapter_->SyncReadRecord(txnHandler->GetTxn(), recordKey, resultRecord);
     if (!response.status.ok()) {
         K2LOG_E(log::catalog, "Failed to read SKV record due to {}", response.status.code());
         return response;
@@ -111,7 +111,7 @@ ListNamespacesResult NamespaceInfoHandler::ListNamespaces(std::shared_ptr<PgTxnH
         query->startScanRecord.serializeNext<k2::String>("");
 
         std::vector<k2::dto::SKVRecord> outRecords;
-        response.status = k2_adapter_->SyncScanRead(txnHandler->GetTxnHandle(), query, outRecords);
+        response.status = k2_adapter_->SyncScanRead(txnHandler->GetTxn(), query, outRecords);
         if (!response.status.ok()) {
             K2LOG_E(log::catalog, "Failed to run scan read due to {}", response.status.code());
             return response;
@@ -141,7 +141,7 @@ DeleteNamespaceResult NamespaceInfoHandler::DeleteNamespace(std::shared_ptr<PgTx
     record.serializeNext<int64_t>(namespace_info->GetNamespaceOid());
     record.serializeNext<int64_t>(namespace_info->GetNextPgOid());
 
-    response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxnHandle(), record);
+    response.status = k2_adapter_->SyncDeleteRecord(txnHandler->GetTxn(), record);
     if (!response.status.ok()) {
         K2LOG_E(log::catalog, "Failed to delete namespace ID {} in Collection {}, due to {}", namespace_info->GetNamespaceId(), collection_name_, response.status.code());
     }

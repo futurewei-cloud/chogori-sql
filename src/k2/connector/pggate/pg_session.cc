@@ -270,26 +270,17 @@ Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>
   if (!ShouldHandleTransactionally(**op)) {
     InvalidateForeignKeyReferenceCache();
   } 
-  
-  // use current session's transaction, which will start new transaction if it is not started yet.
-  auto result = pg_txn_handler_->StartNewTransactionIfNotYet((*op)->read_only());
-  if (!result.ok())
-  {
-    return result;
-  }
-  // we should not have a txn started already
-  CHECK(pg_txn_handler_->GetTxnHandle() != nullptr);
 
   if (ops_count == 1) {
     // run a single operation
-    return k2_adapter_->Exec(pg_txn_handler_->GetTxnHandle(), *op);
+    return k2_adapter_->Exec(pg_txn_handler_->GetTxn(), *op);
   } else {  // ops_count > 1
     // run multiple operations in a batch
     std::vector<std::shared_ptr<PgOpTemplate>> ops;
     for (auto end = op + ops_count; op != end; ++op) {
       ops.push_back(*op);
     }
-    return k2_adapter_->BatchExec(pg_txn_handler_->GetTxnHandle(), ops);
+    return k2_adapter_->BatchExec(pg_txn_handler_->GetTxn(), ops);
   }
 }
 

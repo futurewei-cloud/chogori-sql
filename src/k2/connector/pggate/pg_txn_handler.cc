@@ -135,15 +135,18 @@ Status PgTxnHandler::ExitSeparateDdlTxnMode(bool success) {
   return Status::OK();
 }
 
-Status PgTxnHandler::StartNewTransactionIfNotYet(bool read_only) {
+std::shared_ptr<K23SITxn>& PgTxnHandler::GetTxn() {
   // start transaction if not yet started.
   if (txn_ == nullptr) {
-    read_only_ = read_only;
-    return BeginTransaction();
-  } 
+    auto status = BeginTransaction();
+    if (!status.ok())
+    {
+        throw std::runtime_error("Cannot start new transaction.");
+    }
+  }
 
   DCHECK(txn_in_progress_);
-  return Status::OK();
+  return txn_;
 }
 
 void PgTxnHandler::ResetTransaction() {
