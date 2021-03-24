@@ -26,13 +26,15 @@ import unittest
 import psycopg2
 from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
 
-@unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
 class TestCompoundKey(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
         commitSQLWithNewConn(getConn, "CREATE TABLE compoundkey (id integer, idstr text, id3 integer, dataA integer, PRIMARY KEY(id, idstr, id3));")
+        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeyintint (id integer, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
+        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeytxttxt (id text, id2 text, dataA integer, PRIMARY KEY(id, id2));")
+        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeyboolint (id bool, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
         cls.sharedConn = getConn()
 
     @classmethod
@@ -40,7 +42,8 @@ class TestCompoundKey(unittest.TestCase):
         # TODO delete table
         cls.sharedConn.close()
 
-    def test_prefixScan(self):
+    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
+    def test_prefixScanThreeKeys(self):
         # Populate some records for the tests
         with self.sharedConn: # commits at end of context if no errors
             with self.sharedConn.cursor() as cur:
@@ -70,4 +73,68 @@ class TestCompoundKey(unittest.TestCase):
         self.assertEqual(record[2], 5)
         self.assertEqual(record[1], 1)
 
-    # TODO add other key types       
+    def test_prefixScanIntInt(self):
+        # Populate some records for the tests
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeyintint VALUES (1, %s, 1);", (i,))
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeyintint VALUES (2, %s, 2);", (i,))
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeyintint VALUES (3, %s, 3);", (i,))
+
+        # Prefix scan with first key specified with =
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT * FROM compoundkeyintint WHERE id = 2;")
+                for i in range(1, 11):
+                    record = cur.fetchone()
+                    self.assertNotEqual(record, None)
+                    self.assertEqual(record[0], 2)
+                    self.assertEqual(record[1], i)
+                    self.assertEqual(record[2], 2)
+
+    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
+    def test_prefixScanTxtTxt(self):
+        # Populate some records for the tests
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeytxttxt VALUES ('1', %s, 1);", (str(i),))
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeytxttxt VALUES ('2', %s, 2);", (str(i),))
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeytxttxt VALUES ('3', %s, 3);", (str(i),))
+
+        # Prefix scan with first key specified with =
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT * FROM compoundkeytxttxt WHERE id = '2';")
+                for i in range(1, 11):
+                    record = cur.fetchone()
+                    self.assertNotEqual(record, None)
+                    self.assertEqual(record[0], '2')
+                    self.assertEqual(record[1], str(i))
+                    self.assertEqual(record[2], 2)
+
+
+    def test_prefixScanBoolInt(self):
+        # Populate some records for the tests
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeyboolint VALUES (TRUE, %s, 1);", (i,))
+                for i in range(1, 11):
+                    cur.execute("INSERT INTO compoundkeyboolint VALUES (FALSE, %s, 2);", (i,))
+
+        # Prefix scan with first key specified with =
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT * FROM compoundkeyboolint WHERE id = FALSE;")
+                for i in range(1, 11):
+                    record = cur.fetchone()
+                    self.assertNotEqual(record, None)
+                    self.assertEqual(record[0], False)
+                    self.assertEqual(record[1], i)
+                    self.assertEqual(record[2], 2)
