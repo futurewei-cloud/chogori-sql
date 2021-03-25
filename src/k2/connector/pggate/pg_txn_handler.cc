@@ -34,12 +34,11 @@ PgTxnHandler::PgTxnHandler(std::shared_ptr<K2Adapter> adapter) : adapter_(adapte
 PgTxnHandler::~PgTxnHandler() {
   // Abort the transaction before the transaction handler gets destroyed.
   if (txn_ != nullptr) {
-    auto status = adapter_->SyncAbortTransaction(txn_);
+    auto status = AbortTransaction();
     if (!status.ok()) {
-      K2LOG_E(log::pg, "In progress transaction abortion failed due to: {}", status.code());
+      K2LOG_E(log::pg, "Transaction abortion failed during destructor due to: {}", status.code());
     }
   }
-  ResetTransaction();
 }
 
 Status PgTxnHandler::BeginTransaction() {
@@ -49,21 +48,8 @@ Status PgTxnHandler::BeginTransaction() {
   }
   ResetTransaction();
   txn_in_progress_ = true;
-  return StartNewTransaction();
-}
-
-Status PgTxnHandler::RestartTransaction() {
-  // TODO: how do we decide whether a transaction is restart required?
-
-  if (txn_ != nullptr) {
-    auto result = adapter_->SyncAbortTransaction(txn_);
-    if (!result.ok()) {
-      return result;
-    }
-  }
-  ResetTransaction();
-  txn_in_progress_ = true;
-  return StartNewTransaction();
+  txn_ = std::make_shared<K23SITxn>(adapter_->BeginTransaction().get());
+  return Status::OK();
 }
 
 Status PgTxnHandler::CommitTransaction() {
@@ -80,34 +66,49 @@ Status PgTxnHandler::CommitTransaction() {
 
   K2LOG_D(log::pg, "Committing transaction.");
   // Use synchronous call for now until PG supports additional state check after this call
-  auto result = adapter_->SyncCommitTransaction(txn_);
-  if (!result.ok()) {
-    K2LOG_W(log::pg, "Transaction commit failed due to: {}", result.code());
-    return result;
+  auto result = adapter_->EndTransaction(txn_, true/*commit*/).get();
+  if (!result.status.is2xxOK()) {
+    K2LOG_E(log::pg, "Transaction commit failed due to: {}", result.status);    
+  } else {
+     ResetTransaction();
+     K2LOG_D(log::pg, "Transaction commit succeeded");
   }
-  ResetTransaction();
-  K2LOG_D(log::pg, "Transaction commit succeeded");
-  return Status::OK();
+
+  return K2Adapter::K2StatusToYBStatus(result.status);
 }
 
 Status PgTxnHandler::AbortTransaction() {
   if (!txn_in_progress_) {
     return Status::OK();
   }
+  
   if (txn_ != nullptr && read_only_) {
     // This was a read-only transaction, nothing to commit.
     ResetTransaction();
     return Status::OK();
   }
+
   // Use synchronous call for now until PG supports additional state check after this call
-  auto result = adapter_->SyncAbortTransaction(txn_);
+  auto result = adapter_->EndTransaction(txn_, false/*abort*/).get();
   // always abandon current transaction and reset regardless abort success or not.
-  ResetTransaction();  
-  if (!result.ok()) {
-    K2LOG_W(log::pg, "Transaction abort failed due to: {}", result.code());
-    return result;
+  ResetTransaction(); 
+  if (!result.status.is2xxOK()) {
+    K2LOG_E(log::pg, "Transaction abort failed due to: {}", result.status);
   }
-  return Status::OK();
+  
+  return K2Adapter::K2StatusToYBStatus(result.status);
+}
+
+Status PgTxnHandler::RestartTransaction() {
+  // TODO: how do we decide whether a transaction is restart required?
+  if (txn_ != nullptr) {
+    auto status = AbortTransaction();
+    if (!status.ok()) {
+      return status;
+    }
+  }
+
+  return BeginTransaction();
 }
 
 Status PgTxnHandler::SetIsolationLevel(int level) {
@@ -154,20 +155,6 @@ void PgTxnHandler::ResetTransaction() {
   txn_in_progress_ = false;
   txn_ = nullptr;
   can_restart_.store(true, std::memory_order_release);
-}
-
-// internal BeginTransaction helper 
-Status PgTxnHandler::StartNewTransaction() {
-  std::shared_ptr<K23SITxn> txn_tmp = nullptr;
-  Status result = adapter_->SyncBeginTransaction(txn_tmp);
-  if (!result.ok())
-  {
-    return result;
-  } 
-  
-  DCHECK(txn_tmp != nullptr);
-  txn_ = txn_tmp;
-  return result;
 }
 
 }  // namespace gate

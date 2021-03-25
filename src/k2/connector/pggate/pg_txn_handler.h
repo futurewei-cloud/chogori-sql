@@ -76,8 +76,6 @@ class PgTxnHandler {
 
   void ResetTransaction();
 
-  CHECKED_STATUS StartNewTransaction();
-
   std::shared_ptr<K23SITxn> txn_ = nullptr;
 
   bool txn_in_progress_ = false;

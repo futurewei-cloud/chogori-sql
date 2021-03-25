@@ -137,11 +137,10 @@ namespace catalog {
         CHECK(!initted_.load(std::memory_order_relaxed));
 
         // step 1/4 create the SKV collection for the primary
-        Status rs = k2_adapter_->SyncCreateCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id);
-        if (!rs.ok())
-        {
-            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", rs.ToString());
-            return rs;
+        auto ccResult = k2_adapter_->CreateCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id).get();
+        if (!ccResult.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", ccResult);
+            return K2Adapter::K2StatusToYBStatus(ccResult);
         }
 
         std::shared_ptr<PgTxnHandler> init_txnHandler = NewTransaction();
@@ -342,12 +341,13 @@ namespace catalog {
         //   Note: using unique immutable namespaceId as SKV collection name
         //   TODO: pass in other collection configurations/parameters later.
         K2LOG_D(log::catalog, "Creating SKV collection for namespace {}", request.namespaceId);
-        response.status = k2_adapter_->SyncCreateCollection(request.namespaceId, request.namespaceName);
-        if (!response.status.ok())
+        auto ccResult = k2_adapter_->CreateCollection(request.namespaceId, request.namespaceName).get();
+        if (!ccResult.is2xxOK())
         {
-            K2LOG_E(log::catalog, "Failed to create SKV collection {}", request.namespaceId);
+            K2LOG_E(log::catalog, "Failed to create SKV collection {} due to {}", request.namespaceId, ccResult);
+            response.status = K2Adapter::K2StatusToYBStatus(ccResult);
             return response;
-        }
+        }      
 
         // step 2.2 Add new namespace(database) entry into default cluster Namespace table and update in-memory cache
         std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();

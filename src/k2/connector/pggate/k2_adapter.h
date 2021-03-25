@@ -42,42 +42,38 @@ using yb::Status;
 //  3) Transactional SKV Record/data API (CRUD, QueryScan, etc, similar to DML)
 //  4) (static) Utility functions, e.g. K2 type conversion to PG types
 //  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc. 
-// Note:
-//  Each data access API in general has two versions, one Async version with return Future containing k2::Status, one sync/blocking version with return Response containting yb::Status
 class K2Adapter {
 public:
   // 1/5 SKV Schema APIs
-  CBFuture<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion);
-  Status SyncGetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion, std::shared_ptr<k2::dto::Schema>& outSchema);
+  CBFuture<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema)
+    { return k23si_->createSchema(collectionName, *schema.get()); };
 
-  CBFuture<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
-  Status SyncCreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema);
+  CBFuture<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion)
+    { return k23si_->getSchema(collectionName, schemaName, schemaVersion); }
 
   CBFuture<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
-  Status SyncCreateCollection(const std::string& collection_name, const std::string& nsName);
   // TODO: Add DeleteColection later when it is supported on CPO/K23si
 
   // 2/5 K2-3SI transaction APIs
   CBFuture<K23SITxn> BeginTransaction();
-  // SyncBeginTransaction()
-  Status SyncBeginTransaction(std::shared_ptr<K23SITxn>& resultK23SITxn);
   // Async EndTransaction shouldCommit - true to commit the transaction, false to abort the transaction
   CBFuture<k2::EndResult> EndTransaction(std::shared_ptr<K23SITxn>& k23SITxn, bool shouldCommit) { return k23SITxn->endTxn(shouldCommit);}
-  // Sync Commit/Abort
-  Status SyncCommitTransaction(std::shared_ptr<K23SITxn>& k23SITxn);
-  Status SyncAbortTransaction(std::shared_ptr<K23SITxn>& k23SITxn);
+
   
   // 3/5 SKV data APIs
-  // TODO: consider complete all sync/async version APIs when needed later
   // Read a record based on recordKey(which will be consumed/moved).
-  Status SyncReadRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& recordKey, k2::dto::SKVRecord& outRecord);
-  Status SyncUpsertRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record);
-  Status SyncDeleteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record);
-  Status SyncDeleteRecords(std::shared_ptr<K23SITxn>& k23SITxn, std::vector<k2::dto::SKVRecord>& records);
+  CBFuture<k2::ReadResult<k2::dto::SKVRecord>> ReadRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& recordKey)
+    { return k23SITxn->read(std::move(recordKey)); }
+  // param record will be consumed/moved
+  CBFuture<k2::WriteResult> UpsertRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
+      { return WriteRecord(k23SITxn, record, false/*isDelete*/); }
+  // param record will be consumed/moved
+  CBFuture<k2::WriteResult> DeleteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
+    { return WriteRecord(k23SITxn, record, true/*isDelete*/); }
 
-  CBFuture<CreateScanReadResult> CreateScanRead(const std::string& collectionName,
-                                                     const std::string& schemaName);
-  Status SyncScanRead(std::shared_ptr<K23SITxn>& k23SITxn, std::shared_ptr<k2::Query> query, std::vector<k2::dto::SKVRecord>& outRecords);
+  CBFuture<CreateScanReadResult> CreateScanRead(const std::string& collectionName, const std::string& schemaName);
+  CBFuture<k2::QueryResult> ScanRead(std::shared_ptr<K23SITxn>& k23SITxn, std::shared_ptr<k2::Query> query)
+    { return k23SITxn->scanRead(query); }
 
   CBFuture<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
 
@@ -111,7 +107,9 @@ public:
 
   ThreadPool threadPool_;
 
-  Status WriteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record, bool isDelete);
+  // will consume/move record param
+  CBFuture<k2::WriteResult> WriteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record, bool isDelete)
+    { return k23SITxn->write(std::move(record), isDelete); }
 
   CBFuture<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   CBFuture<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);

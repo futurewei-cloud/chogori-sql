@@ -481,46 +481,6 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     return result;
 }
 
-CBFuture<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
-    auto start = k2::Clock::now();
-    CBFuture<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
-    K2LOG_D(log::k2Adapter, "GetSchema took {}", k2::Clock::now() - start);
-    return result;
-}
-
-// TODO: for all Sync version APIs following, add timing log like this one 
-Status K2Adapter::SyncGetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion, std::shared_ptr<k2::dto::Schema>& outSchema)
-{
-    auto start = k2::Clock::now();
-    auto result = GetSchema(collectionName, schemaName, schemaVersion).get();
-    K2LOG_D(log::k2Adapter, "SyncGetSchema took {}", k2::Clock::now() - start);
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to get schema for {} in {}, due to {}", schemaName, collectionName, result.status);
-        return K2StatusToYBStatus(result.status);
-    }
-
-    K2LOG_D(log::k2Adapter, "Get Schema for {} in ns {} as: {}", schemaName, collectionName, (*result.schema.get()));
-    outSchema = result.schema;
-    return K2StatusToYBStatus(result.status);
-}
-
-CBFuture<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
-    auto start = k2::Clock::now();
-    CBFuture<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
-    K2LOG_D(log::k2Adapter, "CreateSchema took {}", k2::Clock::now() - start);
-    return result;
-}
-
-Status K2Adapter::SyncCreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
-    auto result = CreateSchema(collectionName, schema).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to create schema for {} in {}, due to {}", schema->name, collectionName, result.status);
-    }
-
-    K2LOG_D(log::k2Adapter, "Created Schema for {} in ns {} as: {}", schema->name, collectionName, (*schema.get()))
-    return K2StatusToYBStatus(result.status);
-}
-
 CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
 {
     auto start = k2::Clock::now();
@@ -563,80 +523,12 @@ CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_n
     return result;
 }
 
-Status K2Adapter::SyncCreateCollection(const std::string& collection_name, const std::string& nsName)
-{
-    auto result = CreateCollection(collection_name, nsName).get();
-    if (!result.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to create SKV Collection {}, due to {}", collection_name, result);
-    }
-
-    return K2Adapter::K2StatusToYBStatus(result);
-}
-
-Status K2Adapter::SyncReadRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& recordKey, k2::dto::SKVRecord& outRecord)
-{
-    auto result = k23SITxn->read(std::move(recordKey)).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to read SKV record due to {}", result.status);
-    }
-    else
-    {
-        outRecord = std::move(result.value);
-    }
-
-    return K2Adapter::K2StatusToYBStatus(result.status); 
-}
-
-Status K2Adapter::SyncUpsertRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
-{
-    return WriteRecord(k23SITxn, record, false /*isDelete*/); 
-}
-
-Status K2Adapter::SyncDeleteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
-{
-    return WriteRecord(k23SITxn, record, true /*isDelete*/); 
-}
-
-Status K2Adapter::SyncDeleteRecords(std::shared_ptr<K23SITxn>& k23SITxn, std::vector<k2::dto::SKVRecord>& records)
-{
-    Status response;
-    for (auto& record : records) {
-        response = SyncDeleteRecord(k23SITxn, record);
-        if (!response.ok()) {
-            return response;
-        }
-    }
-    return response;
-}
-
-Status K2Adapter::WriteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record, bool isDelete)
-{
-    auto result = k23SITxn->write(std::move(record), isDelete).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to {} SKV record due to {}", (isDelete ? "Delete" : "Upsert"), result.status);
-    }
-    return K2Adapter::K2StatusToYBStatus(result.status); 
-}
-
 CBFuture<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& collectionName,
                                                      const std::string& schemaName) {
     auto start = k2::Clock::now();
     auto result = k23si_->createScanRead(collectionName, schemaName);
     K2LOG_V(log::k2Adapter, "CreateScanRead took {}", k2::Clock::now() - start);
     return result;
-}
-
-Status K2Adapter::SyncScanRead(std::shared_ptr<K23SITxn>& k23SITxn, std::shared_ptr<k2::Query> query, std::vector<k2::dto::SKVRecord>& outRecords)
-{
-    auto result = k23SITxn->scanRead(query).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::k2Adapter, "Failed to run scan read due to {}", result.status);
-    } 
-    else
-    {
-        outRecords = std::move(result.records);
-    }
-    return K2Adapter::K2StatusToYBStatus(result.status);
 }
 
 CBFuture<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op) {
@@ -754,7 +646,6 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
 }
 
 CBFuture<K23SITxn> K2Adapter::BeginTransaction() {
-    auto start = k2::Clock::now();
     k2::K2TxnOptions options{};
     // use default values for now
     // TODO: read from configuration/env files
@@ -762,34 +653,7 @@ CBFuture<K23SITxn> K2Adapter::BeginTransaction() {
     options.deadline = k2::Duration(60000s);
     //options.priority = k2::dto::TxnPriority::Medium;
     auto result = k23si_->beginTxn(options);
-    K2LOG_V(log::k2Adapter, "beginTransaction took {}", k2::Clock::now() - start);
     return result;
-}
-
-Status K2Adapter::SyncBeginTransaction(std::shared_ptr<K23SITxn>& outk23SITxn)
-{
-    auto result = BeginTransaction();
-    outk23SITxn = std::make_shared<K23SITxn>(result.get());
-    return Status::OK();
-}
-
-Status K2Adapter::SyncCommitTransaction(std::shared_ptr<K23SITxn>& k23SITxn)
-{
-    auto result = EndTransaction(k23SITxn, true /*shouldCommit*/).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_W(log::k2Adapter, "Transaction commit failed due to: {}", result.status);
-        return K2StatusToYBStatus(result.status);
-    }
-    return Status::OK();
-}
-Status K2Adapter::SyncAbortTransaction(std::shared_ptr<K23SITxn>& k23SITxn)
-{
-    auto result = EndTransaction(k23SITxn, false /*shouldCommit*/).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_W(log::k2Adapter, "Transaction abort failed due to: {}", result.status);
-        return K2StatusToYBStatus(result.status);
-    }
-    return Status::OK();
 }
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
