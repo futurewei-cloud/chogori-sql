@@ -24,18 +24,18 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 class TestCompoundKey(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
-        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkey (id integer, idstr text, id3 integer, dataA integer, PRIMARY KEY(id, idstr, id3));")
-        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeyintint (id integer, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
-        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeytxttxt (id text, id2 text, dataA integer, PRIMARY KEY(id, id2));")
-        commitSQLWithNewConn(getConn, "CREATE TABLE compoundkeyboolint (id bool, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
         cls.sharedConn = getConn()
+        commitSQL(cls.sharedConn, "CREATE TABLE compoundkey (id integer, idstr text, id3 integer, dataA integer, PRIMARY KEY(id, idstr, id3));")
+        commitSQL(cls.sharedConn, "CREATE TABLE compoundkeyintint (id integer, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
+        commitSQL(cls.sharedConn, "CREATE TABLE compoundkeytxttxt (id text, id2 text, dataA integer, PRIMARY KEY(id, id2));")
+        commitSQL(cls.sharedConn, "CREATE TABLE compoundkeyboolint (id bool, id2 integer, dataA integer, PRIMARY KEY(id, id2));")
 
     @classmethod
     def tearDownClass(cls):

@@ -24,15 +24,15 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 class TestIsolation(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
-        commitSQLWithNewConn(getConn, "CREATE TABLE isolation (id integer PRIMARY KEY, dataA integer, dataB integer);")
         cls.sharedConn = getConn()
+        commitSQL(cls.sharedConn, "CREATE TABLE isolation (id integer PRIMARY KEY, dataA integer, dataB integer);")
 
     @classmethod
     def tearDownClass(cls):

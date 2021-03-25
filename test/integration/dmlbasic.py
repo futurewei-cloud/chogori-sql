@@ -28,16 +28,16 @@ This file has tests for basic dml statements (not joins, aggregates, or isolatio
 
 import unittest
 import psycopg2
-from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 class TestDMLBasic(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
-        commitSQLWithNewConn(getConn, "CREATE TABLE dmlbasic (id integer PRIMARY KEY, dataA integer, dataB integer);")
-        commitSQLWithNewConn(getConn, "CREATE TABLE dmlbasic2 (id integer PRIMARY KEY, dataA integer, dataB integer);")
         cls.sharedConn = getConn()
+        commitSQL(cls.sharedConn, "CREATE TABLE dmlbasic (id integer PRIMARY KEY, dataA integer, dataB integer);")
+        commitSQL(cls.sharedConn, "CREATE TABLE dmlbasic2 (id integer PRIMARY KEY, dataA integer, dataB integer);")
 
     @classmethod
     def tearDownClass(cls):
@@ -76,7 +76,7 @@ class TestDMLBasic(unittest.TestCase):
         # should be throwing here: https://www.psycopg.org/docs/errors.html
         with self.assertRaises(psycopg2.errors.InternalError):
             commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (4, 1, 1);")
-            commitSQLWithNewConn(getConn, "INSERT INTO dmlbasic VALUES (4, 2, 2);")
+            commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (4, 2, 2);")
 
     def test_insertOverExistingDoNothing(self):
         commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (5, 1, 1);")

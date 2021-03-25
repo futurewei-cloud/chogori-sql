@@ -24,17 +24,17 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 class TestJoin(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
-        commitSQLWithNewConn(getConn, "CREATE TABLE join1 (id integer PRIMARY KEY, dataA integer, dataB integer);")
-        commitSQLWithNewConn(getConn, "CREATE TABLE join2 (id integer PRIMARY KEY, dataC integer, dataD integer);")
-
         cls.sharedConn = getConn()
+        commitSQL(cls.sharedConn, "CREATE TABLE join1 (id integer PRIMARY KEY, dataA integer, dataB integer);")
+        commitSQL(cls.sharedConn, "CREATE TABLE join2 (id integer PRIMARY KEY, dataC integer, dataD integer);")
+
         with cls.sharedConn: # commits at end of context if no errors
             with cls.sharedConn.cursor() as cur:
                 for i in range(1, 1001):

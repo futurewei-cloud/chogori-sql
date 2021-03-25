@@ -24,16 +24,16 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 class TestAggregation(unittest.TestCase):
     sharedConn = None
 
     @classmethod
     def setUpClass(cls):
-        commitSQLWithNewConn(getConn, "CREATE TABLE aggregate (id integer PRIMARY KEY, dataA integer, dataB integer);")
         cls.sharedConn = getConn()
 
+        commitSQL(cls.sharedConn, "CREATE TABLE aggregate (id integer PRIMARY KEY, dataA integer, dataB integer);")
         with cls.sharedConn: # commits at end of context if no errors
             with cls.sharedConn.cursor() as cur:
                 for i in range(1, 21):

@@ -24,33 +24,40 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, commitSQLWithNewConn, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn
 
 
 class TestDDL(unittest.TestCase):
+    sharedConn = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.sharedConn = getConn()
+
+    @classmethod
+    def tearDownClass(cls):
+        # TODO delete table
+        cls.sharedConn.close()
+
     def test_makeBasicTable(self):
-        commitSQLWithNewConn(getConn, "CREATE TABLE ddltest1 (id integer PRIMARY KEY, dataA integer);")
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest1 (id integer PRIMARY KEY, dataA integer);")
 
     def test_makeTableWithManyTypes(self):
-        commitSQLWithNewConn(getConn, "CREATE TABLE ddltest2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest2 (id integer PRIMARY KEY, dataA integer, dataB boolean, dataC real, dataD numeric, dataE text, dataF char[36]);")
 
     def test_makeTableWithoutPrimaryKey(self):
-        commitSQLWithNewConn(getConn, "CREATE TABLE ddltest3 (id integer, dataA integer);")
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest3 (id integer, dataA integer);")
 
     def test_alterTable(self):
         #with self.assertRaises(psycopg2.errors.InternalError):
-        conn = getConn()
-        commitSQL(conn, "CREATE TABLE ddltest4 (id integer, dataA integer);")
-        commitSQL(conn, "ALTER TABLE ddltest4 ADD txtcol text;")
-        commitSQL(conn, "INSERT INTO ddltest4 VALUES(1, 1, 'mytext')")
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest4 (id integer, dataA integer);")
+        commitSQL(self.sharedConn, "ALTER TABLE ddltest4 ADD txtcol text;")
+        commitSQL(self.sharedConn, "INSERT INTO ddltest4 VALUES(1, 1, 'mytext')")
 
-        record = selectOneRecord(conn, "SELECT dataB FROM dmlbasic WHERE id=1;")
+        record = selectOneRecord(self.sharedConn, "SELECT dataB FROM dmlbasic WHERE id=1;")
         self.assertEqual(record[0], 1)
         self.assertEqual(record[1], 1)
         self.assertEqual(record[2], "mytext")
 
-        conn.close()
-
 # TODO add table already exists error case after #216 is fixed
-# TODO add drop table
 
