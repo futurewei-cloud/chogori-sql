@@ -32,9 +32,8 @@ Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   auto start = k2::Clock::now();
   GetInitDbResponse response = catalog_manager_->IsInitDbDone(request);
   K2LOG_I(log::catalog, "IsInitDbDone took {}", k2::Clock::now() - start);
-  if(!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to check init_db state due to code $0 and message $1", response.status.code, response.status.errorMessage);
+  if(!response.status.ok()) {
+    return response.status;
   }
   *isDone = response.isInitDbDone;
   return Status::OK();
@@ -67,22 +66,14 @@ Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
   auto start = k2::Clock::now();
   CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
   K2LOG_I(log::catalog, "CreateNamespace {} took {}", namespace_name, k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to create namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
                                  const std::string& namespace_id) {
   DeleteNamespaceRequest request {.namespaceName = namespace_name, .namespaceId = namespace_id};
   DeleteNamespaceResponse response = catalog_manager_->DeleteNamespace(request);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to delete namespace $0 due to code $1 and message $2", namespace_name, response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::UseDatabase(const std::string& database_name) {
@@ -90,11 +81,7 @@ Status SqlCatalogClient::UseDatabase(const std::string& database_name) {
   auto start = k2::Clock::now();
   UseDatabaseResponse response = catalog_manager_->UseDatabase(request);
   K2LOG_I(log::catalog, "UseDatabase {} took {}", database_name, k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-    return STATUS_FORMAT(RuntimeError,
-        "Failed to use database $0 due to code $1 and message $2", database_name, response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::CreateTable(
@@ -118,12 +105,7 @@ Status SqlCatalogClient::CreateTable(
   auto start = k2::Clock::now();
   CreateTableResponse response = catalog_manager_->CreateTable(request);
   K2LOG_I(log::catalog, "CreateTable {} in {} took {}", table_name, namespace_name, k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-    return STATUS_FORMAT(RuntimeError,
-        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
-            response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::CreateIndexTable(
@@ -154,12 +136,7 @@ Status SqlCatalogClient::CreateIndexTable(
   auto start = k2::Clock::now();
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
   K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {}", table_name, namespace_name, k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-    return STATUS_FORMAT(RuntimeError,
-        "Failed to create table $0 in database $1 due to code $2 and message $3", table_name, namespace_name,
-            response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait) {
@@ -168,11 +145,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
     .tableOid = table_oid
   };
   DeleteTableResponse response = catalog_manager_->DeleteTable(request);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to delete table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait) {
@@ -181,13 +154,12 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
     .tableOid = table_oid
   };
   DeleteIndexResponse response = catalog_manager_->DeleteIndex(request);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to delete index $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
+  if (!response.status.ok()) {
+     return response.status;
   }
   *base_table_oid = response.baseIndexTableOid;
   // TODO: add wait logic once we refactor the catalog manager APIs to be asynchronous for state/response
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table) {
@@ -198,13 +170,12 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   auto start = k2::Clock::now();
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
   K2LOG_I(log::catalog, "GetTableSchema ({} : {}) took {}", database_oid, table_oid, k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to get schema for table $0 due to code $1 and message $2", table_oid, response.status.code, response.status.errorMessage);
+  if (!response.status.ok()) {
+     return response.status;
   }
 
   table->swap(response.tableInfo);
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
@@ -220,13 +191,12 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
   auto start = k2::Clock::now();
   ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
   K2LOG_I(log::catalog, "ReservePgOid took {}", k2::Clock::now() - start);
-  if (!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to reserve PG Oids for database $0 due to code $1 and message $2", database_oid, response.status.code, response.status.errorMessage);
+  if (!response.status.ok()) {
+     return response.status;
   }
   *begin_oid = response.beginOid;
   *end_oid = response.endOid;
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
@@ -234,12 +204,11 @@ Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
   auto start = k2::Clock::now();
   GetCatalogVersionResponse response = catalog_manager_->GetCatalogVersion(request);
   K2LOG_I(log::catalog, "GetCatalogVersion took {}", k2::Clock::now() - start);
-  if(!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to get catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
+  if (!response.status.ok()) {
+     return response.status;
   }
   *pg_catalog_version = response.catalogVersion;
-  return Status::OK();
+  return response.status;
 }
 
 Status SqlCatalogClient::IncrementCatalogVersion() {
@@ -247,11 +216,7 @@ Status SqlCatalogClient::IncrementCatalogVersion() {
   auto start = k2::Clock::now();
   IncrementCatalogVersionResponse response = catalog_manager_->IncrementCatalogVersion(request);
   K2LOG_I(log::catalog, "IncrementCatalogVersion took {}", k2::Clock::now() - start);
-  if(!response.status.IsSucceeded()) {
-     return STATUS_FORMAT(RuntimeError,
-         "Failed to increase catalog version due to code $0 and message $1", response.status.code, response.status.errorMessage);
-  }
-  return Status::OK();
+  return response.status;
 }
 } // namespace catalog
 }  // namespace sql

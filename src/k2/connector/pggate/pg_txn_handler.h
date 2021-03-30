@@ -42,6 +42,7 @@ enum class PgIsolationLevel {
   SERIALIZABLE = 3,
 };
 
+// Transaction handler for PG - a wrapper around K2-3SI txn handle.
 class PgTxnHandler {
   public:
   PgTxnHandler(std::shared_ptr<K2Adapter> adapter);
@@ -50,12 +51,17 @@ class PgTxnHandler {
 
   CHECKED_STATUS BeginTransaction();
 
-  CHECKED_STATUS RestartTransaction();
-
   CHECKED_STATUS CommitTransaction();
 
   CHECKED_STATUS AbortTransaction();
 
+  // if there is an ongoing transaction, abort it first. Always re-start a new transaction with previous txn options.
+  CHECKED_STATUS RestartTransaction();
+
+  // get current K2-3SI txn handle need for transactional SKV operations, will start a new transaction if not yet
+  std::shared_ptr<K23SITxn> GetTxn();
+
+  // TODO: implement these options/features later
   CHECKED_STATUS SetIsolationLevel(int isolation);
 
   CHECKED_STATUS SetReadOnly(bool read_only);
@@ -66,17 +72,9 @@ class PgTxnHandler {
 
   CHECKED_STATUS ExitSeparateDdlTxnMode(bool success);
 
-  std::shared_ptr<K23SITxn> getTxnHandler() {
-    return txn_;
-  }
-
-  std::shared_ptr<K23SITxn> GetNewTransactionIfNecessary(bool read_only);
-
   private:
 
   void ResetTransaction();
-
-  void StartNewTransaction();
 
   std::shared_ptr<K23SITxn> txn_ = nullptr;
 

@@ -30,13 +30,13 @@ namespace gate {
 using namespace k2;
 
 K23SITxn::K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime):_mtr(std::move(mtr)), _startTime(startTime){
-    K2LOG_D(log::pg, "starting txn {} at time: {}", _mtr, _startTime);
+    K2LOG_D(log::k2Client, "starting txn {} at time: {}", _mtr, _startTime);
     _inFlightTxns++;
     session::in_flight_txns->observe(_inFlightTxns);
 }
 
 K23SITxn::~K23SITxn() {
-    K2LOG_D(log::pg, "dtor for txn {} started at {}", _mtr, _startTime);
+    K2LOG_D(log::k2Client, "dtor for txn {} started at {}", _mtr, _startTime);
 }
 
 CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
@@ -45,7 +45,7 @@ CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<EndResult>(qr.prom.get_future(), [this, st=_startTime, endRequestTime=Clock::now()] {
         auto now = Clock::now();
-        K2LOG_D(log::pg, "ended txn {} started at {}", _mtr, _startTime);
+        K2LOG_D(log::k2Client, "ended txn {} started at {}", _mtr, _startTime);
         _inFlightOps --;
         _inFlightTxns--;
 
@@ -54,7 +54,7 @@ CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
         _reportEndMetrics(now);
     });
 
-    K2LOG_D(log::pg, "endtxn: {}", qr.mtr);
+    K2LOG_D(log::k2Client, "endtxn: {}", qr.mtr);
     pushQ(endTxQ, std::move(qr));
     return result;
 }
@@ -71,7 +71,7 @@ CBFuture<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query) {
         session::scan_op_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg, "scanread: mtr={}, query={}", sr.mtr, (*query));
+    K2LOG_D(log::k2Client, "scanread: mtr={}, query={}", sr.mtr, (*query));
     pushQ(scanReadTxQ, std::move(sr));
     return result;
 }
@@ -87,7 +87,7 @@ CBFuture<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
         session::read_op_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg, "read: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
+    K2LOG_D(log::k2Client, "read: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
             qr.mtr,
             qr.record.collectionName,
             qr.record.schema->name,
@@ -110,7 +110,7 @@ CBFuture<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::st
         session::read_op_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg, "read: mtr={}, coll={}, key-pk={}, key-rk={}",
+    K2LOG_D(log::k2Client, "read: mtr={}, coll={}, key-pk={}, key-rk={}",
                 qr.mtr,
                 qr.collectionName,
                 qr.key.partitionKey,
@@ -130,7 +130,7 @@ CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rej
         session::write_op_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg,
+    K2LOG_D(log::k2Client,
         "write: mtr={}, erase={}, reject={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
         qr.mtr,
         qr.erase,
@@ -166,7 +166,7 @@ CBFuture<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
         session::write_op_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg,
+    K2LOG_D(log::k2Client,
         "partial write: mtr={}, record={}, kkey-pk={}, kkey-rk={}, fieldsForUpdate={}",
         qr.mtr,
         qr.record,

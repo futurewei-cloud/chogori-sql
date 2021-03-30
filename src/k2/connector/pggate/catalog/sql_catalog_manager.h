@@ -114,7 +114,7 @@ namespace catalog {
     };
 
     struct GetInitDbResponse {
-        RStatus status;
+        Status status;
         bool isInitDbDone;
     };
 
@@ -122,7 +122,7 @@ namespace catalog {
     };
 
     struct GetCatalogVersionResponse {
-        RStatus status;
+        Status status;
         uint64_t catalogVersion;
     };
 
@@ -137,7 +137,7 @@ namespace catalog {
     };
 
     struct CreateNamespaceResponse {
-        RStatus status;
+        Status status;
         std::shared_ptr<NamespaceInfo> namespaceInfo;
     };
 
@@ -145,7 +145,7 @@ namespace catalog {
     };
 
     struct ListNamespacesResponse {
-        RStatus status;
+        Status status;
         std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos;
     };
 
@@ -155,7 +155,7 @@ namespace catalog {
     };
 
     struct GetNamespaceResponse {
-        RStatus status;
+        Status status;
         std::shared_ptr<NamespaceInfo> namespace_info;
     };
 
@@ -165,7 +165,7 @@ namespace catalog {
     };
 
     struct DeleteNamespaceResponse {
-        RStatus status;
+        Status status;
     };
 
     struct UseDatabaseRequest {
@@ -173,7 +173,7 @@ namespace catalog {
     };
 
     struct UseDatabaseResponse {
-        RStatus status;
+        Status status;
     };
 
     struct CreateTableRequest {
@@ -189,7 +189,7 @@ namespace catalog {
     };
 
     struct CreateTableResponse {
-        RStatus status;
+        Status status;
         std::shared_ptr<TableInfo> tableInfo;
     };
 
@@ -208,7 +208,7 @@ namespace catalog {
     };
 
     struct CreateIndexTableResponse {
-        RStatus status;
+        Status status;
         std::shared_ptr<IndexInfo> indexInfo;
     };
 
@@ -218,7 +218,7 @@ namespace catalog {
     };
 
     struct GetTableSchemaResponse {
-        RStatus status;
+        Status status;
         std::shared_ptr<TableInfo> tableInfo;
     };
 
@@ -228,7 +228,7 @@ namespace catalog {
     };
 
     struct ListTablesResponse {
-        RStatus status;
+        Status status;
         std::string namespaceId;
         std::vector<std::shared_ptr<TableInfo>> tableInfos;
     };
@@ -239,7 +239,7 @@ namespace catalog {
     };
 
     struct DeleteTableResponse {
-        RStatus status;
+        Status status;
         std::string namespaceId;
         std::string tableId;
     };
@@ -250,7 +250,7 @@ namespace catalog {
     };
 
     struct DeleteIndexResponse {
-        RStatus status;
+        Status status;
         std::string namespaceId;
         uint32_t baseIndexTableOid;
     };
@@ -262,7 +262,7 @@ namespace catalog {
     };
 
     struct ReservePgOidsResponse {
-        RStatus status;
+        Status status;
         std::string namespaceId;
         // the beginning of the oid reserver, which could be higher than requested
         uint32_t beginOid;
@@ -274,7 +274,7 @@ namespace catalog {
     };
 
     struct IncrementCatalogVersionResponse {
-        RStatus status;
+        Status status;
         uint64_t version;
     };
 
@@ -356,7 +356,8 @@ namespace catalog {
 
         std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid);
 
-        std::shared_ptr<SessionTransactionContext> NewTransactionContext();
+        // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
+        std::shared_ptr<PgTxnHandler> NewTransaction();
 
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);

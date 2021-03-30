@@ -21,14 +21,14 @@ using k2::K2TxnOptions;
 
 
 Status K2Adapter::Init() {
-    K2LOG_I(log::pg, "Initialize adapter");
+    K2LOG_I(log::k2Adapter, "Initialize adapter");
 
     return Status::OK();
 }
 
 Status K2Adapter::Shutdown() {
     // TODO: add implementation
-    K2LOG_I(log::pg, "Shutdown adapter");
+    K2LOG_I(log::k2Adapter, "Shutdown adapter");
     return Status::OK();
 }
 
@@ -54,27 +54,27 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     int expectedExpressions = cond->getOp() == PgExpr::Opcode::PG_EXPR_BETWEEN ? 3: 2;
     if (ops.size() != expectedExpressions) {
         const char* msg = "leaf condition wrong number of operands";
-        K2LOG_E(log::pg, "{}, got={}, expected={}", msg, ops.size(), expectedExpressions);
+        K2LOG_E(log::k2Adapter, "{}, got={}, expected={}", msg, ops.size(), expectedExpressions);
         return STATUS(InvalidCommand, msg);
     }
     // first operand is col reference expression
     if (ops[0]->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
         const char* msg = "1st expression in leaf condition must be a column reference";
-        K2LOG_E(log::pg, "{}, got {}", msg, ops[0]->getType());
+        K2LOG_E(log::k2Adapter, "{}, got {}", msg, ops[0]->getType());
         return STATUS(InvalidCommand, msg);
     }
 
     int colId = ops[0]->getId() - 1; // Converting from 1-based attribute number to column ID
     if (colId < 0) {
         const char* msg = "column reference is for a system field";
-        K2LOG_E(log::pg, "{}, got={}", msg, colId);
+        K2LOG_E(log::k2Adapter, "{}, got={}", msg, colId);
         return STATUS(InvalidCommand, msg);
     }
 
     // make sure we're working on a prefix of the key
     if (colId <= lastColId) {
         const char* msg = "column reference in leaf condition is for an already processed field";
-        K2LOG_E(log::pg, "{}, got={}, lastColId={}", msg, colId, lastColId);
+        K2LOG_E(log::k2Adapter, "{}, got={}, lastColId={}", msg, colId, lastColId);
         return STATUS(InvalidCommand, msg);
     }
 
@@ -82,7 +82,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
     bool saveForLater = false;
     if (start.getFieldCursor() != skvId || end.getFieldCursor() != skvId) {
         const char* msg = "column reference in leaf condition refers to non-consecutive field";
-        K2LOG_D(log::pg, "{}, name={}, got={}, start={}, end={}", msg, ops[0]->getName(), skvId, start.getFieldCursor(), end.getFieldCursor());
+        K2LOG_D(log::k2Adapter, "{}, name={}, got={}, start={}, end={}", msg, ops[0]->getName(), skvId, start.getFieldCursor(), end.getFieldCursor());
         saveForLater = true;
     } else {
         // update the output param
@@ -93,7 +93,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         case PgExpr::Opcode::PG_EXPR_EQ: {
             if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
                 const char* msg = "2nd expression in EQ leaf condition must be a value";
-                K2LOG_E(log::pg, "{}, got={}", msg, ops[1]->getType());
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
                 return STATUS(InvalidCommand, msg);
             }
             // non-branching case. Set the value here in both start and end keys as we're limiting both bounds
@@ -110,7 +110,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         case PgExpr::Opcode::PG_EXPR_GE: {
             if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
                 const char* msg = "2nd expression in GE leaf condition must be a value";
-                K2LOG_E(log::pg, "{}, got={}", msg, ops[1]->getType());
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
                 return STATUS(InvalidCommand, msg);
             }
             // branching case. we can only set the lower bound
@@ -127,7 +127,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         case PgExpr::Opcode::PG_EXPR_LE: {
             if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
                 const char* msg = "2nd expression in LE leaf condition must be a value";
-                K2LOG_E(log::pg, "{}, got={}", msg, ops[1]->getType());
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
                 return STATUS(InvalidCommand, msg);
             }
             // branching case. we can only set the upper bound
@@ -144,7 +144,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         case PgExpr::Opcode::PG_EXPR_BETWEEN: {
             if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE || ops[2]->getType() != SqlOpExpr::ExprType::VALUE) {
                 const char* msg = "2nd and 3rd expressions in BETWEEN leaf condition must be values";
-                K2LOG_E(log::pg, "{}, got={}, and {}", msg, ops[1]->getType(), ops[2]->getType());
+                K2LOG_E(log::k2Adapter, "{}, got={}, and {}", msg, ops[1]->getType(), ops[2]->getType());
                 return STATUS(InvalidCommand, msg);
             }
             // branching case. we can set both bounds but no further prefix is possible
@@ -162,7 +162,7 @@ Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
         }
         default: {
             const char* msg = "Expression Condition must be one of [BETWEEN, EQ, GE, LE]";
-            K2LOG_E(log::pg, "{}", msg);
+            K2LOG_E(log::k2Adapter, "{}", msg);
             return STATUS(InvalidCommand, msg);
         }
     }
@@ -179,10 +179,10 @@ void sortAndSerializeOpValues(std::vector<std::pair<int, std::shared_ptr<SqlOpEx
 
     for (const std::pair<int, std::shared_ptr<SqlOpExpr>>& value : values) {
         int skvId = value.first + K2Adapter::SKV_FIELD_OFFSET;
-        K2LOG_D(log::pg, "late serialize, got={}, cursor={}", skvId, record.getFieldCursor());
-        K2LOG_V(log::pg, "late serialize, schema={}", *(record.schema));
+        K2LOG_D(log::k2Adapter, "late serialize, got={}, cursor={}", skvId, record.getFieldCursor());
+        K2LOG_V(log::k2Adapter, "late serialize, schema={}", *(record.schema));
         if (record.getFieldCursor() != skvId) {
-            K2LOG_W(log::pg, "Ignoring op in condition expression because it is not a prefix");
+            K2LOG_W(log::k2Adapter, "Ignoring op in condition expression because it is not a prefix");
             return;
         }
 
@@ -200,7 +200,7 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
     // the top level condition must be AND
     if (condition_expr->getOp() != PgExpr::Opcode::PG_EXPR_AND) {
         const char* msg = "Only AND top-level condition is supported in condition expression";
-        K2LOG_E(log::pg, "{}", msg);
+        K2LOG_E(log::k2Adapter, "{}", msg);
         return STATUS(InvalidCommand, msg);
     }
 
@@ -215,12 +215,12 @@ Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
             // there was a branch in the processing of previous condition and we cannot continue.
             // Ideally, this shouldn't happen if the query parser did its job well.
             // This is not an error, and so we can still process the request. PG would down-filter the result set after
-            K2LOG_W(log::pg, "Condition branched at previous key field. Cannot process further expressions");
+            K2LOG_W(log::k2Adapter, "Condition branched at previous key field. Cannot process further expressions");
             continue; // keep going so that we log all skipped expressions;
         }
         if (expr->getType() != SqlOpExpr::ExprType::CONDITION) {
             const char* msg = "First-level nested expression must be of type Condition";
-            K2LOG_E(log::pg, "{}", msg);
+            K2LOG_E(log::k2Adapter, "{}", msg);
             return STATUS(InvalidCommand, msg);
         }
         auto cond = expr->getCondition();
@@ -260,14 +260,14 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
             idx++;
         } else {
             // If any read failed, abort and fail the batch
-            K2LOG_E(log::pg, "Failed to read for {}, due to {}", YBCTIDToString(request->ybctid_column_values[idx]), read.status.message);
+            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", YBCTIDToString(request->ybctid_column_values[idx]), read.status.message);
             status = std::move(read.status);
             break;
         }
     }
 
     response.paging_state = nullptr;
-    K2LOG_D(log::pg, "handleReadByRowIds set response paging state to null for read op tid={}", op->request()->table_id);
+    K2LOG_D(log::k2Adapter, "handleReadByRowIds set response paging state to null for read op tid={}", op->request()->table_id);
     response.status = K2StatusToPGStatus(status);
     prom->set_value(K2StatusToYBStatus(status));
 }
@@ -296,7 +296,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         } else {
             auto scan_create_result = k23si_->createScanRead(request->collection_name, request->table_id).get();
             if (!scan_create_result.status.is2xxOK()) {
-                K2LOG_E(log::pg, "Unable to create scan read request");
+                K2LOG_E(log::k2Adapter, "Unable to create scan read request");
                 response.rows_affected_count = 0;
                 response.status = K2StatusToPGStatus(scan_create_result.status);
                 prom->set_value(K2StatusToYBStatus(scan_create_result.status));
@@ -339,7 +339,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 }
 
                 scan->addProjection(name);
-                K2LOG_V(log::pg, "Projection added for name={}", name);
+                K2LOG_V(log::k2Adapter, "Projection added for name={}", name);
             }
 
             // create the start/end records based on the data found in the request and the hard-coded tableid/idxid
@@ -349,7 +349,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             if (!startStatus.ok() || !endStatus.ok()) {
                 // An error here means the schema could not be retrieved, which shouldn't happen
                 // because the schema would have been used to make the original query
-                K2LOG_E(log::pg, "Scan request cannot create SKVRecords due to: {} ;;; {}", startStatus, endStatus);
+                K2LOG_E(log::k2Adapter, "Scan request cannot create SKVRecords due to: {} ;;; {}", startStatus, endStatus);
                 response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
                 response.rows_affected_count = 0;
                 prom->set_value(std::move(startStatus.ok() ? endStatus : startStatus));
@@ -370,7 +370,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
 
             // TODO apply the where clause as a filter expression in the scan
             if (request->where_expr) {
-                K2LOG_E(log::pg, "Read request with where_expr is not supported.");
+                K2LOG_E(log::k2Adapter, "Read request with where_expr is not supported.");
                 response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
                 response.rows_affected_count = 0;
                 prom->set_value(std::move(startStatus));
@@ -386,16 +386,16 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         k2::QueryResult scan_result = k23SITxn->scanRead(scan).get();
         if (scan->isDone()) {
             response.paging_state = nullptr;
-            K2LOG_D(log::pg, "Scan is done, set response paging state to null for request {}", request->table_id);
+            K2LOG_D(log::k2Adapter, "Scan is done, set response paging state to null for request {}", request->table_id);
         } else if (request->paging_state) {
             response.paging_state = request->paging_state;
             response.paging_state->total_num_rows_read += scan_result.records.size();
-            K2LOG_D(log::pg, "Request paging state is null? {}, for request {}", (request->paging_state == nullptr), request->table_id);
+            K2LOG_D(log::k2Adapter, "Request paging state is null? {}, for request {}", (request->paging_state == nullptr), request->table_id);
         } else {
             response.paging_state = std::make_shared<SqlOpPagingState>();
             response.paging_state->query = scan;
             response.paging_state->total_num_rows_read += scan_result.records.size();
-            K2LOG_D(log::pg, "Created paging state for request {}, total rows read={}", request->table_id,  response.paging_state->total_num_rows_read);
+            K2LOG_D(log::k2Adapter, "Created paging state for request {}, total rows read={}", request->table_id,  response.paging_state->total_num_rows_read);
         }
 
         *(op->mutable_rows_data()) = std::move(scan_result.records);
@@ -404,7 +404,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         prom->set_value(K2StatusToYBStatus(scan_result.status));
 
         } catch (const std::exception& e) {
-            K2LOG_W(log::pg, "Throw in handleReadOp {}", e.what());
+            K2LOG_W(log::k2Adapter, "Throw in handleReadOp {}", e.what());
             prom->set_exception(std::current_exception());
         }
     });
@@ -466,14 +466,14 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             response.rows_affected_count = 0;
             response.error_message = writeStatus.message;
             // TODO pg_error_code or txn_error_code in response?
-            K2LOG_E(log::pg, "K2 write failed due to {}", response.error_message);
+            K2LOG_E(log::k2Adapter, "K2 write failed due to {}", response.error_message);
         }
-        K2LOG_D(log::pg, "K2 write status: {}", writeStatus);
+        K2LOG_D(log::k2Adapter, "K2 write status: {}", writeStatus);
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToYBStatus(writeStatus));
 
         } catch (const std::exception& e) {
-            K2LOG_W(log::pg, "Throw in handlewrite: {}", e.what());
+            K2LOG_W(log::k2Adapter, "Throw in handlewrite: {}", e.what());
             prom->set_exception(std::current_exception());
         }
     });
@@ -481,24 +481,10 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     return result;
 }
 
-CBFuture<k2::GetSchemaResult> K2Adapter::GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion) {
-    auto start = k2::Clock::now();
-    CBFuture<k2::GetSchemaResult> result = k23si_->getSchema(collectionName, schemaName, schemaVersion);
-    K2LOG_D(log::pg, "GetSchema took {}", k2::Clock::now() - start);
-    return result;
-}
-
-CBFuture<k2::CreateSchemaResult> K2Adapter::CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema) {
-    auto start = k2::Clock::now();
-    CBFuture<k2::CreateSchemaResult> result = k23si_->createSchema(collectionName, *schema.get());
-    K2LOG_D(log::pg, "CreateSchema took {}", k2::Clock::now() - start);
-    return result;
-}
-
 CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
 {
     auto start = k2::Clock::now();
-    K2LOG_I(log::pg, "Create collection: name={}, ns={}", collection_name, nsName);
+    K2LOG_I(log::k2Adapter, "Create collection: name={}, ns={}", collection_name, nsName);
 
     // Working around json conversion to/from k2::String which uses b64
     std::vector<std::string> stdRangeEnds = conf_()["create_collections"][nsName]["range_ends"];
@@ -533,7 +519,7 @@ CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_n
     };
 
     auto result = k23si_->createCollection(std::move(createCollectionReq));
-    K2LOG_D(log::pg, "CreateCollection took {}", k2::Clock::now() - start);
+    K2LOG_D(log::k2Adapter, "CreateCollection took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -541,7 +527,7 @@ CBFuture<CreateScanReadResult> K2Adapter::CreateScanRead(const std::string& coll
                                                      const std::string& schemaName) {
     auto start = k2::Clock::now();
     auto result = k23si_->createScanRead(collectionName, schemaName);
-    K2LOG_V(log::pg, "CreateScanRead took {}", k2::Clock::now() - start);
+    K2LOG_V(log::k2Adapter, "CreateScanRead took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -558,15 +544,15 @@ CBFuture<Status> K2Adapter::Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared
     op->allocateResponse();
     switch (op->type()) {
         case PgOpTemplate::WRITE: {
-            K2LOG_D(log::pg, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
+            K2LOG_D(log::k2Adapter, "Executing writing operation for table {}", std::static_pointer_cast<PgWriteOpTemplate>(op)->request()->table_id);
             auto result = handleWriteOp(k23SITxn, std::static_pointer_cast<PgWriteOpTemplate>(op));
-            K2LOG_V(log::pg, "Exec took {}", k2::Clock::now() - start);
+            K2LOG_V(log::k2Adapter, "Exec took {}", k2::Clock::now() - start);
             return result;
         } break;
         case PgOpTemplate::READ: {
-            K2LOG_D(log::pg, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
+            K2LOG_D(log::k2Adapter, "Executing reading operation for table {}", std::static_pointer_cast<PgReadOpTemplate>(op)->request()->table_id);
             auto result = handleReadOp(k23SITxn, std::static_pointer_cast<PgReadOpTemplate>(op));
-            K2LOG_V(log::pg, "Exec took {}", k2::Clock::now() - start);
+            K2LOG_V(log::k2Adapter, "Exec took {}", k2::Clock::now() - start);
             return result;
         } break;
         default:
@@ -610,7 +596,7 @@ CBFuture<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const 
             prom->set_exception(e);
         }
     });
-    K2LOG_V(log::pg, "BatchExec took {}", k2::Clock::now() - start);
+    K2LOG_V(log::k2Adapter, "BatchExec took {}", k2::Clock::now() - start);
     return result;
 }
 
@@ -631,7 +617,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
-    K2LOG_V(log::pg, "GetRowId by request took {}", k2::Clock::now() - start);
+    K2LOG_V(log::k2Adapter, "GetRowId by request took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
@@ -654,13 +640,12 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
 
     k2::dto::Key key = record.getKey();
     // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
-    K2LOG_D(log::pg, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
-    K2LOG_V(log::pg, "GetRowId took {}", k2::Clock::now() - start);
+    K2LOG_D(log::k2Adapter, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
+    K2LOG_V(log::k2Adapter, "GetRowId took {}", k2::Clock::now() - start);
     return key.partitionKey;
 }
 
-CBFuture<K23SITxn> K2Adapter::beginTransaction() {
-    auto start = k2::Clock::now();
+CBFuture<K23SITxn> K2Adapter::BeginTransaction() {
     k2::K2TxnOptions options{};
     // use default values for now
     // TODO: read from configuration/env files
@@ -668,36 +653,35 @@ CBFuture<K23SITxn> K2Adapter::beginTransaction() {
     options.deadline = k2::Duration(60000s);
     //options.priority = k2::dto::TxnPriority::Medium;
     auto result = k23si_->beginTxn(options);
-    K2LOG_V(log::pg, "beginTransaction took {}", k2::Clock::now() - start);
     return result;
 }
 
 void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record) {
     if (value.IsNull()) {
-        K2LOG_V(log::pg, "null value for field: {}", record.schema->fields[record.getFieldCursor()])
+        K2LOG_V(log::k2Adapter, "null value for field: {}", record.schema->fields[record.getFieldCursor()])
         record.serializeNull();
         return;
     }
 
     switch (value.type_) {
         case SqlValue::ValueType::BOOL:
-            K2LOG_V(log::pg, "bool value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::k2Adapter, "bool value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<bool>(value.data_.bool_val_);
             break;
         case SqlValue::ValueType::INT:
-            K2LOG_V(log::pg, "int value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::k2Adapter, "int value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<int64_t>(value.data_.int_val_);
             break;
         case SqlValue::ValueType::FLOAT:
-            K2LOG_V(log::pg, "float value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::k2Adapter, "float value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<float>(value.data_.float_val_);
             break;
         case SqlValue::ValueType::DOUBLE:
-            K2LOG_V(log::pg, "double value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::k2Adapter, "double value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<double>(value.data_.double_val_);
             break;
         case SqlValue::ValueType::SLICE:
-            K2LOG_V(log::pg, "slice value for field: {}", record.schema->fields[record.getFieldCursor()])
+            K2LOG_V(log::k2Adapter, "slice value for field: {}", record.schema->fields[record.getFieldCursor()])
             record.serializeNext<k2::String>(k2::String(value.data_.slice_val_));
             break;
         default:
@@ -731,7 +715,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (expr->getType() == SqlOpExpr::ExprType::UNBOUND) {
-                K2LOG_D(log::pg, "Stopping key serialization due to unbound value");
+                K2LOG_D(log::k2Adapter, "Stopping key serialization due to unbound value");
                 break;
             }
             if (!expr->isValueType()) {
@@ -789,13 +773,13 @@ std::string K2Adapter::YBCTIDToString(std::shared_ptr<SqlOpExpr> ybctid_column_v
     }
 
     if (!ybctid_column_value->isValueType()) {
-        K2LOG_W(log::pg, "ybctid_column_value value is not a Slice");
+        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a Slice");
         throw std::invalid_argument("Non value type in ybctid_column_value");
     }
 
     std::shared_ptr<SqlValue> value = ybctid_column_value->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
-        K2LOG_W(log::pg, "ybctid_column_value value is not a Slice");
+        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a Slice");
         throw std::invalid_argument("ybctid_column_value value is not a Slice");
     }
 

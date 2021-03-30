@@ -30,100 +30,98 @@ namespace sql {
 namespace catalog {
 
 TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
-    : BaseHandler(k2_adapter),
-    tablehead_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablehead),
-    tablecolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_tablecolumn),
-    indexcolumn_schema_name_(CatalogConsts::skv_schema_name_sys_catalog_indexcolumn) {
+ {
     tablehead_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_tablehead_schema_);
     tablecolumn_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_tablecolumn_schema_);
     indexcolumn_schema_ptr_ = std::make_shared<k2::dto::Schema>(sys_catalog_indexcolumn_schema_);
+    k2_adapter_ = k2_adapter;
 }
 
 TableInfoHandler::~TableInfoHandler() {
 }
 
-CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name) {
+CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name) {
     CreateSysTablesResult response;
     try {
-        // TODO: use sequential calls for now, could be optimized later for concurrent SKV api calls
-        K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, schema: {}", collection_name, tablehead_schema_name_);
-        CheckSysTableResult result = CheckAndCreateSysTable(context, collection_name, tablehead_schema_name_, tablehead_schema_ptr_);
-        if (!result.status.IsSucceeded()) {
-            K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, schema: {}, due to: {}", collection_name, tablehead_schema_name_, result.status);
+        CreateSKVSchemaIfNotExistResult result = CreateSKVSchemaIfNotExist(collection_name, tablehead_schema_ptr_);
+        if (!result.status.ok()) {
             response.status = std::move(result.status);
             return response;
         }
 
-        K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, name: {}", collection_name, tablecolumn_schema_name_);
-        result = CheckAndCreateSysTable(context, collection_name, tablecolumn_schema_name_, tablecolumn_schema_ptr_);
-        if (!result.status.IsSucceeded()) {
-            K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, name: {}, due to: {}", collection_name, tablecolumn_schema_name_, result.status);
+        result = CreateSKVSchemaIfNotExist(collection_name, tablecolumn_schema_ptr_);
+        if (!result.status.ok()) {
             response.status = std::move(result.status);
             return response;
         }
 
-        K2LOG_D(log::catalog, "Creating SKV schema for collection: {}, name: {}", collection_name, indexcolumn_schema_name_);
-        result = CheckAndCreateSysTable(context, collection_name, indexcolumn_schema_name_, indexcolumn_schema_ptr_);
-        if (!result.status.IsSucceeded()) {
-            K2LOG_E(log::catalog, "Failed to create SKV schema for collection: {}, name: {}, due to: {}", collection_name, indexcolumn_schema_name_, result.status);
+        result = CreateSKVSchemaIfNotExist(collection_name, indexcolumn_schema_ptr_);
+        if (!result.status.ok()) {
             response.status = std::move(result.status);
             return response;
         }
 
-        response.status.Succeed();
+        response.status = Status(); // OK
         K2LOG_D(log::catalog, "Created SKV schema for system tables successfully");
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-CheckSysTableResult TableInfoHandler::CheckAndCreateSysTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name,
-        const std::string& schema_name, std::shared_ptr<k2::dto::Schema> schema) {
-    CheckSysTableResult response;
+CreateSKVSchemaIfNotExistResult TableInfoHandler::CreateSKVSchemaIfNotExist(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema) {
+    CreateSKVSchemaIfNotExistResult response;
+    response.created = false;
     try {
         // check if the schema already exists or not, which is an indication of whether if we have created the table or not
-        auto schema_result = k2_adapter_->GetSchema(collection_name, schema_name, 1).get();
-        // TODO: double check if this check is valid for schema
-        if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-            K2LOG_D(log::catalog, "Table {}, does not exist in {}. Creating...", schema_name, collection_name);
-            // create the table schema since it does not exist
-            RStatus schema_result = CreateSKVSchema(collection_name, schema);
-            if (!schema_result.IsSucceeded()) {
-                K2LOG_E(log::catalog, "Failed to create SKV schema {} in {} due to {}",
-                    schema_name, collection_name, schema_result);
-                response.status = std::move(schema_result);
-                return response;
-            }
-            K2LOG_D(log::catalog, "Created SKV schema {} in {}", schema_name, collection_name);
-        } else {
-            K2LOG_W(log::catalog, "SKV schema {} already exists in {}", schema_name, collection_name);
+        auto result = k2_adapter_->GetSchema(collection_name, schema->name, 1).get();
+        if (result.status.is2xxOK()) //  Table already exists, no-op. 
+        {
+            K2LOG_W(log::catalog, "SKV schema {} already exists in {}", schema->name, collection_name);
+            response.status = Status();  // response.created = false;
+            return response;
         }
-        response.status.Succeed();
+
+        // !result.status.is2xxOK() here and 404 Not Found is ok, as we are going to create it, otherwise error out
+        if (result.status.code != 404)  { 
+            K2LOG_E(log::catalog, "Failed to getSchema {} in collection {} due to {}", schema->name, collection_name, result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(result.status);
+            return response;
+        }
+
+        K2LOG_D(log::catalog, "SKV schema {} does not exist in {}. Creating...", schema->name, collection_name);
+        // create the table schema since it does not exist
+        auto createResult = k2_adapter_->CreateSchema(collection_name, schema).get();
+        if (!createResult.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to create schema for {} in {}, due to {}", 
+                schema->name, collection_name, result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
+            return response;
+        }
+        response.created = true;
+        K2LOG_D(log::catalog, "Created SKV schema {} in {}", schema->name, collection_name);
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
+CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
     CreateUpdateTableResult response;
     try {
         // persist system catalog entries to sys tables on individual DB collection
-        PersistSysTableResult sys_table_result = PersistSysTable(context, collection_name, table);
-        if (!sys_table_result.status.IsSucceeded()) {
+        PersistSysTableResult sys_table_result = PersistSysTable(txnHandler, collection_name, table);
+        if (!sys_table_result.status.ok()) {
             response.status = std::move(sys_table_result.status);
             return response;
         }
         if (CatalogConsts::is_on_physical_collection(table->namespace_id(), table->is_shared())) {
             K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->namespace_id());
             // persist SKV table and index schemas
-            CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(context, collection_name, table);
-            if (!skv_schema_result.status.IsSucceeded()) {
+            CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(txnHandler, collection_name, table);
+            if (!skv_schema_result.status.ok()) {
                 response.status = std::move(skv_schema_result.status);
                 K2LOG_E(log::catalog, "Failed to persist table SKV schema id: {}, name: {}, in {} due to {}", table->table_id(), table->table_name(),
                     table->namespace_id(), response.status);
@@ -133,80 +131,81 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Se
             K2LOG_D(log::catalog, "Skip persisting table SKV schema id: {}, name: {} in {}, shared: {}", table->table_id(), table->table_name(),
                 table->namespace_id(), table->is_shared());
         }
-        response.status.Succeed();
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-GetTableResult TableInfoHandler::GetTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& namespace_name,
+GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name,
         const std::string& table_id) {
     GetTableResult response;
     try {
         K2LOG_D(log::catalog, "Fetch table schema ns id: {}, ns name: {}, table id: {}", collection_name, namespace_name, table_id);
         // table meta data on super tables that we owned are always on individual collection even for shared tables/indexes
         // (but their actual skv schema and table content are not)
-        k2::dto::SKVRecord table_head_record = FetchTableHeadSKVRecord(context, collection_name, table_id);
-        std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(context, collection_name, table_id);
+        k2::dto::SKVRecord table_head_record;
+        response.status = FetchTableHeadSKVRecord(txnHandler, collection_name, table_id, table_head_record);
+        if (!response.status.ok()) {
+            return response;
+        }  
+        std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(txnHandler, collection_name, table_id);
         std::shared_ptr<TableInfo> table_info = BuildTableInfo(collection_name, namespace_name, table_head_record, table_column_records);
         // check all the indexes whose BaseTableId is table_id
-        std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, collection_name, table_id);
+        std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(txnHandler, collection_name, table_id);
         if (!index_records.empty()) {
             // table has indexes defined
             for (auto& index_record : index_records) {
                 // Fetch and build each index table
-                IndexInfo index_info = FetchAndBuildIndexInfo(context, collection_name, index_record);
+                IndexInfo index_info = FetchAndBuildIndexInfo(txnHandler, collection_name, index_record);
                 // populate index to table_info
                 table_info->add_secondary_index(index_info.table_id(), index_info);
             }
         }
-        response.status.Succeed();
+
+        response.status = Status(); // OK
         response.tableInfo = table_info;
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded) {
+ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded) {
     ListTablesResult response;
     try {
-        ListTableIdsResult list_result = ListTableIds(context, collection_name, isSysTableIncluded);
-        if (!list_result.status.IsSucceeded()) {
+        ListTableIdsResult list_result = ListTableIds(txnHandler, collection_name, isSysTableIncluded);
+        if (!list_result.status.ok()) {
             response.status = std::move(list_result.status);
             return response;
         }
         for (auto& table_id : list_result.tableIds) {
-            GetTableResult result = GetTable(context, collection_name, namespace_name, table_id);
-            if (!result.status.IsSucceeded()) {
+            GetTableResult result = GetTable(txnHandler, collection_name, namespace_name, table_id);
+            if (!result.status.ok()) {
                 response.status = std::move(result.status);
                 return response;
             }
             response.tableInfos.push_back(std::move(result.tableInfo));
         }
-        response.status.Succeed();
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
 }
 
-ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, bool isSysTableIncluded) {
+ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, bool isSysTableIncluded) {
     ListTableIdsResult response;
     try {
-        auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_).get();
+        auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_ptr_->name).get();
         if (!create_result.status.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
-
-            response.status.errorMessage = fmt::format("Failed to create scan read for {} in {} due to {}", tablehead_schema_name_, collection_name, create_result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(create_result.status);
             return response;
         }
 
@@ -221,71 +220,61 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<SessionTransac
         query->startScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
         query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
         do {
-            auto query_result = context->GetTxn()->scanRead(query).get();
+            auto query_result = k2_adapter_->ScanRead(txnHandler->GetTxn(), query).get();
             if (!query_result.status.is2xxOK()) {
                 K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
-                response.status.code = StatusCode::INTERNAL_ERROR;
-                response.status.errorMessage = fmt::format("Failed to scan {} in {} due to {}",
-                tablehead_schema_name_, collection_name, query_result.status);
+                response.status = K2Adapter::K2StatusToYBStatus(query_result.status);
                 return response;
             }
 
-            if (!query_result.records.empty()) {
-                for (k2::dto::SKVRecord& record : query_result.records) {
-                    // deserialize table head
-                    // SchemaTableId
-                    record.deserializeNext<k2::String>();
-                    // SchemaIndexId
-                    record.deserializeNext<k2::String>();
-                    // TableId
-                    std::string table_id = record.deserializeNext<k2::String>().value();
-                    // TableName
-                    record.deserializeNext<k2::String>();
-                    // TableOid
-                    record.deserializeNext<int64_t>();
-                    // TableUuid
-                    record.deserializeNext<k2::String>();
-                    // IsSysTable
-                    bool is_sys_table = record.deserializeNext<bool>().value();
-                    if (isSysTableIncluded) {
+            for (k2::dto::SKVRecord& record : query_result.records) {
+                // deserialize table head
+                // SchemaTableId
+                record.deserializeNext<k2::String>();
+                // SchemaIndexId
+                record.deserializeNext<k2::String>();
+                // TableId
+                std::string table_id = record.deserializeNext<k2::String>().value();
+                // TableName
+                record.deserializeNext<k2::String>();
+                // TableOid
+                record.deserializeNext<int64_t>();
+                // TableUuid
+                record.deserializeNext<k2::String>();
+                // IsSysTable
+                bool is_sys_table = record.deserializeNext<bool>().value();
+                if (isSysTableIncluded) {
+                    response.tableIds.push_back(std::move(table_id));
+                } else {
+                    if (!is_sys_table) {
                         response.tableIds.push_back(std::move(table_id));
-                    } else {
-                        if (!is_sys_table) {
-                            response.tableIds.push_back(std::move(table_id));
-                        }
                     }
                 }
             }
             // if the query is not done, the query itself is updated with the pagination token for the next call
         } while (!query->isDone());
 
-        response.status.Succeed();
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionContext> target_context,
+CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_namespace_name,
             uint32_t target_namespace_oid,
-            std::shared_ptr<SessionTransactionContext> source_context,
+            std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_namespace_name,
             const std::string& source_table_id) {
     CopyTableResult response;
     try {
-        GetTableResult table_result = GetTable(source_context, source_coll_name, source_namespace_name, source_table_id);
-        if (!table_result.status.IsSucceeded()) {
+        GetTableResult table_result = GetTable(source_txnHandler, source_coll_name, source_namespace_name, source_table_id);
+        if (!table_result.status.ok()) {
             response.status = std::move(table_result.status);
-            return response;
-        }
-        if (table_result.tableInfo == nullptr) {
-            response.status.code = StatusCode::NOT_FOUND;
-            response.status.errorMessage = "Cannot find table " + source_table_id;
             return response;
         }
 
@@ -294,8 +283,8 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_coll_name,
                 target_namespace_name, target_table_uuid, table_result.tableInfo->table_name());
 
-        CreateUpdateTableResult create_result = CreateOrUpdateTable(target_context, target_coll_name, target_table);
-        if (!create_result.status.IsSucceeded()) {
+        CreateUpdateTableResult create_result = CreateOrUpdateTable(target_txnHandler, target_coll_name, target_table);
+        if (!create_result.status.ok()) {
             response.status = std::move(create_result.status);
             return response;
         }
@@ -309,9 +298,9 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                 }
             }
         } else {
-            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_context, target_coll_name, target_table->table_id(), target_table->schema().version(),
-                source_context, source_coll_name, source_table_id, source_table->schema().version());
-            if (!copy_skv_table_result.status.IsSucceeded()) {
+            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_txnHandler, target_coll_name, target_table->table_id(), target_table->schema().version(),
+                source_txnHandler, source_coll_name, source_table_id, source_table->schema().version());
+            if (!copy_skv_table_result.status.ok()) {
                 response.status = std::move(copy_skv_table_result.status);
                 return response;
             }
@@ -326,14 +315,13 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
                     // search for target index by name
                     auto found = target_index_name_map.find(secondary_index.second.table_name());
                     if (found == target_index_name_map.end()) {
-                        response.status.code = StatusCode::NOT_FOUND;
-                        response.status.errorMessage = "Cannot find target index " + secondary_index.second.table_name();
+                        response.status = STATUS_FORMAT(NotFound, "Cannot find target index $0 ", secondary_index.second.table_name());
                         return response;
                     }
                     IndexInfo* target_index = found->second;
-                    CopySKVTableResult copy_skv_index_result = CopySKVTable(target_context, target_coll_name, secondary_index.first, secondary_index.second.version(),
-                        source_context, source_coll_name, target_index->table_id(), target_index->version());
-                    if (!copy_skv_index_result.status.IsSucceeded()) {
+                    CopySKVTableResult copy_skv_index_result = CopySKVTable(target_txnHandler, target_coll_name, secondary_index.first, secondary_index.second.version(),
+                        source_txnHandler, source_coll_name, target_index->table_id(), target_index->version());
+                    if (!copy_skv_index_result.status.ok()) {
                         response.status = std::move(copy_skv_index_result.status);
                         return response;
                     }
@@ -344,242 +332,240 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<SessionTransactionCo
 
         K2LOG_D(log::catalog, "Copied table from {} in {} to {} in {}", source_table_id, source_coll_name, target_table->table_id(), target_coll_name);
         response.tableInfo = target_table;
-        response.status.Succeed();
+        response.status = Status(); // OK
     } catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<SessionTransactionContext> target_context,
+CopySKVTableResult TableInfoHandler::CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_table_id,
             uint32_t target_version,
-            std::shared_ptr<SessionTransactionContext> source_context,
+            std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_table_id,
             uint32_t source_version) {
     CopySKVTableResult response;
     // check target SKV schema
-    CheckSKVSchemaResult target_schema_result = CheckSKVSchema(target_context, target_coll_name, target_table_id, target_version);
-    if (!target_schema_result.status.IsSucceeded()) {
+    auto target_result = k2_adapter_->GetSchema(target_coll_name, target_table_id, target_version).get();
+    if (!target_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to get SKV schema for table {} in {} with version {} due to {}",
-            target_table_id, target_coll_name, target_version, target_schema_result.status.errorMessage);
-        response.status = std::move(target_schema_result.status);
+            target_table_id, target_coll_name, target_version,target_result.status);
+        response.status = K2Adapter::K2StatusToYBStatus(target_result.status);
         return response;
     }
 
     // check the source SKV schema
-    CheckSKVSchemaResult source_schema_result = CheckSKVSchema(source_context, source_coll_name, source_table_id, source_version);
-    if (!source_schema_result.status.IsSucceeded()) {
+    auto source_result = k2_adapter_->GetSchema(source_coll_name, source_table_id, source_version).get();
+    if (!source_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to get SKV schema for table {} in {} with version {} due to {}",
-            source_table_id, source_coll_name, source_version, source_schema_result.status.errorMessage);
-        response.status = std::move(source_schema_result.status);
+            source_table_id, source_coll_name, source_version, source_result.status);
+        response.status = K2Adapter::K2StatusToYBStatus(source_result.status);
         return response;
     }
 
     // create scan for source table
-    CreateScanReadResult create_source_scan_result = k2_adapter_->CreateScanRead(source_coll_name, source_schema_result.schema->name).get();
+    CreateScanReadResult create_source_scan_result = k2_adapter_->CreateScanRead(source_coll_name, source_result.schema->name).get();
     if (!create_source_scan_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create scan read for {} in {} due to {}", source_table_id, source_coll_name, create_source_scan_result.status.message);
-        response.status.errorMessage = create_source_scan_result.status.message;
-        response.status.code = StatusCode::RUNTIME_ERROR;
+        response.status = K2Adapter::K2StatusToYBStatus(create_source_scan_result.status);
         return response;
     }
 
     // scan the source table
     std::shared_ptr<k2::Query> query = create_source_scan_result.query;
-    query->startScanRecord = buildRangeRecord(source_coll_name, source_schema_result.schema, std::nullopt);
-    query->endScanRecord = buildRangeRecord(source_coll_name, source_schema_result.schema, std::nullopt);
+    query->startScanRecord = buildRangeRecord(source_coll_name, source_result.schema, std::nullopt);
+    query->endScanRecord = buildRangeRecord(source_coll_name, source_result.schema, std::nullopt);
     int count = 0;
     do {
-        k2::QueryResult query_result = source_context->GetTxn()->scanRead(query).get();
+        auto query_result = k2_adapter_->ScanRead(source_txnHandler->GetTxn(), query).get();
         if (!query_result.status.is2xxOK()) {
-            K2LOG_E(log::catalog, "Failed to run scan read for table {} in {} due to {}", source_table_id, source_coll_name, query_result.status.message);
-            response.status.code = StatusCode::RUNTIME_ERROR;
-            response.status.errorMessage = query_result.status.message;
+            K2LOG_E(log::catalog, "Failed to run scan read for table {} in {} due to {}", 
+                source_table_id, source_coll_name, query_result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(query_result.status);
             return response;
-        }
+        }        
 
-        if (!query_result.records.empty()) {
-            for (k2::dto::SKVRecord& record : query_result.records) {
-                // clone and persist SKV record to target table
-                k2::dto::SKVRecord target_record = record.cloneToOtherSchema(target_coll_name, target_schema_result.schema);
-                RStatus table_status = PersistSKVRecord(target_context, target_record);
-                if (!table_status.IsSucceeded()) {
-                    K2LOG_E(log::catalog, "Failed to persist SKV record to table {} in {} due to {}", target_table_id, target_coll_name, table_status.errorMessage);
-                    response.status = std::move(table_status);
-                    return response;
-                }
-                count++;
-            }
+        for (k2::dto::SKVRecord& record : query_result.records) {
+            // clone and persist SKV record to target table
+            k2::dto::SKVRecord target_record = record.cloneToOtherSchema(target_coll_name, target_result.schema);
+            auto upsertRes = k2_adapter_->UpsertRecord(target_txnHandler->GetTxn(), target_record).get();
+            if (!upsertRes.status.is2xxOK())
+            {
+                K2LOG_E(log::catalog, "Failed to upsert target_record due to {}", upsertRes.status);
+                response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
+                return response;
+            }                 
+            count++;          
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
     K2LOG_I(log::catalog, "Finished copying {} in {} to {} in {} with {} records", source_table_id, source_coll_name, target_table_id, target_coll_name, count);
-    response.status.Succeed();
+    response.status = Status(); // OK
     return response;
 }
 
-CheckSKVSchemaResult TableInfoHandler::CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& schema_name, uint32_t version) {
-    CheckSKVSchemaResult response;
-    try {
-        // use the same schema version in PG for SKV schema version
-        auto schema_result = k2_adapter_->GetSchema(collection_name, schema_name, version).get();
-        if (schema_result.status == k2::dto::K23SIStatus::KeyNotFound) {
-            response.schema = nullptr;
-            response.status.Succeed();
-        } else if (schema_result.status.is2xxOK()) {
-            if(schema_result.schema != nullptr) {
-                response.schema = std::move(schema_result.schema);
-                response.status.Succeed();
-            } else {
-                response.schema = nullptr;
-                response.status.Succeed();
-            }
-        } else {
-            response.status.code = StatusCode::INTERNAL_ERROR;
-            response.status.errorMessage = std::move(schema_result.status.message);
-        }
-    }
-    catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
-    }
-    return response;
-}
 
-CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
+//TODO: rename this API to CreateTableSKVSchemaIfNotExists
+CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
     CreateUpdateSKVSchemaResult response;
     try {
         // use table id (string) instead of table name as the schema name
-        CheckSKVSchemaResult check_result = CheckSKVSchema(context, collection_name, table->table_id(), table->schema().version());
-        if (check_result.status.IsSucceeded()) {
-            if (check_result.schema == nullptr) {
-                // build the SKV schema from TableInfo, i.e., PG table schema
-                std::shared_ptr<k2::dto::Schema> tablecolumn_schema = DeriveSKVTableSchema(table);
-                RStatus table_status = CreateSKVSchema(collection_name, tablecolumn_schema);
-                if (!table_status.IsSucceeded()) {
-                    response.status = std::move(table_status);
+        std::shared_ptr<k2::dto::Schema> outSchema = nullptr;
+        auto result = k2_adapter_->GetSchema(collection_name, table->table_id(), table->schema().version()).get();
+        if (result.status.is2xxOK()) //  Table already exists, no-op. 
+        {
+            K2LOG_W(log::catalog, "SKV schema {} already exists in {}", table->table_id(), collection_name);
+            response.status = Status();  // response.created = false;
+            return response;
+        }
+
+        // !result.status.is2xxOK() here and 404 Not Found is ok, as we are going to create it, otherwise error out
+        if (result.status.code != 404)  { 
+            K2LOG_E(log::catalog, "Failed to getSchema {} in collection {} due to {}", table->table_id(), collection_name, result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(result.status);
+            return response;
+        }
+
+        // build the SKV schema from TableInfo, i.e., PG table schema
+        std::shared_ptr<k2::dto::Schema> tablecolumn_schema = DeriveSKVTableSchema(table);
+        auto createResult = k2_adapter_->CreateSchema(collection_name, tablecolumn_schema).get();
+        if (!createResult.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to create schema for {} in {}, due to {}", 
+                tablecolumn_schema->name, collection_name, result.status);
+            response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
+            return response;
+        }
+
+        if (table->has_secondary_indexes()) {
+            std::vector<std::shared_ptr<k2::dto::Schema>> index_schemas = DeriveIndexSchemas(table);
+            for (std::shared_ptr<k2::dto::Schema> index_schema : index_schemas) {
+                // TODO use sequential SKV writes for now, could optimize this later
+                auto createResult = k2_adapter_->CreateSchema(collection_name, index_schema).get();
+                if (!createResult.status.is2xxOK()) {
+                    K2LOG_E(log::catalog, "Failed to create index schema for {} in {}, due to {}", 
+                        index_schema->name, collection_name, result.status);
+                    response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
                     return response;
                 }
-
-                if (table->has_secondary_indexes()) {
-                    std::vector<std::shared_ptr<k2::dto::Schema>> index_schemas = DeriveIndexSchemas(table);
-                    for (std::shared_ptr<k2::dto::Schema> index_schema : index_schemas) {
-                        // use sequential SKV writes for now, could optimize this later
-                        RStatus index_status = CreateSKVSchema(collection_name, index_schema);
-                        if (!index_status.IsSucceeded()) {
-                            response.status = std::move(table_status);
-                            return response;
-                        }
-                    }
-                }
             }
-            response.status.Succeed();
-        } else {
-            response.status.code = check_result.status.code;
-            response.status.errorMessage = std::move(check_result.status.errorMessage);
         }
+        
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
 }
 
-CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name,
+CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info) {
     CreateUpdateSKVSchemaResult response;
     try {
         std::shared_ptr<k2::dto::Schema> index_schema = DeriveIndexSchema(index_info);
-        response.status = CreateSKVSchema(collection_name, index_schema);
+        auto createResult = k2_adapter_->CreateSchema(collection_name, index_schema).get();
+        if (!createResult.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to create index schema for {} in {}, due to {}", 
+                index_schema->name, collection_name, createResult.status);
+            response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
+            return response;
+        }
+        response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
+PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
     PersistSysTableResult response;
     try {
         // use sequential SKV writes for now, could optimize this later
         k2::dto::SKVRecord tablelist_table_record = DeriveTableHeadRecord(collection_name, table);
-        RStatus table_status = PersistSKVRecord(context, tablelist_table_record);
-        if (!table_status.IsSucceeded()) {
-            response.status = std::move(table_status);
+
+        auto upsertRes = k2_adapter_->UpsertRecord(txnHandler->GetTxn(), tablelist_table_record).get();
+        if (!upsertRes.status.is2xxOK())
+        {
+            K2LOG_E(log::catalog, "Failed to upsert tablelist_table_record due to {}", upsertRes.status);
+            response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
             return response;
-        }
+        }        
         std::vector<k2::dto::SKVRecord> table_column_records = DeriveTableColumnRecords(collection_name, table);
         for (auto& table_column_record : table_column_records) {
-            RStatus column_status = PersistSKVRecord(context, table_column_record);
-            if (!column_status.IsSucceeded()) {
-                response.status = std::move(column_status);
+            auto upsertRes = k2_adapter_->UpsertRecord(txnHandler->GetTxn(), table_column_record).get();
+            if (!upsertRes.status.is2xxOK())
+            {
+                K2LOG_E(log::catalog, "Failed to upsert table_column_record  due to {}",  upsertRes.status);
+                response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
                 return response;
-            }
+            }  
         }
         if (table->has_secondary_indexes()) {
-            for( const auto& pair : table->secondary_indexes()) {
-                PersistIndexTableResult index_result = PersistIndexTable(context, collection_name, table, pair.second);
-                if (!index_result.status.IsSucceeded()) {
+            for(const auto& pair : table->secondary_indexes()) {
+                PersistIndexTableResult index_result = PersistIndexTable(txnHandler, collection_name, table, pair.second);
+                if (!index_result.status.ok()) {
                     response.status = std::move(index_result.status);
                     return response;
                 }
             }
         }
-        response.status.Succeed();
+        response.status = Status(); //OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table,
+PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table,
         const IndexInfo& index_info) {
     PersistIndexTableResult response;
     try {
         k2::dto::SKVRecord tablelist_index_record = DeriveIndexHeadRecord(collection_name, index_info, table->is_sys_table(), table->next_column_id());
         K2LOG_D(log::catalog, "Persisting SKV record tablelist_index_record id: {}, name: {}",
             index_info.table_id(), index_info.table_name());
-        RStatus table_status = PersistSKVRecord(context, tablelist_index_record);
-        if (!table_status.IsSucceeded()) {
-            response.status = std::move(table_status);
+        auto upsertRes = k2_adapter_->UpsertRecord(txnHandler->GetTxn(), tablelist_index_record).get();
+        if (!upsertRes.status.is2xxOK())
+        {
+            K2LOG_E(log::catalog, "Failed to upsert tablelist_index_record due to {}", upsertRes.status);
+            response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
             return response;
-        }
+        }                    
+
         std::vector<k2::dto::SKVRecord> index_column_records = DeriveIndexColumnRecords(collection_name, index_info, table->schema());
         for (auto& index_column_record : index_column_records) {
             K2LOG_D(log::catalog, "Persisting SKV record index_column_record id: {}, name: {}",
                 index_info.table_id(), index_info.table_name());
-            RStatus index_status = PersistSKVRecord(context, index_column_record);
-            if (!index_status.IsSucceeded()) {
-                response.status = std::move(index_status);
+            auto upsertRes = k2_adapter_->UpsertRecord(txnHandler->GetTxn(), index_column_record).get();
+            if (!upsertRes.status.is2xxOK())
+            {
+                K2LOG_E(log::catalog, "Failed to upsert index_column_record due to {}", upsertRes.status);
+                response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
                 return response;
-            }
+            }              
         }
-        response.status.Succeed();
+
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
 // Delete table_info and the related index_info from tablehead, tablecolumn, and indexcolumn system tables
-DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
+DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
     DeleteTableResult response;
     try {
         // first delete indexes
-        std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(context, collection_name, table->table_id());
+        std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(txnHandler, collection_name, table->table_id());
         if (!index_records.empty()) {
-            for (auto& record : index_records) {
+            for (k2::dto::SKVRecord& record : index_records) {
                 // SchemaTableId
                 record.deserializeNext<k2::String>();
                 // SchemaIndexId
@@ -587,8 +573,8 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<SessionT
                 // get table id for the index
                 std::string index_id = record.deserializeNext<k2::String>().value();
                 // delete index columns and the index head
-                DeleteIndexResult index_result = DeleteIndexMetadata(context, collection_name, index_id);
-                if (!index_result.status.IsSucceeded()) {
+                DeleteIndexResult index_result = DeleteIndexMetadata(txnHandler, collection_name, index_id);
+                if (!index_result.status.ok()) {
                     response.status = std::move(index_result.status);
                     return response;
                 }
@@ -597,94 +583,116 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<SessionT
 
         // then delete the table metadata itself
         // first, fetch the table columns
-        std::vector<k2::dto::SKVRecord> table_columns = FetchTableColumnSchemaSKVRecords(context, collection_name, table->table_id());
-        RStatus columns_result = BatchDeleteSKVRecords(context, table_columns);
-        if (!columns_result.IsSucceeded()) {
-            response.status = std::move(columns_result);
-        } else {
-            // fetch table head
-            k2::dto::SKVRecord table_head = FetchTableHeadSKVRecord(context, collection_name, table->table_id());
-            // then delete table head record
-            RStatus head_result = DeleteSKVRecord(context, table_head);
-            if (!head_result.IsSucceeded()) {
-                response.status = std::move(head_result);
-            } else {
-                response.status.Succeed();
+        std::vector<k2::dto::SKVRecord> table_columns = FetchTableColumnSchemaSKVRecords(txnHandler, collection_name, table->table_id());
+        for (auto& record : table_columns) {
+            auto delResponse = k2_adapter_->DeleteRecord(txnHandler->GetTxn(), record).get();
+            if (!delResponse.status.is2xxOK()) {
+                response.status = K2Adapter::K2StatusToYBStatus(delResponse.status);
+                return response;
             }
         }
+        // fetch table head
+        k2::dto::SKVRecord table_head;
+        response.status = FetchTableHeadSKVRecord(txnHandler, collection_name, table->table_id(), table_head);
+        if (!response.status.ok())
+        {
+            return response;
+        }  
+        // then delete table head record
+        auto delResponse = k2_adapter_->DeleteRecord(txnHandler->GetTxn(), table_head).get();
+        if (!delResponse.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to delete tablehead {} in Collection {}, due to {}", 
+                table->table_id(), collection_name, delResponse.status);
+            response.status = K2Adapter::K2StatusToYBStatus(delResponse.status);
+            return response;
+        }
 
+        response.status = Status(); // OK
+                                                                                              
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
-    return response;
+    return response;	
 }
 
 // Delete the actual table records from SKV that are stored with the SKV schema name to be table_id as in table_info
-DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
+DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table) {
     DeleteTableResult response;
     try {
         // TODO: add a task to delete the actual data from SKV
 
-        response.status.Succeed();
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
 // Delete index_info from tablehead and indexcolumn system tables
-DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& index_id) {
+DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
     DeleteIndexResult response;
     try {
-        // fetch index columns first
-        std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(context, collection_name, index_id);
-        // delete index columns first
-        RStatus columns_result = BatchDeleteSKVRecords(context, index_columns);
-        if (!columns_result.IsSucceeded()) {
-            response.status = std::move(columns_result);
-        } else {
-            // fetch index head
-            k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
-            // then delete index head record
-            RStatus head_result = DeleteSKVRecord(context, index_head);
-            if (!head_result.IsSucceeded()) {
-                response.status = std::move(head_result);
-            } else {
-                response.status.Succeed();
+        // fetch and delete index columns first
+        std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(txnHandler, collection_name, index_id);
+        for (auto& record : index_columns) {
+            auto delResponse = k2_adapter_->DeleteRecord(txnHandler->GetTxn(), record).get();
+            if (!delResponse.status.is2xxOK()) {
+                response.status = K2Adapter::K2StatusToYBStatus(delResponse.status);
+                return response;
             }
         }
+        
+        // fetch and delete index head 
+        k2::dto::SKVRecord index_head;
+        response.status = FetchTableHeadSKVRecord(txnHandler, collection_name, index_id, index_head);
+        if (!response.status.ok())
+        {
+            return response;
+        }  
+
+        auto delResponse = k2_adapter_->DeleteRecord(txnHandler->GetTxn(), index_head).get();
+        if (!delResponse.status.is2xxOK()) {
+            K2LOG_E(log::catalog, "Failed to delete indexhead {} in Collection {}, due to {}", 
+                index_id, collection_name, delResponse.status);
+            response.status = K2Adapter::K2StatusToYBStatus(delResponse.status);
+            return response;
+        }  
+
+        response.status = Status(); // OK        
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
+
     return response;
 }
 
 // Delete the actual index records from SKV that are stored with the SKV schema name to be table_id as in index_info
-DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& index_id) {
+DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
     DeleteIndexResult response;
     try {
         // TODO: add a task to delete the actual data from SKV
 
-        response.status.Succeed();
+        response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
 
-GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& index_id) {
+GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
     GetBaseTableIdResult response;
     try {
         // exception would be thrown if the record could not be found
-        k2::dto::SKVRecord index_head = FetchTableHeadSKVRecord(context, collection_name, index_id);
+        k2::dto::SKVRecord index_head;
+        response.status = FetchTableHeadSKVRecord(txnHandler, collection_name, index_id, index_head);
+        if (!response.status.ok())
+        {
+            return response;
+        }        
         // SchemaTableId
         index_head.deserializeNext<k2::String>();
         // SchemaIndexId
@@ -709,20 +717,24 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<SessionTra
         index_head.deserializeNext<bool>();
         // BaseTableId
         response.baseTableId = index_head.deserializeNext<k2::String>().value();
-        response.status.Succeed();
+        response.status = Status(); // OK
     } catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
 }
 
-GetTableInfoResult TableInfoHandler::GetTableInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id)
+GetTableInfoResult TableInfoHandler::GetTableInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id)
 {
     GetTableInfoResult response;
     try {
-        k2::dto::SKVRecord record = FetchTableHeadSKVRecord(context, collection_name, table_id);
+        k2::dto::SKVRecord record;
+        response.status = FetchTableHeadSKVRecord(txnHandler, collection_name, table_id, record);
+        if (!response.status.ok())
+        {
+            return response;
+        }
         // SchemaTableId
         record.deserializeNext<k2::String>();
         // SchemaIndexId
@@ -743,10 +755,9 @@ GetTableInfoResult TableInfoHandler::GetTableInfo(std::shared_ptr<SessionTransac
         record.deserializeNext<bool>();
         // IsIndex
         response.isIndex = record.deserializeNext<bool>().value();
-        response.status.Succeed();
+        response.status = Status(); // OK
     } catch (const std::exception& e) {
-        response.status.code = StatusCode::RUNTIME_ERROR;
-        response.status.errorMessage = e.what();
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
@@ -1049,29 +1060,29 @@ k2::dto::FieldType TableInfoHandler::ToK2Type(DataType type) {
     return field_type;
 }
 
-k2::dto::SKVRecord TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
-    k2::dto::SKVRecord record(collection_name, tablehead_schema_ptr_);
+Status TableInfoHandler::FetchTableHeadSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id, k2::dto::SKVRecord& resultSKVRecord) {
+    k2::dto::SKVRecord recordKey(collection_name, tablehead_schema_ptr_);
     // SchemaTableId
-    record.serializeNext<k2::String>(tablehead_schema_ptr_->name);
+    recordKey.serializeNext<k2::String>(tablehead_schema_ptr_->name);
     // SchemaIndexId
-    record.serializeNext<k2::String>("");
+    recordKey.serializeNext<k2::String>("");
     // table_id
-    record.serializeNext<k2::String>(table_id);
+    recordKey.serializeNext<k2::String>(table_id);
+
     K2LOG_D(log::catalog, "Fetching Tablehead SKV record for table {}", table_id);
-    auto result = context->GetTxn()->read(std::move(record)).get();
+    auto result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
     // TODO: add error handling and retry logic in catalog manager
-    if (result.status == k2::dto::K23SIStatus::KeyNotFound) {
-        throw std::runtime_error("Cannot find entry " + table_id + " in " + collection_name);
-    } else if (!result.status.is2xxOK()) {
-        throw std::runtime_error(fmt::format("Error fetching entry {} in {} due to {}",
-            table_id, collection_name, result.status
-        ));
+    if (!result.status.is2xxOK()) {
+        K2LOG_E(log::catalog, "Error fetching entry {} in d due to {}", table_id, collection_name, result.status);
+        return K2Adapter::K2StatusToYBStatus(result.status);
     }
-    return std::move(result.value);
+
+    resultSKVRecord = std::move(result.value);
+    return Status(); // OK
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& base_table_id) {
-    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_name_).get();
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& base_table_id) {
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablehead_schema_ptr_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         base_table_id, collection_name, create_result.status);
@@ -1092,18 +1103,16 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     query->endScanRecord = buildRangeRecord(collection_name, tablehead_schema_ptr_, std::nullopt);
     do {
         K2LOG_D(log::catalog, "Fetching Tablehead SKV records for indexes on base table {}", base_table_id);
-        auto query_result = context->GetTxn()->scanRead(query).get();
+        auto query_result = k2_adapter_->ScanRead(txnHandler->GetTxn(), query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
-            base_table_id, collection_name, query_result.status);
+                base_table_id, collection_name, query_result.status);
             K2LOG_E(log::catalog, "{}", msg);
-            throw std::runtime_error(msg);
-        }
+            throw std::runtime_error(msg);           
+        }          
 
-        if (!query_result.records.empty()) {
-            for (k2::dto::SKVRecord& record : query_result.records) {
-                records.push_back(std::move(record));
-            }
+        for (k2::dto::SKVRecord& record : query_result.records) {
+            records.push_back(std::move(record));
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
@@ -1111,8 +1120,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexHeadSKVRecords(std::
     return records;
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
-    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_name_).get();
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id) {
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, tablecolumn_schema_ptr_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         table_id, collection_name, create_result.status);
@@ -1131,19 +1140,17 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     query->setFilterExpression(std::move(filterExpr));
     query->startScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
     query->endScanRecord = buildRangeRecord(collection_name, tablecolumn_schema_ptr_, std::make_optional(table_id));
-    do {
-        auto query_result = context->GetTxn()->scanRead(query).get();
+    do {     
+        auto query_result = k2_adapter_->ScanRead(txnHandler->GetTxn(), query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
-            table_id, collection_name, query_result.status);
+                table_id, collection_name, query_result.status);
             K2LOG_E(log::catalog, "{}", msg);
             throw std::runtime_error(msg);
-        }
+        }          
 
-        if (!query_result.records.empty()) {
-            for (k2::dto::SKVRecord& record : query_result.records) {
-                records.push_back(std::move(record));
-            }
+        for (k2::dto::SKVRecord& record : query_result.records) {
+            records.push_back(std::move(record));
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
@@ -1151,8 +1158,8 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnSchemaSKVRecor
     return records;
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id) {
-    auto create_result = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_name_).get();
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id) {
+    auto create_result = k2_adapter_->CreateScanRead(collection_name, indexcolumn_schema_ptr_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
         table_id, collection_name, create_result.status);
@@ -1171,19 +1178,17 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     query->setFilterExpression(std::move(filterExpr));
     query->startScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
     query->endScanRecord = buildRangeRecord(collection_name, indexcolumn_schema_ptr_, std::make_optional(table_id));
-    do {
-        auto query_result = context->GetTxn()->scanRead(query).get();
+    do {       
+        auto query_result = k2_adapter_->ScanRead(txnHandler->GetTxn(), query).get();
         if (!query_result.status.is2xxOK()) {
             auto msg = fmt::format("Failed to run scan read for {} in {} due to {}",
-            table_id, collection_name, query_result.status);
+                table_id, collection_name, query_result.status);
             K2LOG_E(log::catalog, "{}", msg);
             throw std::runtime_error(msg);
-        }
+        }          
 
-        if (!query_result.records.empty()) {
-            for (k2::dto::SKVRecord& record : query_result.records) {
-                records.push_back(std::move(record));
-            }
+        for (k2::dto::SKVRecord& record : query_result.records) {
+            records.push_back(std::move(record));
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
@@ -1275,7 +1280,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& n
     return table_info;
 }
 
-IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, k2::dto::SKVRecord& index_head) {
+IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_head) {
     // deserialize index head
     // SchemaTableId
     index_head.deserializeNext<k2::String>();
@@ -1312,7 +1317,7 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<SessionTransa
     uint32_t version = index_head.deserializeNext<int32_t>().value();
 
     // Fetch index columns
-    std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(context, collection_name, table_id);
+    std::vector<k2::dto::SKVRecord> index_columns = FetchIndexColumnSchemaSKVRecords(txnHandler, collection_name, table_id);
 
     // deserialize index columns
     std::vector<IndexColumn> columns;

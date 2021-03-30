@@ -45,6 +45,9 @@ public:
     K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime);
 
     ~K23SITxn();
+private: 
+    friend class K2Adapter;
+    friend class PGK2Client;
 
     // Scans records from K2.
     // The result future is eventually satisfied with the resulting SKVRecords of the scan.
@@ -82,7 +85,7 @@ public:
     // The MTR will be unique in spacetime
     const k2::dto::K23SI_MTR& mtr() const;
 
-private: // fields
+ // fields
     k2::dto::K23SI_MTR _mtr; // mtr for this transaction
     void _reportEndMetrics(k2::TimePoint now);
 

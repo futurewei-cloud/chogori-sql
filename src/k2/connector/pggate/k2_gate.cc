@@ -43,7 +43,7 @@ CBFuture<K23SITxn> K23SIGate::beginTxn(const K2TxnOptions& txnOpts) {
     auto result = CBFuture<K23SITxn>(qr.prom.get_future(), [start] {
         session::txn_begin_latency->observe(Clock::now() - start);
     });
-    K2LOG_D(log::pg, "starting txn: enqueue");
+    K2LOG_D(log::k2Client, "starting txn: enqueue");
     pushQ(beginTxQ, std::move(qr));
     return result;
 }
@@ -54,18 +54,18 @@ CBFuture<k2::GetSchemaResult> K23SIGate::getSchema(const k2::String& collectionN
     auto result = CBFuture<GetSchemaResult>(qr.prom.get_future(), [st=Clock::now()] {
         session::gate_get_schema_latency->observe(Clock::now() - st);
     });
-    K2LOG_D(log::pg, "get schema: collname={}, schema={}, version={}", collectionName, schemaName, schemaVersion);
+    K2LOG_D(log::k2Client, "get schema: collname={}, schema={}, version={}", collectionName, schemaName, schemaVersion);
     pushQ(schemaGetTxQ, std::move(qr));
     return result;
 }
 
-CBFuture<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& collectionName, k2::dto::Schema schema) {
+CBFuture<k2::CreateSchemaResult> K23SIGate::createSchema(const k2::String& collectionName, k2::dto::Schema& schema) {
     SchemaCreateRequest qr{.collectionName = collectionName, .schema = schema, .prom = {}};
 
     auto result = CBFuture<CreateSchemaResult>(qr.prom.get_future(), [st = Clock::now()] {
         session::gate_create_schema_latency->observe(Clock::now() - st);
     });
-    K2LOG_D(log::pg, "create schema: collname={}, schema={}, raw={}", collectionName, schema.name, schema);
+    K2LOG_D(log::k2Client, "create schema: collname={}, schema={}, raw={}", collectionName, schema.name, schema);
     pushQ(schemaCreateTxQ, std::move(qr));
     return result;
 }
@@ -78,7 +78,7 @@ CBFuture<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateReques
         session::gate_create_collection_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::pg, "create collection: cname={}", ccr.metadata.name);
+    K2LOG_D(log::k2Client, "create collection: cname={}", ccr.metadata.name);
     pushQ(collectionCreateTxQ, std::move(req));
     return result;
 }
@@ -90,7 +90,7 @@ CBFuture<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& colle
     auto result = CBFuture<CreateScanReadResult>(cr.prom.get_future(), [st = Clock::now()] {
         session::gate_create_scanread_latency->observe(Clock::now() - st);
     });
-    K2LOG_D(log::pg, "create scanread: coll={}, schema={}", collectionName, schemaName);
+    K2LOG_D(log::k2Client, "create scanread: coll={}, schema={}", collectionName, schemaName);
     pushQ(scanReadCreateTxQ, std::move(cr));
     return result;
 }

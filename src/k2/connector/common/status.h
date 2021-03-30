@@ -45,6 +45,8 @@
 
 #include "common/strings/substitute.h"
 
+// TODO: make Status K2Log compatible and indeed extended PGErrorCode at the same time
+
 // Return the given status if it is not OK.
 #define YB_RETURN_NOT_OK(s) do { \
     auto&& _s = (s); \

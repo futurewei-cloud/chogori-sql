@@ -25,28 +25,33 @@ Copyright(c) 2020 Futurewei Cloud
 #define CHOGORI_SQL_CLUSTER_INFO_HANDLER_H
 
 #include <string>
-#include "catalog_log.h"
 
-#include "pggate/catalog/base_handler.h"
+#include "pggate/catalog/sql_catalog_defaults.h"
+#include "pggate/catalog/sql_catalog_entity.h"
+#include "pggate/k2_adapter.h"
+#include "catalog_log.h"
 
 namespace k2pg {
 namespace sql {
 namespace catalog {
+    
+using k2pg::gate::K2Adapter;
+using yb::Status;
 
 struct InitClusterInfoResult {
-    RStatus status;
+    Status status;
 };
 
 struct UpdateClusterInfoResult {
-    RStatus status;
+    Status status;
 };
 
 struct GetClusterInfoResult {
-    RStatus status;
+    Status status;
     std::shared_ptr<ClusterInfo> clusterInfo;
 };
 
-class ClusterInfoHandler : public BaseHandler {
+class ClusterInfoHandler {
     public:
     typedef std::shared_ptr<ClusterInfoHandler> SharedPtr;
 
@@ -64,16 +69,17 @@ class ClusterInfoHandler : public BaseHandler {
     ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~ClusterInfoHandler();
 
-    InitClusterInfoResult InitClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
+    InitClusterInfoResult InitClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, ClusterInfo& cluster_info);
 
-    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<SessionTransactionContext> context, ClusterInfo& cluster_info);
+    UpdateClusterInfoResult UpdateClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, ClusterInfo& cluster_info);
 
-    GetClusterInfoResult ReadClusterInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& cluster_id);
+    GetClusterInfoResult GetClusterInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& cluster_id);
 
     private:
     std::string collection_name_;
     std::string schema_name_;
     std::shared_ptr<k2::dto::Schema> schema_ptr_;
+    std::shared_ptr<K2Adapter> k2_adapter_;
 };
 
 } // namespace sql

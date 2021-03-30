@@ -35,7 +35,7 @@ inline std::unique_ptr<Histogram> gate_create_collection_latency;
 inline std::unique_ptr<Histogram> gate_create_scanread_latency;
 
 inline void start() {
-    K2LOG_I(log::pg, "creating session metrics");
+    K2LOG_I(log::k2Client, "creating session metrics");
     write_op_latency.reset(new Histogram("write_op_latency", "latency of write ops in usec", 1, 1.2, 90, {}));
     read_op_latency.reset(new Histogram("read_op_latency", "latency of read ops in usec", 1, 1.2, 90, {}));
     scan_op_latency.reset(new Histogram("scan_op_latency", "latency of scan ops in usec", 1, 1.3, 78, {}));

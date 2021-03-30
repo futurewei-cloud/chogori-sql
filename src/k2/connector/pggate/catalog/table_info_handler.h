@@ -27,8 +27,10 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <vector>
 
+#include "pggate/catalog/sql_catalog_defaults.h"
+#include "pggate/catalog/sql_catalog_entity.h"
+#include "pggate/k2_adapter.h"
 #include "entities/entity_ids.h"
-#include "pggate/catalog/base_handler.h"
 #include "catalog_log.h"
 
 namespace k2pg {
@@ -36,82 +38,80 @@ namespace sql {
 namespace catalog {
 
 using k2pg::gate::CreateScanReadResult;
+using k2pg::gate::K2Adapter;
 using k2pg::sql::PgObjectId;
+using yb::Status;
 
 struct CreateSysTablesResult {
-    RStatus status;
+    Status status;
 };
 
-struct CheckSysTableResult {
-    RStatus status;
+struct CreateSKVSchemaIfNotExistResult {
+    Status status;
+    bool created;
 };
 
 struct CreateUpdateTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct CopySKVTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct GetTableResult {
-    RStatus status;
+    Status status;
     std::shared_ptr<TableInfo> tableInfo;
 };
 
 struct ListTablesResult {
-    RStatus status;
+    Status status;
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
 };
 
 struct ListTableIdsResult {
-    RStatus status;
+    Status status;
     std::vector<std::string> tableIds;
 };
 
 struct CopyTableResult {
-    RStatus status;
+    Status status;
     std::shared_ptr<TableInfo> tableInfo;
     int num_index = 0;
 };
 
-struct CheckSKVSchemaResult {
-    RStatus status;
-    std::shared_ptr<k2::dto::Schema> schema;
-};
-
 struct CreateUpdateSKVSchemaResult {
-    RStatus status;
+    Status status;
 };
 
 struct PersistSysTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct PersistIndexTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct DeleteTableResult {
-    RStatus status;
+    Status status;
 };
 
 struct DeleteIndexResult {
-    RStatus status;
+    Status status;
 };
 
 struct GetBaseTableIdResult {
-    RStatus status;
+    Status status;
     std::string baseTableId;
 };
 
 struct GetTableInfoResult {
-    RStatus status;
+    Status status;
     bool isShared;
     bool isIndex;
 };
 
-class TableInfoHandler : public BaseHandler {
+class TableInfoHandler {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
 
@@ -183,60 +183,57 @@ class TableInfoHandler : public BaseHandler {
         .rangeKeyFields = std::vector<uint32_t> {3}
     };
 
-    CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name);
+    CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name);
 
-    CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table);
+    CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    GetTableResult GetTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& namespace_name, const std::string& table_id);
+    GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, const std::string& table_id);
 
-    ListTablesResult ListTables(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded);
+    ListTablesResult ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded);
 
-    ListTableIdsResult ListTableIds(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, bool isSysTableIncluded);
+    ListTableIdsResult ListTableIds(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, bool isSysTableIncluded);
 
-    CopyTableResult CopyTable(std::shared_ptr<SessionTransactionContext> target_context,
+    CopyTableResult CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_namespace_name,
             uint32_t target_namespace_oid,
-            std::shared_ptr<SessionTransactionContext> source_context,
+            std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_namespace_name,
             const std::string& source_table_id);
 
-    CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name,
+    CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
-    PersistIndexTableResult PersistIndexTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
+    PersistIndexTableResult PersistIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
-    DeleteTableResult DeleteTableMetadata(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table);
+    DeleteTableResult DeleteTableMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    DeleteTableResult DeleteTableData(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table);
+    DeleteTableResult DeleteTableData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name,  const std::string& index_id);
+    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const std::string& index_id);
 
-    DeleteIndexResult DeleteIndexData(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name,  const std::string& index_id);
+    DeleteIndexResult DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const std::string& index_id);
 
-    GetBaseTableIdResult GetBaseTableId(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& index_id);
+    GetBaseTableIdResult GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id);
 
-    GetTableInfoResult GetTableInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id);
+    GetTableInfoResult GetTableInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
 
     private:
-    CopySKVTableResult CopySKVTable(std::shared_ptr<SessionTransactionContext> target_context,
+    CopySKVTableResult CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_table_id,
             uint32_t target_version,
-            std::shared_ptr<SessionTransactionContext> source_context,
+            std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_table_id,
             uint32_t source_version);
 
-    CheckSKVSchemaResult CheckSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& schema_name, uint32_t version);
+    CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table);
+    PersistSysTableResult PersistSysTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    PersistSysTableResult PersistSysTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, std::shared_ptr<TableInfo> table);
-
-    CheckSysTableResult CheckAndCreateSysTable(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& schema_name,
-        std::shared_ptr<k2::dto::Schema> schema);
+    CreateSKVSchemaIfNotExistResult CreateSKVSchemaIfNotExist(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> Schema);
 
     std::shared_ptr<k2::dto::Schema> DeriveSKVTableSchema(std::shared_ptr<TableInfo> table);
 
@@ -256,28 +253,29 @@ class TableInfoHandler : public BaseHandler {
 
     DataType ToSqlType(k2::dto::FieldType type);
 
-    k2::dto::SKVRecord FetchTableHeadSKVRecord(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id);
+    Status FetchTableHeadSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id, k2::dto::SKVRecord& resultSKVRecord);
 
-    std::vector<k2::dto::SKVRecord> FetchIndexHeadSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& base_table_id);
+    // TODO: change following API return Status instead of throw exception
 
-    std::vector<k2::dto::SKVRecord> FetchTableColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id);
+    std::vector<k2::dto::SKVRecord> FetchIndexHeadSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& base_table_id);
 
-    std::vector<k2::dto::SKVRecord> FetchIndexColumnSchemaSKVRecords(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, const std::string& table_id);
+    std::vector<k2::dto::SKVRecord> FetchTableColumnSchemaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+
+    std::vector<k2::dto::SKVRecord> FetchIndexColumnSchemaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
 
     std::shared_ptr<TableInfo> BuildTableInfo(const std::string& namespace_id, const std::string& namespace_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
 
-    IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<SessionTransactionContext> context, const std::string& collection_name, k2::dto::SKVRecord& index_head);
+    IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_head);
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
     k2::dto::SKVRecord buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema_ptr, std::optional<std::string> table_id);
 
-    std::string tablehead_schema_name_;
-    std::string tablecolumn_schema_name_;
-    std::string indexcolumn_schema_name_;
     std::shared_ptr<k2::dto::Schema> tablehead_schema_ptr_;
     std::shared_ptr<k2::dto::Schema> tablecolumn_schema_ptr_;
     std::shared_ptr<k2::dto::Schema> indexcolumn_schema_ptr_;
+
+    std::shared_ptr<K2Adapter> k2_adapter_;
 };
 
 } // namespace catalog

@@ -27,7 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include <string>
 #include <assert.h>
 
-#include "pggate/k2_txn.h"
+#include "pggate/pg_txn_handler.h"
 #include "catalog_log.h"
 #include <k2/common/FormattingUtils.h>
 
@@ -36,16 +36,21 @@ namespace sql {
 namespace catalog {
 
 using k2pg::gate::K23SITxn;
+using k2pg::gate::PgTxnHandler;
+
 // use the pair <namespace_id, table_name> to reference a table
 typedef std::pair<std::string, std::string> TableNameKey;
 
+// TODO: for each these entity type, add conversion code between them and SKVRecord to move redundant conversion code scattered.
+
 class ClusterInfo {
     public:
-    ClusterInfo();
+    ClusterInfo(){};
 
-    ClusterInfo(std::string cluster_id, uint64_t catalog_version, bool initdb_done);
+    ClusterInfo(std::string cluster_id, uint64_t catalog_version, bool initdb_done)
+        : cluster_id_(cluster_id), catalog_version_(catalog_version), initdb_done_(initdb_done) {};
 
-    ~ClusterInfo();
+    ~ClusterInfo(){};
 
     void SetClusterId(std::string cluster_id) {
         cluster_id_ = std::move(cluster_id);
@@ -146,79 +151,6 @@ class NamespaceInfo {
     // next PG Oid that is available for object id assignment for this namespace
     uint32_t next_pg_oid_;
 };
-
-class SessionTransactionContext {
-    public:
-    SessionTransactionContext(std::shared_ptr<K23SITxn> txn);
-    ~SessionTransactionContext();
-
-    std::shared_ptr<K23SITxn> GetTxn() {
-        return txn_;
-    }
-
-    void Commit() {
-        EndTransaction(true);
-        finished_ = true;
-    }
-
-    void Abort() {
-        EndTransaction(false);
-        finished_ = true;
-    }
-
-    private:
-    void EndTransaction(bool should_commit);
-
-    std::shared_ptr<K23SITxn> txn_;
-    bool finished_;
-};
-
-// mapping to the status code defined in yb's status.h (some are not applicable and thus, not included here)
-K2_DEF_ENUM(StatusCode,
-    OK,
-    NOT_FOUND,
-    CORRUPTION,
-    NOT_SUPPORTED,
-    INVALID_ARGUMENT,
-    IO_ERROR,
-    ALREADY_PRESENT,
-    RUNTIME_ERROR,
-    NETWORK_ERROR,
-    ILLEGAL_STATE,
-    NOT_AUTHORIZED,
-    ABORTED,
-    REMOTE_ERROR,
-    SERVICE_UNAVAILABLE,
-    TIMED_OUT,
-    UNINITIALIZED,
-    CONFIGURATION_ERROR,
-    INCOMPLETE,
-    END_OF_FILE,
-    INVALID_COMMAND,
-    QUERY_ERROR,
-    INTERNAL_ERROR,
-    EXPIRED
-);
-
-// response status
-struct RStatus {
-    RStatus() = default;
-    ~RStatus() = default;
-
-    StatusCode code;
-    std::string errorMessage;
-
-    void Succeed() {
-        code = StatusCode::OK;
-    }
-
-    bool IsSucceeded() {
-        return code == StatusCode::OK;
-    }
-    K2_DEF_FMT(RStatus, code, errorMessage);
-};
-
-static const inline RStatus StatusOK{.code = StatusCode::OK, .errorMessage=""};
 
 } // namespace catalog
 } // namespace sql
