@@ -660,6 +660,14 @@ Status PgGateApiImpl::DmlBindColumnCondIn(PgStatement *handle, int attr_num, int
   return down_cast<PgDmlRead*>(handle)->BindColumnCondIn(attr_num, n_attr_values, attr_values);
 }
 
+Status PgGateApiImpl::DmlBindRangeConds(PgStatement *handle, PgExpr *range_conds) {
+  return down_cast<PgDmlRead*>(handle)->BindRangeConds(range_conds);
+}
+
+Status PgGateApiImpl::DmlBindWhereConds(PgStatement *handle, PgExpr *where_conds) {
+  return down_cast<PgDmlRead*>(handle)->BindWhereConds(where_conds);
+}
+
 Status PgGateApiImpl::DmlBindTable(PgStatement *handle) {
   return down_cast<PgDml*>(handle)->BindTable();
 }

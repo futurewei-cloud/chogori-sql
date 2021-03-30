@@ -574,6 +574,16 @@ YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_at
   return ToYBCStatus(api_impl->DmlBindColumnCondIn(handle, attr_num, n_attr_values, attr_values));
 }
 
+YBCStatus PgDmlBindRangeConds(YBCPgStatement handle, YBCPgExpr range_conds) {
+  K2LOG_V(log::pg, "PgGateAPI: PgDmlBindRangeConds");
+  return ToYBCStatus(api_impl->DmlBindRangeConds(handle, range_conds));
+}
+
+YBCStatus PgDmlBindWhereConds(YBCPgStatement handle, YBCPgExpr where_conds) {
+  K2LOG_V(log::pg, "PgGateAPI: PgDmlBindWhereConds");
+  return ToYBCStatus(api_impl->DmlBindWhereConds(handle, where_conds));
+}
+
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
 YBCStatus YBCPgDmlBindTable(YBCPgStatement handle){
   K2LOG_V(log::pg, "PgGateAPI: YBCPgDmlBindTable");

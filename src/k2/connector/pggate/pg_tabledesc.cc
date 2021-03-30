@@ -165,6 +165,8 @@ std::unique_ptr<PgReadOpTemplate> PgTableDesc::NewPgsqlSelect(const string& clie
   req->table_id = table_id_;
   req->schema_version = schema_version_;
   req->stmt_id = stmt_id;
+  req->range_conds = NULL;
+  req->where_conds = NULL;
 
   return op;
 }

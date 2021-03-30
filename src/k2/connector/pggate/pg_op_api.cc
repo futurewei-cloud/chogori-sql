@@ -88,7 +88,8 @@ namespace gate {
        // copy for now, should we just use a new empty vector?
        newRequest->ybctid_column_values = ybctid_column_values;
        newRequest->targets = targets;
-       newRequest->where_expr = where_expr;
+       newRequest->range_conds = range_conds;
+       newRequest->where_conds = where_conds;
        newRequest->condition_expr = condition_expr;
        newRequest->is_forward_scan = is_forward_scan;
        newRequest->distinct = distinct;

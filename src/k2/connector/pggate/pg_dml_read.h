@@ -104,6 +104,12 @@ class PgDmlRead : public PgDml {
   // Bind a column with an IN condition.
   CHECKED_STATUS BindColumnCondIn(int attnum, int n_attr_values, PgExpr **attr_values);
 
+  // Bind the range conditions
+  CHECKED_STATUS BindRangeConds(PgExpr *range_conds);
+
+  // Bind the where conditions
+  CHECKED_STATUS BindWhereConds(PgExpr *where_conds);
+
   // Execute.
   virtual CHECKED_STATUS Exec(const PgExecParameters *exec_params);
 
@@ -112,6 +118,8 @@ class PgDmlRead : public PgDml {
   }
 
   protected:
+  CHECKED_STATUS PopulateAttrName(PgExpr *pg_expr);
+
    // Allocate column variable.
   std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
   std::shared_ptr<SqlOpCondition> AllocColumnBindConditionExprVar(PgColumn *col);

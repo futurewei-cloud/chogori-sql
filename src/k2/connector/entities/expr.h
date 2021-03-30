@@ -64,7 +64,6 @@ class PgExpr {
     enum class Opcode {
         PG_EXPR_CONSTANT,
         PG_EXPR_COLREF,
-        PG_EXPR_VARIABLE,
 
         // The logical expression for defining the conditions when we support WHERE clause.
         PG_EXPR_NOT,
@@ -91,17 +90,14 @@ class PgExpr {
         PG_EXPR_MAX,
         PG_EXPR_MIN,
 
-        // Serialized YSQL/PG Expr node.
+        // built-in functions
         PG_EXPR_EVAL_EXPR_CALL,
-
-        PG_EXPR_GENERATE_ROWID,
     };
 
     friend std::ostream& operator<<(std::ostream& os, const Opcode& opcode) {
         switch(opcode) {
             case Opcode::PG_EXPR_CONSTANT: return os << "PG_EXPR_CONSTANT";
             case Opcode::PG_EXPR_COLREF: return os << "PG_EXPR_COLREF";
-            case Opcode::PG_EXPR_VARIABLE: return os << "PG_EXPR_VARIABLE";
             case Opcode::PG_EXPR_NOT: return os << "PG_EXPR_NOT";
             case Opcode::PG_EXPR_EQ: return os << "PG_EXPR_EQ";
             case Opcode::PG_EXPR_NE: return os << "PG_EXPR_NE";
@@ -120,7 +116,6 @@ class PgExpr {
             case Opcode::PG_EXPR_MAX: return os << "PG_EXPR_MAX";
             case Opcode::PG_EXPR_MIN: return os << "PG_EXPR_MIN";
             case Opcode::PG_EXPR_EVAL_EXPR_CALL: return os << "PG_EXPR_EVAL_EXPR_CALL";
-            case Opcode::PG_EXPR_GENERATE_ROWID: return os << "PG_EXPR_GENERATE_ROWID";
             default: return os << "UNKNOWN";
         }
     }

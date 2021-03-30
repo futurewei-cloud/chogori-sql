@@ -328,6 +328,10 @@ class PgGateApiImpl {
   CHECKED_STATUS DmlBindColumnCondIn(PgStatement *handle, int attr_num, int n_attr_values,
       PgExpr **attr_value);
 
+  CHECKED_STATUS DmlBindRangeConds(PgStatement *handle, PgExpr *range_conds);
+
+  CHECKED_STATUS DmlBindWhereConds(PgStatement *handle, PgExpr *where_conds);
+
   // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
   CHECKED_STATUS DmlBindTable(PgStatement *handle);
 

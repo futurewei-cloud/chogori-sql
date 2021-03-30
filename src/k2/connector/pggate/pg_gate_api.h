@@ -296,6 +296,12 @@ YBCStatus YBCPgDmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBC
 YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
     YBCPgExpr *attr_values);
 
+// bind range condition so as to derive key prefix
+YBCStatus PgDmlBindRangeConds(YBCPgStatement handle, YBCPgExpr where_conds);
+
+// bind where clause for a DML operation
+YBCStatus PgDmlBindWhereConds(YBCPgStatement handle, YBCPgExpr where_conds);
+
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
 YBCStatus YBCPgDmlBindTable(YBCPgStatement handle);
 
