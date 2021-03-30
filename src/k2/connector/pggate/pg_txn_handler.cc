@@ -136,7 +136,7 @@ Status PgTxnHandler::ExitSeparateDdlTxnMode(bool success) {
   return Status::OK();
 }
 
-std::shared_ptr<K23SITxn>& PgTxnHandler::GetTxn() {
+std::shared_ptr<K23SITxn> PgTxnHandler::GetTxn() {
   // start transaction if not yet started.
   if (txn_ == nullptr) {
     auto status = BeginTransaction();

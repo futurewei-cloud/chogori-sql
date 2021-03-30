@@ -77,19 +77,18 @@ GetClusterInfoResult ClusterInfoHandler::GetClusterInfo(std::shared_ptr<PgTxnHan
     GetClusterInfoResult response;
     k2::dto::SKVRecord recordKey(collection_name_, schema_ptr_);
     recordKey.serializeNext<k2::String>(cluster_id);
-    k2::dto::SKVRecord resultRecord;
-    auto result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
-    if (!result.status.is2xxOK()) {
-        K2LOG_E(log::catalog, "Failed to read SKV record due to {}", result.status);
-        response.status = K2Adapter::K2StatusToYBStatus(result.status);
+    auto read_result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
+    if (!read_result.status.is2xxOK()) {
+        K2LOG_E(log::catalog, "Failed to read SKV record due to {}", read_result.status);
+        response.status = K2Adapter::K2StatusToYBStatus(read_result.status);
         return response;
     }
 
     std::shared_ptr<ClusterInfo> cluster_info = std::make_shared<ClusterInfo>();
-    cluster_info->SetClusterId(result.value.deserializeNext<k2::String>().value());
+    cluster_info->SetClusterId(read_result.value.deserializeNext<k2::String>().value());
     // use signed integers for unsigned integers since SKV does not support them
-    cluster_info->SetCatalogVersion(result.value.deserializeNext<int64_t>().value());
-    cluster_info->SetInitdbDone(result.value.deserializeNext<bool>().value());
+    cluster_info->SetCatalogVersion(read_result.value.deserializeNext<int64_t>().value());
+    cluster_info->SetInitdbDone(read_result.value.deserializeNext<bool>().value());
     response.clusterInfo = cluster_info;
     response.status = Status(); // OK
     return response;

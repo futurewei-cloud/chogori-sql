@@ -57,22 +57,21 @@ public:
   // 2/5 K2-3SI transaction APIs
   CBFuture<K23SITxn> BeginTransaction();
   // Async EndTransaction shouldCommit - true to commit the transaction, false to abort the transaction
-  CBFuture<k2::EndResult> EndTransaction(std::shared_ptr<K23SITxn>& k23SITxn, bool shouldCommit) { return k23SITxn->endTxn(shouldCommit);}
-
+  CBFuture<k2::EndResult> EndTransaction(std::shared_ptr<K23SITxn> k23SITxn, bool shouldCommit) { return k23SITxn->endTxn(shouldCommit);}
   
   // 3/5 SKV data APIs
   // Read a record based on recordKey(which will be consumed/moved).
-  CBFuture<k2::ReadResult<k2::dto::SKVRecord>> ReadRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& recordKey)
+  CBFuture<k2::ReadResult<k2::dto::SKVRecord>> ReadRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& recordKey)
     { return k23SITxn->read(std::move(recordKey)); }
   // param record will be consumed/moved
-  CBFuture<k2::WriteResult> UpsertRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
+  CBFuture<k2::WriteResult> UpsertRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record)
       { return WriteRecord(k23SITxn, record, false/*isDelete*/); }
   // param record will be consumed/moved
-  CBFuture<k2::WriteResult> DeleteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record)
+  CBFuture<k2::WriteResult> DeleteRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record)
     { return WriteRecord(k23SITxn, record, true/*isDelete*/); }
 
   CBFuture<CreateScanReadResult> CreateScanRead(const std::string& collectionName, const std::string& schemaName);
-  CBFuture<k2::QueryResult> ScanRead(std::shared_ptr<K23SITxn>& k23SITxn, std::shared_ptr<k2::Query> query)
+  CBFuture<k2::QueryResult> ScanRead(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<k2::Query> query)
     { return k23SITxn->scanRead(query); }
 
   CBFuture<Status> Exec(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgOpTemplate> op);
@@ -108,7 +107,7 @@ public:
   ThreadPool threadPool_;
 
   // will consume/move record param
-  CBFuture<k2::WriteResult> WriteRecord(std::shared_ptr<K23SITxn>& k23SITxn, k2::dto::SKVRecord& record, bool isDelete)
+  CBFuture<k2::WriteResult> WriteRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& record, bool isDelete)
     { return k23SITxn->write(std::move(record), isDelete); }
 
   CBFuture<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);

@@ -59,7 +59,7 @@ class PgTxnHandler {
   CHECKED_STATUS RestartTransaction();
 
   // get current K2-3SI txn handle need for transactional SKV operations, will start a new transaction if not yet
-  std::shared_ptr<K23SITxn>& GetTxn();
+  std::shared_ptr<K23SITxn> GetTxn();
 
   // TODO: implement these options/features later
   CHECKED_STATUS SetIsolationLevel(int isolation);

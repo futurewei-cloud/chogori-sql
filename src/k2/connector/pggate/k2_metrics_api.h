@@ -13,7 +13,7 @@ namespace k2pg::metrics {
 struct Histogram {
     Histogram(std::string name, std::string help, int start, double factor, int count, std::vector<std::string> labels):
             _name(std::move(name)), _help(std::move(help)), _start(start), _factor(factor), _count(count), _labels(std::move(labels)) {
-        K2LOG_D(log::pg, "creating histogram metric: {}", _name);
+        K2LOG_D(log::k2Client, "creating histogram metric: {}", _name);
         _labels_c.reserve(_labels.size());
         for (auto& l: _labels) {
             _labels_c.push_back(l.c_str());
@@ -28,7 +28,7 @@ struct Histogram {
     }
 
     ~Histogram() {
-        K2LOG_D(log::pg, "deleting histogram metric: {}", _name);
+        K2LOG_D(log::k2Client, "deleting histogram metric: {}", _name);
 
         // do not destroy the metric as below
         // - destroying the entire registry should take care of the metrics registered in it
@@ -37,7 +37,7 @@ struct Histogram {
 
     void observe(double value, const char** label_values=NULL) {
         if (!_hist) return;
-        K2LOG_D(log::pg, "observe value in histogram metric: {}", _name);
+        K2LOG_D(log::k2Client, "observe value in histogram metric: {}", _name);
         int r = prom_histogram_observe(_hist, value, label_values);
         if (r) {
             throw std::runtime_error("Unable to record history metric");
@@ -46,7 +46,7 @@ struct Histogram {
 
     void observe(k2::Duration value, const char** label_values=NULL) {
         if (!_hist) return;
-        K2LOG_D(log::pg, "observe duration in histogram metric: {}", _name);
+        K2LOG_D(log::k2Client, "observe duration in histogram metric: {}", _name);
         int r = prom_histogram_observe(_hist, (double)k2::usec(value).count(), label_values);
         if (r) {
             throw std::runtime_error("Unable to record history metric");
@@ -67,7 +67,7 @@ private:
 struct Gauge {
     Gauge(std::string name, std::string help, std::vector<std::string> labels) :
             _name(std::move(name)), _help(std::move(help)), _labels(std::move(labels)) {
-        K2LOG_D(log::pg, "create gauge metric: {}", _name);
+        K2LOG_D(log::k2Client, "create gauge metric: {}", _name);
         _labels_c.reserve(_labels.size());
         for (auto& l : _labels) {
             _labels_c.push_back(l.c_str());
@@ -81,7 +81,7 @@ struct Gauge {
     }
 
     ~Gauge() {
-        K2LOG_D(log::pg, "destroy gauge metric: {}", _name);
+        K2LOG_D(log::k2Client, "destroy gauge metric: {}", _name);
 
         // do not destroy the metric as below
         // - destroying the entire registry should take care of the metrics registered in it
@@ -90,7 +90,7 @@ struct Gauge {
 
     void set(double value, const char** label_values=NULL) {
         if (!_gauge) return;
-        K2LOG_D(log::pg, "set gauge metric: {}", _name);
+        K2LOG_D(log::k2Client, "set gauge metric: {}", _name);
         int r = prom_gauge_set(_gauge, value, label_values);
         if (r) {
             throw std::runtime_error("Unable to set gauge metric");
@@ -98,7 +98,7 @@ struct Gauge {
     }
 
     void add(double value, const char** label_values=NULL) {
-        K2LOG_D(log::pg, "add gauge metric: {}", _name);
+        K2LOG_D(log::k2Client, "add gauge metric: {}", _name);
         if (!_gauge) return;
         int r = value >= 0 ? prom_gauge_add(_gauge, value, label_values) : prom_gauge_sub(_gauge, value, label_values);
         if (r) {
@@ -117,7 +117,7 @@ private:
 struct Counter {
     Counter(std::string name, std::string help, std::vector<std::string> labels) :
             _name(std::move(name)), _help(std::move(help)), _labels(std::move(labels)) {
-        K2LOG_D(log::pg, "create counter metric: {}", _name);
+        K2LOG_D(log::k2Client, "create counter metric: {}", _name);
         _labels_c.reserve(_labels.size());
         for (auto& l : _labels) {
             _labels_c.push_back(l.c_str());
@@ -131,7 +131,7 @@ struct Counter {
     }
 
     ~Counter() {
-        K2LOG_D(log::pg, "destroy counter metric: {}", _name);
+        K2LOG_D(log::k2Client, "destroy counter metric: {}", _name);
         // do not destroy the metric as below
         // - destroying the entire registry should take care of the metrics registered in it
         // prom_counter_destroy(_counter);
@@ -139,7 +139,7 @@ struct Counter {
 
     void add(double value, const char** label_values=NULL) {
         if (!_counter) return;
-        K2LOG_D(log::pg, "add counter metric: {}", _name);
+        K2LOG_D(log::k2Client, "add counter metric: {}", _name);
         int r = prom_counter_add(_counter, value, label_values);
         if (r) {
             throw std::runtime_error("Unable to add counter metric");

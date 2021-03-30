@@ -57,15 +57,13 @@ namespace catalog {
         // load cluster info
         GetClusterInfoResult ciresp = cluster_info_handler_->GetClusterInfo(ci_txnHandler, cluster_id_);
         if (!ciresp.status.ok()) {
+            ci_txnHandler->AbortTransaction();
             if (ciresp.status.IsNotFound()) {
-                ci_txnHandler->AbortTransaction();  // no difference either abort or commit
                 K2LOG_W(log::catalog, "Empty cluster info record, likely primary cluster is not initialized. Only operation allowed is primary cluster initialization");
-                // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager
-                // keep initted_ to be false;
+                // it is ok, but only InitPrimaryCluster can be executed on the SqlCatalogrMager, keep initted_ to be false;
                 return Status::OK();
             } else {
                 K2LOG_E(log::catalog, "Failed to read cluster info record due to {}", ciresp.status.code());
-                ci_txnHandler->AbortTransaction();
                 return ciresp.status;
             }
         }
@@ -315,7 +313,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info != nullptr) {
             K2LOG_E(log::catalog, "Namespace {} has already existed", request.namespaceName);
-            response.status = std::move(STATUS_FORMAT(AlreadyPresent, "Namespace $0 has already existed", request.namespaceName));
+            response.status = STATUS_FORMAT(AlreadyPresent, "Namespace $0 has already existed", request.namespaceName);
             return response;
         }
 
@@ -327,7 +325,7 @@ namespace catalog {
             source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
             if (source_namespace_info == nullptr) {
                 K2LOG_E(log::catalog, "Failed to find source namespaces {}", request.sourceNamespaceId);
-                response.status = std::move(STATUS_FORMAT(NotFound, "SounrceNamespace $0 not found", request.sourceNamespaceId));
+                response.status = STATUS_FORMAT(NotFound, "SounrceNamespace $0 not found", request.sourceNamespaceId);
                 return response;
             }
             t_nextPgOid = source_namespace_info->GetNextPgOid();
@@ -560,7 +558,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.databaseName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName));
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
             return response;
         }
 
@@ -586,7 +584,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName));
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName);
             return response;
         }
 
@@ -602,8 +600,8 @@ namespace catalog {
             }
 
             // return table already present error if table already exists
-           response.status = std::move(STATUS_FORMAT(AlreadyPresent, 
-                "Table $0 has already existed in $1", request.tableName, request.namespaceName));
+           response.status = STATUS_FORMAT(AlreadyPresent, 
+                "Table $0 has already existed in $1", request.tableName, request.namespaceName);
             K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.namespaceName);
             return response;
         }
@@ -648,8 +646,8 @@ namespace catalog {
             response.tableInfo = new_table_info;
         }  catch (const std::exception& e) {
             txnHandler->AbortTransaction();
-            response.status = std::move(STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2", 
-                request.tableName, namespace_info->GetNamespaceId(), e.what()));
+            response.status = STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2", 
+                request.tableName, namespace_info->GetNamespaceId(), e.what());
             K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, namespace_info->GetNamespaceId());
         }
         return response;
@@ -662,7 +660,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-		    response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName));
+		    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName);
             return response;
         }
         // generate table uuid from namespace oid and table oid
@@ -689,7 +687,7 @@ namespace catalog {
             txnHandler->AbortTransaction();
             // cannot find the base table
             K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, namespace_info->GetNamespaceId());
-  		    response.status = std::move(STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, namespace_info->GetNamespaceId()));          
+  		    response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, namespace_info->GetNamespaceId());          
             return response;
         }
 
@@ -708,8 +706,8 @@ namespace catalog {
                 } else {
                     txnHandler->CommitTransaction();
                     // return index already present error if index already exists
-                    response.status = std::move(STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1", 
-                        index_table_id, namespace_info->GetNamespaceId()));
+                    response.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1", 
+                        index_table_id, namespace_info->GetNamespaceId());
                     K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, namespace_info->GetNamespaceId());
                     return response;
                 }
@@ -764,8 +762,8 @@ namespace catalog {
             K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, namespace_info->GetNamespaceId());
         } catch (const std::exception& e) {
             txnHandler->AbortTransaction();
-            response.status = std::move(STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}", 
-                request.tableName, e.what(), namespace_info->GetNamespaceId()));
+            response.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}", 
+                request.tableName, e.what(), namespace_info->GetNamespaceId());
             K2LOG_E(log::catalog, "Failed to create index {} in {}", 
                 request.tableName, namespace_info->GetNamespaceId());
         }
@@ -802,7 +800,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find database $0", namespace_id));
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", namespace_id);
             return response;
         }
 
@@ -831,7 +829,7 @@ namespace catalog {
                 namespace_info = CheckAndLoadNamespaceById(physical_collection);
                 if (namespace_info == nullptr) {
                     K2LOG_E(log::catalog, "Cannot find namespace {} for shared table {}", physical_collection, table_id);
-                    response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0 for shared table $1", physical_collection, table_id));
+                    response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0 for shared table $1", physical_collection, table_id);
                     return response;
                 }
                 // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
@@ -855,7 +853,7 @@ namespace catalog {
             if (table_result.tableInfo == nullptr) {
                 txnHandler->CommitTransaction();
                 K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
-                response.status = std::move(STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection));
+                response.status = STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection);
                 response.tableInfo = nullptr;
                 return response;
             }
@@ -894,7 +892,7 @@ namespace catalog {
             // cannot find the id as either a table id or an index id
             txnHandler->AbortTransaction();
             K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection));
+            response.status = STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection);
             response.tableInfo = nullptr;
             return response;
         }
@@ -924,7 +922,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespaceName $0", request.namespaceName));
+            response.status = STATUS_FORMAT(NotFound, "Cannot find namespaceName $0", request.namespaceName);
             return response;
         }
         response.namespaceId = namespace_info->GetNamespaceId();
@@ -965,7 +963,7 @@ namespace catalog {
             std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
             if (namespace_info == nullptr) {
                 K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id));
+                response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id);
                 return response;
             }
 
@@ -980,7 +978,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 txnHandler->AbortTransaction();
-                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find table $0", table_id));
+                response.status = STATUS_FORMAT(NotFound, "Cannot find table $0", table_id);
                 return response;
             }
 
@@ -1021,7 +1019,7 @@ namespace catalog {
         std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
         if (namespace_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id));
+            response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id);
             return response;
         }
 
@@ -1053,7 +1051,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 txnHandler->AbortTransaction();
-                response.status = std::move(STATUS_FORMAT(NotFound, "Cannot find Base table $0", base_table_id));
+                response.status = STATUS_FORMAT(NotFound, "Cannot find Base table $0", base_table_id);
                 return response;
             }
 
@@ -1106,7 +1104,7 @@ namespace catalog {
         if (begin_oid == std::numeric_limits<uint32_t>::max()) {
             ns_txnHandler->AbortTransaction();
             K2LOG_W(log::catalog, "No more object identifier is available for Postgres database {}", request.namespaceId);
-            response.status = std::move(STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.namespaceId));
+            response.status = STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.namespaceId);
             return response;
         }
 

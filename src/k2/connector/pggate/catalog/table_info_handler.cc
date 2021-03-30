@@ -65,7 +65,7 @@ CreateSysTablesResult TableInfoHandler::CheckAndCreateSystemTables(std::shared_p
         K2LOG_D(log::catalog, "Created SKV schema for system tables successfully");
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -103,7 +103,7 @@ CreateSKVSchemaIfNotExistResult TableInfoHandler::CreateSKVSchemaIfNotExist(cons
         K2LOG_D(log::catalog, "Created SKV schema {} in {}", schema->name, collection_name);
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -134,7 +134,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -169,7 +169,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandl
         response.tableInfo = table_info;
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -193,7 +193,7 @@ ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnH
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
@@ -257,7 +257,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> 
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -334,7 +334,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
         response.tableInfo = target_table;
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -456,7 +456,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateTableSKVSchema(std::
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
@@ -477,7 +477,7 @@ CreateUpdateSKVSchemaResult TableInfoHandler::CreateOrUpdateIndexSKVSchema(std::
         response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -517,7 +517,7 @@ PersistSysTableResult TableInfoHandler::PersistSysTable(std::shared_ptr<PgTxnHan
         response.status = Status(); //OK
     }
     catch (const std::exception& e) {
-        response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -553,7 +553,7 @@ PersistIndexTableResult TableInfoHandler::PersistIndexTable(std::shared_ptr<PgTx
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -611,7 +611,7 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHan
                                                                                               
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;	
 }
@@ -625,7 +625,7 @@ DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<PgTxnHandler
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -663,7 +663,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHan
         response.status = Status(); // OK        
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
@@ -678,7 +678,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
     return response;
 }
@@ -719,7 +719,7 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
         response.baseTableId = index_head.deserializeNext<k2::String>().value();
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
@@ -757,7 +757,7 @@ GetTableInfoResult TableInfoHandler::GetTableInfo(std::shared_ptr<PgTxnHandler> 
         response.isIndex = record.deserializeNext<bool>().value();
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-		response.status = std::move(STATUS_FORMAT(RuntimeError, "$0", e.what()));
+		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
     }
 
     return response;
