@@ -334,12 +334,22 @@ Status PgDmlRead::PopulateAttrName(PgExpr *pg_expr) {
 }
 
 Status PgDmlRead::BindRangeConds(PgExpr *range_conds) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindRangeConds(range_conds);
+  }
+
   RETURN_NOT_OK(PopulateAttrName(range_conds));
   read_req_->range_conds = range_conds;
   return Status::OK();
 }
 
 Status PgDmlRead::BindWhereConds(PgExpr *where_conds) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindWhereConds(where_conds);
+  }
+
   RETURN_NOT_OK(PopulateAttrName(where_conds));
   read_req_->where_conds = where_conds;
   return Status::OK();
