@@ -1155,7 +1155,7 @@ namespace catalog {
         std::lock_guard<std::mutex> l(lock_);
         table_uuid_map_[table_info->table_uuid()] = table_info;
         // TODO: add logic to remove table with old name if rename table is called
-        TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
+        TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_[key] = table_info;
         // update the corresponding index cache
         UpdateIndexCacheForTable(table_info);
@@ -1166,7 +1166,7 @@ namespace catalog {
         std::lock_guard<std::mutex> l(lock_);
         ClearIndexCacheForTable(table_info->table_id());
         table_uuid_map_.erase(table_info->table_uuid());
-        TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
+        TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_.erase(key);
     }
 

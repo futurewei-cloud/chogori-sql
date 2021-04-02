@@ -59,7 +59,7 @@ using k2pg::sql::PgSystemAttrNum;
 using k2pg::sql::catalog::CatalogConsts;
 
 PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false),
-    namespace_id_(pg_table->namespace_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
+    namespace_id_(pg_table->database_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
     transactional_(pg_table->schema().table_properties().is_transactional()),
     hash_column_num_(pg_table->schema().num_hash_key_columns()), key_column_num_(pg_table->schema().num_key_columns())
 {

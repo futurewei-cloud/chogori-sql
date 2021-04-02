@@ -316,10 +316,10 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
   if (itr == table->secondary_indexes().end()) {
     K2LOG_E(log::pg, "Cannot find index with id {}", t_table_id);
     return STATUS_FORMAT(NotFound, "Cannot find index $0 in database $1",
-                         t_table_id, table->namespace_id());
+                         t_table_id, table->database_id());
   }
 
-  return std::make_shared<PgTableDesc>(itr->second, table->namespace_id(), table->schema().table_properties().is_transactional());
+  return std::make_shared<PgTableDesc>(itr->second, table->database_id(), table->schema().table_properties().is_transactional());
 }
 
 Result<bool> PgSession::IsInitDbDone() {

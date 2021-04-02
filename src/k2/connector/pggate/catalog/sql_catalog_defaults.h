@@ -36,7 +36,7 @@ struct CatalogConsts {
     static const std::string default_cluster_id;
     static const std::string skv_collection_name_sql_primary;
     static const std::string skv_schema_name_cluster_info;
-    static const std::string skv_schema_name_namespace_info;
+    static const std::string skv_schema_name_database_info;
     static const std::string skv_schema_name_sys_catalog_tablehead;
     static const std::string skv_schema_name_sys_catalog_tablecolumn;
     static const std::string skv_schema_name_sys_catalog_indexcolumn;
@@ -45,7 +45,7 @@ struct CatalogConsts {
     static const std::string INDEX_ID_COLUMN_NAME;
     static const std::string BASE_TABLE_ID_COLUMN_NAME;
 
-    static const std::string shared_table_skv_colllection_name;
+    static const std::string shared_table_skv_colllection_id;
 
     static inline const k2::Duration catalog_manager_background_task_initial_wait = 1s;
     static inline const k2::Duration catalog_manager_background_task_sleep_interval = 30s;
