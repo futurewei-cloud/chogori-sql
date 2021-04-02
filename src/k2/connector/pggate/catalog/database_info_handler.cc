@@ -21,7 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#include "pggate/catalog/namespace_info_handler.h"
+#include "pggate/catalog/database_info_handler.h"
 
 #include <glog/logging.h>
 

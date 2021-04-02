@@ -60,6 +60,8 @@ struct DeleteNamespaceResult {
     Status status;
 };
 
+// DatabaseInfo is a cluster level system table holding info for each database, 
+// currently its Name/Oid, and next PgOid(for objects inside this DB).
 class NamespaceInfoHandler {
     public:
     typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;

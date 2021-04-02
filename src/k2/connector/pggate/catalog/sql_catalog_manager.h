@@ -96,7 +96,7 @@ and task state checking APIs later by using thread pools.
 #include "pggate/k2_thread_pool.h"
 #include "pggate/catalog/sql_catalog_defaults.h"
 #include "pggate/catalog/cluster_info_handler.h"
-#include "pggate/catalog/namespace_info_handler.h"
+#include "pggate/catalog/database_info_handler.h"
 #include "pggate/catalog/table_info_handler.h"
 #include "pggate/catalog/background_task.h"
 
