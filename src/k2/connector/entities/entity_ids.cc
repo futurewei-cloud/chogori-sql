@@ -34,7 +34,7 @@ const TableId kPgProcTableId = PgObjectId::GetTableUuid(kTemplate1Oid, kPgProcTa
 //-------------------------------------------------------------------------------------------------
 
 namespace {
-
+// TODO: get rid of YugaByte 16 byid UUID, and use PG dboid and tabld oid directly.
 // Layout of Postgres database and table 4-byte oids in a YugaByte 16-byte table UUID:
 //
 // +-----------------------------------------------------------------------------------------------+
@@ -73,11 +73,11 @@ std::string UuidToString(uuid* id) {
 
 } // namespace
 
-std::string PgObjectId::GetNamespaceUuid() const {
-  return GetNamespaceUuid(database_oid_);
+std::string PgObjectId::GetDatabaseUuid() const {
+  return GetDatabaseUuid(database_oid_);
 }
 
-std::string PgObjectId::GetNamespaceUuid(const PgOid& database_oid) {
+std::string PgObjectId::GetDatabaseUuid(const PgOid& database_oid) {
   uuid id = boost::uuids::nil_uuid();
   UuidSetDatabaseId(database_oid, &id);
   return UuidToString(&id);
@@ -123,11 +123,11 @@ bool PgObjectId::IsPgsqlId(const string& uuid) {
   return false;
 }
 
-Result<uint32_t> PgObjectId::GetDatabaseOidByUuid(const std::string& namespace_uuid) {
-  DCHECK(IsPgsqlId(namespace_uuid));
+Result<uint32_t> PgObjectId::GetDatabaseOidByUuid(const std::string& database_uuid) {
+  DCHECK(IsPgsqlId(database_uuid));
   try {
     size_t pos = 0;
-    const uint32_t oid = stoul(namespace_uuid.substr(0, sizeof(uint32_t) * 2), &pos, 16);
+    const uint32_t oid = stoul(database_uuid.substr(0, sizeof(uint32_t) * 2), &pos, 16);
     if (pos == sizeof(uint32_t) * 2) {
       return oid;
     }
@@ -136,7 +136,7 @@ Result<uint32_t> PgObjectId::GetDatabaseOidByUuid(const std::string& namespace_u
     // TODO: log the actual exceptions
   }
   return kPgInvalidOid;
-  return STATUS(InvalidArgument, "Invalid PostgreSQL namespace uuid", namespace_uuid);
+  return STATUS(InvalidArgument, "Invalid PostgreSQL database uuid", database_uuid);
 }
 
 uint32_t PgObjectId::GetTableOidByTableUuid(const std::string& table_uuid) {

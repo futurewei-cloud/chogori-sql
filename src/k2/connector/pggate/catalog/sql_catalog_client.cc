@@ -49,30 +49,30 @@ Status SqlCatalogClient::FinishInitDB()
   return catalog_manager_->FinishInitDB();
 }
 
-Status SqlCatalogClient::CreateNamespace(const std::string& namespace_name,
-                                 const std::string& namespace_id,
-                                 uint32_t namespace_oid,
-                                 const std::string& source_namespace_id,
+Status SqlCatalogClient::CreateDatabase(const std::string& database_name,
+                                 const std::string& database_id,
+                                 uint32_t database_oid,
+                                 const std::string& source_database_id,
                                  const std::string& creator_role_name,
                                  const std::optional<uint32_t>& next_pg_oid) {
-  CreateNamespaceRequest request {
-    .namespaceName = namespace_name,
-    .namespaceId = namespace_id,
-    .namespaceOid = namespace_oid,
-    .sourceNamespaceId = source_namespace_id,
+  CreateDatabaseRequest request {
+    .databaseName = database_name,
+    .databaseId = database_id,
+    .databaseOid = database_oid,
+    .sourceDatabaseId = source_database_id,
     .creatorRoleName = creator_role_name,
     .nextPgOid = next_pg_oid
   };
   auto start = k2::Clock::now();
-  CreateNamespaceResponse response = catalog_manager_->CreateNamespace(request);
-  K2LOG_I(log::catalog, "CreateNamespace {} took {}", namespace_name, k2::Clock::now() - start);
+  CreateDatabaseResponse response = catalog_manager_->CreateDatabase(request);
+  K2LOG_I(log::catalog, "CreateDatabase {} took {}", database_name, k2::Clock::now() - start);
   return response.status;
 }
 
-Status SqlCatalogClient::DeleteNamespace(const std::string& namespace_name,
-                                 const std::string& namespace_id) {
-  DeleteNamespaceRequest request {.namespaceName = namespace_name, .namespaceId = namespace_id};
-  DeleteNamespaceResponse response = catalog_manager_->DeleteNamespace(request);
+Status SqlCatalogClient::DeleteDatabase(const std::string& database_name,
+                                 const std::string& database_id) {
+  DeleteDatabaseRequest request {.databaseName = database_name, .databaseId = database_id};
+  DeleteDatabaseResponse response = catalog_manager_->DeleteDatabase(request);
   return response.status;
 }
 
@@ -85,7 +85,7 @@ Status SqlCatalogClient::UseDatabase(const std::string& database_name) {
 }
 
 Status SqlCatalogClient::CreateTable(
-    const std::string& namespace_name,
+    const std::string& database_name,
     const std::string& table_name,
     const PgObjectId& table_object_id,
     PgSchema& schema,
@@ -93,8 +93,8 @@ Status SqlCatalogClient::CreateTable(
     bool is_shared_table,
     bool if_not_exist) {
   CreateTableRequest request {
-    .namespaceName = namespace_name,
-    .namespaceOid = table_object_id.GetDatabaseOid(),
+    .databaseName = database_name,
+    .databaseOid = table_object_id.GetDatabaseOid(),
     .tableName = table_name,
     .tableOid = table_object_id.GetObjectOid(),
     .schema = schema,
@@ -104,12 +104,12 @@ Status SqlCatalogClient::CreateTable(
   };
   auto start = k2::Clock::now();
   CreateTableResponse response = catalog_manager_->CreateTable(request);
-  K2LOG_I(log::catalog, "CreateTable {} in {} took {}", table_name, namespace_name, k2::Clock::now() - start);
+  K2LOG_I(log::catalog, "CreateTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
   return response.status;
 }
 
 Status SqlCatalogClient::CreateIndexTable(
-    const std::string& namespace_name,
+    const std::string& database_name,
     const std::string& table_name,
     const PgObjectId& table_object_id,
     const PgObjectId& base_table_object_id,
@@ -120,11 +120,11 @@ Status SqlCatalogClient::CreateIndexTable(
     bool is_shared_table,
     bool if_not_exist) {
   CreateIndexTableRequest request {
-    .namespaceName = namespace_name,
-    .namespaceOid = table_object_id.GetDatabaseOid(),
+    .databaseName = database_name,
+    .databaseOid = table_object_id.GetDatabaseOid(),
     .tableName = table_name,
     .tableOid = table_object_id.GetObjectOid(),
-    // index and the base table should be in the same namespace, i.e., database
+    // index and the base table should be in the same database, i.e., database
     .baseTableOid = base_table_object_id.GetObjectOid(),
     .schema = schema,
     .isUnique = is_unique_index,
@@ -135,13 +135,13 @@ Status SqlCatalogClient::CreateIndexTable(
   };
   auto start = k2::Clock::now();
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
-  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {}", table_name, namespace_name, k2::Clock::now() - start);
+  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
   return response.status;
 }
 
 Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table_oid, bool wait) {
   DeleteTableRequest request {
-    .namespaceOid = database_oid,
+    .databaseOid = database_oid,
     .tableOid = table_oid
   };
   DeleteTableResponse response = catalog_manager_->DeleteTable(request);
@@ -150,7 +150,7 @@ Status SqlCatalogClient::DeleteTable(const PgOid database_oid, const PgOid table
 
 Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid table_oid, PgOid *base_table_oid, bool wait) {
   DeleteIndexRequest request {
-    .namespaceOid = database_oid,
+    .databaseOid = database_oid,
     .tableOid = table_oid
   };
   DeleteIndexResponse response = catalog_manager_->DeleteIndex(request);
@@ -164,7 +164,7 @@ Status SqlCatalogClient::DeleteIndexTable(const PgOid database_oid, const PgOid 
 
 Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_oid, std::shared_ptr<TableInfo>* table) {
   GetTableSchemaRequest request {
-    .namespaceOid = database_oid,
+    .databaseOid = database_oid,
     .tableOid = table_oid
   };
   auto start = k2::Clock::now();
@@ -184,7 +184,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
                                   uint32_t* begin_oid,
                                   uint32_t* end_oid) {
   ReservePgOidsRequest request {
-    .namespaceId = PgObjectId::GetNamespaceUuid(database_oid),
+    .databaseId = PgObjectId::GetDatabaseUuid(database_oid),
     .nextOid = next_oid,
     .count = count
   };

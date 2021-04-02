@@ -121,6 +121,8 @@ Status PgAlterDatabase::RenameDatabase(const std::string& new_name) {
 // PgCreateTable
 //--------------------------------------------------------------------------------------------------
 
+// BUGBUG: seems we are not handling schema_name (i.e. PG namespace) of the table. Need to verify this is ok.
+// (maybe OK as we are given an DB scope unique table_object_id)
 PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
                              const std::string& database_name,
                              const std::string& schema_name,
@@ -130,8 +132,8 @@ PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
                              bool if_not_exist,
                              bool add_primary_key)
     : PgDdl(pg_session),
-      namespace_id_(table_object_id.GetNamespaceUuid()),
-      namespace_name_(database_name),
+      database_id_(table_object_id.GetDatabaseUuid()),
+      database_name_(database_name),
       table_name_(table_name),
       table_object_id_(table_object_id),
       is_pg_catalog_table_(schema_name.compare("pg_catalog") == 0 ||
@@ -188,11 +190,11 @@ Status PgCreateTable::Exec() {
   // Construct schema.
   PgSchema schema = schema_builder_.Build();
   K2LOG_D(log::pg,
-    "Creating schema for namespace_id: {}, namespace_name: {}, table_object_id: {}, table_name: {}, schema: {}",
-    namespace_id_, namespace_name_, table_object_id_, table_name_, schema.ToString());
+    "Creating schema for database_id: {}, database_name: {}, table_object_id: {}, table_name: {}, schema: {}",
+    database_id_, database_name_, table_object_id_, table_name_, schema.ToString());
 
   // Create table.
-  const Status s = pg_session_->CreateTable(namespace_id_, namespace_name_, table_name_, table_object_id_, schema,
+  const Status s = pg_session_->CreateTable(database_id_, database_name_, table_name_, table_object_id_, schema,
     is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
@@ -202,7 +204,7 @@ Status PgCreateTable::Exec() {
       return STATUS(InvalidArgument, "Duplicate table");
     }
     if (s.IsNotFound()) {
-      return STATUS(InvalidArgument, "Database not found", namespace_name_);
+      return STATUS(InvalidArgument, "Database not found", database_name_);
     }
     return STATUS_FORMAT(
         InvalidArgument, "Invalid table definition: $0",
@@ -361,7 +363,7 @@ Status PgCreateIndex::Exec() {
   PgSchema schema = schema_builder_.Build();
 
   // Create table.
-  const Status s = pg_session_->CreateIndexTable(namespace_id_, namespace_name_, table_name_, table_object_id_, base_table_object_id_, schema,
+  const Status s = pg_session_->CreateIndexTable(database_id_, database_name_, table_name_, table_object_id_, base_table_object_id_, schema,
     is_unique_index_, skip_index_backfill_, is_pg_catalog_table_, is_shared_table_, if_not_exist_);
   if (PREDICT_FALSE(!s.ok())) {
     if (s.IsAlreadyPresent()) {
@@ -371,7 +373,7 @@ Status PgCreateIndex::Exec() {
       return STATUS(InvalidArgument, "Duplicate index table");
     }
     if (s.IsNotFound()) {
-      return STATUS(InvalidArgument, "Database not found", namespace_name_);
+      return STATUS(InvalidArgument, "Database not found", database_name_);
     }
     return STATUS_FORMAT(
         InvalidArgument, "Invalid index table definition: $0",

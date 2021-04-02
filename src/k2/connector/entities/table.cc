@@ -24,9 +24,9 @@ namespace sql {
         return index_map_.FindIndex(index_id);
     }
 
-    std::shared_ptr<TableInfo> TableInfo::Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
-            std::string namespace_name, std::string table_uuid, std::string table_name) {
-        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_info->table_oid(), table_name, table_uuid, table_info->schema());
+    std::shared_ptr<TableInfo> TableInfo::Clone(std::shared_ptr<TableInfo> table_info, std::string database_id,
+            std::string database_name, std::string table_uuid, std::string table_name) {
+        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(database_id, database_name, table_info->table_oid(), table_name, table_uuid, table_info->schema());
         new_table_info->set_next_column_id(table_info->next_column_id());
         new_table_info->set_is_sys_table(table_info->is_sys_table());
         if (table_info->has_secondary_indexes()) {

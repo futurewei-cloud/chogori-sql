@@ -136,10 +136,10 @@ class PgSession {
 
   CHECKED_STATUS RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to);
 
-  CHECKED_STATUS CreateTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_object_id,
+  CHECKED_STATUS CreateTable(const std::string& database_id, const std::string& database_name, const std::string& table_name, const PgObjectId& table_object_id,
     PgSchema& schema, bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
-  CHECKED_STATUS CreateIndexTable(const std::string& namespace_id, const std::string& namespace_name, const std::string& table_name, const PgObjectId& table_object_id,
+  CHECKED_STATUS CreateIndexTable(const std::string& database_id, const std::string& database_name, const std::string& table_name, const PgObjectId& table_object_id,
     const PgObjectId& base_table_object_id, PgSchema& schema, bool is_unique_index, bool skip_index_backfill,
     bool is_pg_catalog_table, bool is_shared_table, bool if_not_exist);
 
@@ -283,8 +283,8 @@ class PgSession {
     return rowid_generator_.Next(true /* binary_id */);
   }
 
-  std::string GetRowId(const std::string& namespace_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
-    return k2_adapter_->GetRowId(namespace_id, table_id, schema_version, key_values);
+  std::string GetRowId(const std::string& database_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    return k2_adapter_->GetRowId(database_id, table_id, schema_version, key_values);
   }
 
   std::shared_ptr<SqlCatalogClient> GetCatalogClient() {

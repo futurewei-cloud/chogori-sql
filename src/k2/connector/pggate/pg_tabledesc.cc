@@ -59,7 +59,7 @@ using k2pg::sql::PgSystemAttrNum;
 using k2pg::sql::catalog::CatalogConsts;
 
 PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false),
-    namespace_id_(pg_table->database_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
+    database_id_(pg_table->database_id()), table_id_(pg_table->table_id()), schema_version_(pg_table->schema().version()),
     transactional_(pg_table->schema().table_properties().is_transactional()),
     hash_column_num_(pg_table->schema().num_hash_key_columns()), key_column_num_(pg_table->schema().num_key_columns())
 {
@@ -89,14 +89,14 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
 
-  collection_name_ = CatalogConsts::physical_collection(namespace_id_, pg_table->is_shared());
+  collection_name_ = CatalogConsts::physical_collection(database_id_, pg_table->is_shared());
 
   K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
-    table_id_, namespace_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
+    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
 }
 
-PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespace_id, bool is_transactional) : is_index_(true),
-    namespace_id_(namespace_id), table_id_(index_info.table_id()), schema_version_(index_info.version()), transactional_(is_transactional),
+PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& database_id, bool is_transactional) : is_index_(true),
+    database_id_(database_id), table_id_(index_info.table_id()), schema_version_(index_info.version()), transactional_(is_transactional),
     hash_column_num_(index_info.hash_column_count()), key_column_num_(index_info.key_column_count())
 {
   // create PgTableDesc from an index
@@ -123,10 +123,10 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& namespa
   // Create virtual columns.
   column_ybctid_.Init(PgSystemAttrNum::kYBTupleId);
 
-  collection_name_ = CatalogConsts::physical_collection(namespace_id_, index_info.is_shared());
+  collection_name_ = CatalogConsts::physical_collection(database_id_, index_info.is_shared());
 
   K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
-    table_id_, namespace_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
+    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
 }
 
 Result<PgColumn *> PgTableDesc::FindColumn(int attr_num) {

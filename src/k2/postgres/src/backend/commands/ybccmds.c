@@ -286,7 +286,7 @@ CreateSplitPointDatums(ParseState *pstate,
 }
 
 void
-YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, Oid namespaceId)
+YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, Oid pgNamespaceId)
 {
 	if (relkind != RELKIND_RELATION)
 	{
@@ -305,7 +305,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 	char *schema_name = stmt->relation->schemaname;
 	if (schema_name == NULL)
 	{
-		schema_name = get_namespace_name(namespaceId);
+		schema_name = get_namespace_name(pgNamespaceId);
 	}
 	if (!IsBootstrapProcessingMode())
 		YBC_LOG_INFO("Creating Table %s.%s.%s",

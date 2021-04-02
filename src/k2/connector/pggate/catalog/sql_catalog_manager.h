@@ -37,10 +37,10 @@ The database data on SKV consists of the following:
 3) User tables/indexes: each table has its own SKV schema and its data are managed by DMLs. The table metadata are stored
    in PG system catalog and is also represented as a TableInfo in 1).
 
-For a namespace, i.e., database here, its identifier consists
+For a database, its identifier consists
 1) name (std::string): it could be changed by DDLs such as rename database
 2) PG Oid (uint32_t): object ID assigned by PG
-3) id (std::string): generated UUID string based on PG Oid. It is actually used to uniquely identifier a namespace
+3) id (std::string): generated UUID string based on PG Oid. It is actually used to uniquely identifier a database
 
 Similary for a table:
 1) name (std::string): table name and it could be renamed by DDLs
@@ -55,18 +55,18 @@ The catalog system has a primary SKV collection to store
     We could refactor this to avoid a global catalog version and reduce the chance for cache refresh in PG later.
     One SKV record in the primary collection is used for a cluster and it is accessed by the ClusterInfoHandler
 
-2) namespace information: database information is shared across different databases and thus, we need to store them
+2) database information: database information is shared across different databases and thus, we need to store them
     in the primary SKV record. It is accessed by the DatabaseInfoHandler
 
 3) Table information: PG gate needs to know the table schema and it is represented by the TableInfo object.
     The TableInfoHandler is used to acccess the TableInfo (including IndexInfo) objects on SKV
 
-All tables in a namespace (database) are mapped to a SKV collection by namespace id, not namespace name to make the
+All tables in a database are mapped to a SKV collection by database id, not database name to make the
 rename database working. Similary, a table's SKV schema name is identified by the table id, not the table name to
 avoid moving data around after renaming a table.
 
 To store a TableInfo with possible multiple IndexInfo on SKV (an IndexInfo represents a secondary index for a table),
-we have the following three catalog tables with fixed schema defined in table_info_handler.h for each namespace (database)
+we have the following three catalog tables with fixed schema defined in table_info_handler.h for each database
 1) table head: store table and index informaton. One entry for a table or an index
 2) table column: store column information for a table. One entry for a table column
 3) index column: store index column for an index. One entry for an index column
@@ -126,45 +126,45 @@ namespace catalog {
         uint64_t catalogVersion;
     };
 
-    struct CreateNamespaceRequest {
-        std::string namespaceName;
-        std::string namespaceId;
-        uint32_t namespaceOid;
-        std::string sourceNamespaceId;
+    struct CreateDatabaseRequest {
+        std::string databaseName;
+        std::string databaseId;
+        uint32_t databaseOid;
+        std::string sourceDatabaseId;
         std::string creatorRoleName;
-        // next oid to assign. Ignored when sourceNamespaceId is given and the nextPgOid from source namespace will be used
+        // next oid to assign. Ignored when sourceDatabaseId is given and the nextPgOid from source database will be used
         std::optional<uint32_t> nextPgOid;
     };
 
-    struct CreateNamespaceResponse {
+    struct CreateDatabaseResponse {
         Status status;
-        std::shared_ptr<DatabaseInfo> namespaceInfo;
+        std::shared_ptr<DatabaseInfo> databaseInfo;
     };
 
-    struct ListNamespacesRequest {
+    struct ListDatabasesRequest {
     };
 
-    struct ListNamespacesResponse {
+    struct ListDatabasesResponse {
         Status status;
-        std::vector<std::shared_ptr<DatabaseInfo>> namespace_infos;
+        std::vector<std::shared_ptr<DatabaseInfo>> database_infos;
     };
 
-    struct GetNamespaceRequest {
-        std::string namespaceName;
-        std::string namespaceId;
+    struct GetDatabaseRequest {
+        std::string databaseName;
+        std::string databaseId;
     };
 
-    struct GetNamespaceResponse {
+    struct GetDatabaseResponse {
         Status status;
-        std::shared_ptr<DatabaseInfo> namespace_info;
+        std::shared_ptr<DatabaseInfo> database_info;
     };
 
-    struct DeleteNamespaceRequest {
-        std::string namespaceName;
-        std::string namespaceId;
+    struct DeleteDatabaseRequest {
+        std::string databaseName;
+        std::string databaseId;
     };
 
-    struct DeleteNamespaceResponse {
+    struct DeleteDatabaseResponse {
         Status status;
     };
 
@@ -177,8 +177,8 @@ namespace catalog {
     };
 
     struct CreateTableRequest {
-        std::string namespaceName;
-        uint32_t namespaceOid;
+        std::string databaseName;
+        uint32_t databaseOid;
         std::string tableName;
         uint32_t tableOid;
         Schema schema;
@@ -194,8 +194,8 @@ namespace catalog {
     };
 
     struct CreateIndexTableRequest {
-        std::string namespaceName;
-        uint32_t namespaceOid;
+        std::string databaseName;
+        uint32_t databaseOid;
         std::string tableName;
         uint32_t tableOid;
         uint32_t baseTableOid;
@@ -213,7 +213,7 @@ namespace catalog {
     };
 
     struct GetTableSchemaRequest {
-        uint32_t namespaceOid;
+        uint32_t databaseOid;
         uint32_t tableOid;
     };
 
@@ -223,47 +223,47 @@ namespace catalog {
     };
 
     struct ListTablesRequest {
-        std::string namespaceName;
+        std::string databaseName;
         bool isSysTableIncluded = false;
     };
 
     struct ListTablesResponse {
         Status status;
-        std::string namespaceId;
+        std::string databaseId;
         std::vector<std::shared_ptr<TableInfo>> tableInfos;
     };
 
     struct DeleteTableRequest {
-        uint32_t namespaceOid;
+        uint32_t databaseOid;
         uint32_t tableOid;
     };
 
     struct DeleteTableResponse {
         Status status;
-        std::string namespaceId;
+        std::string databaseId;
         std::string tableId;
     };
 
     struct DeleteIndexRequest {
-        uint32_t namespaceOid;
+        uint32_t databaseOid;
         uint32_t tableOid;
     };
 
     struct DeleteIndexResponse {
         Status status;
-        std::string namespaceId;
+        std::string databaseId;
         uint32_t baseIndexTableOid;
     };
 
     struct ReservePgOidsRequest {
-        std::string namespaceId;
+        std::string databaseId;
         uint32_t nextOid;
         uint32_t count;
     };
 
     struct ReservePgOidsResponse {
         Status status;
-        std::string namespaceId;
+        std::string databaseId;
         // the beginning of the oid reserver, which could be higher than requested
         uint32_t beginOid;
         // the end (exclusive) oid reserved
@@ -303,13 +303,13 @@ namespace catalog {
 
         IncrementCatalogVersionResponse IncrementCatalogVersion(const IncrementCatalogVersionRequest& request);
 
-        CreateNamespaceResponse CreateNamespace(const CreateNamespaceRequest& request);
+        CreateDatabaseResponse CreateDatabase(const CreateDatabaseRequest& request);
 
-        ListNamespacesResponse ListNamespaces(const ListNamespacesRequest& request);
+        ListDatabasesResponse ListDatabases(const ListDatabasesRequest& request);
 
-        GetNamespaceResponse GetNamespace(const GetNamespaceRequest& request);
+        GetDatabaseResponse GetDatabase(const GetDatabaseRequest& request);
 
-        DeleteNamespaceResponse DeleteNamespace(const DeleteNamespaceRequest& request);
+        DeleteDatabaseResponse DeleteDatabase(const DeleteDatabaseRequest& request);
 
         UseDatabaseResponse UseDatabase(const UseDatabaseRequest& request);
 
@@ -332,7 +332,7 @@ namespace catalog {
 
         mutable std::mutex lock_;
 
-        void UpdateNamespaceCache(std::vector<std::shared_ptr<DatabaseInfo>> namespace_infos);
+        void UpdateDatabaseCache(std::vector<std::shared_ptr<DatabaseInfo>> database_infos);
 
         void UpdateTableCache(std::shared_ptr<TableInfo> table_info);
 
@@ -344,17 +344,17 @@ namespace catalog {
 
         void AddIndexCache(std::shared_ptr<IndexInfo> index_info);
 
-        std::shared_ptr<DatabaseInfo> GetCachedNamespaceById(const std::string& namespace_id);
+        std::shared_ptr<DatabaseInfo> GetCachedDatabaseById(const std::string& database_id);
 
-        std::shared_ptr<DatabaseInfo> GetCachedNamespaceByName(const std::string& namespace_name);
+        std::shared_ptr<DatabaseInfo> GetCachedDatabaseByName(const std::string& database_name);
 
         std::shared_ptr<TableInfo> GetCachedTableInfoById(const std::string& table_uuid);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoByName(const std::string& namespace_id, const std::string& table_name);
+        std::shared_ptr<TableInfo> GetCachedTableInfoByName(const std::string& database_id, const std::string& table_name);
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid);
+        std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
 
         // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
         std::shared_ptr<PgTxnHandler> NewTransaction();
@@ -362,9 +362,9 @@ namespace catalog {
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
-        std::shared_ptr<DatabaseInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
+        std::shared_ptr<DatabaseInfo> CheckAndLoadDatabaseByName(const std::string& database_name);
 
-        std::shared_ptr<DatabaseInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
+        std::shared_ptr<DatabaseInfo> CheckAndLoadDatabaseById(const std::string& database_id);
 
         void CheckCatalogVersion();
 
@@ -386,24 +386,24 @@ namespace catalog {
         // handler to access ClusterInfo record including init_db_done flag and catalog version
         std::shared_ptr<ClusterInfoHandler> cluster_info_handler_;
 
-        // handler to access the namespace info record, which consists of database information
+        // handler to access the database info record, which consists of database information
         // and it is a shared table across all databases
-        std::shared_ptr<DatabaseInfoHandler> namespace_info_handler_;
+        std::shared_ptr<DatabaseInfoHandler> database_info_handler_;
 
         // handler to access table and index information
         std::shared_ptr<TableInfoHandler> table_info_handler_;
 
-        // namespace information cache based on namespace id
-        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> namespace_id_map_;
+        // database information cache based on database id
+        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> database_id_map_;
 
-        // namespace information cache based on namespace name
-        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> namespace_name_map_;
+        // database information cache based on database name
+        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> database_name_map_;
 
         // a table is uniquely referenced by its id, which is generated based on its
-        // database (namespace) PgOid and table PgOid, as a result, no namespace name is required here
+        // database (database) PgOid and table PgOid, as a result, no database name is required here
         std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_uuid_map_;
 
-        // to reference a table by its name, we have to use both namespaceId and table name
+        // to reference a table by its name, we have to use both databaseId and table name
         std::unordered_map<TableNameKey, std::shared_ptr<TableInfo>, boost::hash<TableNameKey>> table_name_map_;
 
         // index id to quickly search for the index information and base table id

@@ -116,17 +116,17 @@ Status PgSession::CreateDatabase(const string& database_name,
                                  const PgOid database_oid,
                                  const PgOid source_database_oid,
                                  const PgOid next_oid) {
-  return catalog_client_->CreateNamespace(database_name,
-                                  PgObjectId::GetNamespaceUuid(database_oid),
+  return catalog_client_->CreateDatabase(database_name,
+                                  PgObjectId::GetDatabaseUuid(database_oid),
                                   database_oid,
-                                  source_database_oid != kPgInvalidOid ? PgObjectId::GetNamespaceUuid(source_database_oid) : "",
+                                  source_database_oid != kPgInvalidOid ? PgObjectId::GetDatabaseUuid(source_database_oid) : "",
                                   "" /* creator_role_name */,
                                   next_oid);
 }
 
 Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) {
-  RETURN_NOT_OK(catalog_client_->DeleteNamespace(database_name,
-                                         PgObjectId::GetNamespaceUuid(database_oid)));
+  RETURN_NOT_OK(catalog_client_->DeleteDatabase(database_name,
+                                         PgObjectId::GetDatabaseUuid(database_oid)));
   RETURN_NOT_OK(DeleteDBSequences(database_oid));
   return Status::OK();
 }
@@ -137,21 +137,21 @@ Status PgSession::RenameDatabase(const std::string& database_name, PgOid databas
 }
 
 Status PgSession::CreateTable(
-    const std::string& namespace_id,
-    const std::string& namespace_name,
+    const std::string& database_id,
+    const std::string& database_name,
     const std::string& table_name,
     const PgObjectId& table_object_id,
     PgSchema& schema,
     bool is_pg_catalog_table,
     bool is_shared_table,
     bool if_not_exist) {
-  return catalog_client_->CreateTable(namespace_name, table_name, table_object_id, schema,
+  return catalog_client_->CreateTable(database_name, table_name, table_object_id, schema,
     is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 
 Status PgSession::CreateIndexTable(
-    const std::string& namespace_id,
-    const std::string& namespace_name,
+    const std::string& database_id,
+    const std::string& database_name,
     const std::string& table_name,
     const PgObjectId& table_object_id,
     const PgObjectId& base_table_object_id,
@@ -161,7 +161,7 @@ Status PgSession::CreateIndexTable(
     bool is_pg_catalog_table,
     bool is_shared_table,
     bool if_not_exist) {
-  return catalog_client_->CreateIndexTable(namespace_name, table_name, table_object_id, base_table_object_id, schema,
+  return catalog_client_->CreateIndexTable(database_name, table_name, table_object_id, base_table_object_id, schema,
     is_unique_index, skip_index_backfill, is_pg_catalog_table, is_shared_table, if_not_exist);
 }
 

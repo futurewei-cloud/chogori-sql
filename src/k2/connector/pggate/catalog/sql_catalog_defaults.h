@@ -52,9 +52,9 @@ struct CatalogConsts {
 
     static inline int catalog_manager_background_task_thread_pool_size = 2;
 
-    static const std::string& physical_collection(const std::string& namespace_id, bool is_shared);
+    static const std::string& physical_collection(const std::string& database_id, bool is_shared);
 
-    static bool is_on_physical_collection(const std::string& namespace_id, bool is_shared);
+    static bool is_on_physical_collection(const std::string& database_id, bool is_shared);
 };
 
 } // namespace catalog

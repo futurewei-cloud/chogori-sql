@@ -38,7 +38,7 @@ namespace catalog {
 using k2pg::gate::K23SITxn;
 using k2pg::gate::PgTxnHandler;
 
-// use the pair <namespace_id, table_name> to reference a table
+// use the pair <database_id, table_name> to reference a table
 typedef std::pair<std::string, std::string> TableNameKey;
 
 // TODO: for each these entity type, add conversion code between them and SKVRecord to move redundant conversion code scattered.

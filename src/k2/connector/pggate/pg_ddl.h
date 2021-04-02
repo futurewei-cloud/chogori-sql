@@ -151,7 +151,7 @@ class PgCreateTable : public PgDdl {
   // Constructors.
   PgCreateTable(std::shared_ptr<PgSession> pg_session,
                 const std::string& database_name,
-                const std::string& chema_name,
+                const std::string& schema_name,
                 const std::string& table_name,
                 const PgObjectId& table_object_id,
                 bool is_shared_table,
@@ -200,8 +200,8 @@ class PgCreateTable : public PgDdl {
   virtual size_t PrimaryKeyRangeColumnCount() const;
 
  protected:
-  const std::string namespace_id_;
-  const std::string namespace_name_;
+  const std::string database_id_;
+  const std::string database_name_;
   const std::string table_name_;
   const PgObjectId table_object_id_;
   bool is_pg_catalog_table_;

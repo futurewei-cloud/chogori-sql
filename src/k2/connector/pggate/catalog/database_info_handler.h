@@ -107,4 +107,4 @@ class DatabaseInfoHandler {
 } // namespace sql
 } // namespace k2pg
 
-#endif //CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
+#endif //CHOGORI_SQL_DATABASE_INFO_HANDLER_H
