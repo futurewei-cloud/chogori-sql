@@ -27,7 +27,7 @@ to avoid metadata update conflicts and reduce the need to access SKV frequently.
 
 The database data on SKV consists of the following:
 
-1) NamespaceInfo and TableInfo (IndexInfo): where NamespaceInfo represents database information and TableInfo for table metadata.
+1) DatabaseInfo and TableInfo (IndexInfo): where DatabaseInfo represents database information and TableInfo for table metadata.
     Both information are needed by PG Gate as database/table schema metadata to avoid deriving them by using the complicated logic in
     PG from PG system catalog tables.
 
@@ -47,7 +47,7 @@ Similary for a table:
 2) PG oid (uint32_t): object ID assigned by PG
 3) id (std::string): generated UUID string based on database oid and table oid. It is used to identifer a table
 
-NamespaceInfo, TableInfo, and IndexInfo are cached in catalog manager.
+DatabaseInfo, TableInfo, and IndexInfo are cached in catalog manager.
 
 The catalog system has a primary SKV collection to store
 1) cluster level information: the init_db_done flag and catalog version. The current pg uses a global catalog version
@@ -56,7 +56,7 @@ The catalog system has a primary SKV collection to store
     One SKV record in the primary collection is used for a cluster and it is accessed by the ClusterInfoHandler
 
 2) namespace information: database information is shared across different databases and thus, we need to store them
-    in the primary SKV record. It is accessed by the NamespaceInfoHandler
+    in the primary SKV record. It is accessed by the DatabaseInfoHandler
 
 3) Table information: PG gate needs to know the table schema and it is represented by the TableInfo object.
     The TableInfoHandler is used to acccess the TableInfo (including IndexInfo) objects on SKV
@@ -138,7 +138,7 @@ namespace catalog {
 
     struct CreateNamespaceResponse {
         Status status;
-        std::shared_ptr<NamespaceInfo> namespaceInfo;
+        std::shared_ptr<DatabaseInfo> namespaceInfo;
     };
 
     struct ListNamespacesRequest {
@@ -146,7 +146,7 @@ namespace catalog {
 
     struct ListNamespacesResponse {
         Status status;
-        std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos;
+        std::vector<std::shared_ptr<DatabaseInfo>> namespace_infos;
     };
 
     struct GetNamespaceRequest {
@@ -156,7 +156,7 @@ namespace catalog {
 
     struct GetNamespaceResponse {
         Status status;
-        std::shared_ptr<NamespaceInfo> namespace_info;
+        std::shared_ptr<DatabaseInfo> namespace_info;
     };
 
     struct DeleteNamespaceRequest {
@@ -332,7 +332,7 @@ namespace catalog {
 
         mutable std::mutex lock_;
 
-        void UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos);
+        void UpdateNamespaceCache(std::vector<std::shared_ptr<DatabaseInfo>> namespace_infos);
 
         void UpdateTableCache(std::shared_ptr<TableInfo> table_info);
 
@@ -344,9 +344,9 @@ namespace catalog {
 
         void AddIndexCache(std::shared_ptr<IndexInfo> index_info);
 
-        std::shared_ptr<NamespaceInfo> GetCachedNamespaceById(const std::string& namespace_id);
+        std::shared_ptr<DatabaseInfo> GetCachedNamespaceById(const std::string& namespace_id);
 
-        std::shared_ptr<NamespaceInfo> GetCachedNamespaceByName(const std::string& namespace_name);
+        std::shared_ptr<DatabaseInfo> GetCachedNamespaceByName(const std::string& namespace_name);
 
         std::shared_ptr<TableInfo> GetCachedTableInfoById(const std::string& table_uuid);
 
@@ -362,9 +362,9 @@ namespace catalog {
         IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
-        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
+        std::shared_ptr<DatabaseInfo> CheckAndLoadNamespaceByName(const std::string& namespace_name);
 
-        std::shared_ptr<NamespaceInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
+        std::shared_ptr<DatabaseInfo> CheckAndLoadNamespaceById(const std::string& namespace_id);
 
         void CheckCatalogVersion();
 
@@ -388,16 +388,16 @@ namespace catalog {
 
         // handler to access the namespace info record, which consists of database information
         // and it is a shared table across all databases
-        std::shared_ptr<NamespaceInfoHandler> namespace_info_handler_;
+        std::shared_ptr<DatabaseInfoHandler> namespace_info_handler_;
 
         // handler to access table and index information
         std::shared_ptr<TableInfoHandler> table_info_handler_;
 
         // namespace information cache based on namespace id
-        std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_id_map_;
+        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> namespace_id_map_;
 
         // namespace information cache based on namespace name
-        std::unordered_map<std::string, std::shared_ptr<NamespaceInfo>> namespace_name_map_;
+        std::unordered_map<std::string, std::shared_ptr<DatabaseInfo>> namespace_name_map_;
 
         // a table is uniquely referenced by its id, which is generated based on its
         // database (namespace) PgOid and table PgOid, as a result, no namespace name is required here
