@@ -67,10 +67,10 @@ class PgTableDesc {
  public:
   explicit PgTableDesc(std::shared_ptr<TableInfo> pg_table);
 
-  explicit PgTableDesc(const IndexInfo& index_info, const std::string& namespace_id, bool is_transactional);
+  explicit PgTableDesc(const IndexInfo& index_info, const std::string& database_id, bool is_transactional);
 
-  const std::string& namespace_id() const {
-    return namespace_id_;
+  const std::string& database_id() const {
+    return database_id_;
   }
 
   const std::string& collection_name() const {
@@ -131,7 +131,7 @@ class PgTableDesc {
 
   private:
   bool is_index_;
-  std::string namespace_id_;
+  std::string database_id_;
   std::string table_id_;
   uint32_t schema_version_;
   bool transactional_;

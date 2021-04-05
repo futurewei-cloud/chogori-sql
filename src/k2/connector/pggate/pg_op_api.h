@@ -41,8 +41,7 @@ namespace gate {
     using std::unique_ptr;
 
     using yb::Status;
-    using k2pg::sql::NamespaceId;
-    using k2pg::sql::NamespaceName;
+
     using k2pg::sql::PgExpr;
     using k2pg::sql::PgColumnRef;
     using k2pg::sql::PgConstant;

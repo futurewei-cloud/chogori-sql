@@ -62,16 +62,12 @@ namespace sql {
     using yb::Result;
     using yb::Format;
 
-    using NamespaceName = std::string;
     using TableName = std::string;
     using UDTypeName = std::string;
     using RoleName = std::string;
 
-    using NamespaceId = std::string;
     using TableId = std::string;
     using UDTypeId = std::string;
-
-    using NamespaceIdTableNamePair = std::pair<NamespaceId, TableName>;
 
     // In addition to regular columns, YB support for postgres also have virtual columns.
     // Virtual columns are just expression that is evaluated by DocDB in "doc_expr.cc".
@@ -135,9 +131,9 @@ namespace sql {
             }
         }
 
-        // Get namespace uuid for a Postgres database.
-        std::string GetNamespaceUuid() const;
-        static std::string GetNamespaceUuid(const PgOid& database_oid);
+        // Get database uuid for a Postgres database.
+        std::string GetDatabaseUuid() const;
+        static std::string GetDatabaseUuid(const PgOid& database_oid);
 
         // Get table uuid for a Postgres table.
         std::string GetTableUuid() const;
@@ -147,7 +143,7 @@ namespace sql {
         std::string GetTableId() const;
         static std::string GetTableId(const PgOid& table_oid);
 
-        // Is the namespace/table uuid a Postgres database or table uuid?
+        // Is the database/table uuid a Postgres database or table uuid?
         static bool IsPgsqlId(const std::string& uuid);
 
         // Get Postgres database and table oids from a namespace/table uuid.

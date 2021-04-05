@@ -20,8 +20,8 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-#ifndef CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
-#define CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
+#ifndef CHOGORI_SQL_DATABASE_INFO_HANDLER_H
+#define CHOGORI_SQL_DATABASE_INFO_HANDLER_H
 
 #include <string>
 
@@ -38,57 +38,59 @@ using k2pg::gate::CreateScanReadResult;
 using k2pg::gate::K2Adapter;
 using yb::Status;
 
-struct InitNamespaceTableResult {
+struct InitDatabaseTableResult {
     Status status;
 };
 
-struct AddOrUpdateNamespaceResult {
+struct AddOrUpdateDatabaseResult {
     Status status;
 };
 
-struct GetNamespaceResult {
+struct GetDatabaseResult {
     Status status;
-    std::shared_ptr<NamespaceInfo> namespaceInfo;
+    std::shared_ptr<DatabaseInfo> databaseInfo;
 };
 
-struct ListNamespacesResult {
+struct ListDatabaseResult {
     Status status;
-    std::vector<std::shared_ptr<NamespaceInfo>> namespaceInfos;
+    std::vector<std::shared_ptr<DatabaseInfo>> databaseInfos;
 };
 
-struct DeleteNamespaceResult {
+struct DeleteDataseResult {
     Status status;
 };
 
-class NamespaceInfoHandler {
+// DatabaseInfo is a cluster level system table holding info for each database, 
+// currently its Name/Oid, and next PgOid(for objects inside this DB).
+class DatabaseInfoHandler {
     public:
-    typedef std::shared_ptr<NamespaceInfoHandler> SharedPtr;
+    typedef std::shared_ptr<DatabaseInfoHandler> SharedPtr;
 
     k2::dto::Schema schema_ {
-        .name = CatalogConsts::skv_schema_name_namespace_info,
+        .name = CatalogConsts::skv_schema_name_database_info,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
-                {k2::dto::FieldType::STRING, "NamespaceId", false, false},
-                {k2::dto::FieldType::STRING, "NamespaceName", false, false},
-                {k2::dto::FieldType::INT64T, "NamespaceOid", false, false},
+                {k2::dto::FieldType::STRING, "DatabaseId", false, false},
+                {k2::dto::FieldType::STRING, "DatabaseName", false, false},
+                {k2::dto::FieldType::INT64T, "DatabaseOid", false, false},
                 {k2::dto::FieldType::INT64T, "NextPgOid", false, false}},
         .partitionKeyFields = std::vector<uint32_t> { 0 },
         .rangeKeyFields = std::vector<uint32_t> {}
     };
 
-    NamespaceInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
+    DatabaseInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
 
-    ~NamespaceInfoHandler();
+    ~DatabaseInfoHandler();
 
-    InitNamespaceTableResult InitNamespaceTable();
+    InitDatabaseTableResult InitDatabasTable();
 
-    AddOrUpdateNamespaceResult AddOrUpdateNamespace(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<NamespaceInfo> namespace_info);
+    AddOrUpdateDatabaseResult UpsertDatabase(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info);
 
-    GetNamespaceResult GetNamespace(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& namespace_id);
+    GetDatabaseResult GetDatabase(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& database_id);
 
-    ListNamespacesResult ListNamespaces(std::shared_ptr<PgTxnHandler> txnHandler);
+    ListDatabaseResult ListDatabases(std::shared_ptr<PgTxnHandler> txnHandler);
 
-    DeleteNamespaceResult DeleteNamespace(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<NamespaceInfo> namespace_info);
+    DeleteDataseResult DeleteDatabase(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info);
 
     // TODO: add partial update for next_pg_oid once SKV supports partial update
 
@@ -105,4 +107,4 @@ class NamespaceInfoHandler {
 } // namespace sql
 } // namespace k2pg
 
-#endif //CHOGORI_SQL_NAMESPACE_INFO_HANDLER_H
+#endif //CHOGORI_SQL_DATABASE_INFO_HANDLER_H

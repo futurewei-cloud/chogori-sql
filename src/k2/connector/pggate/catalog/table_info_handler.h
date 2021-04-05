@@ -118,7 +118,7 @@ class TableInfoHandler {
     TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~TableInfoHandler();
 
-    // schema to store table information for a namespace
+    // schema of table information 
     k2::dto::Schema sys_catalog_tablehead_schema_ {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablehead,
         .version = 1,
@@ -187,19 +187,19 @@ class TableInfoHandler {
 
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, const std::string& table_id);
+    GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
 
-    ListTablesResult ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded);
+    ListTablesResult ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, bool isSysTableIncluded);
 
     ListTableIdsResult ListTableIds(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, bool isSysTableIncluded);
 
     CopyTableResult CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
-            const std::string& target_namespace_name,
-            uint32_t target_namespace_oid,
+            const std::string& target_database_name,
+            uint32_t target_database_oid,
             std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
-            const std::string& source_namespace_name,
+            const std::string& source_database_name,
             const std::string& source_table_id);
 
     CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,
@@ -263,7 +263,7 @@ class TableInfoHandler {
 
     std::vector<k2::dto::SKVRecord> FetchIndexColumnSchemaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
 
-    std::shared_ptr<TableInfo> BuildTableInfo(const std::string& namespace_id, const std::string& namespace_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
+    std::shared_ptr<TableInfo> BuildTableInfo(const std::string& database_id, const std::string& database_name, k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo FetchAndBuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_head);
 

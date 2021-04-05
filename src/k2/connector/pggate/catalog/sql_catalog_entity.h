@@ -38,7 +38,7 @@ namespace catalog {
 using k2pg::gate::K23SITxn;
 using k2pg::gate::PgTxnHandler;
 
-// use the pair <namespace_id, table_name> to reference a table
+// use the pair <database_id, table_name> to reference a table
 typedef std::pair<std::string, std::string> TableNameKey;
 
 // TODO: for each these entity type, add conversion code between them and SKVRecord to move redundant conversion code scattered.
@@ -100,33 +100,33 @@ class ClusterInfo {
     bool initdb_done_ = false;
 };
 
-class NamespaceInfo {
+class DatabaseInfo {
     public:
-    NamespaceInfo() = default;
-    ~NamespaceInfo() = default;
+    DatabaseInfo() = default;
+    ~DatabaseInfo() = default;
 
-    void SetNamespaceId(std::string id) {
-        namespace_id_ = std::move(id);
+    void SetDatabaseId(std::string id) {
+        database_id_ = std::move(id);
     }
 
-    const std::string& GetNamespaceId() const {
-        return namespace_id_;
+    const std::string& GetDatabaseId() const {
+        return database_id_;
     }
 
-    void SetNamespaceName(std::string name) {
-        namespace_name_ = std::move(name);
+    void SetDatabaseName(std::string name) {
+        database_name_ = std::move(name);
     }
 
-    const std::string& GetNamespaceName() const {
-        return namespace_name_;
+    const std::string& GetDatabaseName() const {
+        return database_name_;
     }
 
-    void SetNamespaceOid(uint32_t pg_oid) {
-        namespace_oid_ = pg_oid;
+    void SetDatabaseOid(uint32_t pg_oid) {
+        database_oid_ = pg_oid;
     }
 
-    uint32_t GetNamespaceOid() {
-        return namespace_oid_;
+    uint32_t GetDatabaseOid() {
+        return database_oid_;
     }
 
     void SetNextPgOid(uint32_t next_pg_oid) {
@@ -140,13 +140,13 @@ class NamespaceInfo {
 
     private:
     // encoded id, for example, uuid
-    std::string namespace_id_;
+    std::string database_id_;
 
     // name
-    std::string namespace_name_;
+    std::string database_name_;
 
     // object id assigned by PG
-    uint32_t namespace_oid_;
+    uint32_t database_oid_;
 
     // next PG Oid that is available for object id assignment for this namespace
     uint32_t next_pg_oid_;

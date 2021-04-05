@@ -55,21 +55,21 @@ class SqlCatalogClient {
 
     CHECKED_STATUS FinishInitDB();
 
-    // Create a new namespace with the given name.
-    CHECKED_STATUS CreateNamespace(const std::string& namespace_name,
-                                const std::string& namespace_id,
-                                uint32_t namespace_oid,
-                                const std::string& source_namespace_id,
+    // Create a new database with the given name.
+    CHECKED_STATUS CreateDatabase(const std::string& database_name,
+                                const std::string& database_id,
+                                uint32_t database_oid,
+                                const std::string& source_database_id,
                                 const std::string& creator_role_name,
                                 const std::optional<uint32_t>& next_pg_oid = std::nullopt);
 
-    // Delete namespace with the given name.
-    CHECKED_STATUS DeleteNamespace(const std::string& namespace_name,
-                                const std::string& namespace_id);
+    // Delete database with the given name.
+    CHECKED_STATUS DeleteDatabase(const std::string& database_name,
+                                const std::string& database_id);
 
     CHECKED_STATUS UseDatabase(const std::string& database_name);
 
-    CHECKED_STATUS CreateTable(const std::string& namespace_name,
+    CHECKED_STATUS CreateTable(const std::string& database_name,
                             const std::string& table_name,
                             const PgObjectId& table_object_id,
                             PgSchema& schema,
@@ -77,7 +77,7 @@ class SqlCatalogClient {
                             bool is_shared_table,
                             bool if_not_exist);
 
-    CHECKED_STATUS CreateIndexTable(const std::string& namespace_name,
+    CHECKED_STATUS CreateIndexTable(const std::string& database_name,
                             const std::string& table_name,
                             const PgObjectId& table_object_id,
                             const PgObjectId& base_table_object_id,

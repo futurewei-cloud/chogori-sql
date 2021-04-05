@@ -42,7 +42,7 @@ namespace catalog {
         cluster_id_(CatalogConsts::default_cluster_id), k2_adapter_(k2_adapter),
         thread_pool_(CatalogConsts::catalog_manager_background_task_thread_pool_size) {
         cluster_info_handler_ = std::make_shared<ClusterInfoHandler>(k2_adapter);
-        namespace_info_handler_ = std::make_shared<NamespaceInfoHandler>(k2_adapter);
+        database_info_handler_ = std::make_shared<DatabaseInfoHandler>(k2_adapter);
         table_info_handler_ = std::make_shared<TableInfoHandler>(k2_adapter);
     }
 
@@ -74,25 +74,25 @@ namespace catalog {
         // end the current transaction so that we use a different one for later operations
         ci_txnHandler->CommitTransaction();
 
-        // load namespaces
+        // load databases
         std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-        ListNamespacesResult nsresp = namespace_info_handler_->ListNamespaces(ns_txnHandler);
+        ListDatabaseResult nsresp = database_info_handler_->ListDatabases(ns_txnHandler);
         ns_txnHandler->CommitTransaction();
 
         if (nsresp.status.ok()) {
-            if (!nsresp.namespaceInfos.empty()) {
-                for (auto ns_ptr : nsresp.namespaceInfos) {
-                    // cache namespaces by namespace id and namespace name
-                    namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
-                    namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
-                    K2LOG_I(log::catalog, "Loaded namespace id: {}, name: {}", ns_ptr->GetNamespaceId(), ns_ptr->GetNamespaceName());
+            if (!nsresp.databaseInfos.empty()) {
+                for (auto ns_ptr : nsresp.databaseInfos) {
+                    // cache databases by database id and database name
+                    database_id_map_[ns_ptr->GetDatabaseId()] = ns_ptr;
+                    database_name_map_[ns_ptr->GetDatabaseName()] = ns_ptr;
+                    K2LOG_I(log::catalog, "Loaded database id: {}, name: {}", ns_ptr->GetDatabaseId(), ns_ptr->GetDatabaseName());
                 }
             } else {
-                K2LOG_D(log::catalog, "namespaces are empty");
+                K2LOG_D(log::catalog, "databases are empty");
             }
         } else {
-            K2LOG_E(log::catalog, "Failed to load namespaces due to {}", nsresp.status);
-            return STATUS_FORMAT(IOError, "Failed to load namespaces due to error code $0",
+            K2LOG_E(log::catalog, "Failed to load databases due to {}", nsresp.status);
+            return STATUS_FORMAT(IOError, "Failed to load databases due to error code $0",
                 nsresp.status.code());
         }
 
@@ -154,10 +154,10 @@ namespace catalog {
             return initCIRes.status;
         }
 
-        // step 3/4 Init namespace_info - create the SKVSchema in the primary cluster's SKVcollection for namespace_info
-        InitNamespaceTableResult initRes = namespace_info_handler_->InitNamespaceTable();
+        // step 3/4 Init database_info - create the SKVSchema in the primary cluster's SKVcollection for database_info
+        InitDatabaseTableResult initRes = database_info_handler_->InitDatabasTable();
         if (!initRes.status.ok()) {
-            K2LOG_E(log::catalog, "Failed to initialize creating namespace table due to {}", initRes.status.code());
+            K2LOG_E(log::catalog, "Failed to initialize creating database table due to {}", initRes.status.code());
             return initCIRes.status;
         }
 
@@ -302,114 +302,114 @@ namespace catalog {
         return response;
     }
 
-    CreateNamespaceResponse SqlCatalogManager::CreateNamespace(const CreateNamespaceRequest& request) {
-        CreateNamespaceResponse response;
+    CreateDatabaseResponse SqlCatalogManager::CreateDatabase(const CreateDatabaseRequest& request) {
+        CreateDatabaseResponse response;
         K2LOG_D(log::catalog,
-            "Creating namespace with name: {}, id: {}, oid: {}, source_id: {}, nextPgOid: {}",
-            request.namespaceName, request.namespaceId, request.namespaceOid, request.sourceNamespaceId, request.nextPgOid.value_or(-1));
+            "Creating database with name: {}, id: {}, oid: {}, source_id: {}, nextPgOid: {}",
+            request.databaseName, request.databaseId, request.databaseOid, request.sourceDatabaseId, request.nextPgOid.value_or(-1));
         // step 1/3:  check input conditions
-        //      check if the target namespace has already been created, if yes, return already present
-        //      check the source namespace is already there, if it present in the create requet
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
-        if (namespace_info != nullptr) {
-            K2LOG_E(log::catalog, "Namespace {} has already existed", request.namespaceName);
-            response.status = STATUS_FORMAT(AlreadyPresent, "Namespace $0 has already existed", request.namespaceName);
+        //      check if the target database has already been created, if yes, return already present
+        //      check the source database is already there, if it present in the create requet
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
+        if (database_info != nullptr) {
+            K2LOG_E(log::catalog, "Database {} has already existed", request.databaseName);
+            response.status = STATUS_FORMAT(AlreadyPresent, "Database $0 has already existed", request.databaseName);
             return response;
         }
 
-        std::shared_ptr<NamespaceInfo> source_namespace_info = nullptr;
+        std::shared_ptr<DatabaseInfo> source_database_info = nullptr;
         uint32_t t_nextPgOid;
-        // validate source namespace id and check source namespace to set nextPgOid properly
-        if (!request.sourceNamespaceId.empty())
+        // validate source database id and check source database to set nextPgOid properly
+        if (!request.sourceDatabaseId.empty())
         {
-            source_namespace_info = CheckAndLoadNamespaceById(request.sourceNamespaceId);
-            if (source_namespace_info == nullptr) {
-                K2LOG_E(log::catalog, "Failed to find source namespaces {}", request.sourceNamespaceId);
-                response.status = STATUS_FORMAT(NotFound, "SounrceNamespace $0 not found", request.sourceNamespaceId);
+            source_database_info = CheckAndLoadDatabaseById(request.sourceDatabaseId);
+            if (source_database_info == nullptr) {
+                K2LOG_E(log::catalog, "Failed to find source databases {}", request.sourceDatabaseId);
+                response.status = STATUS_FORMAT(NotFound, "Sounrcedatabase $0 not found", request.sourceDatabaseId);
                 return response;
             }
-            t_nextPgOid = source_namespace_info->GetNextPgOid();
+            t_nextPgOid = source_database_info->GetNextPgOid();
         } else {
             t_nextPgOid = request.nextPgOid.value();
         }
 
-        // step 2/3: create new namespace(database), total 3 sub-steps
+        // step 2/3: create new database(database), total 3 sub-steps
 
         // step 2.1 create new SKVCollection
-        //   Note: using unique immutable namespaceId as SKV collection name
+        //   Note: using unique immutable databaseId as SKV collection name
         //   TODO: pass in other collection configurations/parameters later.
-        K2LOG_D(log::catalog, "Creating SKV collection for namespace {}", request.namespaceId);
-        auto ccResult = k2_adapter_->CreateCollection(request.namespaceId, request.namespaceName).get();
+        K2LOG_D(log::catalog, "Creating SKV collection for database {}", request.databaseId);
+        auto ccResult = k2_adapter_->CreateCollection(request.databaseId, request.databaseName).get();
         if (!ccResult.is2xxOK())
         {
-            K2LOG_E(log::catalog, "Failed to create SKV collection {} due to {}", request.namespaceId, ccResult);
+            K2LOG_E(log::catalog, "Failed to create SKV collection {} due to {}", request.databaseId, ccResult);
             response.status = K2Adapter::K2StatusToYBStatus(ccResult);
             return response;
         }      
 
-        // step 2.2 Add new namespace(database) entry into default cluster Namespace table and update in-memory cache
-        std::shared_ptr<NamespaceInfo> new_ns = std::make_shared<NamespaceInfo>();
-        new_ns->SetNamespaceId(request.namespaceId);
-        new_ns->SetNamespaceName(request.namespaceName);
-        new_ns->SetNamespaceOid(request.namespaceOid);
+        // step 2.2 Add new database(database) entry into default cluster database table and update in-memory cache
+        std::shared_ptr<DatabaseInfo> new_ns = std::make_shared<DatabaseInfo>();
+        new_ns->SetDatabaseId(request.databaseId);
+        new_ns->SetDatabaseName(request.databaseName);
+        new_ns->SetDatabaseOid(request.databaseOid);
         new_ns->SetNextPgOid(t_nextPgOid);
-        // persist the new namespace record
-        K2LOG_D(log::catalog, "Adding namespace {} on SKV", request.namespaceId);
+        // persist the new database record
+        K2LOG_D(log::catalog, "Adding database {} on SKV", request.databaseId);
         std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-        AddOrUpdateNamespaceResult add_result = namespace_info_handler_->AddOrUpdateNamespace(ns_txnHandler, new_ns);
+        AddOrUpdateDatabaseResult add_result = database_info_handler_->UpsertDatabase(ns_txnHandler, new_ns);
         if (!add_result.status.ok()) {
-            K2LOG_E(log::catalog, "Failed to add namespace {}, due to {}", request.namespaceId,add_result.status);
+            K2LOG_E(log::catalog, "Failed to add database {}, due to {}", request.databaseId,add_result.status);
             ns_txnHandler->AbortTransaction();
             response.status = std::move(add_result.status);
             return response;
         }
-        // cache namespaces by namespace id and namespace name
-        namespace_id_map_[new_ns->GetNamespaceId()] = new_ns;
-        namespace_name_map_[new_ns->GetNamespaceName()] = new_ns;
-        response.namespaceInfo = new_ns;
+        // cache databases by database id and database name
+        database_id_map_[new_ns->GetDatabaseId()] = new_ns;
+        database_name_map_[new_ns->GetDatabaseName()] = new_ns;
+        response.databaseInfo = new_ns;
 
-        // step 2.3 Add new system tables for the new namespace(database)
+        // step 2.3 Add new system tables for the new database(database)
         std::shared_ptr<PgTxnHandler> target_txnHandler = NewTransaction();
-        K2LOG_D(log::catalog, "Creating system tables for target namespace {}", new_ns->GetNamespaceId());
-        CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_txnHandler, new_ns->GetNamespaceId());
+        K2LOG_D(log::catalog, "Creating system tables for target database {}", new_ns->GetDatabaseId());
+        CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_txnHandler, new_ns->GetDatabaseId());
         if (!table_result.status.ok()) {
-            K2LOG_E(log::catalog, "Failed to create system tables for target namespace {} due to {}",
-                new_ns->GetNamespaceId(), table_result.status.code());
+            K2LOG_E(log::catalog, "Failed to create system tables for target database {} due to {}",
+                new_ns->GetDatabaseId(), table_result.status.code());
             target_txnHandler->AbortTransaction();
             ns_txnHandler->AbortTransaction();
             response.status = std::move(table_result.status);
             return response;
         }
 
-        // step 3/3: If source namespace(database) is present in the request, copy all the rest of tables from source namespace(database)
-        if (!request.sourceNamespaceId.empty())
+        // step 3/3: If source database(database) is present in the request, copy all the rest of tables from source database(database)
+        if (!request.sourceDatabaseId.empty())
         {
-            K2LOG_D(log::catalog, "Creating namespace from source namespace {}", request.sourceNamespaceId);
+            K2LOG_D(log::catalog, "Creating database from source database {}", request.sourceDatabaseId);
             std::shared_ptr<PgTxnHandler> source_txnHandler = NewTransaction();
             // get the source table ids
-            K2LOG_D(log::catalog, "Listing table ids from source namespace {}", request.sourceNamespaceId);
-            ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_txnHandler, source_namespace_info->GetNamespaceId(), true);
+            K2LOG_D(log::catalog, "Listing table ids from source database {}", request.sourceDatabaseId);
+            ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(source_txnHandler, source_database_info->GetDatabaseId(), true);
             if (!list_table_result.status.ok()) {
-                K2LOG_E(log::catalog, "Failed to list table ids for namespace {} due to {}", source_namespace_info->GetNamespaceId(), list_table_result.status.code());
+                K2LOG_E(log::catalog, "Failed to list table ids for database {} due to {}", source_database_info->GetDatabaseId(), list_table_result.status.code());
                 source_txnHandler->AbortTransaction();
                 target_txnHandler->AbortTransaction();
                 ns_txnHandler->AbortTransaction();
                 response.status = std::move(list_table_result.status);
                 return response;
             }
-            K2LOG_D(log::catalog, "Found {} table ids from source namespace {}", list_table_result.tableIds.size(), request.sourceNamespaceId);
+            K2LOG_D(log::catalog, "Found {} table ids from source database {}", list_table_result.tableIds.size(), request.sourceDatabaseId);
             int num_index = 0;
             for (auto& source_table_id : list_table_result.tableIds) {
                 // copy the source table metadata to the target table
                 K2LOG_D(log::catalog, "Copying from source table {}", source_table_id);
                 CopyTableResult copy_result = table_info_handler_->CopyTable(
                     target_txnHandler,
-                    new_ns->GetNamespaceId(),
-                    new_ns->GetNamespaceName(),
-                    new_ns->GetNamespaceOid(),
+                    new_ns->GetDatabaseId(),
+                    new_ns->GetDatabaseName(),
+                    new_ns->GetDatabaseOid(),
                     source_txnHandler,
-                    source_namespace_info->GetNamespaceId(),
-                    source_namespace_info->GetNamespaceName(),
+                    source_database_info->GetDatabaseId(),
+                    source_database_info->GetDatabaseName(),
                     source_table_id);
                 if (!copy_result.status.ok()) {
                     K2LOG_E(log::catalog, "Failed to copy from source table {} due to {}", source_table_id, copy_result.status.code());
@@ -422,111 +422,111 @@ namespace catalog {
                 num_index += copy_result.num_index;
             }
             source_txnHandler->CommitTransaction();
-            K2LOG_D(log::catalog, "Finished copying {} tables and {} indexes from source namespace {} to {}",
-                list_table_result.tableIds.size(), num_index, source_namespace_info->GetNamespaceId(), new_ns->GetNamespaceId());
+            K2LOG_D(log::catalog, "Finished copying {} tables and {} indexes from source database {} to {}",
+                list_table_result.tableIds.size(), num_index, source_database_info->GetDatabaseId(), new_ns->GetDatabaseId());
         }
 
         target_txnHandler->CommitTransaction();
         ns_txnHandler->CommitTransaction();
-        K2LOG_D(log::catalog, "Created namespace {}", new_ns->GetNamespaceId());
+        K2LOG_D(log::catalog, "Created database {}", new_ns->GetDatabaseId());
         response.status = Status(); // OK;
         return response;
     }
 
-    ListNamespacesResponse SqlCatalogManager::ListNamespaces(const ListNamespacesRequest& request) {
-        ListNamespacesResponse response;
-        K2LOG_D(log::catalog, "Listing namespaces...");
+    ListDatabasesResponse SqlCatalogManager::ListDatabases(const ListDatabasesRequest& request) {
+        ListDatabasesResponse response;
+        K2LOG_D(log::catalog, "Listing databases...");
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        ListNamespacesResult result = namespace_info_handler_->ListNamespaces(txnHandler);
+        ListDatabaseResult result = database_info_handler_->ListDatabases(txnHandler);
         if (!result.status.ok()) {
             txnHandler->AbortTransaction();
-            K2LOG_E(log::catalog, "Failed to list namespaces due to {}", result.status.code());
+            K2LOG_E(log::catalog, "Failed to list databases due to {}", result.status.code());
             response.status = std::move(result.status);
             return response;
         }
         txnHandler->CommitTransaction();
-        if (result.namespaceInfos.empty()) {
-            K2LOG_W(log::catalog, "No namespaces are found");
+        if (result.databaseInfos.empty()) {
+            K2LOG_W(log::catalog, "No databases are found");
         } else {
-            UpdateNamespaceCache(result.namespaceInfos);
-            for (auto ns_ptr : result.namespaceInfos) {
-                response.namespace_infos.push_back(ns_ptr);
+            UpdateDatabaseCache(result.databaseInfos);
+            for (auto ns_ptr : result.databaseInfos) {
+                response.database_infos.push_back(ns_ptr);
             }
         }
-        K2LOG_D(log::catalog, "Found {} namespaces", result.namespaceInfos.size());
+        K2LOG_D(log::catalog, "Found {} databases", result.databaseInfos.size());
         response.status = Status(); // OK
         return response;
     }
 
-    GetNamespaceResponse SqlCatalogManager::GetNamespace(const GetNamespaceRequest& request) {
-        GetNamespaceResponse response;
-        K2LOG_D(log::catalog, "Getting namespace with name: {}, id: {}", request.namespaceName, request.namespaceId);
-        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(request.namespaceId);
-        if (namespace_info != nullptr) {
-            response.namespace_info = namespace_info;
+    GetDatabaseResponse SqlCatalogManager::GetDatabase(const GetDatabaseRequest& request) {
+        GetDatabaseResponse response;
+        K2LOG_D(log::catalog, "Getting database with name: {}, id: {}", request.databaseName, request.databaseId);
+        std::shared_ptr<DatabaseInfo> database_info = GetCachedDatabaseById(request.databaseId);
+        if (database_info != nullptr) {
+            response.database_info = database_info;
             response.status = Status(); // OK
             return response;
         }
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
-        GetNamespaceResult result = namespace_info_handler_->GetNamespace(txnHandler, request.namespaceId);
+        // TODO: use a background task to refresh the database caches to avoid fetching from SKV on each call
+        GetDatabaseResult result = database_info_handler_->GetDatabase(txnHandler, request.databaseId);
         if (!result.status.ok()) {
             txnHandler->AbortTransaction();
-            K2LOG_E(log::catalog, "Failed to get namespace {}, due to {}", request.namespaceId, result.status);
+            K2LOG_E(log::catalog, "Failed to get database {}, due to {}", request.databaseId, result.status);
             response.status = std::move(result.status);
             return response;
         }
 
         txnHandler->CommitTransaction();
-        response.namespace_info = result.namespaceInfo;
+        response.database_info = result.databaseInfo;
 
-        // update namespace caches
-        namespace_id_map_[response.namespace_info->GetNamespaceId()] = response.namespace_info ;
-        namespace_name_map_[response.namespace_info->GetNamespaceName()] = response.namespace_info;
-        K2LOG_D(log::catalog, "Found namespace {}", request.namespaceId);
+        // update database caches
+        database_id_map_[response.database_info->GetDatabaseId()] = response.database_info ;
+        database_name_map_[response.database_info->GetDatabaseName()] = response.database_info;
+        K2LOG_D(log::catalog, "Found database {}", request.databaseId);
         response.status = Status(); // OK;
         return response;
     }
 
-    DeleteNamespaceResponse SqlCatalogManager::DeleteNamespace(const DeleteNamespaceRequest& request) {
-        DeleteNamespaceResponse response;
-        K2LOG_D(log::catalog, "Deleting namespace with name: {}, id: {}", request.namespaceName, request.namespaceId);
+    DeleteDatabaseResponse SqlCatalogManager::DeleteDatabase(const DeleteDatabaseRequest& request) {
+        DeleteDatabaseResponse response;
+        K2LOG_D(log::catalog, "Deleting database with name: {}, id: {}", request.databaseName, request.databaseId);
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        // TODO: use a background task to refresh the namespace caches to avoid fetching from SKV on each call
-        GetNamespaceResult result = namespace_info_handler_->GetNamespace(txnHandler, request.namespaceId);
+        // TODO: use a background task to refresh the database caches to avoid fetching from SKV on each call
+        GetDatabaseResult result = database_info_handler_->GetDatabase(txnHandler, request.databaseId);
         txnHandler->CommitTransaction();
         if (!result.status.ok()) {
-            K2LOG_E(log::catalog, "Failed to get deletion target namespace {}.", request.namespaceId);
+            K2LOG_E(log::catalog, "Failed to get deletion target database {}.", request.databaseId);
             response.status = std::move(result.status);
             return response;
         }
-        std::shared_ptr<NamespaceInfo> namespace_info = result.namespaceInfo;
+        std::shared_ptr<DatabaseInfo> database_info = result.databaseInfo;
 
-        // delete all namespace tables and indexes
+        // delete all database tables and indexes
         std::shared_ptr<PgTxnHandler> tb_txnHandler = NewTransaction();
-        ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_txnHandler, request.namespaceId, true);
+        ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_txnHandler, request.databaseId, true);
         if (!list_table_result.status.ok()) {
             response.status = std::move(list_table_result.status);
             tb_txnHandler->AbortTransaction();
             return response;
         }
         for (auto& table_id : list_table_result.tableIds) {
-            GetTableResult table_result = table_info_handler_->GetTable(tb_txnHandler, request.namespaceId,
-                    request.namespaceName, table_id);
+            GetTableResult table_result = table_info_handler_->GetTable(tb_txnHandler, request.databaseId,
+                    request.databaseName, table_id);
             if (!table_result.status.ok() || table_result.tableInfo == nullptr) {
                 response.status = std::move(table_result.status);
                 tb_txnHandler->AbortTransaction();
                 return response;
             }
             // delete table data
-            DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_txnHandler, request.namespaceId, table_result.tableInfo);
+            DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_txnHandler, request.databaseId, table_result.tableInfo);
             if (!tb_data_result.status.ok()) {
                 response.status = std::move(tb_data_result.status);
                 tb_txnHandler->AbortTransaction();
                 return response;
             }
             // delete table schema metadata
-            DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_txnHandler, request.namespaceId, table_result.tableInfo);
+            DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_txnHandler, request.databaseId, table_result.tableInfo);
             if (!tb_metadata_result.status.ok()) {
                 response.status = std::move(tb_metadata_result.status);
                 tb_txnHandler->AbortTransaction();
@@ -535,7 +535,7 @@ namespace catalog {
         }
 
         std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-        DeleteNamespaceResult del_result = namespace_info_handler_->DeleteNamespace(ns_txnHandler, namespace_info);
+        DeleteDataseResult del_result = database_info_handler_->DeleteDatabase(ns_txnHandler, database_info);
         if (!del_result.status.ok()) {
             response.status = std::move(del_result.status);
             tb_txnHandler->AbortTransaction();
@@ -545,18 +545,18 @@ namespace catalog {
         tb_txnHandler->CommitTransaction();
         ns_txnHandler->CommitTransaction();
 
-        // remove namespace from local cache
-        namespace_id_map_.erase(namespace_info->GetNamespaceId());
-        namespace_name_map_.erase(namespace_info->GetNamespaceName());
+        // remove database from local cache
+        database_id_map_.erase(database_info->GetDatabaseId());
+        database_name_map_.erase(database_info->GetDatabaseName());
         response.status = Status(); // OK;
         return response;
     }
 
     UseDatabaseResponse SqlCatalogManager::UseDatabase(const UseDatabaseRequest& request) {
         UseDatabaseResponse response;
-        // check if the namespace exists
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.databaseName);
-        if (namespace_info == nullptr) {
+        // check if the database exists
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
+        if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
             response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
             return response;
@@ -564,11 +564,11 @@ namespace catalog {
 
         // preload tables for a database
         thread_pool_.enqueue([this, request] () {
-            ListTablesRequest req {.namespaceName = request.databaseName, .isSysTableIncluded=true};
-            K2LOG_I(log::catalog, "Preloading database {}", req.namespaceName);
+            ListTablesRequest req {.databaseName = request.databaseName, .isSysTableIncluded=true};
+            K2LOG_I(log::catalog, "Preloading database {}", req.databaseName);
             ListTablesResponse result = ListTables(req);
             if (!result.status.ok()) {
-              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.namespaceName, result.status.code());
+              K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.databaseName, result.status.code());
             }
         });
 
@@ -580,16 +580,16 @@ namespace catalog {
         CreateTableResponse response;
         K2LOG_D(log::catalog,
         "Creating table ns name: {}, ns oid: {}, table name: {}, table oid: {}, systable: {}, shared: {}",
-            request.namespaceName, request.namespaceOid, request.tableName, request.tableOid, request.isSysCatalogTable, request.isSharedTable);
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
-        if (namespace_info == nullptr) {
-            K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName);
+            request.databaseName, request.databaseOid, request.tableName, request.tableOid, request.isSysCatalogTable, request.isSharedTable);
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
+        if (database_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find databaseName {}", request.databaseName);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
             return response;
         }
 
         // check if the Table has already existed or not
-        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoByName(namespace_info->GetNamespaceId(), request.tableName);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoByName(database_info->GetDatabaseId(), request.tableName);
         if (table_info != nullptr) {
             // only create table when it does not exist
             if (request.isNotExist) {
@@ -601,8 +601,8 @@ namespace catalog {
 
             // return table already present error if table already exists
            response.status = STATUS_FORMAT(AlreadyPresent, 
-                "Table $0 has already existed in $1", request.tableName, request.namespaceName);
-            K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.namespaceName);
+                "Table $0 has already existed in $1", request.tableName, request.databaseName);
+            K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.databaseName);
             return response;
         }
 
@@ -611,10 +611,10 @@ namespace catalog {
         CHECK(schema_version == 0) << "Schema version was not initialized to be zero";
         schema_version++;
         // generate a string format table id based database object oid and table oid
-        std::string uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string uuid = PgObjectId::GetTableUuid(request.databaseOid, request.tableOid);
         Schema table_schema = request.schema;
         table_schema.set_version(schema_version);
-        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(namespace_info->GetNamespaceId(), request.namespaceName,
+        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(database_info->GetDatabaseId(), request.databaseName,
                 request.tableOid, request.tableName, uuid, table_schema);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
         new_table_info->set_is_shared_table(request.isSharedTable);
@@ -622,14 +622,14 @@ namespace catalog {
 
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         K2LOG_D(log::catalog, "Create or update table id: {}, name: {} in {}, shared: {}", new_table_info->table_id(), request.tableName,
-            namespace_info->GetNamespaceId(), request.isSharedTable);
+            database_info->GetDatabaseId(), request.isSharedTable);
         try {
-            CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(txnHandler, namespace_info->GetNamespaceId(), new_table_info);
+            CreateUpdateTableResult result = table_info_handler_->CreateOrUpdateTable(txnHandler, database_info->GetDatabaseId(), new_table_info);
             if (!result.status.ok()) {
                 // abort the transaction
                 txnHandler->AbortTransaction();
                 K2LOG_E(log::catalog, "Failed to create table id: {}, name: {} in {}, due to {}", new_table_info->table_id(), new_table_info->table_name(),
-                    namespace_info->GetNamespaceId(), result.status);
+                    database_info->GetDatabaseId(), result.status);
                 response.status = std::move(result.status);
                 return response;
             }
@@ -637,7 +637,7 @@ namespace catalog {
             // commit transactions
             txnHandler->CommitTransaction();
             K2LOG_D(log::catalog, "Created table id: {}, name: {} in {}, with schema version {}", new_table_info->table_id(), new_table_info->table_name(),
-                namespace_info->GetNamespaceId(), schema_version);
+                database_info->GetDatabaseId(), schema_version);
             // update table caches
             UpdateTableCache(new_table_info);
 
@@ -647,8 +647,8 @@ namespace catalog {
         }  catch (const std::exception& e) {
             txnHandler->AbortTransaction();
             response.status = STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2", 
-                request.tableName, namespace_info->GetNamespaceId(), e.what());
-            K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, namespace_info->GetNamespaceId());
+                request.tableName, database_info->GetDatabaseId(), e.what());
+            K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, database_info->GetDatabaseId());
         }
         return response;
     }
@@ -656,17 +656,17 @@ namespace catalog {
     CreateIndexTableResponse SqlCatalogManager::CreateIndexTable(const CreateIndexTableRequest& request) {
         CreateIndexTableResponse response;
         K2LOG_D(log::catalog, "Creating index ns name: {}, ns oid: {}, index name: {}, index oid: {}, base table oid: {}",
-            request.namespaceName, request.namespaceOid, request.tableName, request.tableOid, request.baseTableOid);
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
-        if (namespace_info == nullptr) {
-            K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-		    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.namespaceName);
+            request.databaseName, request.databaseOid, request.tableName, request.tableOid, request.baseTableOid);
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
+        if (database_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find databaseName {}", request.databaseName);
+		    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
             return response;
         }
-        // generate table uuid from namespace oid and table oid
-        std::string base_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.baseTableOid);
+        // generate table uuid from database oid and table oid
+        std::string base_table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.baseTableOid);
         std::string base_table_id = PgObjectId::GetTableId(request.baseTableOid);
-        std::string index_table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string index_table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.tableOid);
         std::string index_table_id = PgObjectId::GetTableId(request.tableOid);
 
         // check if the base table exists or not
@@ -674,7 +674,7 @@ namespace catalog {
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
-            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, database_info->GetDatabaseId(), database_info->GetDatabaseName(),
                 base_table_id);
             if (table_result.status.ok() && table_result.tableInfo != nullptr) {
                 // update table cache
@@ -686,8 +686,8 @@ namespace catalog {
         if (base_table_info == nullptr) {
             txnHandler->AbortTransaction();
             // cannot find the base table
-            K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, namespace_info->GetNamespaceId());
-  		    response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, namespace_info->GetNamespaceId());          
+            K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, database_info->GetDatabaseId());
+  		    response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, database_info->GetDatabaseId());          
             return response;
         }
 
@@ -707,8 +707,8 @@ namespace catalog {
                     txnHandler->CommitTransaction();
                     // return index already present error if index already exists
                     response.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1", 
-                        index_table_id, namespace_info->GetNamespaceId());
-                    K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, namespace_info->GetNamespaceId());
+                        index_table_id, database_info->GetDatabaseId());
+                    K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, database_info->GetDatabaseId());
                     return response;
                 }
             }
@@ -719,31 +719,31 @@ namespace catalog {
             IndexInfo new_index_info = BuildIndexInfo(base_table_info, request.tableName, request.tableOid, index_table_uuid,
                     request.schema, request.isUnique, request.isSharedTable, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
-            K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
+            K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
             // persist the index table metadata to the system catalog SKV tables
-            table_info_handler_->PersistIndexTable(txnHandler, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+            table_info_handler_->PersistIndexTable(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
 
-            if (CatalogConsts::is_on_physical_collection(namespace_info->GetNamespaceId(), new_index_info.is_shared())) {
-                K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
+            if (CatalogConsts::is_on_physical_collection(database_info->GetDatabaseId(), new_index_info.is_shared())) {
+                K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
                 // create a SKV schema to insert the actual index data
                 CreateUpdateSKVSchemaResult skv_schema_result =
-                    table_info_handler_->CreateOrUpdateIndexSKVSchema(txnHandler, namespace_info->GetNamespaceId(), base_table_info, new_index_info);
+                    table_info_handler_->CreateOrUpdateIndexSKVSchema(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
                 if (!skv_schema_result.status.ok()) {
                     txnHandler->AbortTransaction();
                     response.status = std::move(skv_schema_result.status);
                     K2LOG_E(log::catalog, "Failed to persist index SKV schema id: {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
-                        namespace_info->GetNamespaceId(), response.status);
+                        database_info->GetDatabaseId(), response.status);
                     return response;
                 }
             } else {
                 K2LOG_D(log::catalog, "Skip persisting index SKV schema id: {}, name: {} in {}, shared: {}", new_index_info.table_id(), new_index_info.table_name(),
-                    namespace_info->GetNamespaceId(), new_index_info.is_shared());
+                    database_info->GetDatabaseId(), new_index_info.is_shared());
             }
 
             // update the base table with the new index
             base_table_info->add_secondary_index(new_index_info.table_id(), new_index_info);
 
-            K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), namespace_info->GetNamespaceId());
+            K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
             // update table cache
             UpdateTableCache(base_table_info);
 
@@ -759,24 +759,24 @@ namespace catalog {
             txnHandler->CommitTransaction();
             response.indexInfo = new_index_info_ptr;
             response.status = Status(); // OK;
-            K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, namespace_info->GetNamespaceId());
+            K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, database_info->GetDatabaseId());
         } catch (const std::exception& e) {
             txnHandler->AbortTransaction();
             response.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}", 
-                request.tableName, e.what(), namespace_info->GetNamespaceId());
+                request.tableName, e.what(), database_info->GetDatabaseId());
             K2LOG_E(log::catalog, "Failed to create index {} in {}", 
-                request.tableName, namespace_info->GetNamespaceId());
+                request.tableName, database_info->GetDatabaseId());
         }
         return response;
     }
 
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
         GetTableSchemaResponse response;
-        // generate table id from namespace oid and table oid
-        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        // generate table id from database oid and table oid
+        std::string table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.tableOid);
         std::string table_id = PgObjectId::GetTableId(request.tableOid);
         K2LOG_D(log::catalog, "Get table schema ns oid: {}, table oid: {}, table id: {}",
-            request.namespaceOid, request.tableOid, table_id);
+            request.databaseOid, request.tableOid, table_id);
         // check the table schema from cache
         std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
         if (table_info != nullptr) {
@@ -787,7 +787,7 @@ namespace catalog {
         }
 
         // check table info by index uuid
-        table_info = GetCachedTableInfoByIndexId(request.namespaceOid, table_uuid);
+        table_info = GetCachedTableInfoByIndexId(request.databaseOid, table_uuid);
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
                 table_info->table_name(), table_info->table_id(), table_uuid);
@@ -796,40 +796,40 @@ namespace catalog {
             return response;
         }
 
-        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
-        if (namespace_info == nullptr) {
-            K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", namespace_id);
+        std::string database_id = PgObjectId::GetDatabaseUuid(request.databaseOid);
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
+        if (database_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find database {}", database_id);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
             return response;
         }
 
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         // fetch the table from SKV
         K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
-        GetTableInfoResult table_info_result = table_info_handler_->GetTableInfo(txnHandler, namespace_info->GetNamespaceId(), table_id);
+        GetTableInfoResult table_info_result = table_info_handler_->GetTableInfo(txnHandler, database_info->GetDatabaseId(), table_id);
         if (!table_info_result.status.ok()) {
             txnHandler->AbortTransaction();
             K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                table_id, namespace_info->GetNamespaceId(), table_info_result.status);
+                table_id, database_info->GetDatabaseId(), table_info_result.status);
             response.status = std::move(table_info_result.status);
             response.tableInfo = nullptr;
             return response;
         }
 
         // check the physical collection for a table
-        std::string physical_collection = CatalogConsts::physical_collection(namespace_id, table_info_result.isShared);
+        std::string physical_collection = CatalogConsts::physical_collection(database_id, table_info_result.isShared);
         if (table_info_result.isShared) {
             // check if the shared table is stored on a different collection
-            if (physical_collection.compare(namespace_id) != 0) {
+            if (physical_collection.compare(database_id) != 0) {
                 // shared table is on a different collection, first finish the existing collection
                 txnHandler->CommitTransaction();
-                K2LOG_I(log::catalog, "Shared table {} is not in {} but in {} instead", table_id, namespace_id, physical_collection);
-                // load the shared namespace info
-                namespace_info = CheckAndLoadNamespaceById(physical_collection);
-                if (namespace_info == nullptr) {
-                    K2LOG_E(log::catalog, "Cannot find namespace {} for shared table {}", physical_collection, table_id);
-                    response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0 for shared table $1", physical_collection, table_id);
+                K2LOG_I(log::catalog, "Shared table {} is not in {} but in {} instead", table_id, database_id, physical_collection);
+                // load the shared database info
+                database_info = CheckAndLoadDatabaseById(physical_collection);
+                if (database_info == nullptr) {
+                    K2LOG_E(log::catalog, "Cannot find database {} for shared table {}", physical_collection, table_id);
+                    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0 for shared table $1", physical_collection, table_id);
                     return response;
                 }
                 // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
@@ -840,7 +840,7 @@ namespace catalog {
         if (!table_info_result.isIndex) {
             K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, physical_collection);
             // the table id belongs to a table
-            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, physical_collection, namespace_info->GetNamespaceName(),
+            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, physical_collection, database_info->GetDatabaseName(),
                 table_id);
             if (!table_result.status.ok()) {
                 txnHandler->AbortTransaction();
@@ -898,7 +898,7 @@ namespace catalog {
         }
 
         K2LOG_D(log::catalog, "Fetching base table schema {} for index {} in {}", base_table_id, table_id, physical_collection);
-        GetTableResult base_table_result = table_info_handler_->GetTable(txnHandler, physical_collection, namespace_info->GetNamespaceName(),
+        GetTableResult base_table_result = table_info_handler_->GetTable(txnHandler, physical_collection, database_info->GetDatabaseName(),
                 base_table_id);
         if (!base_table_result.status.ok()) {
             txnHandler->AbortTransaction();
@@ -917,19 +917,19 @@ namespace catalog {
     }
 
     ListTablesResponse SqlCatalogManager::ListTables(const ListTablesRequest& request) {
-        K2LOG_D(log::catalog, "Listing tables for namespace {}", request.namespaceName);
+        K2LOG_D(log::catalog, "Listing tables for database {}", request.databaseName);
         ListTablesResponse response;
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceByName(request.namespaceName);
-        if (namespace_info == nullptr) {
-            K2LOG_E(log::catalog, "Cannot find namespace {}", request.namespaceName);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find namespaceName $0", request.namespaceName);
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
+        if (database_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find databaseName $0", request.databaseName);
             return response;
         }
-        response.namespaceId = namespace_info->GetNamespaceId();
+        response.databaseId = database_info->GetDatabaseId();
 
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        ListTablesResult tables_result = table_info_handler_->ListTables(txnHandler, namespace_info->GetNamespaceId(),
-                namespace_info->GetNamespaceName(), request.isSysTableIncluded);
+        ListTablesResult tables_result = table_info_handler_->ListTables(txnHandler, database_info->GetDatabaseId(),
+                database_info->GetDatabaseName(), request.isSysTableIncluded);
         if (!tables_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(tables_result.status);
@@ -938,37 +938,37 @@ namespace catalog {
 
         txnHandler->CommitTransaction();
         for (auto& tableInfo : tables_result.tableInfos) {
-            K2LOG_D(log::catalog, "Caching table name: {}, id: {} in {}", tableInfo->table_name(), tableInfo->table_id(), namespace_info->GetNamespaceId());
+            K2LOG_D(log::catalog, "Caching table name: {}, id: {} in {}", tableInfo->table_name(), tableInfo->table_id(), database_info->GetDatabaseId());
             UpdateTableCache(tableInfo);
             response.tableInfos.push_back(tableInfo);
         }
         response.status = Status(); // OK;
-        K2LOG_D(log::catalog, "Found {} tables in namespace {}", response.tableInfos.size(), request.namespaceName);
+        K2LOG_D(log::catalog, "Found {} tables in database {}", response.tableInfos.size(), request.databaseName);
         return response;
     }
 
     DeleteTableResponse SqlCatalogManager::DeleteTable(const DeleteTableRequest& request) {
-        K2LOG_D(log::catalog, "Deleting table {} in namespace {}", request.tableOid, request.namespaceOid);
+        K2LOG_D(log::catalog, "Deleting table {} in database {}", request.tableOid, request.databaseOid);
         DeleteTableResponse response;
-        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
-        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string database_id = PgObjectId::GetDatabaseUuid(request.databaseOid);
+        std::string table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.tableOid);
         std::string table_id = PgObjectId::GetTableId(request.tableOid);
-        response.namespaceId = namespace_id;
+        response.databaseId = database_id;
         response.tableId = table_id;
 
         std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         if (table_info == nullptr) {
-            // try to find table from SKV by looking at namespace first
-            std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
-            if (namespace_info == nullptr) {
-                K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-                response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id);
+            // try to find table from SKV by looking at database first
+            std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
+            if (database_info == nullptr) {
+                K2LOG_E(log::catalog, "Cannot find database {}", database_id);
+                response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
                 return response;
             }
 
             // fetch the table from SKV
-            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, namespace_info->GetNamespaceId(), namespace_info->GetNamespaceName(),
+            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, database_info->GetDatabaseId(), database_info->GetDatabaseName(),
                 table_id);
             if (!table_result.status.ok()) {
                 txnHandler->AbortTransaction();
@@ -987,7 +987,7 @@ namespace catalog {
 
         // delete indexes and the table itself
         // delete table data
-         DeleteTableResult delete_data_result = table_info_handler_->DeleteTableData(txnHandler, namespace_id, table_info);
+         DeleteTableResult delete_data_result = table_info_handler_->DeleteTableData(txnHandler, database_id, table_info);
         if (!delete_data_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_data_result.status);
@@ -995,7 +995,7 @@ namespace catalog {
         }
 
         // delete table schema metadata
-        DeleteTableResult delete_metadata_result = table_info_handler_->DeleteTableMetadata(txnHandler, namespace_id, table_info);
+        DeleteTableResult delete_metadata_result = table_info_handler_->DeleteTableMetadata(txnHandler, database_id, table_info);
         if (!delete_metadata_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_metadata_result.status);
@@ -1010,16 +1010,16 @@ namespace catalog {
     }
 
     DeleteIndexResponse SqlCatalogManager::DeleteIndex(const DeleteIndexRequest& request) {
-        K2LOG_D(log::catalog, "Deleting index {} in ns {}", request.tableOid, request.namespaceOid);
+        K2LOG_D(log::catalog, "Deleting index {} in ns {}", request.tableOid, request.databaseOid);
         DeleteIndexResponse response;
-        std::string namespace_id = PgObjectId::GetNamespaceUuid(request.namespaceOid);
-        std::string table_uuid = PgObjectId::GetTableUuid(request.namespaceOid, request.tableOid);
+        std::string database_id = PgObjectId::GetDatabaseUuid(request.databaseOid);
+        std::string table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.tableOid);
         std::string table_id = PgObjectId::GetTableId(request.tableOid);
-        response.namespaceId = namespace_id;
-        std::shared_ptr<NamespaceInfo> namespace_info = CheckAndLoadNamespaceById(namespace_id);
-        if (namespace_info == nullptr) {
-            K2LOG_E(log::catalog, "Cannot find namespace {}", namespace_id);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find namespace $0", namespace_id);
+        response.databaseId = database_id;
+        std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
+        if (database_info == nullptr) {
+            K2LOG_E(log::catalog, "Cannot find database {}", database_id);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
             return response;
         }
 
@@ -1027,7 +1027,7 @@ namespace catalog {
         std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
         std::string base_table_id;
         if (index_info == nullptr) {
-            GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(txnHandler, namespace_id, table_id);
+            GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(txnHandler, database_id, table_id);
             if (!index_result.status.ok()) {
                 response.status = std::move(index_result.status);
                 txnHandler->AbortTransaction();
@@ -1041,7 +1041,7 @@ namespace catalog {
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
-            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, namespace_id, namespace_info->GetNamespaceName(),
+            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, database_id, database_info->GetDatabaseName(),
                     base_table_id);
             if (!table_result.status.ok()) {
                 txnHandler->AbortTransaction();
@@ -1059,7 +1059,7 @@ namespace catalog {
         }
 
         // delete index data
-        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(txnHandler, namespace_id, table_id);
+        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(txnHandler, database_id, table_id);
         if (!delete_data_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_data_result.status);
@@ -1067,7 +1067,7 @@ namespace catalog {
         }
 
         // delete index metadata
-        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(txnHandler, namespace_id, table_id);
+        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(txnHandler, database_id, table_id);
         if (!delete_metadata_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_metadata_result.status);
@@ -1087,24 +1087,24 @@ namespace catalog {
     ReservePgOidsResponse SqlCatalogManager::ReservePgOid(const ReservePgOidsRequest& request) {
         ReservePgOidsResponse response;
         K2LOG_D(log::catalog, "Reserving PgOid with nextOid: {}, count: {}, for ns: {}",
-            request.nextOid, request.count, request.namespaceId);
+            request.nextOid, request.count, request.databaseId);
         std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-        GetNamespaceResult result = namespace_info_handler_->GetNamespace(ns_txnHandler, request.namespaceId);
+        GetDatabaseResult result = database_info_handler_->GetDatabase(ns_txnHandler, request.databaseId);
         if (!result.status.ok()) {
             ns_txnHandler->AbortTransaction();
-            K2LOG_E(log::catalog, "Failed to get namespace {}", request.namespaceId);
+            K2LOG_E(log::catalog, "Failed to get database {}", request.databaseId);
             response.status = std::move(result.status);
             return response;
         }
 
-        uint32_t begin_oid = result.namespaceInfo->GetNextPgOid();
+        uint32_t begin_oid = result.databaseInfo->GetNextPgOid();
         if (begin_oid < request.nextOid) {
             begin_oid = request.nextOid;
         }
         if (begin_oid == std::numeric_limits<uint32_t>::max()) {
             ns_txnHandler->AbortTransaction();
-            K2LOG_W(log::catalog, "No more object identifier is available for Postgres database {}", request.namespaceId);
-            response.status = STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.namespaceId);
+            K2LOG_W(log::catalog, "No more object identifier is available for Postgres database {}", request.databaseId);
+            response.status = STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.databaseId);
             return response;
         }
 
@@ -1112,17 +1112,17 @@ namespace catalog {
         if (end_oid < begin_oid) {
             end_oid = std::numeric_limits<uint32_t>::max(); // Handle wraparound.
         }
-        response.namespaceId = request.namespaceId;
+        response.databaseId = request.databaseId;
         response.beginOid = begin_oid;
         response.endOid = end_oid;
 
-        // update the namespace record on SKV
+        // update the database record on SKV
         // We use read and write in the same transaction so that K23SI guarantees that concurrent SKV records on SKV
         // won't override each other and won't lose the correctness of PgNextOid
-        std::shared_ptr<NamespaceInfo> updated_ns = std::move(result.namespaceInfo);
+        std::shared_ptr<DatabaseInfo> updated_ns = std::move(result.databaseInfo);
         updated_ns->SetNextPgOid(end_oid);
-        K2LOG_D(log::catalog, "Updating nextPgOid on SKV to {} for namespace {}", end_oid, request.namespaceId);
-        AddOrUpdateNamespaceResult update_result = namespace_info_handler_->AddOrUpdateNamespace(ns_txnHandler, updated_ns);
+        K2LOG_D(log::catalog, "Updating nextPgOid on SKV to {} for database {}", end_oid, request.databaseId);
+        AddOrUpdateDatabaseResult update_result = database_info_handler_->UpsertDatabase(ns_txnHandler, updated_ns);
         if (!update_result.status.ok()) {
             ns_txnHandler->AbortTransaction();
             K2LOG_E(log::catalog, "Failed to update nextPgOid on SKV due to {}", update_result.status);
@@ -1131,22 +1131,22 @@ namespace catalog {
         }
 
         ns_txnHandler->CommitTransaction();
-        K2LOG_D(log::catalog, "Reserved PgOid succeeded for namespace {}", request.namespaceId);
-        // update namespace caches after persisting to SKV successfully
-        namespace_id_map_[updated_ns->GetNamespaceId()] = updated_ns;
-        namespace_name_map_[updated_ns->GetNamespaceName()] = updated_ns;
+        K2LOG_D(log::catalog, "Reserved PgOid succeeded for database {}", request.databaseId);
+        // update database caches after persisting to SKV successfully
+        database_id_map_[updated_ns->GetDatabaseId()] = updated_ns;
+        database_name_map_[updated_ns->GetDatabaseName()] = updated_ns;
         response.status = Status(); // OK;
         return response;
     }
 
-    // update namespace caches
-    void SqlCatalogManager::UpdateNamespaceCache(std::vector<std::shared_ptr<NamespaceInfo>> namespace_infos) {
+    // update database caches
+    void SqlCatalogManager::UpdateDatabaseCache(std::vector<std::shared_ptr<DatabaseInfo>> database_infos) {
         std::lock_guard<std::mutex> l(lock_);
-        namespace_id_map_.clear();
-        namespace_name_map_.clear();
-        for (auto ns_ptr : namespace_infos) {
-            namespace_id_map_[ns_ptr->GetNamespaceId()] = ns_ptr;
-            namespace_name_map_[ns_ptr->GetNamespaceName()] = ns_ptr;
+        database_id_map_.clear();
+        database_name_map_.clear();
+        for (auto ns_ptr : database_infos) {
+            database_id_map_[ns_ptr->GetDatabaseId()] = ns_ptr;
+            database_name_map_[ns_ptr->GetDatabaseName()] = ns_ptr;
         }
     }
 
@@ -1155,7 +1155,7 @@ namespace catalog {
         std::lock_guard<std::mutex> l(lock_);
         table_uuid_map_[table_info->table_uuid()] = table_info;
         // TODO: add logic to remove table with old name if rename table is called
-        TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
+        TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_[key] = table_info;
         // update the corresponding index cache
         UpdateIndexCacheForTable(table_info);
@@ -1166,7 +1166,7 @@ namespace catalog {
         std::lock_guard<std::mutex> l(lock_);
         ClearIndexCacheForTable(table_info->table_id());
         table_uuid_map_.erase(table_info->table_uuid());
-        TableNameKey key = std::make_pair(table_info->namespace_id(), table_info->table_name());
+        TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_.erase(key);
     }
 
@@ -1200,20 +1200,20 @@ namespace catalog {
         index_uuid_map_[index_info->table_uuid()] = index_info;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceById(const std::string& namespace_id) {
-        if (!namespace_id_map_.empty()) {
-            const auto itr = namespace_id_map_.find(namespace_id);
-            if (itr != namespace_id_map_.end()) {
+    std::shared_ptr<DatabaseInfo> SqlCatalogManager::GetCachedDatabaseById(const std::string& database_id) {
+        if (!database_id_map_.empty()) {
+            const auto itr = database_id_map_.find(database_id);
+            if (itr != database_id_map_.end()) {
                 return itr->second;
             }
         }
         return nullptr;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::GetCachedNamespaceByName(const std::string& namespace_name) {
-        if (!namespace_name_map_.empty()) {
-            const auto itr = namespace_name_map_.find(namespace_name);
-            if (itr != namespace_name_map_.end()) {
+    std::shared_ptr<DatabaseInfo> SqlCatalogManager::GetCachedDatabaseByName(const std::string& database_name) {
+        if (!database_name_map_.empty()) {
+            const auto itr = database_name_map_.find(database_name);
+            if (itr != database_name_map_.end()) {
                 return itr->second;
             }
         }
@@ -1230,9 +1230,9 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(const std::string& namespace_id, const std::string& table_name) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByName(const std::string& database_id, const std::string& table_name) {
         if (!table_name_map_.empty()) {
-           TableNameKey key = std::make_pair(namespace_id, table_name);
+           TableNameKey key = std::make_pair(database_id, table_name);
            const auto itr = table_name_map_.find(key);
             if (itr != table_name_map_.end()) {
                 return itr->second;
@@ -1251,7 +1251,7 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByIndexId(uint32_t namespaceOid, const std::string& index_uuid) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid) {
         std::shared_ptr<IndexInfo> index_info = nullptr;
         if (!index_uuid_map_.empty()) {
             const auto itr = index_uuid_map_.find(index_uuid);
@@ -1269,7 +1269,7 @@ namespace catalog {
             K2LOG_W(log::catalog, "Invalid base table id {}", index_info->base_table_id());
             return nullptr;
         }
-        std::string base_table_uuid = PgObjectId::GetTableUuid(namespaceOid, base_table_oid);
+        std::string base_table_uuid = PgObjectId::GetTableUuid(databaseOid, base_table_oid);
         return GetCachedTableInfoById(base_table_uuid);
     }
 
@@ -1319,40 +1319,40 @@ namespace catalog {
         return index_info;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::CheckAndLoadNamespaceByName(const std::string& namespace_name) {
-        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceByName(namespace_name);
-        if (namespace_info == nullptr) {
-            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+    std::shared_ptr<DatabaseInfo> SqlCatalogManager::CheckAndLoadDatabaseByName(const std::string& database_name) {
+        std::shared_ptr<DatabaseInfo> database_info = GetCachedDatabaseByName(database_name);
+        if (database_info == nullptr) {
+            // try to refresh databases from SKV in case that the requested database is created by another catalog manager instance
             // this could be avoided by use a single or a quorum of catalog managers
             std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_txnHandler);
+            ListDatabaseResult result = database_info_handler_->ListDatabases(ns_txnHandler);
             ns_txnHandler->CommitTransaction();
-            if (result.status.ok() && !result.namespaceInfos.empty()) {
-                // update namespace caches
-                UpdateNamespaceCache(result.namespaceInfos);
-                // recheck namespace
-                namespace_info = GetCachedNamespaceByName(namespace_name);
+            if (result.status.ok() && !result.databaseInfos.empty()) {
+                // update database caches
+                UpdateDatabaseCache(result.databaseInfos);
+                // recheck database
+                database_info = GetCachedDatabaseByName(database_name);
             }
         }
-        return namespace_info;
+        return database_info;
     }
 
-    std::shared_ptr<NamespaceInfo> SqlCatalogManager::CheckAndLoadNamespaceById(const std::string& namespace_id) {
-        std::shared_ptr<NamespaceInfo> namespace_info = GetCachedNamespaceById(namespace_id);
-        if (namespace_info == nullptr) {
-            // try to refresh namespaces from SKV in case that the requested namespace is created by another catalog manager instance
+    std::shared_ptr<DatabaseInfo> SqlCatalogManager::CheckAndLoadDatabaseById(const std::string& database_id) {
+        std::shared_ptr<DatabaseInfo> database_info = GetCachedDatabaseById(database_id);
+        if (database_info == nullptr) {
+            // try to refresh databases from SKV in case that the requested database is created by another catalog manager instance
             // this could be avoided by use a single or a quorum of catalog managers
             std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
-            ListNamespacesResult result = namespace_info_handler_->ListNamespaces(ns_txnHandler);
+            ListDatabaseResult result = database_info_handler_->ListDatabases(ns_txnHandler);
             ns_txnHandler->CommitTransaction();
-            if (result.status.ok() && !result.namespaceInfos.empty()) {
-                // update namespace caches
-                UpdateNamespaceCache(result.namespaceInfos);
-                // recheck namespace
-                namespace_info = GetCachedNamespaceById(namespace_id);
+            if (result.status.ok() && !result.databaseInfos.empty()) {
+                // update database caches
+                UpdateDatabaseCache(result.databaseInfos);
+                // recheck database
+                database_info = GetCachedDatabaseById(database_id);
             }
         }
-        return namespace_info;
+        return database_info;
     }
 
 

@@ -117,19 +117,19 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
             response.status = std::move(sys_table_result.status);
             return response;
         }
-        if (CatalogConsts::is_on_physical_collection(table->namespace_id(), table->is_shared())) {
-            K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->namespace_id());
+        if (CatalogConsts::is_on_physical_collection(table->database_id(), table->is_shared())) {
+            K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->database_id());
             // persist SKV table and index schemas
             CreateUpdateSKVSchemaResult skv_schema_result = CreateOrUpdateTableSKVSchema(txnHandler, collection_name, table);
             if (!skv_schema_result.status.ok()) {
                 response.status = std::move(skv_schema_result.status);
                 K2LOG_E(log::catalog, "Failed to persist table SKV schema id: {}, name: {}, in {} due to {}", table->table_id(), table->table_name(),
-                    table->namespace_id(), response.status);
+                    table->database_id(), response.status);
                 return response;
             }
         } else {
             K2LOG_D(log::catalog, "Skip persisting table SKV schema id: {}, name: {} in {}, shared: {}", table->table_id(), table->table_name(),
-                table->namespace_id(), table->is_shared());
+                table->database_id(), table->is_shared());
         }
         response.status = Status(); // OK
     }
@@ -139,11 +139,11 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
     return response;
 }
 
-GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name,
+GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name,
         const std::string& table_id) {
     GetTableResult response;
     try {
-        K2LOG_D(log::catalog, "Fetch table schema ns id: {}, ns name: {}, table id: {}", collection_name, namespace_name, table_id);
+        K2LOG_D(log::catalog, "Fetch table schema ns id: {}, ns name: {}, table id: {}", collection_name, database_name, table_id);
         // table meta data on super tables that we owned are always on individual collection even for shared tables/indexes
         // (but their actual skv schema and table content are not)
         k2::dto::SKVRecord table_head_record;
@@ -152,7 +152,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandl
             return response;
         }  
         std::vector<k2::dto::SKVRecord> table_column_records = FetchTableColumnSchemaSKVRecords(txnHandler, collection_name, table_id);
-        std::shared_ptr<TableInfo> table_info = BuildTableInfo(collection_name, namespace_name, table_head_record, table_column_records);
+        std::shared_ptr<TableInfo> table_info = BuildTableInfo(collection_name, database_name, table_head_record, table_column_records);
         // check all the indexes whose BaseTableId is table_id
         std::vector<k2::dto::SKVRecord> index_records = FetchIndexHeadSKVRecords(txnHandler, collection_name, table_id);
         if (!index_records.empty()) {
@@ -174,7 +174,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandl
     return response;
 }
 
-ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& namespace_name, bool isSysTableIncluded) {
+ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, bool isSysTableIncluded) {
     ListTablesResult response;
     try {
         ListTableIdsResult list_result = ListTableIds(txnHandler, collection_name, isSysTableIncluded);
@@ -183,7 +183,7 @@ ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnH
             return response;
         }
         for (auto& table_id : list_result.tableIds) {
-            GetTableResult result = GetTable(txnHandler, collection_name, namespace_name, table_id);
+            GetTableResult result = GetTable(txnHandler, collection_name, database_name, table_id);
             if (!result.status.ok()) {
                 response.status = std::move(result.status);
                 return response;
@@ -264,24 +264,24 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> 
 
 CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
-            const std::string& target_namespace_name,
-            uint32_t target_namespace_oid,
+            const std::string& target_database_name,
+            uint32_t target_database_oid,
             std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
-            const std::string& source_namespace_name,
+            const std::string& source_database_name,
             const std::string& source_table_id) {
     CopyTableResult response;
     try {
-        GetTableResult table_result = GetTable(source_txnHandler, source_coll_name, source_namespace_name, source_table_id);
+        GetTableResult table_result = GetTable(source_txnHandler, source_coll_name, source_database_name, source_table_id);
         if (!table_result.status.ok()) {
             response.status = std::move(table_result.status);
             return response;
         }
 
         std::shared_ptr<TableInfo> source_table = table_result.tableInfo;
-        std::string target_table_uuid = PgObjectId::GetTableUuid(target_namespace_oid, table_result.tableInfo->table_oid());
+        std::string target_table_uuid = PgObjectId::GetTableUuid(target_database_oid, table_result.tableInfo->table_oid());
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_coll_name,
-                target_namespace_name, target_table_uuid, table_result.tableInfo->table_name());
+                target_database_name, target_table_uuid, table_result.tableInfo->table_name());
 
         CreateUpdateTableResult create_result = CreateOrUpdateTable(target_txnHandler, target_coll_name, target_table);
         if (!create_result.status.ok()) {
@@ -1196,7 +1196,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnSchemaSKVRecor
     return records;
 }
 
-std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& namespace_id, const std::string& namespace_name,
+std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& database_id, const std::string& database_name,
         k2::dto::SKVRecord& table_head, std::vector<k2::dto::SKVRecord>& table_columns) {
     // deserialize table head
     // SchemaTableId
@@ -1273,7 +1273,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& n
     }
     Schema table_schema(cols, ids, key_columns, table_properties);
     table_schema.set_version(version);
-    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(namespace_id, namespace_name, table_oid, table_name, table_uuid, table_schema);
+    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(database_id, database_name, table_oid, table_name, table_uuid, table_schema);
     table_info->set_next_column_id(next_column_id);
     table_info->set_is_sys_table(is_sys_table);
     table_info->set_is_shared_table(is_shared);

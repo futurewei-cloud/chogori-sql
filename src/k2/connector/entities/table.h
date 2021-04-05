@@ -34,17 +34,17 @@ namespace sql {
 
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(std::string namespace_id, std::string namespace_name, uint32_t table_oid, std::string table_name, std::string table_uuid, Schema schema) :
-            namespace_id_(namespace_id), namespace_name_(namespace_name), table_oid_(table_oid), table_id_(PgObjectId::GetTableId(table_oid)), table_name_(table_name),
+        TableInfo(std::string database_id, std::string database_name, uint32_t table_oid, std::string table_name, std::string table_uuid, Schema schema) :
+            database_id_(database_id), database_name_(database_name), table_oid_(table_oid), table_id_(PgObjectId::GetTableId(table_oid)), table_name_(table_name),
             table_uuid_(table_uuid), schema_(std::move(schema)) {
         }
 
-        const std::string& namespace_id() const {
-            return namespace_id_;
+        const std::string& database_id() const {
+            return database_id_;
         }
 
-        const std::string& namespace_name() const {
-            return namespace_name_;
+        const std::string& database_name() const {
+            return database_name_;
         }
 
         const std::string& table_id() const {
@@ -133,12 +133,12 @@ namespace sql {
             return is_shared_table_;
         }
 
-        static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string namespace_id,
-            std::string namespace_name, std::string table_uuid, std::string table_name);
+        static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string database_id,
+            std::string database_name, std::string table_uuid, std::string table_name);
 
         private:
-        std::string namespace_id_;
-        std::string namespace_name_; // Can be empty, that means the namespace has not been set yet.
+        std::string database_id_;
+        std::string database_name_; // Can be empty, that means the database has not been set yet.
         // PG internal object id
         uint32_t table_oid_;
         std::string table_id_;
