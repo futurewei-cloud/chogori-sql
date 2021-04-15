@@ -56,6 +56,7 @@ using std::make_shared;
 PgSelect::PgSelect(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id,
                    const PgObjectId& index_object_id, const PgPrepareParameters *prepare_params)
     : PgDmlRead(pg_session, table_object_id, index_object_id, prepare_params) {
+  K2LOG_D(log::pg, "Created PgSelect id: {} for {} : {}, {}", stmt_id_, table_object_id.GetDatabaseOid(), table_object_id.GetObjectOid(), index_object_id.GetObjectOid());
 }
 
 PgSelect::~PgSelect() {

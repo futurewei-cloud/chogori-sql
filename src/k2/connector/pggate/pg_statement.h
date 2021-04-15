@@ -115,6 +115,10 @@ class PgStatement {
   // Clear all values and expressions that were bound to the given statement.
   virtual CHECKED_STATUS ClearBinds() = 0;
 
+  int64_t stmt_id() const {
+    return stmt_id_;
+  }
+
  protected:
   // PgSession that this statement belongs to.
   std::shared_ptr<PgSession> pg_session_;

@@ -867,7 +867,7 @@ static void parse_expr(Expr *node, FDWExprRefValues *ref_values) {
 			parse_param((Param *) node, ref_values);
 			break;
 		default:
-			elog(WARNING, "FDW: unsupported expression type for expr: %s", nodeToString(node));
+			elog(DEBUG4, "FDW: unsupported expression type for expr: %s", nodeToString(node));
 			break;
 	}
 }
@@ -1053,16 +1053,17 @@ static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
 }
 
 // search for the column in the equal conditions, the performance is fine for small number of equal conditions
-static FDWOprCond *findOprCondition(foreign_expr_cxt context, int attr_num) {
-	ListCell *lc = NULL;;
+static List *findOprCondition(foreign_expr_cxt context, int attr_num) {
+	List * result = NIL;
+	ListCell *lc = NULL;
 	foreach (lc, context.opr_conds) {
 		FDWOprCond *first = (FDWOprCond *) lfirst(lc);
 		if (first->ref->attr_num == attr_num) {
-			return first;
+			result = lappend(result, first);
 		}
 	}
 
-	return NULL;
+	return result;
 }
 
 YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
@@ -1128,13 +1129,17 @@ static void pgBindScanKeys(Relation relation,
 		if (bms_is_member(idx, scan_plan->sk_cols))
 		{
 			// check if the key is in the Opr conditions
-			FDWOprCond *opr_cond = findOprCondition(context, scan_plan->bind_key_attnums[i]);
-			if (opr_cond != NULL) {
+			List *opr_conds = findOprCondition(context, scan_plan->bind_key_attnums[i]);
+			if (opr_conds != NIL) {
 				elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
-				YBCPgExpr arg = build_expr(fdw_state, opr_cond);
-				if (arg != NULL) {
-					// use primary keys as range condition
-					YBCPgOperatorAppendArg(range_conds, arg);
+				ListCell *lc = NULL;
+				foreach (lc, opr_conds) {
+					FDWOprCond *opr_cond = (FDWOprCond *) lfirst(lc);
+					YBCPgExpr arg = build_expr(fdw_state, opr_cond);
+					if (arg != NULL) {
+						// use primary keys as range condition
+						YBCPgOperatorAppendArg(range_conds, arg);
+					}
 				}
 			}
 		}
@@ -1151,12 +1156,16 @@ static void pgBindScanKeys(Relation relation,
 	for (int i = 0; i < scan_plan->nNonKeys; i++)
 	{
 		// check if the column is in the Opr conditions
-		FDWOprCond *opr_cond = findOprCondition(context, scan_plan->bind_nonkey_attnums[i]);
-		if (opr_cond != NULL) {
+		List *opr_conds = findOprCondition(context, scan_plan->bind_nonkey_attnums[i]);
+		if (opr_conds != NIL) {
 			elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_nonkey_attnums[i], relation->rd_id);
-			YBCPgExpr arg = build_expr(fdw_state, opr_cond);
-			if (arg != NULL) {
-				YBCPgOperatorAppendArg(where_conds, arg);
+			ListCell *lc = NULL;
+			foreach (lc, opr_conds) {
+				FDWOprCond *opr_cond = (FDWOprCond *) lfirst(lc);
+				YBCPgExpr arg = build_expr(fdw_state, opr_cond);
+				if (arg != NULL) {
+					YBCPgOperatorAppendArg(where_conds, arg);
+				}
 			}
 		}
 	}

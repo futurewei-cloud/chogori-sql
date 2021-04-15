@@ -602,7 +602,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         } else if (request->paging_state) {
             response.paging_state = request->paging_state;
             response.paging_state->total_num_rows_read += scan_result.records.size();
-            K2LOG_D(log::k2Adapter, "Request paging state is null? {}, for request {}", (request->paging_state == nullptr), request->table_id);
+            K2LOG_D(log::k2Adapter, "Request paging state is null? {}, for request {}, total num of read {}", (request->paging_state == nullptr), request->table_id, response.paging_state->total_num_rows_read);
         } else {
             response.paging_state = std::make_shared<SqlOpPagingState>();
             response.paging_state->query = scan;
