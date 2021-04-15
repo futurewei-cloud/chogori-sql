@@ -420,6 +420,139 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
     return Status::OK();
 }
 
+// this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
+// didBranch: output param. If this condition causes a branch (e.g. it has some sort of inequality),
+// then we set the didBranch output param so that the top-level processor knows that we can't build
+// more of the key prefix.
+// lastColId: is an input/output param. We check against it to make sure we haven't seen the current field yet,
+// and we set it to the current field if we are about to process it.
+// startValues, endValues: store values that are passed in out of order so that they can be later sorted
+// and serialized to SKV in order
+Status handleLeafCondition(std::shared_ptr<SqlOpCondition> cond,
+                           k2::dto::SKVRecord& start, k2::dto::SKVRecord& end,
+                           bool& didBranch, int& lastColId,
+                           std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& startValues,
+                           std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& endValues) {
+    auto& ops = cond->getOperands();
+    // we expect 2 nested expressions except for BETWEEN which has 3
+    int expectedExpressions = cond->getOp() == PgExpr::Opcode::PG_EXPR_BETWEEN ? 3: 2;
+    if (ops.size() != expectedExpressions) {
+        const char* msg = "leaf condition wrong number of operands";
+        K2LOG_E(log::k2Adapter, "{}, got={}, expected={}", msg, ops.size(), expectedExpressions);
+        return STATUS(InvalidCommand, msg);
+    }
+    // first operand is col reference expression
+    if (ops[0]->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
+        const char* msg = "1st expression in leaf condition must be a column reference";
+        K2LOG_E(log::k2Adapter, "{}, got {}", msg, ops[0]->getType());
+        return STATUS(InvalidCommand, msg);
+    }
+
+    int colId = ops[0]->getId() - 1; // Converting from 1-based attribute number to column ID
+    if (colId < 0) {
+        const char* msg = "column reference is for a system field";
+        K2LOG_E(log::k2Adapter, "{}, got={}", msg, colId);
+        return STATUS(InvalidCommand, msg);
+    }
+
+    // make sure we're working on a prefix of the key
+    if (colId <= lastColId) {
+        const char* msg = "column reference in leaf condition is for an already processed field";
+        K2LOG_E(log::k2Adapter, "{}, got={}, lastColId={}", msg, colId, lastColId);
+        return STATUS(InvalidCommand, msg);
+    }
+
+    int skvId = colId + K2Adapter::SKV_FIELD_OFFSET;
+    bool saveForLater = false;
+    if (start.getFieldCursor() != skvId || end.getFieldCursor() != skvId) {
+        const char* msg = "column reference in leaf condition refers to non-consecutive field";
+        K2LOG_D(log::k2Adapter, "{}, name={}, got={}, start={}, end={}", msg, ops[0]->getName(), skvId, start.getFieldCursor(), end.getFieldCursor());
+        saveForLater = true;
+    } else {
+        // update the output param
+        lastColId = colId;
+    }
+
+    switch (cond->getOp()) {
+        case PgExpr::Opcode::PG_EXPR_EQ: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in EQ leaf condition must be a value";
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // non-branching case. Set the value here in both start and end keys as we're limiting both bounds
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                endValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_GE: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in GE leaf condition must be a value";
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can only set the lower bound
+            didBranch = true;
+
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_LE: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd expression in LE leaf condition must be a value";
+                K2LOG_E(log::k2Adapter, "{}, got={}", msg, ops[1]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can only set the upper bound
+            didBranch = true;
+
+            if (saveForLater) {
+                endValues.push_back(std::make_pair(colId, ops[1]));
+                break;
+            }
+
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), end);
+            break;
+        }
+        case PgExpr::Opcode::PG_EXPR_BETWEEN: {
+            if (ops[1]->getType() != SqlOpExpr::ExprType::VALUE || ops[2]->getType() != SqlOpExpr::ExprType::VALUE) {
+                const char* msg = "2nd and 3rd expressions in BETWEEN leaf condition must be values";
+                K2LOG_E(log::k2Adapter, "{}, got={}, and {}", msg, ops[1]->getType(), ops[2]->getType());
+                return STATUS(InvalidCommand, msg);
+            }
+            // branching case. we can set both bounds but no further prefix is possible
+            didBranch = true;
+
+            if (saveForLater) {
+                startValues.push_back(std::make_pair(colId, ops[1]));
+                endValues.push_back(std::make_pair(colId, ops[2]));
+                break;
+            }
+
+            K2Adapter::SerializeValueToSKVRecord(*(ops[1]->getValue()), start);
+            K2Adapter::SerializeValueToSKVRecord(*(ops[2]->getValue()), end);
+            break;
+        }
+        default: {
+            const char* msg = "Expression Condition must be one of [BETWEEN, EQ, GE, LE]";
+            K2LOG_E(log::k2Adapter, "{}", msg);
+            return STATUS(InvalidCommand, msg);
+        }
+    }
+    return Status();
+}
+
 // sorts OpExpr values by column id and serializes into SKVRecord until no more prefix can be formed
 void sortAndSerializeOpValues(std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>>& values,
                                                                     k2::dto::SKVRecord& record) {
@@ -439,6 +572,52 @@ void sortAndSerializeOpValues(std::vector<std::pair<int, std::shared_ptr<SqlOpEx
 
         K2Adapter::SerializeValueToSKVRecord(*(value.second->getValue()), record);
     }
+}
+
+// this method processes the given top-level condition and sets the start/end boundaries based on the condition
+Status parseCondExprAsRange_(std::shared_ptr<SqlOpCondition> condition_expr,
+                           k2::dto::SKVRecord& start, k2::dto::SKVRecord& end) {
+    if (!condition_expr) {
+        return Status::OK();
+    }
+
+    // the top level condition must be AND
+    if (condition_expr->getOp() != PgExpr::Opcode::PG_EXPR_AND) {
+        const char* msg = "Only AND top-level condition is supported in condition expression";
+        K2LOG_E(log::k2Adapter, "{}", msg);
+        return STATUS(InvalidCommand, msg);
+    }
+
+    // If ops come in out of schema order, store here for later sorting and serialization to SKV records
+    std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>> startValues;
+    std::vector<std::pair<int, std::shared_ptr<SqlOpExpr>>> endValues;
+
+    int lastColId = -1; // make sure we're setting the key fields in increasing order
+    bool didBranch = false;
+    for (auto& expr: condition_expr->getOperands()) {
+        if (didBranch) {
+            // there was a branch in the processing of previous condition and we cannot continue.
+            // Ideally, this shouldn't happen if the query parser did its job well.
+            // This is not an error, and so we can still process the request. PG would down-filter the result set after
+            K2LOG_W(log::k2Adapter, "Condition branched at previous key field. Cannot process further expressions");
+            continue; // keep going so that we log all skipped expressions;
+        }
+        if (expr->getType() != SqlOpExpr::ExprType::CONDITION) {
+            const char* msg = "First-level nested expression must be of type Condition";
+            K2LOG_E(log::k2Adapter, "{}", msg);
+            return STATUS(InvalidCommand, msg);
+        }
+        auto cond = expr->getCondition();
+        auto status = handleLeafCondition(expr->getCondition(), start, end, didBranch, lastColId, startValues, endValues);
+        if (!status.ok()) {
+            return status;
+        }
+    }
+
+    sortAndSerializeOpValues(startValues, start);
+    sortAndSerializeOpValues(endValues, end);
+
+    return Status::OK();
 }
 
 // Helper function for handleReadOp when a vector of ybctids are set in the request
@@ -561,13 +740,22 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 return;
             }
 
-            // update the records based on the range condition found in the request
-            std::vector<PgExpr *> leftover_exprs;
-            auto parseStatus = HandleRangeConditions(request->range_conds, leftover_exprs, startRecord, endRecord);
+            // update the records based on the condition expression found in the request
+            auto parseStatus = parseCondExprAsRange_(request->condition_expr, startRecord, endRecord);
             if (!parseStatus.ok()) {
                 response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
                 response.rows_affected_count = 0;
                 prom->set_value(std::move(parseStatus));
+                return;
+            }
+
+            // update the records based on the range condition found in the request
+            std::vector<PgExpr *> leftover_exprs;
+            auto rngStatus = HandleRangeConditions(request->range_conds, leftover_exprs, startRecord, endRecord);
+            if (!rngStatus.ok()) {
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                response.rows_affected_count = 0;
+                prom->set_value(std::move(rngStatus));
                 return;
             }
 
