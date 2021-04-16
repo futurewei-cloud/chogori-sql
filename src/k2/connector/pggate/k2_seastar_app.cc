@@ -251,7 +251,7 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
-        K2LOG_D(log::k2ss, "Scan... {}", req);
+        K2LOG_D(log::k2ss, "Scan... {}, query ", req);
         if (_stop) {
             return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
         }
@@ -264,7 +264,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
         req.query->copyPayloads();
         return fiter->second.query(*req.query)
             .then([this, &req](auto&& queryResult) {
-                K2LOG_D(log::k2ss, "Scanned... {}", queryResult);
+                K2LOG_D(log::k2ss, "Scanned... {}, records: {}", queryResult, queryResult.records.size());
                 req.prom.set_value(std::move(queryResult));
             });
     });

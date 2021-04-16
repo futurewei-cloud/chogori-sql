@@ -41,7 +41,7 @@ using yb::Status;
 //  2) K2-3SI transaction APIs (Begin, Commit, Abort)
 //  3) Transactional SKV Record/data API (CRUD, QueryScan, etc, similar to DML)
 //  4) (static) Utility functions, e.g. K2 type conversion to PG types
-//  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc. 
+//  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc.
 class K2Adapter {
 public:
   // 1/5 SKV Schema APIs
@@ -58,7 +58,7 @@ public:
   CBFuture<K23SITxn> BeginTransaction();
   // Async EndTransaction shouldCommit - true to commit the transaction, false to abort the transaction
   CBFuture<k2::EndResult> EndTransaction(std::shared_ptr<K23SITxn> k23SITxn, bool shouldCommit) { return k23SITxn->endTxn(shouldCommit);}
-  
+
   // 3/5 SKV data APIs
   // Read a record based on recordKey(which will be consumed/moved).
   CBFuture<k2::ReadResult<k2::dto::SKVRecord>> ReadRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& recordKey)
@@ -124,9 +124,12 @@ public:
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);
 
+  static std::string SerializeSKVRecordToString(k2::dto::SKVRecord& record);
+  static k2::dto::SKVRecord YBCTIDStringToRecord(const std::string& collection,
+                                      std::shared_ptr<k2::dto::Schema> schema, std::string& ybctid);
+
   // Column ID of the virtual column which is not stored in k2 data
   static constexpr int32_t VIRTUAL_COLUMN = -8;
-
 };
 
 }  // namespace gate

@@ -33,7 +33,8 @@ Status K2Adapter::Shutdown() {
 }
 
 std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
-    return record.getPartitionKey();
+    k2::dto::SKVRecord key_record = record.getSKVKeyRecord();
+    return SerializeSKVRecordToString(key_record);
 }
 
 // this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
@@ -246,8 +247,18 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     k2::Status status;
     std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
-        k2::dto::Key key {.schemaName=request->table_id, .partitionKey=YBCTIDToString(ybctid_column_value), .rangeKey=""};
-        result_futures.push_back(k23SITxn->read(std::move(key), request->collection_name));
+        CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(request->collection_name,
+                                                    request->table_id, k2::K23SIClient::ANY_VERSION);
+        k2::GetSchemaResult schema_result = schema_f.get();
+        if (!schema_result.status.is2xxOK()) {
+            throw std::runtime_error("Failed to get schema for " + request->table_id + " in "
+                        + request->collection_name + " due to " + schema_result.status.message.c_str());
+        }
+        std::string key_record_string = YBCTIDToString(ybctid_column_value);
+        k2::dto::SKVRecord key_record = YBCTIDStringToRecord(request->collection_name,
+                                                             schema_result.schema,
+                                                             key_record_string);
+        result_futures.push_back(k23SITxn->read(std::move(key_record)));
     }
 
     int idx = 0;
@@ -428,7 +439,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             throw std::logic_error("Targets, where, and condition expressions are not supported for write");
         }
 
-        bool ignoreYBCTID = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE;
+        bool ignoreYBCTID = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
         auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, writeRequest->ybctid_column_value != nullptr, ignoreYBCTID);
         if (!status.ok()) {
             response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
@@ -437,11 +448,19 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             return;
         }
 
+        K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, record={}", ignoreYBCTID, record);
+
         // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
         bool rejectIfExists = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
-        // UDPATE only
-        std::string cachedKey = YBCTIDToString(writeRequest->ybctid_column_value); // aka ybctid or rowid
+
+        // UDPATE and DELETE only, get the cached key record
+        k2::dto::SKVRecord keyRecord{};
+        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE ||
+            writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
+            std::string cachedKeyRecord = YBCTIDToString(writeRequest->ybctid_column_value); // aka ybctid or rowid
+            keyRecord = YBCTIDStringToRecord(record.collectionName, record.schema, cachedKeyRecord);
+        }
 
         // populate the data, fieldsForUpdate is only relevant for UPDATE
         std::vector<ColumnValue>& values = writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE
@@ -450,13 +469,20 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         k2::Status writeStatus;
 
+        // For DELETE we need to use the key record we got from ybctid,
+        // not the record generated from column values
+        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE) {
+            record = std::move(keyRecord);
+        }
+
         // block-write
         if (writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
             k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
             writeStatus = std::move(writeResult.status);
         } else {
+            std::string partitionKey = keyRecord.getPartitionKey();
             k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record),
-                            std::move(fieldsForUpdate), std::move(cachedKey)).get();
+                            std::move(fieldsForUpdate), std::move(partitionKey)).get();
             writeStatus = std::move(updateResult.status);
         }
 
@@ -600,6 +626,34 @@ CBFuture<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const 
     return result;
 }
 
+std::string K2Adapter::SerializeSKVRecordToString(k2::dto::SKVRecord& record) {
+    const k2::dto::SKVRecord::Storage& storage = record.getStorage();
+    k2::Payload payload(k2::Payload::DefaultAllocator);
+    // Since Storage itself contains a nested Payload, we cannot do anything fancy to avoid the extra
+    // copy to a new payload here, because the implementation of write() with a payload argument is to
+    // share the underlying buffers but here we need one continguous piece of memory
+    payload.write(storage);
+    payload.seek(0);
+    std::string serialized(payload.getSize(), '\0');
+    payload.read(serialized.data(), payload.getSize());
+
+    return serialized;
+}
+
+k2::dto::SKVRecord K2Adapter::YBCTIDStringToRecord(const std::string& collection,
+                                      std::shared_ptr<k2::dto::Schema> schema, std::string& ybctid) {
+    k2::dto::SKVRecord::Storage storage{};
+    // Wrap the string we will return in a non-owning Binary, so we can read into it without
+    // an extra copy. We are using the payload's serialization mechanism without giving the
+    // payload ownership of the data.
+    k2::Binary binary(ybctid.data(), ybctid.size(), seastar::deleter());
+    k2::Payload payload{};
+    payload.appendBinary(std::move(binary));
+
+    payload.read(storage);
+    return k2::dto::SKVRecord(collection, schema, std::move(storage), true);
+}
+
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     auto start = k2::Clock::now();
     // either use the virtual row id defined in ybctid_column_value field
@@ -610,15 +664,19 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
         return YBCTIDToString(request->ybctid_column_value);
     }
 
-    auto [record, status] = MakeSKVRecordWithKeysSerialized(*request, request->ybctid_column_value != nullptr);
+    auto [record, status] = MakeSKVRecordWithKeysSerialized(*request, false);
     if (!status.ok()) {
         throw std::runtime_error("MakeSKVRecordWithKeysSerialized failed for GetRowId");
     }
+    // Skip non-key fields in record
+    size_t num_values = record.schema->fields.size() - record.schema->partitionKeyFields.size()
+                        - record.schema->rangeKeyFields.size();
+    for (size_t i = 0; i < num_values; ++i) {
+        record.serializeNull();
+    }
 
-    k2::dto::Key key = record.getKey();
-    // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
     K2LOG_V(log::k2Adapter, "GetRowId by request took {}", k2::Clock::now() - start);
-    return key.partitionKey;
+    return SerializeSKVRecordToString(record);
 }
 
 std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
@@ -628,8 +686,7 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     if (!schema_result.status.is2xxOK()) {
         throw std::runtime_error("Failed to get schema for " + table_id + " in " + collection_name + " due to " + schema_result.status.message.c_str());
     }
-    std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
-    k2::dto::SKVRecord record(collection_name, schema);
+    k2::dto::SKVRecord record(collection_name, schema_result.schema);
 
     // Serialize key data into SKVRecord
     record.serializeNext<k2::String>(table_id);
@@ -637,12 +694,17 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     for (std::shared_ptr<SqlValue> value : key_values) {
         K2Adapter::SerializeValueToSKVRecord(*(value.get()), record);
     }
+    // Skip non-key fields in record
+    size_t num_values = record.schema->fields.size() - record.schema->partitionKeyFields.size()
+                        - record.schema->rangeKeyFields.size();
+    for (size_t i = 0; i < num_values; ++i) {
+        record.serializeNull();
+    }
 
     k2::dto::Key key = record.getKey();
-    // No range keys in SQL and row id only has to be unique within a table, so only need partitionKey
     K2LOG_D(log::k2Adapter, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
     K2LOG_V(log::k2Adapter, "GetRowId took {}", k2::Clock::now() - start);
-    return key.partitionKey;
+    return SerializeSKVRecordToString(record);
 }
 
 CBFuture<K23SITxn> K2Adapter::BeginTransaction() {
@@ -704,6 +766,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     k2::dto::SKVRecord record(request.collection_name, schema);
 
     if (existYbctids && !ignoreYBCTID) {
+        K2LOG_V(log::k2Adapter, "Serializing for ybctid");
         // Using a pre-stored and pre-serialized key, just need to skip key fields
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
@@ -711,6 +774,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         }
     } else {
         // Serialize key data into SKVRecord
+        K2LOG_V(log::k2Adapter, "Serializing with data");
         record.serializeNext<k2::String>(request.table_id);
         record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
