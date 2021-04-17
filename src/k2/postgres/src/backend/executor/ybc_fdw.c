@@ -570,7 +570,19 @@ foreign_expr_walker(Node *node,
 		case T_BoolExpr:
 			{
 				BoolExpr   *b = (BoolExpr *) node;
-
+				switch (b->boolop)
+				{
+					case AND_EXPR:
+						break;
+					case OR_EXPR:  // do not support OR and NOT for now
+					case NOT_EXPR:
+						return false;
+						break;
+					default:
+						elog(ERROR, "unrecognized boolop: %d", (int) b->boolop);
+						return false;
+						break;
+				}
 				/*
 				 * Recurse to input subexpressions.
 				 */
