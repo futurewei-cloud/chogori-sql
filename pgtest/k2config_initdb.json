@@ -26,7 +26,7 @@
 
     "cpo": "tcp+k2rpc://0.0.0.0:9000",
     "tso_endpoint": "tcp+k2rpc://0.0.0.0:13000",
-    "partition_request_timeout": "100ms",
+    "partition_request_timeout": "60s",
     "cpo_request_timeout": "100ms",
     "cpo_request_backoff": "100ms",
 

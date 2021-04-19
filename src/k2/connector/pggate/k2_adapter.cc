@@ -447,8 +447,9 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             prom->set_value(std::move(status));
             return;
         }
+        bool useYBCTID = !ignoreYBCTID && writeRequest->ybctid_column_value;
 
-        K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, record={}", ignoreYBCTID, record);
+        K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, ybctid={}, record={}", ignoreYBCTID, writeRequest->ybctid_column_value, record);
 
         // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
@@ -456,8 +457,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         // UDPATE and DELETE only, get the cached key record
         k2::dto::SKVRecord keyRecord{};
-        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE ||
-            writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
+        if (useYBCTID) {
             std::string cachedKeyRecord = YBCTIDToString(writeRequest->ybctid_column_value); // aka ybctid or rowid
             keyRecord = YBCTIDStringToRecord(record.collectionName, record.schema, cachedKeyRecord);
         }
@@ -469,9 +469,10 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         k2::Status writeStatus;
 
-        // For DELETE we need to use the key record we got from ybctid,
+        // For DELETE we need to use the key record we got from ybctid if it exists,
         // not the record generated from column values
-        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE) {
+        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE &&
+            useYBCTID) {
             record = std::move(keyRecord);
         }
 
@@ -649,9 +650,15 @@ k2::dto::SKVRecord K2Adapter::YBCTIDStringToRecord(const std::string& collection
     k2::Binary binary(ybctid.data(), ybctid.size(), seastar::deleter());
     k2::Payload payload{};
     payload.appendBinary(std::move(binary));
-
+    payload.seek(0);
     payload.read(storage);
-    return k2::dto::SKVRecord(collection, schema, std::move(storage), true);
+
+    // We need to copy the storage here because if we don't the fieldData inner Payload will be a
+    // shared reference to the binary above, but that binary will not be valid after this function
+    // returns.
+    k2::dto::SKVRecord record(collection, schema, storage.copy(), true);
+    record.seekField(0);
+    return record;
 }
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
