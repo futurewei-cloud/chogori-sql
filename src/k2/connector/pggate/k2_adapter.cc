@@ -251,8 +251,8 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                                                     request->table_id, k2::K23SIClient::ANY_VERSION).get();
 
         if (!schema_result.status.is2xxOK()) {
-            throw std::runtime_error(fmt::format("Failed to get schema for {} in {} dute to {}",
-                        request->table_id, request->collection_name, schema_result.status.message.c_str()));
+            throw std::runtime_error(fmt::format("Failed to get schema for {} in {} due to {}",
+                        request->table_id, request->collection_name, schema_result.status));
         }
         k2::dto::SKVRecord key_record = YBCTIDToRecord(request->collection_name,
                                                              schema_result.schema,
@@ -706,8 +706,8 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
-        throw std::runtime_error(fmt::format("Failed to get schema for {} in {} dute to {}",
-                                    table_id, collection_name, schema_result.status.message.c_str()));
+        throw std::runtime_error(fmt::format("Failed to get schema for {} in {} due to {}",
+                                    table_id, collection_name, schema_result.status));
     }
     k2::dto::SKVRecord record(collection_name, schema_result.schema);
 
