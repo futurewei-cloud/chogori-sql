@@ -86,7 +86,6 @@ public:
   static void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToYBStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
-  static std::string YBCTIDToString(std::shared_ptr<SqlOpExpr> ybctid_column_value);
 
   // We have two implicit fields (tableID and indexID) in the SKV, so this is the offset to get a user field
   static constexpr uint32_t SKV_FIELD_OFFSET = 2;
@@ -124,9 +123,11 @@ public:
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<ColumnValue>& values);
 
+  static std::string YBCTIDToString(std::shared_ptr<SqlOpExpr> ybctid_column_value);
   static std::string SerializeSKVRecordToString(k2::dto::SKVRecord& record);
-  static k2::dto::SKVRecord YBCTIDStringToRecord(const std::string& collection,
-                                      std::shared_ptr<k2::dto::Schema> schema, std::string& ybctid);
+  static k2::dto::SKVRecord YBCTIDToRecord(const std::string& collection,
+                                      std::shared_ptr<k2::dto::Schema> schema,
+                                      std::shared_ptr<SqlOpExpr> ybctid_column_value);
 
   // Column ID of the virtual column which is not stored in k2 data
   static constexpr int32_t VIRTUAL_COLUMN = -8;

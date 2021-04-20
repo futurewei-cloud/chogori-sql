@@ -247,17 +247,16 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     k2::Status status;
     std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
-        CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(request->collection_name,
-                                                    request->table_id, k2::K23SIClient::ANY_VERSION);
-        k2::GetSchemaResult schema_result = schema_f.get();
+        k2::GetSchemaResult schema_result = k23si_->getSchema(request->collection_name,
+                                                    request->table_id, k2::K23SIClient::ANY_VERSION).get();
+
         if (!schema_result.status.is2xxOK()) {
-            throw std::runtime_error("Failed to get schema for " + request->table_id + " in "
-                        + request->collection_name + " due to " + schema_result.status.message.c_str());
+            throw std::runtime_error(fmt::format("Failed to get schema for {} in {} dute to {}",
+                        request->table_id, request->collection_name, schema_result.status.message.c_str()));
         }
-        std::string key_record_string = YBCTIDToString(ybctid_column_value);
-        k2::dto::SKVRecord key_record = YBCTIDStringToRecord(request->collection_name,
+        k2::dto::SKVRecord key_record = YBCTIDToRecord(request->collection_name,
                                                              schema_result.schema,
-                                                             key_record_string);
+                                                             ybctid_column_value);
         result_futures.push_back(k23SITxn->read(std::move(key_record)));
     }
 
@@ -458,8 +457,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         // UDPATE and DELETE only, get the cached key record
         k2::dto::SKVRecord keyRecord{};
         if (useYBCTID) {
-            std::string cachedKeyRecord = YBCTIDToString(writeRequest->ybctid_column_value); // aka ybctid or rowid
-            keyRecord = YBCTIDStringToRecord(record.collectionName, record.schema, cachedKeyRecord);
+            keyRecord = YBCTIDToRecord(record.collectionName, record.schema, writeRequest->ybctid_column_value);
         }
 
         // populate the data, fieldsForUpdate is only relevant for UPDATE
@@ -481,9 +479,8 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
             k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
             writeStatus = std::move(writeResult.status);
         } else {
-            std::string partitionKey = keyRecord.getPartitionKey();
             k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record),
-                            std::move(fieldsForUpdate), std::move(partitionKey)).get();
+                            std::move(fieldsForUpdate), keyRecord.getPartitionKey()).get();
             writeStatus = std::move(updateResult.status);
         }
 
@@ -641,8 +638,26 @@ std::string K2Adapter::SerializeSKVRecordToString(k2::dto::SKVRecord& record) {
     return serialized;
 }
 
-k2::dto::SKVRecord K2Adapter::YBCTIDStringToRecord(const std::string& collection,
-                                      std::shared_ptr<k2::dto::Schema> schema, std::string& ybctid) {
+k2::dto::SKVRecord K2Adapter::YBCTIDToRecord(const std::string& collection,
+                                      std::shared_ptr<k2::dto::Schema> schema,
+                                      std::shared_ptr<SqlOpExpr> ybctid_column_value) {
+    if (!ybctid_column_value) {
+        return k2::dto::SKVRecord();
+    }
+
+    if (!ybctid_column_value->isValueType()) {
+        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a Slice");
+        throw std::invalid_argument("Non value type in ybctid_column_value");
+    }
+
+    std::shared_ptr<SqlValue> value = ybctid_column_value->getValue();
+    if (value->type_ != SqlValue::ValueType::SLICE) {
+        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a Slice");
+        throw std::invalid_argument("ybctid_column_value value is not a Slice");
+    }
+
+    std::string& ybctid = value->data_.slice_val_;
+
     k2::dto::SKVRecord::Storage storage{};
     // Wrap the string we will return in a non-owning Binary, so we can read into it without
     // an extra copy. We are using the payload's serialization mechanism without giving the
@@ -691,7 +706,8 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
-        throw std::runtime_error("Failed to get schema for " + table_id + " in " + collection_name + " due to " + schema_result.status.message.c_str());
+        throw std::runtime_error(fmt::format("Failed to get schema for {} in {} dute to {}",
+                                    table_id, collection_name, schema_result.status.message.c_str()));
     }
     k2::dto::SKVRecord record(collection_name, schema_result.schema);
 
