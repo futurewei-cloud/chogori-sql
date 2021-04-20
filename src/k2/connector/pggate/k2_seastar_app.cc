@@ -251,7 +251,7 @@ seastar::future<> PGK2Client::_pollCreateScanReadQ() {
 
 seastar::future<> PGK2Client::_pollScanReadQ() {
     return pollQ(scanReadTxQ, [this](auto& req) mutable {
-        K2LOG_D(log::k2ss, "Scan... {}, query ", req);
+        K2LOG_D(log::k2ss, "Scan... {}", req);
         if (_stop) {
             return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
         }
