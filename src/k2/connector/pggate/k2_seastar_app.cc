@@ -264,7 +264,7 @@ seastar::future<> PGK2Client::_pollScanReadQ() {
         req.query->copyPayloads();
         return fiter->second.query(*req.query)
             .then([this, &req](auto&& queryResult) {
-                K2LOG_D(log::k2ss, "Scanned... {}", queryResult);
+                K2LOG_D(log::k2ss, "Scanned... {}, records: {}", queryResult, queryResult.records.size());
                 req.prom.set_value(std::move(queryResult));
             });
     });
