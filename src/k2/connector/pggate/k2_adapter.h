@@ -45,7 +45,7 @@ using k2pg::sql::PgOperator;
 //  2) K2-3SI transaction APIs (Begin, Commit, Abort)
 //  3) Transactional SKV Record/data API (CRUD, QueryScan, etc, similar to DML)
 //  4) (static) Utility functions, e.g. K2 type conversion to PG types
-//  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc. 
+//  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc.
 class K2Adapter {
 public:
   // 1/5 SKV Schema APIs
@@ -62,7 +62,7 @@ public:
   CBFuture<K23SITxn> BeginTransaction();
   // Async EndTransaction shouldCommit - true to commit the transaction, false to abort the transaction
   CBFuture<k2::EndResult> EndTransaction(std::shared_ptr<K23SITxn> k23SITxn, bool shouldCommit) { return k23SITxn->endTxn(shouldCommit);}
-  
+
   // 3/5 SKV data APIs
   // Read a record based on recordKey(which will be consumed/moved).
   CBFuture<k2::ReadResult<k2::dto::SKVRecord>> ReadRecord(std::shared_ptr<K23SITxn> k23SITxn, k2::dto::SKVRecord& recordKey)

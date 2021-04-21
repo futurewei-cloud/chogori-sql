@@ -120,7 +120,7 @@ k2::dto::expression::Expression K2Adapter::ToK2BinaryLogicOperator(PgOperator* p
         // only consider value here
         // TODO:: apply NOT to other types of expressions
         std::stringstream oss;
-        oss << "Second argument should be value, but actually is " << args[1]->opcode();
+        oss << "Second argument should be a value, but actually is " << args[1]->opcode();
         throw std::invalid_argument(oss.str());
     }
 
@@ -328,16 +328,20 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 }
                 PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
                 PgConstant* val = static_cast<PgConstant *>(args[1]);
-                int cur_idx = field_map[col_ref->attr_name()];
-                if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
-                    start_idx = cur_idx;
-                    K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), start);
+                if (val->getValue()->IsNumeric()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), start);
+                    } else {
+                        didBranch = true;
+                    }
                 } else {
                     didBranch = true;
-                    leftover_exprs.emplace_back(pg_expr);
                 }
+                // always push the comparison operator to K2 as discussed
+                leftover_exprs.emplace_back(pg_expr);
             } break;
-            case PgExpr::Opcode::PG_EXPR_LE:
             case PgExpr::Opcode::PG_EXPR_LT: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
                 if (!args[0]->is_colref()) {
@@ -354,14 +358,53 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 }
                 PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
                 PgConstant* val = static_cast<PgConstant *>(args[1]);
-                int cur_idx = field_map[col_ref->attr_name()];
-                if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
-                    start_idx = cur_idx;
-                    K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), end);
+                if (val->getValue()->IsNumeric()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), end);
+                    } else {
+                        didBranch = true;
+                    }
                 } else {
                     didBranch = true;
-                    leftover_exprs.emplace_back(pg_expr);
                 }
+                // always push the comparison operator to K2 as discussed
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+            case PgExpr::Opcode::PG_EXPR_LE: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second argument should be value, but actually is " << args[1]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val = static_cast<PgConstant *>(args[1]);
+                if (val->getValue()->IsNumeric()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        if (val->getValue()->IsMaxNumber()) {
+                            // do not set the range if the value is maximum
+                            didBranch = true;
+                        } else {
+                            K2Adapter::SerializeValueToSKVRecord(val->getValue()->UpperBound(), end);
+                        }
+                    } else {
+                        didBranch = true;
+                    }
+                } else {
+                    didBranch = true;
+                }
+                leftover_exprs.emplace_back(pg_expr);
             } break;
             case PgExpr::Opcode::PG_EXPR_BETWEEN: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
@@ -385,22 +428,25 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 PgConstant* val2 = static_cast<PgConstant *>(args[2]);
 
                 K2ASSERT(log::k2Adapter, !val1->getValue()->IsNull() && !val2->getValue()->IsNull(), "Between operator should not have null values");
-                PgConstant* lower = val1;
-                PgConstant* higher = val2;
-                if (val1->getValue()->Compare(val2->getValue()) > 0) {
-                    lower = val2;
-                    higher = val1;
-                }
-                int cur_idx = field_map[col_ref->attr_name()];
-                if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
-                    start_idx = cur_idx;
-                    K2Adapter::SerializeValueToSKVRecord(*(lower->getValue()), start);
-                    K2Adapter::SerializeValueToSKVRecord(*(higher->getValue()), end);
+                if (val1->getValue()->IsNumeric() && val2->getValue()->IsNumeric()) {
+                    PgConstant* lower = val1;
+                    PgConstant* higher = val2;
+                    if (val1->getValue()->Compare(val2->getValue()) > 0) {
+                        lower = val2;
+                        higher = val1;
+                    }
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(lower->getValue()), start);
+                        K2Adapter::SerializeValueToSKVRecord(*(higher->getValue()), end);
+                    } else {
+                        didBranch = true;
+                    }
                 } else {
                     didBranch = true;
-                    leftover_exprs.emplace_back(pg_expr);
                 }
-
+                leftover_exprs.emplace_back(pg_expr);
             } break;
             default: {
                 const char* msg = "Expression Condition must be one of [BETWEEN, EQ, GE, LE]";
@@ -756,8 +802,15 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->startScanRecord = std::move(startRecord);
             scan->endScanRecord = std::move(endRecord);
 
-            if (request->where_conds != NULL) {
-                PgOperator * pg_opr = static_cast<PgOperator *>(request->where_conds);
+            if (request->where_conds != NULL || !leftover_exprs.empty()) {
+                PgOperator * pg_opr;
+                if (request->where_conds == NULL) {
+                    // create a temporary and operator
+                    PgOperator and_op("and", NULL);
+                    pg_opr = &and_op;
+                } else {
+                    pg_opr = static_cast<PgOperator *>(request->where_conds);
+                }
                 if (!leftover_exprs.empty()) {
                     // add the left over conditions to where conditions
                     // the top level expression is an AND, thus, we can add the left_over as its arguments
