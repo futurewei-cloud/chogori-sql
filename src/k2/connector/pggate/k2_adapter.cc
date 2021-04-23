@@ -40,9 +40,7 @@ std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
 // helper method to convert a PgExpr to K2 expression
 k2::dto::expression::Expression K2Adapter::ToK2Expression(PgExpr* pg_expr) {
     switch(pg_expr->opcode()) {
-        case PgExpr::Opcode::PG_EXPR_NOT:
         case PgExpr::Opcode::PG_EXPR_EQ:
-        case PgExpr::Opcode::PG_EXPR_NE:
         case PgExpr::Opcode::PG_EXPR_GE:
         case PgExpr::Opcode::PG_EXPR_GT:
         case PgExpr::Opcode::PG_EXPR_LE:
@@ -64,6 +62,9 @@ k2::dto::expression::Expression K2Adapter::ToK2Expression(PgExpr* pg_expr) {
             break;
         // don't support OR for now
         case PgExpr::Opcode::PG_EXPR_OR:
+        // don't support NOT for now
+        case PgExpr::Opcode::PG_EXPR_NOT:
+        case PgExpr::Opcode::PG_EXPR_NE:
         // don't support constant and column reference at the top level
         case PgExpr::Opcode::PG_EXPR_CONSTANT:
         case PgExpr::Opcode::PG_EXPR_COLREF:
@@ -118,16 +119,38 @@ k2::dto::expression::Expression K2Adapter::ToK2BinaryLogicOperator(PgOperator* p
     }
     if (!args[1]->is_constant()) {
         // only consider value here
-        // TODO:: apply NOT to other types of expressions
         std::stringstream oss;
         oss << "Second argument should be a value, but actually is " << args[1]->opcode();
         throw std::invalid_argument(oss.str());
     }
 
-    std::vector<k2::dto::expression::Value> values;
-    values.emplace_back(ToK2ColumnRef((PgColumnRef *)(args[0])));
-    values.emplace_back(ToK2Value((PgConstant *)(args[1])));
-    return k2::dto::expression::makeExpression(ToK2OperationType(pg_opr), std::move(values), {});
+    PgColumnRef* ref = static_cast<PgColumnRef *>(args[0]);
+    PgConstant* val = static_cast<PgConstant *>(args[1]);
+
+    if (pg_opr->opcode() == PgExpr::Opcode::PG_EXPR_EQ) {
+        // special handing for a NULL value
+        if (val->getValue()->IsNull()) {
+            std::vector<k2::dto::expression::Value> values;
+            values.emplace_back(ToK2ColumnRef(ref));
+            return k2::dto::expression::makeExpression(k2::dto::expression::Operation::IS_NULL, std::move(values), {});
+        } else {
+            std::vector<k2::dto::expression::Value> values;
+            values.emplace_back(ToK2ColumnRef(ref));
+            values.emplace_back(ToK2Value(val));
+            return k2::dto::expression::makeExpression(ToK2OperationType(pg_opr), std::move(values), {});
+        }
+    } else {
+        if (val->getValue()->IsNull()) {
+            // NULL value should not be handled here
+            std::stringstream oss;
+            oss << "NULL value should not be handled by operator " << pg_opr->opcode();
+            throw std::invalid_argument(oss.str());
+        }
+        std::vector<k2::dto::expression::Value> values;
+        values.emplace_back(ToK2ColumnRef(ref));
+        values.emplace_back(ToK2Value(val));
+        return k2::dto::expression::makeExpression(ToK2OperationType(pg_opr), std::move(values), {});
+    }
 }
 
 k2::dto::expression::Expression K2Adapter::ToK2BetweenOperator(PgOperator* pg_opr) {
@@ -214,7 +237,8 @@ k2::dto::expression::Operation K2Adapter::ToK2OperationType(PgExpr* pg_expr) {
 
 k2::dto::expression::Value K2Adapter::ToK2Value(PgConstant* pg_const) {
     if (pg_const->getValue()->IsNull()) {
-        return k2::dto::expression::makeValueLiteral(NULL);
+        // NULL value should not be handled here
+        throw std::invalid_argument("NULL value should be handled differently");
     }
 
     switch(pg_const->getValue()->type_) {
