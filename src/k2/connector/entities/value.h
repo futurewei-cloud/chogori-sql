@@ -99,38 +99,18 @@ public:
       return type_ == ValueType::BOOL;
   }
 
-  bool IsNumeric() {
-      return type_ == ValueType::INT || type_ == ValueType::FLOAT || type_ == ValueType::DOUBLE;
+  bool IsInteger() {
+      return type_ == ValueType::INT;
   }
 
-  bool IsMaxNumber() {
-      if (!IsNumeric()) {
+  bool IsMaxInteger() {
+      if (!IsInteger()) {
           return false;
       }
 
       // null values are not handled here since SQL has its own way to handle nulls
       assert(!IsNull());
-      switch (type_) {
-        case ValueType::INT: {
-            if (data_.int_val_ == std::numeric_limits<int64_t>::max()) {
-                return true;
-            }
-        } break;
-        case ValueType::FLOAT: {
-            if (data_.float_val_ == std::numeric_limits<float>::max()) {
-                return true;
-            }
-         } break;
-        case ValueType::DOUBLE: {
-            if (data_.double_val_ == std::numeric_limits<double>::max()) {
-                return true;
-            }
-        } break;
-        default: {
-            return false;
-        } break;
-      }
-      return false;
+      return data_.int_val_ == std::numeric_limits<int64_t>::max();
   }
 
   // get a value that is higher than the current one
@@ -141,16 +121,11 @@ public:
         case ValueType::INT: {
             return SqlValue(data_.int_val_ + 1);
         } break;
-        case ValueType::FLOAT: {
-            return SqlValue(std::nexttoward(data_.float_val_, 1.0));
-         } break;
-        case ValueType::DOUBLE: {
-                return SqlValue(std::nexttoward(data_.double_val_, 1.0));
-        } break;
         default: {
             throw std::invalid_argument("Unsupported data type: " + type_);
         } break;
     }
+
     throw std::invalid_argument("Unsupported data type: " + type_);
   }
 

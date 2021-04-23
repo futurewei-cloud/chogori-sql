@@ -352,7 +352,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 }
                 PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
                 PgConstant* val = static_cast<PgConstant *>(args[1]);
-                if (val->getValue()->IsNumeric()) {
+                if (val->getValue()->IsInteger()) {
                     int cur_idx = field_map[col_ref->attr_name()];
                     if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
                         start_idx = cur_idx;
@@ -382,7 +382,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 }
                 PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
                 PgConstant* val = static_cast<PgConstant *>(args[1]);
-                if (val->getValue()->IsNumeric()) {
+                if (val->getValue()->IsInteger()) {
                     int cur_idx = field_map[col_ref->attr_name()];
                     if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
                         start_idx = cur_idx;
@@ -412,11 +412,11 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 }
                 PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
                 PgConstant* val = static_cast<PgConstant *>(args[1]);
-                if (val->getValue()->IsNumeric()) {
+                if (val->getValue()->IsInteger()) {
                     int cur_idx = field_map[col_ref->attr_name()];
                     if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
                         start_idx = cur_idx;
-                        if (val->getValue()->IsMaxNumber()) {
+                        if (val->getValue()->IsMaxInteger()) {
                             // do not set the range if the value is maximum
                             didBranch = true;
                         } else {
@@ -452,7 +452,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 PgConstant* val2 = static_cast<PgConstant *>(args[2]);
 
                 K2ASSERT(log::k2Adapter, !val1->getValue()->IsNull() && !val2->getValue()->IsNull(), "Between operator should not have null values");
-                if (val1->getValue()->IsNumeric() && val2->getValue()->IsNumeric()) {
+                if (val1->getValue()->IsInteger() && val2->getValue()->IsInteger()) {
                     PgConstant* lower = val1;
                     PgConstant* higher = val2;
                     if (val1->getValue()->Compare(val2->getValue()) > 0) {
