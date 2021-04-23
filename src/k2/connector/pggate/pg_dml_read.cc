@@ -312,6 +312,49 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
   return Status::OK();
 }
 
+Status PgDmlRead::PopulateAttrName(PgExpr *pg_expr) {
+  switch(pg_expr->opcode()) {
+    case PgExpr::Opcode::PG_EXPR_COLREF: {
+      PgColumnRef* col_ref = (PgColumnRef *)(pg_expr);
+      DCHECK(col_ref->attr_num() != static_cast<int>(PgSystemAttrNum::kYBTupleId)) << "PgColumnRef cannot be applied to ROWID";
+      PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(col_ref->attr_num()));
+      col_ref->set_attr_name(col->attr_name());
+      K2LOG_D(log::pg, "Set column name as {} for {}", col_ref->attr_name(), col_ref->attr_num());
+    } break;
+    case PgExpr::Opcode::PG_EXPR_CONSTANT:
+      break;
+    default: {
+      PgOperator* pg_opr = (PgOperator *)(pg_expr);
+      for (auto arg : pg_opr->getArgs()) {
+        PopulateAttrName(arg);
+      }
+    } break;
+  }
+  return Status::OK();
+}
+
+Status PgDmlRead::BindRangeConds(PgExpr *range_conds) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindRangeConds(range_conds);
+  }
+
+  RETURN_NOT_OK(PopulateAttrName(range_conds));
+  read_req_->range_conds = range_conds;
+  return Status::OK();
+}
+
+Status PgDmlRead::BindWhereConds(PgExpr *where_conds) {
+  if (secondary_index_query_) {
+    // Bind by secondary key.
+    return secondary_index_query_->BindWhereConds(where_conds);
+  }
+
+  RETURN_NOT_OK(PopulateAttrName(where_conds));
+  read_req_->where_conds = where_conds;
+  return Status::OK();
+}
+
 Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
   // Initialize sql operator.
   if (sql_op_) {

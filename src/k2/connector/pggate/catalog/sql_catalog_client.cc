@@ -203,7 +203,7 @@ Status SqlCatalogClient::GetCatalogVersion(uint64_t *pg_catalog_version) {
   GetCatalogVersionRequest request;
   auto start = k2::Clock::now();
   GetCatalogVersionResponse response = catalog_manager_->GetCatalogVersion(request);
-  K2LOG_I(log::catalog, "GetCatalogVersion took {}", k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "GetCatalogVersion took {}", k2::Clock::now() - start);
   if (!response.status.ok()) {
      return response.status;
   }
@@ -215,7 +215,7 @@ Status SqlCatalogClient::IncrementCatalogVersion() {
   IncrementCatalogVersionRequest request;
   auto start = k2::Clock::now();
   IncrementCatalogVersionResponse response = catalog_manager_->IncrementCatalogVersion(request);
-  K2LOG_I(log::catalog, "IncrementCatalogVersion took {}", k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "IncrementCatalogVersion took {}", k2::Clock::now() - start);
   return response.status;
 }
 } // namespace catalog

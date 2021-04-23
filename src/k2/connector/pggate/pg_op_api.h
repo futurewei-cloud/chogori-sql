@@ -29,7 +29,7 @@
 #include "entities/type.h"
 #include "entities/value.h"
 #include "entities/table.h"
-
+#include <k2/dto/Expression.h>
 #include "pggate/pg_tuple.h"
 
 #include "k2_includes.h"
@@ -50,6 +50,9 @@ namespace gate {
     using k2pg::sql::SqlValue;
     using k2pg::sql::TableName;
     using k2pg::sql::TableId;
+    using k2::dto::expression::Expression;
+    using k2::dto::expression::Operation;
+    using k2::dto::expression::Value;
 
     class SqlOpCondition;
 
@@ -231,7 +234,10 @@ namespace gate {
 
         // Projection, aggregate, etc.
         std::vector<std::shared_ptr<SqlOpExpr>> targets;
-        std::shared_ptr<SqlOpExpr> where_expr;
+
+        PgExpr* range_conds;
+        PgExpr* where_conds;
+
         // Includes Scan Range start and end
         std::shared_ptr<SqlOpCondition> condition_expr;
         bool is_forward_scan = true;

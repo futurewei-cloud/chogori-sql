@@ -23,6 +23,9 @@
 #ifndef CHOGORI_SQL_VALUE_H
 #define CHOGORI_SQL_VALUE_H
 
+#include <assert.h>
+#include <cmath>
+
 #include "common/macros.h"
 #include "common/type/slice.h"
 #include "pggate/pg_gate_typedefs.h"
@@ -91,6 +94,94 @@ public:
   SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
 
   SqlValue(const SqlValue& val) = default;
+
+  bool IsBoolean() {
+      return type_ == ValueType::BOOL;
+  }
+
+  bool IsInteger() {
+      return type_ == ValueType::INT;
+  }
+
+  bool IsMaxInteger() {
+      if (!IsInteger()) {
+          return false;
+      }
+
+      // null values are not handled here since SQL has its own way to handle nulls
+      assert(!IsNull());
+      return data_.int_val_ == std::numeric_limits<int64_t>::max();
+  }
+
+  // get a value that is higher than the current one
+  SqlValue UpperBound() {
+    // null values are not handled here since SQL has its own way to handle nulls
+    assert(!IsNull());
+    switch (type_) {
+        case ValueType::INT: {
+            return SqlValue(data_.int_val_ + 1);
+        } break;
+        default: {
+            throw std::invalid_argument("Unsupported data type: " + type_);
+        } break;
+    }
+
+    throw std::invalid_argument("Unsupported data type: " + type_);
+  }
+
+  int Compare(const SqlValue& val) {
+    // null values are not considered here since their comparison is based on column sorting type
+    assert((!IsNull()) && (!val.IsNull()));
+    // types must be the same for comparison
+    assert(type_ == val.type_);
+
+    switch (type_) {
+        case ValueType::BOOL: {
+            if (data_.bool_val_ == val.data_.bool_val_) {
+                return 0;
+            } else if (data_.bool_val_ < val.data_.bool_val_) {
+                return -1;
+            } else {
+                return 1;
+            }
+        } break;
+        case ValueType::INT: {
+            if (data_.int_val_ == val.data_.int_val_) {
+                return 0;
+            } else if (data_.int_val_ < val.data_.int_val_) {
+                return -1;
+            } else {
+                return 1;
+            }
+        } break;
+        case ValueType::FLOAT: {
+            if (data_.float_val_ == val.data_.float_val_) {
+                return 0;
+            } else if (data_.float_val_ < val.data_.float_val_) {
+                return -1;
+            } else {
+                return 1;
+            }
+        } break;
+        case ValueType::DOUBLE: {
+            if (data_.double_val_ == val.data_.double_val_) {
+                return 0;
+            } else if (data_.double_val_ < val.data_.double_val_) {
+                return -1;
+            } else {
+                return 1;
+            }
+        } break;
+        case ValueType::SLICE: {
+            return data_.slice_val_.compare(val.data_.slice_val_);
+        } break;
+        default:
+            throw std::invalid_argument("Unknown data type");
+        break;
+    }
+
+    throw std::invalid_argument("Unknown data type");
+  }
 
   static SqlValue* CopySlice(yb::Slice s);
 

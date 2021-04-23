@@ -9,6 +9,8 @@
 //
 #include "k2_adapter.h"
 
+#include <unordered_map>
+
 #include <seastar/core/memory.hh>
 #include <seastar/core/resource.hh>
 
@@ -18,7 +20,6 @@ namespace k2pg {
 namespace gate {
 
 using k2::K2TxnOptions;
-
 
 Status K2Adapter::Init() {
     K2LOG_I(log::k2Adapter, "Initialize adapter");
@@ -35,6 +36,453 @@ Status K2Adapter::Shutdown() {
 std::string K2Adapter::GetRowIdFromReadRecord(k2::dto::SKVRecord& record) {
     k2::dto::SKVRecord key_record = record.getSKVKeyRecord();
     return SerializeSKVRecordToString(key_record);
+}
+
+// helper method to convert a PgExpr to K2 expression
+k2::dto::expression::Expression K2Adapter::ToK2Expression(PgExpr* pg_expr) {
+    switch(pg_expr->opcode()) {
+        case PgExpr::Opcode::PG_EXPR_EQ:
+        case PgExpr::Opcode::PG_EXPR_GE:
+        case PgExpr::Opcode::PG_EXPR_GT:
+        case PgExpr::Opcode::PG_EXPR_LE:
+        case PgExpr::Opcode::PG_EXPR_LT:
+        {
+            return ToK2BinaryLogicOperator(static_cast<PgOperator *>(pg_expr));
+        } break;
+        case PgExpr::Opcode::PG_EXPR_AND: {
+            PgOperator* pg_opr = static_cast<PgOperator *>(pg_expr);
+            K2LOG_D(log::k2Adapter, "Converting PgOperator {}", *pg_opr);
+            std::vector<PgExpr*> args;
+            for (auto arg : pg_opr->getArgs()) {
+                args.emplace_back(arg);
+            }
+            return ToK2AndOrOperator(k2::dto::expression::Operation::AND, args);
+        } break;
+        case PgExpr::Opcode::PG_EXPR_BETWEEN:
+            return ToK2BetweenOperator(static_cast<PgOperator *>(pg_expr));
+            break;
+        // don't support OR for now
+        case PgExpr::Opcode::PG_EXPR_OR:
+        // don't support NOT for now
+        case PgExpr::Opcode::PG_EXPR_NOT:
+        case PgExpr::Opcode::PG_EXPR_NE:
+        // don't support constant and column reference at the top level
+        case PgExpr::Opcode::PG_EXPR_CONSTANT:
+        case PgExpr::Opcode::PG_EXPR_COLREF:
+        // don't support set operator in K2 yet
+        case PgExpr::Opcode::PG_EXPR_IN:
+        // don't support aggregation in K2 yet
+        case PgExpr::Opcode::PG_EXPR_AVG:
+        case PgExpr::Opcode::PG_EXPR_SUM:
+        case PgExpr::Opcode::PG_EXPR_COUNT:
+        case PgExpr::Opcode::PG_EXPR_MAX:
+        case PgExpr::Opcode::PG_EXPR_MIN:
+        // don't support built-in func call yet
+        case PgExpr::Opcode::PG_EXPR_EVAL_EXPR_CALL:
+        default: {
+            std::stringstream oss;
+            oss << "Unsupported PgExpr " << pg_expr->opcode();
+            throw std::invalid_argument(oss.str());
+        } break;
+    }
+}
+
+k2::dto::expression::Expression K2Adapter::ToK2AndOrOperator(k2::dto::expression::Operation op, std::vector<PgExpr*> args) {
+    if (args.size() == 2) {
+        std::vector<k2::dto::expression::Expression> exprs;
+        exprs.emplace_back(ToK2Expression(args.back()));
+        args.pop_back();
+        exprs.emplace_back(ToK2Expression(args.back()));
+        args.pop_back();
+        return k2::dto::expression::makeExpression(op, {}, std::move(exprs));
+    } else if (args.size() > 2) {
+        PgExpr* pg_expr = args.back();
+        args.pop_back();
+        std::vector<k2::dto::expression::Expression> exprs;
+        exprs.emplace_back(ToK2Expression(pg_expr));
+        exprs.emplace_back(ToK2AndOrOperator(op, args));
+        return k2::dto::expression::makeExpression(op, {}, std::move(exprs));
+    } else {
+        k2::dto::expression::Expression expr = ToK2Expression(args.back());
+        args.pop_back();
+        return expr;
+    }
+}
+
+k2::dto::expression::Expression K2Adapter::ToK2BinaryLogicOperator(PgOperator* pg_opr) {
+    K2LOG_D(log::k2Adapter, "Converting PgOperator {}", *pg_opr);
+    auto& args = pg_opr->getArgs();
+    K2ASSERT(log::k2Adapter, args.size() == 2, "Binary logic operator must have two arguments");
+    if (!args[0]->is_colref()) {
+        std::stringstream oss;
+        oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+        throw std::invalid_argument(oss.str());
+    }
+    if (!args[1]->is_constant()) {
+        // only consider value here
+        std::stringstream oss;
+        oss << "Second argument should be a value, but actually is " << args[1]->opcode();
+        throw std::invalid_argument(oss.str());
+    }
+
+    PgColumnRef* ref = static_cast<PgColumnRef *>(args[0]);
+    PgConstant* val = static_cast<PgConstant *>(args[1]);
+
+    if (pg_opr->opcode() == PgExpr::Opcode::PG_EXPR_EQ) {
+        // special handing for a NULL value
+        if (val->getValue()->IsNull()) {
+            std::vector<k2::dto::expression::Value> values;
+            values.emplace_back(ToK2ColumnRef(ref));
+            return k2::dto::expression::makeExpression(k2::dto::expression::Operation::IS_NULL, std::move(values), {});
+        } else {
+            std::vector<k2::dto::expression::Value> values;
+            values.emplace_back(ToK2ColumnRef(ref));
+            values.emplace_back(ToK2Value(val));
+            return k2::dto::expression::makeExpression(ToK2OperationType(pg_opr), std::move(values), {});
+        }
+    } else {
+        if (val->getValue()->IsNull()) {
+            // NULL value should not be handled here
+            std::stringstream oss;
+            oss << "NULL value should not be handled by operator " << pg_opr->opcode();
+            throw std::invalid_argument(oss.str());
+        }
+        std::vector<k2::dto::expression::Value> values;
+        values.emplace_back(ToK2ColumnRef(ref));
+        values.emplace_back(ToK2Value(val));
+        return k2::dto::expression::makeExpression(ToK2OperationType(pg_opr), std::move(values), {});
+    }
+}
+
+k2::dto::expression::Expression K2Adapter::ToK2BetweenOperator(PgOperator* pg_opr) {
+    K2LOG_D(log::k2Adapter, "Converting PgOperator {}", *pg_opr);
+    auto& args = pg_opr->getArgs();
+    if (args.size() != 3) {
+       throw std::invalid_argument("Between operator should have 3 arguments, but actually has " + args.size());
+    }
+    if (!args[0]->is_colref()) {
+        std::stringstream oss;
+        oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+        throw std::invalid_argument(oss.str());
+    }
+
+    if (!args[1]->is_constant() || !args[2]->is_constant()) {
+        std::stringstream oss;
+        oss << "Second and third arguments should be value, but actually are " << args[1]->opcode() << " and " << args[2]->opcode();
+        throw std::invalid_argument(oss.str());
+    }
+
+    PgConstant* val1 = static_cast<PgConstant *>(args[1]);
+    PgConstant* val2 = static_cast<PgConstant *>(args[2]);
+
+    K2ASSERT(log::k2Adapter, !val1->getValue()->IsNull() && !val2->getValue()->IsNull(), "Between operator should not have null values");
+
+    PgConstant* lower = val1;
+    PgConstant* higher = val2;
+    if (val1->getValue()->Compare(val2->getValue()) > 0) {
+        lower = val2;
+        higher = val1;
+    }
+    // BETWEEN is AND(LTE, GTE)
+    std::vector<k2::dto::expression::Value> lower_values;
+    lower_values.emplace_back(ToK2ColumnRef((PgColumnRef *)(args[0])));
+    lower_values.emplace_back(ToK2Value(lower));
+    k2::dto::expression::Expression lower_expr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::GTE, std::move(lower_values), {});
+    std::vector<k2::dto::expression::Value> higher_values;
+    higher_values.emplace_back(ToK2ColumnRef((PgColumnRef *)(args[0])));
+    higher_values.emplace_back(ToK2Value(higher));
+    k2::dto::expression::Expression higher_expr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::LTE, std::move(higher_values), {});
+    std::vector<k2::dto::expression::Expression> exprs;
+    exprs.emplace_back(std::move(lower_expr));
+    exprs.emplace_back(std::move(higher_expr));
+    return k2::dto::expression::makeExpression(k2::dto::expression::Operation::AND, {}, std::move(exprs));
+}
+
+k2::dto::expression::Operation K2Adapter::ToK2OperationType(PgExpr* pg_expr) {
+    k2::dto::expression::Operation opr_type = k2::dto::expression::Operation::UNKNOWN;
+    switch(pg_expr->opcode()) {
+        case PgExpr::Opcode::PG_EXPR_NOT:
+            opr_type = k2::dto::expression::Operation::NOT;
+            break;
+        case PgExpr::Opcode::PG_EXPR_EQ:
+            opr_type = k2::dto::expression::Operation::EQ;
+            break;
+        case PgExpr::Opcode::PG_EXPR_NE:
+            opr_type = k2::dto::expression::Operation::NOT;
+            break;
+        case PgExpr::Opcode::PG_EXPR_GE:
+            opr_type = k2::dto::expression::Operation::GTE;
+            break;
+        case PgExpr::Opcode::PG_EXPR_GT:
+            opr_type = k2::dto::expression::Operation::GT;
+            break;
+        case PgExpr::Opcode::PG_EXPR_LE:
+            opr_type = k2::dto::expression::Operation::LTE;
+            break;
+        case PgExpr::Opcode::PG_EXPR_LT:
+            opr_type = k2::dto::expression::Operation::LT;
+            break;
+        case PgExpr::Opcode::PG_EXPR_AND:
+            opr_type = k2::dto::expression::Operation::AND;
+            break;
+        case PgExpr::Opcode::PG_EXPR_OR:
+            opr_type = k2::dto::expression::Operation::OR;
+            break;
+        default:
+            K2LOG_W(log::k2Adapter, "Unsupported PgExpr type {}", pg_expr->opcode());
+            break;
+    }
+
+    return opr_type;
+}
+
+k2::dto::expression::Value K2Adapter::ToK2Value(PgConstant* pg_const) {
+    if (pg_const->getValue()->IsNull()) {
+        // NULL value should not be handled here
+        throw std::invalid_argument("NULL value should be handled differently");
+    }
+
+    switch(pg_const->getValue()->type_) {
+        case SqlValue::ValueType::BOOL: {
+            bool val = pg_const->getValue()->data_.bool_val_;
+            return k2::dto::expression::makeValueLiteral<bool>(std::move(val));
+        }
+        case SqlValue::ValueType::INT: {
+            int64_t val = pg_const->getValue()->data_.int_val_;
+            return k2::dto::expression::makeValueLiteral<int64_t>(std::move(val));
+        }
+        case SqlValue::ValueType::FLOAT: {
+            float val = pg_const->getValue()->data_.float_val_;
+            return k2::dto::expression::makeValueLiteral<float>(std::move(val));
+        }
+        case SqlValue::ValueType::DOUBLE: {
+            double val = pg_const->getValue()->data_.double_val_;
+            return k2::dto::expression::makeValueLiteral<double>(std::move(val));
+        }
+        case SqlValue::ValueType::SLICE:
+            return k2::dto::expression::makeValueLiteral<k2::String>(k2::String(pg_const->getValue()->data_.slice_val_));
+        default:
+            throw std::invalid_argument("Unknown SqlValue type: " + pg_const->getValue()->type_);
+    }
+}
+
+k2::dto::expression::Value K2Adapter::ToK2ColumnRef(PgColumnRef* pg_colref) {
+    K2LOG_D(log::k2Adapter, "Setting column reference {}", pg_colref->attr_name());
+    return k2::dto::expression::makeValueReference(pg_colref->attr_name());
+}
+
+Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr *>& leftover_exprs, k2::dto::SKVRecord& start, k2::dto::SKVRecord& end) {
+    if (range_conds == NULL) {
+        return Status::OK();
+    }
+
+    if (range_conds->opcode() != PgExpr::Opcode::PG_EXPR_AND) {
+        const char* msg = "Only AND top-level condition is supported in range expression";
+        K2LOG_E(log::k2Adapter, "{}", msg);
+        return STATUS(InvalidCommand, msg);
+    }
+
+    PgOperator * pg_opr = static_cast<PgOperator *>(range_conds);
+    if (pg_opr->getArgs().empty()) {
+        K2LOG_D(log::k2Adapter, "Child conditions are empty");
+        return Status::OK();
+    }
+
+    std::vector<k2::dto::SchemaField> fields = start.schema->fields;
+    std::unordered_map<std::string, int> field_map;
+    for (int i = SKV_FIELD_OFFSET; i < fields.size(); i++) {
+        field_map[fields[i].name] = i;
+    }
+
+    // make sure that the record cursor in the correct start position
+    start.seekField(SKV_FIELD_OFFSET);
+    end.seekField(SKV_FIELD_OFFSET);
+
+    int start_idx = SKV_FIELD_OFFSET - 1;
+    bool didBranch = false;
+    for (auto& pg_expr : pg_opr->getArgs()) {
+         if (didBranch) {
+            // there was a branch in the processing of previous condition and we cannot continue.
+            // Ideally, this shouldn't happen if the query parser did its job well.
+            // This is not an error, and so we can still process the request. PG would down-filter the result set after
+            K2LOG_W(log::k2Adapter, "Condition branched at previous key field. Use the condition as filter condition");
+            leftover_exprs.emplace_back(pg_expr);
+            continue; // keep going so that we log all skipped expressions;
+        }
+        switch(pg_expr->opcode()) {
+            case PgExpr::Opcode::PG_EXPR_EQ: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second argument should be value, but actually is " << args[1]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val = static_cast<PgConstant *>(args[1]);
+                int cur_idx = field_map[col_ref->attr_name()];
+                if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                    start_idx = cur_idx;
+                    K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), start);
+                    K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), end);
+                } else {
+                    didBranch = true;
+                    leftover_exprs.emplace_back(pg_expr);
+                }
+            } break;
+            case PgExpr::Opcode::PG_EXPR_GE:
+            case PgExpr::Opcode::PG_EXPR_GT: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second argument should be value, but actually is " << args[1]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val = static_cast<PgConstant *>(args[1]);
+                if (val->getValue()->IsInteger()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), start);
+                    } else {
+                        didBranch = true;
+                    }
+                } else {
+                    didBranch = true;
+                }
+                // always push the comparison operator to K2 as discussed
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+            case PgExpr::Opcode::PG_EXPR_LT: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second argument should be value, but actually is " << args[1]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val = static_cast<PgConstant *>(args[1]);
+                if (val->getValue()->IsInteger()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(val->getValue()), end);
+                    } else {
+                        didBranch = true;
+                    }
+                } else {
+                    didBranch = true;
+                }
+                // always push the comparison operator to K2 as discussed
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+            case PgExpr::Opcode::PG_EXPR_LE: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second argument should be value, but actually is " << args[1]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val = static_cast<PgConstant *>(args[1]);
+                if (val->getValue()->IsInteger()) {
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        if (val->getValue()->IsMaxInteger()) {
+                            // do not set the range if the value is maximum
+                            didBranch = true;
+                        } else {
+                            K2Adapter::SerializeValueToSKVRecord(val->getValue()->UpperBound(), end);
+                        }
+                    } else {
+                        didBranch = true;
+                    }
+                } else {
+                    didBranch = true;
+                }
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+            case PgExpr::Opcode::PG_EXPR_BETWEEN: {
+                auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
+                if (args.size() != 3) {
+                    throw std::invalid_argument("Between operator should have 3 arguments, but actually has " + args.size());
+                }
+                if (!args[0]->is_colref()) {
+                    std::stringstream oss;
+                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                if (!args[1]->is_constant() || !args[2]->is_constant()) {
+                    // only consider value here
+                    // TODO:: apply NOT to other types of expressions
+                    std::stringstream oss;
+                    oss << "Second and third arguments should be value, but actually are " << args[1]->opcode() << " and " << args[2]->opcode();
+                    throw std::invalid_argument(oss.str());
+                }
+                PgColumnRef* col_ref = static_cast<PgColumnRef *>(args[0]);
+                PgConstant* val1 = static_cast<PgConstant *>(args[1]);
+                PgConstant* val2 = static_cast<PgConstant *>(args[2]);
+
+                K2ASSERT(log::k2Adapter, !val1->getValue()->IsNull() && !val2->getValue()->IsNull(), "Between operator should not have null values");
+                if (val1->getValue()->IsInteger() && val2->getValue()->IsInteger()) {
+                    PgConstant* lower = val1;
+                    PgConstant* higher = val2;
+                    if (val1->getValue()->Compare(val2->getValue()) > 0) {
+                        lower = val2;
+                        higher = val1;
+                    }
+                    int cur_idx = field_map[col_ref->attr_name()];
+                    if (cur_idx - start_idx == 0 || cur_idx - start_idx == 1) {
+                        start_idx = cur_idx;
+                        K2Adapter::SerializeValueToSKVRecord(*(lower->getValue()), start);
+                        K2Adapter::SerializeValueToSKVRecord(*(higher->getValue()), end);
+                    } else {
+                        didBranch = true;
+                    }
+                } else {
+                    didBranch = true;
+                }
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+            default: {
+                const char* msg = "Expression Condition must be one of [BETWEEN, EQ, GE, LE]";
+                K2LOG_W(log::k2Adapter, "{}", msg);
+                didBranch = true;
+                leftover_exprs.emplace_back(pg_expr);
+            } break;
+        }
+    }
+
+    return Status::OK();
 }
 
 // this helper method processes the given leaf condition, and sets the bounds start/end accordingly.
@@ -375,16 +823,39 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 return;
             }
 
+            // update the records based on the range condition found in the request
+            std::vector<PgExpr *> leftover_exprs;
+            auto rngStatus = HandleRangeConditions(request->range_conds, leftover_exprs, startRecord, endRecord);
+            if (!rngStatus.ok()) {
+                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
+                response.rows_affected_count = 0;
+                prom->set_value(std::move(rngStatus));
+                return;
+            }
+
             scan->startScanRecord = std::move(startRecord);
             scan->endScanRecord = std::move(endRecord);
 
-            // TODO apply the where clause as a filter expression in the scan
-            if (request->where_expr) {
-                K2LOG_E(log::k2Adapter, "Read request with where_expr is not supported.");
-                response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
-                response.rows_affected_count = 0;
-                prom->set_value(std::move(startStatus));
-                return;
+            if (request->where_conds != NULL || !leftover_exprs.empty()) {
+                PgOperator * pg_opr;
+                if (request->where_conds == NULL) {
+                    // create a temporary and operator
+                    PgOperator and_op("and", NULL);
+                    pg_opr = &and_op;
+                } else {
+                    pg_opr = static_cast<PgOperator *>(request->where_conds);
+                }
+                if (!leftover_exprs.empty()) {
+                    // add the left over conditions to where conditions
+                    // the top level expression is an AND, thus, we can add the left_over as its arguments
+                    for (auto leftover_expr : leftover_exprs) {
+                        pg_opr->AppendArg(leftover_expr);
+                    }
+                }
+
+                if (!pg_opr->getArgs().empty()) {
+                    scan->setFilterExpression(std::move(ToK2Expression(request->where_conds)));
+                }
             }
 
             // this is a total limit.
@@ -400,7 +871,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         } else if (request->paging_state) {
             response.paging_state = request->paging_state;
             response.paging_state->total_num_rows_read += scan_result.records.size();
-            K2LOG_D(log::k2Adapter, "Request paging state is null? {}, for request {}", (request->paging_state == nullptr), request->table_id);
+            K2LOG_D(log::k2Adapter, "Request paging state is null? {}, for request {}, total num of read {}", (request->paging_state == nullptr), request->table_id, response.paging_state->total_num_rows_read);
         } else {
             response.paging_state = std::make_shared<SqlOpPagingState>();
             response.paging_state->query = scan;

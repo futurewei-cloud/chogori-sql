@@ -21,6 +21,7 @@
 #include "common/concurrent/async_util.h"
 #include "common/status.h"
 #include "entities/schema.h"
+#include "entities/expr.h"
 #include "k2_config.h"
 #include "k2_gate.h"
 #include "k2_includes.h"
@@ -34,6 +35,9 @@ namespace k2pg {
 namespace gate {
 
 using yb::Status;
+using k2pg::sql::PgExpr;
+using k2pg::sql::PgConstant;
+using k2pg::sql::PgOperator;
 
 // An adapter between SQL/Connector layer operations and K2 SKV storage, designed to be the ONLY interface in between.
 // It contains 5 sub-groups of APIs
@@ -99,6 +103,14 @@ public:
   CHECKED_STATUS Init();
   CHECKED_STATUS Shutdown();
 
+  static k2::dto::expression::Expression ToK2Expression(PgExpr* pg_expr);
+  static k2::dto::expression::Expression ToK2AndOrOperator(k2::dto::expression::Operation op, std::vector<PgExpr*> args);
+  static k2::dto::expression::Expression ToK2BinaryLogicOperator(PgOperator* pg_opr);
+  static k2::dto::expression::Expression ToK2BetweenOperator(PgOperator* pg_opr);
+  static k2::dto::expression::Operation ToK2OperationType(PgExpr* pg_expr) ;
+  static k2::dto::expression::Value ToK2Value(PgConstant* pg_const);
+  static k2::dto::expression::Value ToK2ColumnRef(PgColumnRef* pg_colref);
+
   private:
   std::shared_ptr<K23SIGate> k23si_;
   Config conf_;
@@ -111,6 +123,9 @@ public:
 
   CBFuture<Status> handleReadOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgReadOpTemplate> op);
   CBFuture<Status> handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn, std::shared_ptr<PgWriteOpTemplate> op);
+
+  Status HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr *>& leftover_exprs, k2::dto::SKVRecord& start, k2::dto::SKVRecord& end);
+
   // Helper funcxtion for handleReadOp when ybctid is set in the request
   void handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                            std::shared_ptr<PgReadOpTemplate> op,

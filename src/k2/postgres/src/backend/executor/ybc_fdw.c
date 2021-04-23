@@ -34,6 +34,7 @@
 #include "access/reloptions.h"
 #include "access/sysattr.h"
 #include "catalog/catalog.h"
+#include "catalog/pg_type.h"
 #include "catalog/pg_foreign_table.h"
 #include "commands/copy.h"
 #include "commands/defrem.h"
@@ -132,19 +133,21 @@ typedef struct FDWConstValue
 
 typedef struct FDWExprRefValues
 {
+	Oid opno;  // PG_OPERATOR OID of the operator
 	List *column_refs;
 	List *const_values;
 	ParamListInfo paramLI; // parameters binding information for prepare statements
 } FDWExprRefValues;
 
-typedef struct FDWEqualCond
+typedef struct FDWOprCond
 {
+	Oid opno;  // PG_OPERATOR OID of the operator
 	FDWColumnRef *ref; // column reference
 	FDWConstValue *val; // column value
-} FDWEqualCond;
+} FDWOprCond;
 
 typedef struct foreign_expr_cxt {
-	List *equal_conds;          /* equal conditions */
+	List *opr_conds;          /* opr conditions */
 } foreign_expr_cxt;
 
 /*
@@ -176,6 +179,7 @@ typedef struct PgFdwScanPlanData
 	Relation target_relation;
 
 	int nkeys; // number of keys
+	int nNonKeys; // number of non-keys
 
 	/* Primary and hash key columns of the referenced table/relation. */
 	Bitmapset *primary_key;
@@ -189,6 +193,7 @@ typedef struct PgFdwScanPlanData
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
 	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber bind_nonkey_attnums[YB_MAX_SCAN_KEYS];
 } PgFdwScanPlanData;
 
 typedef PgFdwScanPlanData *PgFdwScanPlan;
@@ -216,6 +221,8 @@ static void parse_var(Var *node, FDWExprRefValues *ref_values);
 static void parse_const(Const *node, FDWExprRefValues *ref_values);
 
 static void parse_param(Param *node, FDWExprRefValues *ref_values);
+
+static YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond);
 
 /*
  * Return true if given object is one of PostgreSQL's built-in objects.
@@ -563,7 +570,19 @@ foreign_expr_walker(Node *node,
 		case T_BoolExpr:
 			{
 				BoolExpr   *b = (BoolExpr *) node;
-
+				switch (b->boolop)
+				{
+					case AND_EXPR:
+						break;
+					case OR_EXPR:  // do not support OR and NOT for now
+					case NOT_EXPR:
+						return false;
+						break;
+					default:
+						elog(ERROR, "unrecognized boolop: %d", (int) b->boolop);
+						return false;
+						break;
+				}
 				/*
 				 * Recurse to input subexpressions.
 				 */
@@ -825,17 +844,18 @@ static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cx
 		ref_values.paramLI = paramLI;
 		parse_expr(expr, &ref_values);
 		if (list_length(ref_values.column_refs) == 1 && list_length(ref_values.const_values) == 1) {
-			FDWEqualCond *eq_cond = (FDWEqualCond *)palloc0(sizeof(FDWEqualCond));
+			FDWOprCond *opr_cond = (FDWOprCond *)palloc0(sizeof(FDWOprCond));
+			opr_cond->opno = ref_values.opno;
 			// found a binary condition
 			ListCell   *rlc;
 			foreach(rlc, ref_values.column_refs) {
-				eq_cond->ref = (FDWColumnRef *)lfirst(rlc);
+				opr_cond->ref = (FDWColumnRef *)lfirst(rlc);
 			}
 
 			foreach(rlc, ref_values.const_values) {
-				eq_cond->val = (FDWConstValue *)lfirst(rlc);
+				opr_cond->val = (FDWConstValue *)lfirst(rlc);
 			}
-			expr_cxt->equal_conds = lappend(expr_cxt->equal_conds, eq_cond);
+			expr_cxt->opr_conds = lappend(expr_cxt->opr_conds, opr_cond);
 		}
 	}
 }
@@ -859,7 +879,7 @@ static void parse_expr(Expr *node, FDWExprRefValues *ref_values) {
 			parse_param((Param *) node, ref_values);
 			break;
 		default:
-			elog(WARNING, "FDW: unsupported expression type for expr: %s", nodeToString(node));
+			elog(DEBUG4, "FDW: unsupported expression type for expr: %s", nodeToString(node));
 			break;
 	}
 }
@@ -875,8 +895,13 @@ static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 	ListCell *lc;
 	switch (get_oprrest(node->opno))
 	{
-		case F_EQSEL: // only handle equal condition for now
-			elog(DEBUG4, "FDW: parsing equal OpExpr: %d", get_oprrest(node->opno));
+		case F_EQSEL: //  equal =
+		case F_SCALARLTSEL: // Less than <
+		case F_SCALARLESEL: // Less Equal <=
+		case F_SCALARGTSEL: // Greater than >
+		case F_SCALARGESEL: // Greater Euqal >=
+			elog(DEBUG4, "FDW: parsing OpExpr: %d", get_oprrest(node->opno));
+			ref_values->opno = node->opno;
 			foreach(lc, node->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
@@ -989,6 +1014,9 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 		scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
 		scan_plan->bind_key_attnums[scan_plan->nkeys] = attnum;
 		scan_plan->nkeys++;
+	} else {
+		scan_plan->bind_nonkey_attnums[scan_plan->nNonKeys] = attnum;
+		scan_plan->nNonKeys++;
 	}
 }
 
@@ -1005,6 +1033,7 @@ static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
 	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
 
 	scan_plan->nkeys = 0;
+	scan_plan->nNonKeys = 0;
 	// number of attributes in the relation tuple
 	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
 	{
@@ -1035,87 +1064,51 @@ static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
   return atttypid;
 }
 
-/*
- * Bind a scan key.
- */
-static void pgBindColumn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
-
-	HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
-													fdw_state->handle,
-													fdw_state->stmt_owner);
-}
-
-void pgBindColumnCondEq(YbFdwExecState *fdw_state, bool is_hash_key, TupleDesc bind_desc,
-						 AttrNumber attnum, Datum value, bool is_null)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = YBCNewConstant(fdw_state->handle, atttypid, value, is_null);
-
-	if (is_hash_key)
-		HandleYBStatusWithOwner(YBCPgDmlBindColumn(fdw_state->handle, attnum, ybc_expr),
-														fdw_state->handle,
-														fdw_state->stmt_owner);
-	else
-		HandleYBStatusWithOwner(YBCPgDmlBindColumnCondEq(fdw_state->handle, attnum, ybc_expr),
-														fdw_state->handle,
-														fdw_state->stmt_owner);
-}
-
-static void pgBindColumnCondBetween(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
-                                     bool start_valid, Datum value, bool end_valid, Datum value_end)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(fdw_state->handle, atttypid, value,
-      false /* isnull */) : NULL;
-	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(fdw_state->handle, atttypid, value_end,
-      false /* isnull */) : NULL;
-
-    HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(fdw_state->handle, attnum, ybc_expr,
-														ybc_expr_end),
-													fdw_state->handle,
-													fdw_state->stmt_owner);
-}
-
-/*
- * Bind an array of scan keys for a column.
- */
-static void pgBindColumnCondIn(YbFdwExecState *fdw_state, TupleDesc bind_desc, AttrNumber attnum,
-                                int nvalues, Datum *values)
-{
-	Oid	atttypid = pg_get_atttypid(bind_desc, attnum);
-
-	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
-	for (int i = 0; i < nvalues; i++) {
-		/*
-		 * For IN we are removing all null values in ybcBindScanKeys before
-		 * getting here (relying on btree/lsm operators being strict).
-		 * So we can safely set is_null to false for all options left here.
-		 */
-		ybc_exprs[i] = YBCNewConstant(fdw_state->handle, atttypid, values[i], false /* is_null */);
-	}
-
-	HandleYBStatusWithOwner(YBCPgDmlBindColumnCondIn(fdw_state->handle, attnum, nvalues, ybc_exprs),
-	                                                 fdw_state->handle,
-	                                                 fdw_state->stmt_owner);
-}
-
 // search for the column in the equal conditions, the performance is fine for small number of equal conditions
-static FDWEqualCond *findEqualCondition(foreign_expr_cxt context, int attr_num) {
-	ListCell *lc = NULL;;
-	foreach (lc, context.equal_conds) {
-		FDWEqualCond *first = (FDWEqualCond *) lfirst(lc);
+static List *findOprCondition(foreign_expr_cxt context, int attr_num) {
+	List * result = NIL;
+	ListCell *lc = NULL;
+	foreach (lc, context.opr_conds) {
+		FDWOprCond *first = (FDWOprCond *) lfirst(lc);
 		if (first->ref->attr_num == attr_num) {
-			return first;
+			result = lappend(result, first);
 		}
 	}
 
-	return NULL;
+	return result;
+}
+
+YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
+	YBCPgExpr opr_expr = NULL;
+	const YBCPgTypeEntity *type_ent = YBCPgFindTypeEntity(BYTEAOID);
+	char *opr_name = NULL;
+	switch(get_oprrest(opr_cond->opno)) {
+		case F_EQSEL: //  equal =
+			opr_name = "=";
+			break;
+		case F_SCALARLTSEL: // Less than <
+			opr_name = "<";
+			break;
+		case F_SCALARLESEL: // Less Equal <=
+			opr_name = "<=";
+			break;
+		case F_SCALARGTSEL: // Greater than >
+			opr_name = ">";
+			break;
+		case F_SCALARGESEL: // Greater Euqal >=
+			opr_name = ">=";
+			break;
+		default:
+			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", opr_cond->opno);
+			return opr_expr;
+	}
+	YBCPgNewOperator(fdw_state->handle,  opr_name, type_ent, &opr_expr);
+	YBCPgTypeAttrs ref_type_attrs = { opr_cond->ref->atttypmod};
+	YBCPgExpr col_ref = YBCNewColumnRef(fdw_state->handle, opr_cond->ref->attr_num, opr_cond->ref->attr_typid, &ref_type_attrs);
+	YBCPgOperatorAppendArg(opr_expr, col_ref);
+	YBCPgExpr val = YBCNewConstant(fdw_state->handle, opr_cond->val->atttypid, opr_cond->val->value, opr_cond->val->is_null);
+	YBCPgOperatorAppendArg(opr_expr, val);
+	return opr_expr;
 }
 
 static void pgBindScanKeys(Relation relation,
@@ -1127,14 +1120,19 @@ static void pgBindScanKeys(Relation relation,
 	}
 
 	foreign_expr_cxt context;
-	context.equal_conds = NIL;
+	context.opr_conds = NIL;
 
 	parse_conditions(fdw_state->remote_exprs, scan_plan->paramLI, &context);
-	elog(DEBUG4, "FDW: found %d equal_conds from %d remote exprs for relation: %d", list_length(context.equal_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
-	if (list_length(context.equal_conds) == 0) {
-		elog(WARNING, "FDW: No equal conditions are found to bind keys for relation: %d", relation->rd_id);
+	elog(DEBUG4, "FDW: found %d opr_conds from %d remote exprs for relation: %d", list_length(context.opr_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
+	if (list_length(context.opr_conds) == 0) {
+		elog(WARNING, "FDW: No Opr conditions are found to bind keys for relation: %d", relation->rd_id);
 		return;
 	}
+
+	const YBCPgTypeEntity *type_ent = YBCPgFindTypeEntity(BYTEAOID);
+	YBCPgExpr range_conds = NULL;
+	// Top level should be an "AND" node
+	YBCPgNewOperator(fdw_state->handle,  "and", type_ent, &range_conds);
 
 	/* Bind the scan keys */
 	for (int i = 0; i < scan_plan->nkeys; i++)
@@ -1142,15 +1140,51 @@ static void pgBindScanKeys(Relation relation,
 		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 		if (bms_is_member(idx, scan_plan->sk_cols))
 		{
-			// check if the key is in the equal conditions
-			FDWEqualCond *equal_cond = findEqualCondition(context, scan_plan->bind_key_attnums[i]);
-			if (equal_cond != NULL) {
+			// check if the key is in the Opr conditions
+			List *opr_conds = findOprCondition(context, scan_plan->bind_key_attnums[i]);
+			if (opr_conds != NIL) {
 				elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_key_attnums[i], relation->rd_id);
-				pgBindColumn(fdw_state, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
-			 				  equal_cond->val->value, equal_cond->val->is_null);
+				ListCell *lc = NULL;
+				foreach (lc, opr_conds) {
+					FDWOprCond *opr_cond = (FDWOprCond *) lfirst(lc);
+					YBCPgExpr arg = build_expr(fdw_state, opr_cond);
+					if (arg != NULL) {
+						// use primary keys as range condition
+						YBCPgOperatorAppendArg(range_conds, arg);
+					}
+				}
 			}
 		}
 	}
+
+	HandleYBStatusWithOwner(PgDmlBindRangeConds(fdw_state->handle, range_conds),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
+
+	YBCPgExpr where_conds = NULL;
+	// Top level should be an "AND" node
+	YBCPgNewOperator(fdw_state->handle,  "and", type_ent, &where_conds);
+	// bind non-keys
+	for (int i = 0; i < scan_plan->nNonKeys; i++)
+	{
+		// check if the column is in the Opr conditions
+		List *opr_conds = findOprCondition(context, scan_plan->bind_nonkey_attnums[i]);
+		if (opr_conds != NIL) {
+			elog(DEBUG4, "FDW: binding key with attr_num %d for relation: %d", scan_plan->bind_nonkey_attnums[i], relation->rd_id);
+			ListCell *lc = NULL;
+			foreach (lc, opr_conds) {
+				FDWOprCond *opr_cond = (FDWOprCond *) lfirst(lc);
+				YBCPgExpr arg = build_expr(fdw_state, opr_cond);
+				if (arg != NULL) {
+					YBCPgOperatorAppendArg(where_conds, arg);
+				}
+			}
+		}
+	}
+
+	HandleYBStatusWithOwner(PgDmlBindWhereConds(fdw_state->handle, where_conds),
+														fdw_state->handle,
+														fdw_state->stmt_owner);
 }
 
 /*
