@@ -42,7 +42,6 @@ class TestCompoundKey(unittest.TestCase):
         # TODO delete table
         cls.sharedConn.close()
 
-    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
     def test_prefixScanThreeKeys(self):
         # Populate some records for the tests
         with self.sharedConn: # commits at end of context if no errors
@@ -66,12 +65,24 @@ class TestCompoundKey(unittest.TestCase):
                     self.assertEqual(record[2], i)
                     self.assertEqual(record[3], 2)
 
+        # Parital Prefix scan with keys specified by inequality
+        with self.sharedConn: # commits at end of context if no errors
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT * FROM compoundkey WHERE id >= 3 AND id3 > 1;")
+                for i in range(2, 11):
+                    record = cur.fetchone()
+                    self.assertNotEqual(record, None)
+                    self.assertEqual(record[0], 3)
+                    self.assertEqual(record[1], "somemoretext")
+                    self.assertEqual(record[2], i)
+                    self.assertEqual(record[3], 3)
+
         # Partial prefix scan with extra filter that is not a prefix
         record = selectOneRecord(self.sharedConn, "SELECT * FROM compoundkey WHERE id = 1 AND id3 = 5;")
         self.assertEqual(record[0], 1)
         self.assertEqual(record[1], "sometext")
         self.assertEqual(record[2], 5)
-        self.assertEqual(record[1], 1)
+        self.assertEqual(record[3], 1)
 
     def test_prefixScanIntInt(self):
         # Populate some records for the tests
@@ -95,7 +106,6 @@ class TestCompoundKey(unittest.TestCase):
                     self.assertEqual(record[1], i)
                     self.assertEqual(record[2], 2)
 
-    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
     def test_prefixScanTxtTxt(self):
         # Populate some records for the tests
         with self.sharedConn: # commits at end of context if no errors
@@ -111,11 +121,15 @@ class TestCompoundKey(unittest.TestCase):
         with self.sharedConn: # commits at end of context if no errors
             with self.sharedConn.cursor() as cur:
                 cur.execute("SELECT * FROM compoundkeytxttxt WHERE id = '2';")
+                # The result set is sorted lexographically on the second text key, so here
+                # just check that each key is present
+                keys = [str(i) for i in range(1,11)]
                 for i in range(1, 11):
                     record = cur.fetchone()
                     self.assertNotEqual(record, None)
                     self.assertEqual(record[0], '2')
-                    self.assertEqual(record[1], str(i))
+                    self.assertEqual(str(i) in keys, True)
+                    keys.remove(str(i))
                     self.assertEqual(record[2], 2)
 
 

@@ -1012,11 +1012,6 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 	{
 		scan_plan->primary_key = bms_add_member(scan_plan->primary_key, idx);
 		scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
-		scan_plan->bind_key_attnums[scan_plan->nkeys] = attnum;
-		scan_plan->nkeys++;
-	} else {
-		scan_plan->bind_nonkey_attnums[scan_plan->nNonKeys] = attnum;
-		scan_plan->nNonKeys++;
 	}
 }
 

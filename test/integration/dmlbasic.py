@@ -191,3 +191,15 @@ class TestDMLBasic(unittest.TestCase):
         self.assertEqual(record[1], 3)
         self.assertEqual(record[2], 3)
 
+    def test_scanWithProjection(self):
+        commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (18, 11, 111);")
+        commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (19, 11, 111);")
+        commitSQL(self.sharedConn, "INSERT INTO dmlbasic VALUES (20, 11, 111);")
+        with self.sharedConn:
+            with self.sharedConn.cursor() as cur:
+                cur.execute("SELECT dataB FROM dmlbasic WHERE id >= 18 AND id <= 20;")
+                records = cur.fetchall()
+                self.assertEqual(3, len(records))
+                for record in records:
+                    self.assertEqual(record[0], 111)
+
