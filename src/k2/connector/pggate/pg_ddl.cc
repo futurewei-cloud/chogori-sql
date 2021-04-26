@@ -257,28 +257,28 @@ Status PgAlterTable::AddColumn(const std::string& name,
                                bool is_not_null) {
   ColumnSchema colSchema(name, static_cast<DataType>(attr_type->yb_type), is_not_null, false, false, order, ColumnSchema::SortingType::kNotSpecified);
   // TODO: add implementation
-  return Status::OK();
+  return STATUS(NotSupported, "AddColumn not supported");
 }
 
 Status PgAlterTable::RenameColumn(const std::string& old_name, const std::string& new_name) {
    // TODO: add implementation
- return Status::OK();
+  return STATUS(NotSupported, "RenameColumn not supported");
 }
 
 Status PgAlterTable::DropColumn(const std::string& name) {
   // TODO: add implementation
-  return Status::OK();
+  return STATUS(NotSupported, "DropColumn not supported");
 }
 
 Status PgAlterTable::RenameTable(const std::string& db_name, const std::string& new_name) {
   // TODO: add implementation
-  return Status::OK();
+  return STATUS(NotSupported, "RenameTable not supported");
 }
 
 Status PgAlterTable::Exec() {
   pg_session_->InvalidateTableCache(table_object_id_);
   // TODO: add implementation
-  return Status::OK();
+  return STATUS(NotSupported, "AlterTable not supported");
 }
 
 //--------------------------------------------------------------------------------------------------

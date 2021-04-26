@@ -49,15 +49,9 @@ class TestDDL(unittest.TestCase):
         commitSQL(self.sharedConn, "CREATE TABLE ddltest3 (id integer, dataA integer);")
 
     def test_alterTable(self):
-        #with self.assertRaises(psycopg2.errors.InternalError):
         commitSQL(self.sharedConn, "CREATE TABLE ddltest4 (id integer, dataA integer);")
-        commitSQL(self.sharedConn, "ALTER TABLE ddltest4 ADD txtcol text;")
-        commitSQL(self.sharedConn, "INSERT INTO ddltest4 VALUES(1, 1, 'mytext')")
-
-        record = selectOneRecord(self.sharedConn, "SELECT dataB FROM dmlbasic WHERE id=1;")
-        self.assertEqual(record[0], 1)
-        self.assertEqual(record[1], 1)
-        self.assertEqual(record[2], "mytext")
+        with self.assertRaises(psycopg2.errors.InternalError):
+            commitSQL(self.sharedConn, "ALTER TABLE ddltest4 ADD txtcol text;")
 
 # TODO add table already exists error case after #216 is fixed
 
