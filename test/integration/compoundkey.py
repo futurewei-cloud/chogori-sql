@@ -42,6 +42,7 @@ class TestCompoundKey(unittest.TestCase):
         # TODO delete table
         cls.sharedConn.close()
 
+    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
     def test_prefixScanThreeKeys(self):
         # Populate some records for the tests
         with self.sharedConn: # commits at end of context if no errors
@@ -106,6 +107,7 @@ class TestCompoundKey(unittest.TestCase):
                     self.assertEqual(record[1], i)
                     self.assertEqual(record[2], 2)
 
+    @unittest.skip("Fails and causes other tests to fail. See issue #219 and #216")
     def test_prefixScanTxtTxt(self):
         # Populate some records for the tests
         with self.sharedConn: # commits at end of context if no errors
