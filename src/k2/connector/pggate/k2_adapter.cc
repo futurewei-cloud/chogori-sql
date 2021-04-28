@@ -1182,9 +1182,12 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     }
     k2::dto::SKVRecord record(collection_name, schema_result.schema);
 
+    // Get table oid from table_id. 
+    k2pg::sql::PgOid tableOid = k2pg::sql::PgObjectId::GetTableOidByTableUuid(table_id);
+
     // Serialize key data into SKVRecord
-    record.serializeNext<k2::String>(table_id);
-    record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+    record.serializeNext<int64_t>(tableOid);
+    record.serializeNext<int64_t>(0);       //  index 0 as this is for base table
     for (std::shared_ptr<SqlValue> value : key_values) {
         K2Adapter::SerializeValueToSKVRecord(*(value.get()), record);
     }
@@ -1269,8 +1272,8 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     } else {
         // Serialize key data into SKVRecord
         K2LOG_V(log::k2Adapter, "Serializing with data");
-        record.serializeNext<k2::String>(request.table_id);
-        record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+        record.serializeNext<int64_t>(request.base_table_oid);
+        record.serializeNext<int64_t>(request.index_oid); 
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (expr->getType() == SqlOpExpr::ExprType::UNBOUND) {
                 K2LOG_D(log::k2Adapter, "Stopping key serialization due to unbound value");

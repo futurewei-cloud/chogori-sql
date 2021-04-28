@@ -32,13 +32,22 @@ const std::string CatalogConsts::default_cluster_id = "PG_DEFAULT_CLUSTER";
 const std::string CatalogConsts::skv_collection_name_sql_primary = "K2RESVD_COLLECTION_SQL_PRIMARY";
 const std::string CatalogConsts::skv_schema_name_cluster_info = "K2RESVD_SCHEMA_SQL_CLUSTER_INFO";
 const std::string CatalogConsts::skv_schema_name_database_info = "K2RESVD_SCHEMA_SQL_DATABASE_INFO";
+
+// Names of three system tables holding definition of tables, table columns, index columns (as using Postgre provided sys catalog pg_class, pg_index, etc is too complex) 
 const std::string CatalogConsts::skv_schema_name_sys_catalog_tablehead = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLEHEAD";
 const std::string CatalogConsts::skv_schema_name_sys_catalog_tablecolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_TABLECOLUMN";
 const std::string CatalogConsts::skv_schema_name_sys_catalog_indexcolumn = "K2RESVD_SCHEMA_SQL_SYS_CATALOG_INDEXCOLUMN";
+// hard coded PgOid for these above three tables (used for SKV )
+// NOTE: these system unused oids are got from script src/includ/catlog/unused_oids. Try staying in 48XX range for future such need in Chogori-SQL.
+const PgOid CatalogConsts::oid_sys_catalog_tablehead = 4800;
+const PgOid CatalogConsts::oid_sys_catalog_tablecolumn = 4801;
+const PgOid CatalogConsts::oid_sys_catalog_indexcolumn = 4802;
 
-const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";
-const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";
-const std::string CatalogConsts::BASE_TABLE_ID_COLUMN_NAME = "BaseTableId";
+
+// following three columns are SKV schema columns inside skv_schema_name_sys_catalog_tablehead(i.e. the SKV schema for "tables" table like pg_class containing all tables/index definition)
+const std::string CatalogConsts::TABLE_ID_COLUMN_NAME = "TableId";              // containing PGOid(uint32) of this table (or based table in case of a secondary index)
+const std::string CatalogConsts::INDEX_ID_COLUMN_NAME = "IndexId";              // containing PGOid of this index
+const std::string CatalogConsts::BASE_TABLE_ID_COLUMN_NAME = "BaseTableId";     // containing PGOid of the basetable if this entry is an index
 
 // HACKHACK - collection id for template1 database
 const std::string CatalogConsts::shared_table_skv_colllection_id = "00000001000030008000000000000000";

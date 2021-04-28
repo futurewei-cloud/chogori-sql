@@ -564,9 +564,9 @@ namespace catalog {
 
         // preload tables for a database
         thread_pool_.enqueue([this, request] () {
-            ListTablesRequest req {.databaseName = request.databaseName, .isSysTableIncluded=true};
+            ListTablesFromStorageRequest req {.databaseName = request.databaseName, .isSysTableIncluded=true};
             K2LOG_I(log::catalog, "Preloading database {}", req.databaseName);
-            ListTablesResponse result = ListTables(req);
+            ListTablesFromStorageResponse result = ListTablesFromStorage(req);
             if (!result.status.ok()) {
               K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.databaseName, result.status.code());
             }
@@ -720,8 +720,16 @@ namespace catalog {
                     request.schema, request.isUnique, request.isSharedTable, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
 
             K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
-            // persist the index table metadata to the system catalog SKV tables
-            table_info_handler_->PersistIndexTable(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
+            // persist the index metadata to the system catalog SKV tables
+            PersistIndexMetaResult index_meta_result = table_info_handler_->PersistIndexMeta(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
+            if (!index_meta_result.status.ok())
+            {
+                    txnHandler->AbortTransaction();
+                    response.status = std::move(index_meta_result.status);
+                    K2LOG_E(log::catalog, "Failed to persist index meta {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
+                        database_info->GetDatabaseId(), response.status);
+                    return response;
+            }
 
             if (CatalogConsts::is_on_physical_collection(database_info->GetDatabaseId(), new_index_info.is_shared())) {
                 K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
@@ -770,6 +778,7 @@ namespace catalog {
         return response;
     }
 
+    // Get (base) table schema - if passed-in id is that of a index, return base table schema, if is that of a table, return its table schema
     GetTableSchemaResponse SqlCatalogManager::GetTableSchema(const GetTableSchemaRequest& request) {
         GetTableSchemaResponse response;
         // generate table id from database oid and table oid
@@ -786,8 +795,8 @@ namespace catalog {
             return response;
         }
 
-        // check table info by index uuid
-        table_info = GetCachedTableInfoByIndexId(request.databaseOid, table_uuid);
+        // check if passed in id is that of an index and if so return base table info by index uuid
+        table_info = GetCachedBaseTableInfoByIndexId(request.databaseOid, table_uuid);
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
                 table_info->table_name(), table_info->table_id(), table_uuid);
@@ -796,6 +805,8 @@ namespace catalog {
             return response;
         }
 
+        // TODO: refactor followign SKV lookup code(till cache update) into tableHandler class 
+        // Can't find the id from cache above, now look into storage.
         std::string database_id = PgObjectId::GetDatabaseUuid(request.databaseOid);
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
         if (database_info == nullptr) {
@@ -807,19 +818,19 @@ namespace catalog {
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         // fetch the table from SKV
         K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
-        GetTableInfoResult table_info_result = table_info_handler_->GetTableInfo(txnHandler, database_info->GetDatabaseId(), table_id);
-        if (!table_info_result.status.ok()) {
+        GetTableTypeInfoResult table_type_info_result = table_info_handler_->GetTableTypeInfo(txnHandler, database_info->GetDatabaseId(), table_id);
+        if (!table_type_info_result.status.ok()) {
             txnHandler->AbortTransaction();
             K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                table_id, database_info->GetDatabaseId(), table_info_result.status);
-            response.status = std::move(table_info_result.status);
+                table_id, database_info->GetDatabaseId(), table_type_info_result.status);
+            response.status = std::move(table_type_info_result.status);
             response.tableInfo = nullptr;
             return response;
         }
 
         // check the physical collection for a table
-        std::string physical_collection = CatalogConsts::physical_collection(database_id, table_info_result.isShared);
-        if (table_info_result.isShared) {
+        std::string physical_collection = CatalogConsts::physical_collection(database_id, table_type_info_result.isShared);
+        if (table_type_info_result.isShared) {
             // check if the shared table is stored on a different collection
             if (physical_collection.compare(database_id) != 0) {
                 // shared table is on a different collection, first finish the existing collection
@@ -837,7 +848,7 @@ namespace catalog {
             }
         }
 
-        if (!table_info_result.isIndex) {
+        if (!table_type_info_result.isIndex) {
             K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, physical_collection);
             // the table id belongs to a table
             GetTableResult table_result = table_info_handler_->GetTable(txnHandler, physical_collection, database_info->GetDatabaseName(),
@@ -916,9 +927,9 @@ namespace catalog {
         return response;
     }
 
-    ListTablesResponse SqlCatalogManager::ListTables(const ListTablesRequest& request) {
+    ListTablesFromStorageResponse SqlCatalogManager::ListTablesFromStorage(const ListTablesFromStorageRequest& request) {
         K2LOG_D(log::catalog, "Listing tables for database {}", request.databaseName);
-        ListTablesResponse response;
+        ListTablesFromStorageResponse response;
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
@@ -1251,7 +1262,7 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid) {
         std::shared_ptr<IndexInfo> index_info = nullptr;
         if (!index_uuid_map_.empty()) {
             const auto itr = index_uuid_map_.find(index_uuid);

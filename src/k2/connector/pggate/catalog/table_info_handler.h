@@ -84,11 +84,11 @@ struct CreateUpdateSKVSchemaResult {
     Status status;
 };
 
-struct PersistSysTableResult {
+struct PersistTableMetaResult {
     Status status;
 };
 
-struct PersistIndexTableResult {
+struct PersistIndexMetaResult {
     Status status;
 };
 
@@ -105,7 +105,7 @@ struct GetBaseTableIdResult {
     std::string baseTableId;
 };
 
-struct GetTableInfoResult {
+struct GetTableTypeInfoResult {
     Status status;
     bool isShared;
     bool isIndex;
@@ -118,13 +118,24 @@ class TableInfoHandler {
     TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter);
     ~TableInfoHandler();
 
+    // Design Note: (tables mapping to SKV schema)
+    // 1. Any table primary index(must have) is mapped to a SKV schema, and if it have secondary index(s), each one is mapped to its own SKV schema. 
+    // 2. Following three SKV schemas are for three system meta tables holding all table/index definition/meta, i.e. tablehead(table identities and basic info), tablecolumn(column def), indexcolumn(index column def)
+    // 3. The schema name for system table are hardcoded constant, e.g. tablehead's is CatalogConsts::skv_schema_name_sys_catalog_tablehead
+    // 4. The schema name for user table/secondary index are the table's TableId(), which is a string presentation of UUID containing tables's pguid (for details, see std::string PgObjectId::GetTableId(const PgOid& table_oid))
+    // 5. As of now, before embedded table(s) are supported, all tables are flat in relationship with each other. Thus, all tables(system or user) have two prefix fields "TableId" and "IndexId" in their SKV schema,
+    //    so that all rows in a table and index are clustered together in K2.
+    //      For a primary index, the TableId is the PgOid(uint32 but saved as int64_t in K2) of this table, and IndexId is 0
+    //      For a secondary index, The TableId is the PgOid of base table(primary index), and IndexId is its own PgOid. 
+    //      For three system tables which is not defined in PostgreSQL originally, the PgOid of them are taken from unused system Pgoid range 4800-4803 (for detail, see CatalogConsts::oid_sys_catalog_tablehead) 
+
     // schema of table information 
     k2::dto::Schema sys_catalog_tablehead_schema_ {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablehead,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
-                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
-                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
+                {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},        // const PgOid CatalogConsts::oid_sys_catalog_tablehead = 4800;
+                {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},        // 0
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::STRING, "TableName", false, false},
                 {k2::dto::FieldType::INT64T, "TableOid", false, false},
@@ -147,8 +158,8 @@ class TableInfoHandler {
         .name = CatalogConsts::skv_schema_name_sys_catalog_tablecolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
-                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
-                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
+                {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},    // const PgOid CatalogConsts::oid_sys_catalog_tablecolumn = 4801;
+                {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},    // 0
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
@@ -167,8 +178,8 @@ class TableInfoHandler {
         .name = CatalogConsts::skv_schema_name_sys_catalog_indexcolumn,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
-                {k2::dto::FieldType::STRING, "SchemaTableId", false, false},
-                {k2::dto::FieldType::STRING, "SchemaIndexId", false, false},
+                {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},    // const PgOid CatalogConsts::oid_sys_catalog_indexcolumn = 4802;
+                {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},    // 0
                 {k2::dto::FieldType::STRING, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
@@ -185,6 +196,7 @@ class TableInfoHandler {
 
     CreateSysTablesResult CheckAndCreateSystemTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name);
 
+    // Create or update a user defined table fully, including all its secondary indexes if any.
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
     GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
@@ -193,6 +205,7 @@ class TableInfoHandler {
 
     ListTableIdsResult ListTableIds(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, bool isSysTableIncluded);
 
+    // CopyTable (meta and data) fully including secondary indexes, currently only support cross different database. 
     CopyTableResult CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_database_name,
@@ -205,7 +218,7 @@ class TableInfoHandler {
     CreateUpdateSKVSchemaResult CreateOrUpdateIndexSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
-    PersistIndexTableResult PersistIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
+    PersistIndexMetaResult PersistIndexMeta(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
 
     DeleteTableResult DeleteTableMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
@@ -217,22 +230,27 @@ class TableInfoHandler {
 
     GetBaseTableIdResult GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id);
 
-    GetTableInfoResult GetTableInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+    // check if passed id is that for a table or index, and if it is a shared table/index(just one instance shared by all databases and resides in primary cluster)
+    GetTableTypeInfoResult GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
 
     private:
     CopySKVTableResult CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
-            const std::string& target_table_id,
-            uint32_t target_version,
+            const std::string& target_schema_name,
+            uint32_t target_schema_version,
             std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
-            const std::string& source_table_id,
-            uint32_t source_version);
+            const std::string& source_schema_name,
+            uint32_t source_schema_version,
+            PgOid source_table_oid,
+            PgOid source_index_oid);
 
     CreateUpdateSKVSchemaResult CreateOrUpdateTableSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    PersistSysTableResult PersistSysTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
+    // Persist (user) table's definition/meta into three sytem meta tables.
+    PersistTableMetaResult PersistTableMeta(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
+    // NOTE: currently only used for creating/initializing three system tables' SKVSchema (tablehead, tablecolumn, indexcolumn) 
     CreateSKVSchemaIfNotExistResult CreateSKVSchemaIfNotExist(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> Schema);
 
     std::shared_ptr<k2::dto::Schema> DeriveSKVTableSchema(std::shared_ptr<TableInfo> table);
@@ -269,7 +287,8 @@ class TableInfoHandler {
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
-    k2::dto::SKVRecord buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema_ptr, std::optional<std::string> table_id);
+    // Build a range record for a scan, optionally using third param table_id when applicable(e.g. in sys table).
+    k2::dto::SKVRecord buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema, PgOid table_oid, PgOid index_oid, std::optional<std::string> table_id);
 
     std::shared_ptr<k2::dto::Schema> tablehead_schema_ptr_;
     std::shared_ptr<k2::dto::Schema> tablecolumn_schema_ptr_;

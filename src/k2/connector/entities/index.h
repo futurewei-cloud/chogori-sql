@@ -182,6 +182,10 @@ namespace k2pg {
                 return base_table_id_;
             }
 
+            const uint32_t base_table_oid() const {
+                return PgObjectId::GetTableOidByTableUuid(base_table_id_);
+            }
+
             bool is_unique() const {
                 return is_unique_;
             }
