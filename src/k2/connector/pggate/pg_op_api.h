@@ -42,6 +42,7 @@ namespace gate {
 
     using yb::Status;
 
+    using k2pg::sql::PgOid;
     using k2pg::sql::PgExpr;
     using k2pg::sql::PgColumnRef;
     using k2pg::sql::PgConstant;
@@ -226,6 +227,8 @@ namespace gate {
         int64_t stmt_id;
         std::string collection_name;
         std::string table_id;
+        PgOid base_table_oid;   // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
+        PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         // K2 SKV schema version
         uint64_t schema_version;
         // One of either key_column_values or ybctid_column_values
@@ -270,6 +273,8 @@ namespace gate {
         StmtType stmt_type;
         std::string collection_name;
         std::string table_id;
+        PgOid base_table_oid;   // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
+        PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         uint64_t schema_version;
         std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
         std::shared_ptr<SqlOpExpr> ybctid_column_value;

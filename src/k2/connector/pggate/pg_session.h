@@ -283,8 +283,9 @@ class PgSession {
     return rowid_generator_.Next(true /* binary_id */);
   }
 
-  std::string GetRowId(const std::string& database_id, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
-    return k2_adapter_->GetRowId(database_id, table_id, schema_version, key_values);
+  // TODO: consider moving base_table_oid, index_oid into key_values. 
+  std::string GetRowId(const std::string& database_id, const std::string& table_id/*SKV schema name*/, uint32_t schema_version, PgOid base_table_oid, PgOid index_oid, std::vector<std::shared_ptr<SqlValue>> key_values) {
+    return k2_adapter_->GetRowId(database_id, table_id, schema_version, base_table_oid, index_oid, key_values);
   }
 
   std::shared_ptr<SqlCatalogClient> GetCatalogClient() {

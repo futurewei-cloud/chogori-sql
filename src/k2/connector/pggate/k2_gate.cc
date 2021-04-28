@@ -78,7 +78,7 @@ CBFuture<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateReques
         session::gate_create_collection_latency->observe(Clock::now() - st);
     });
 
-    K2LOG_D(log::k2Client, "create collection: cname={}", ccr.metadata.name);
+    K2LOG_D(log::k2Client, "create collection: cname={}", req.ccr.metadata.name);
     pushQ(collectionCreateTxQ, std::move(req));
     return result;
 }
