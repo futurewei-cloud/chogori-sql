@@ -83,6 +83,8 @@ namespace gate {
        newRequest->stmt_id = stmt_id;
        newRequest->collection_name = collection_name;
        newRequest->table_id = table_id;
+       newRequest->base_table_oid = base_table_oid;
+       newRequest->index_oid = index_oid;
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;
        // copy for now, should we just use a new empty vector?

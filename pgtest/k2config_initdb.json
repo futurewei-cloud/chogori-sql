@@ -38,5 +38,5 @@
     "reactor-backend": "epoll",
     "poll-mode": true,
     "enable_tx_checksum": false,
-    "log_level": "INFO k2::pggate=INFO k2::pg_catalog=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::transport=INFO"
+    "log_level": "INFO k2::pggate=INFO k2::pg_catalog=INFO k2::k2Adapter=INFO k2::k2Client=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::pg_seastar=INFO k2::transport=INFO"
 }

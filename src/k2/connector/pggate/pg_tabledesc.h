@@ -59,9 +59,11 @@ namespace gate {
 
 using yb::Result;
 using yb::Status;
+using k2pg::sql::PgOid;
 using k2pg::sql::TableInfo;
 using k2pg::sql::IndexInfo;
 
+// Desc of a table or an index. 
 // This class can be used to describe any reference of a column.
 class PgTableDesc {
  public:
@@ -77,8 +79,19 @@ class PgTableDesc {
     return collection_name_;
   }
 
+  // if is_index_, this is id of the index, otherwise, it is id of this table.
   const std::string& table_id() {
     return table_id_;
+  }
+
+  // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
+  const PgOid base_table_oid() {
+    return base_table_oid_;
+  }
+
+  // if is_index_, this is oid of the index, otherwiese 0
+  const PgOid index_oid() {
+    return index_oid_;
   }
 
   static int ToPgAttrNum(const string &attr_name, int attr_num);
@@ -132,7 +145,9 @@ class PgTableDesc {
   private:
   bool is_index_;
   std::string database_id_;
-  std::string table_id_;
+  std::string table_id_;  // if is_index_, this is id of the index, otherwise, it is id of this table.
+  PgOid base_table_oid_;  // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
+  PgOid index_oid_;       // if is_index_, this is oid of the index, otherwiese 0
   uint32_t schema_version_;
   bool transactional_;
   size_t hash_column_num_;

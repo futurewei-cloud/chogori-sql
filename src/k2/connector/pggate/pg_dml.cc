@@ -391,7 +391,7 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
   }
   // secondary index query does not have bind_desc_
   std::shared_ptr<PgTableDesc> table_schema = (bind_desc_ == nullptr) ? target_desc_ : bind_desc_;
-  return pg_session_->GetRowId(table_schema->collection_name(), table_schema->table_id(), table_schema->SchemaVersion(), values);
+  return pg_session_->GetRowId(table_schema->collection_name(), table_schema->table_id()/*schema name*/, table_schema->SchemaVersion(), table_schema->base_table_oid(), table_schema->index_oid(), values);
 }
 
 bool PgDml::has_aggregate_targets() {

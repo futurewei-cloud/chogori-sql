@@ -222,12 +222,12 @@ namespace catalog {
         std::shared_ptr<TableInfo> tableInfo;
     };
 
-    struct ListTablesRequest {
+    struct ListTablesFromStorageRequest {
         std::string databaseName;
         bool isSysTableIncluded = false;
     };
 
-    struct ListTablesResponse {
+    struct ListTablesFromStorageResponse {
         Status status;
         std::string databaseId;
         std::vector<std::shared_ptr<TableInfo>> tableInfos;
@@ -317,9 +317,8 @@ namespace catalog {
 
         CreateIndexTableResponse CreateIndexTable(const CreateIndexTableRequest& request);
 
+        // Get (base) table schema - if passed-in id is that of a index, return base table schema, if is that of a table, return its table schema
         GetTableSchemaResponse GetTableSchema(const GetTableSchemaRequest& request);
-
-        ListTablesResponse ListTables(const ListTablesRequest& request);
 
         DeleteTableResponse DeleteTable(const DeleteTableRequest& request);
 
@@ -354,7 +353,9 @@ namespace catalog {
 
         std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
+        std::shared_ptr<TableInfo> GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
+
+        ListTablesFromStorageResponse ListTablesFromStorage(const ListTablesFromStorageRequest& request);
 
         // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
         std::shared_ptr<PgTxnHandler> NewTransaction();

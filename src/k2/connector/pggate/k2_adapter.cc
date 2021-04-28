@@ -1172,19 +1172,21 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     return SerializeSKVRecordToString(record);
 }
 
-std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& table_id, uint32_t schema_version, std::vector<std::shared_ptr<SqlValue>> key_values) {
+std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version, 
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<std::shared_ptr<SqlValue>> key_values) 
+{
     auto start = k2::Clock::now();
-    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, table_id, schema_version);
+    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, schema_name, schema_version);
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
         throw std::runtime_error(fmt::format("Failed to get schema for {} in {} due to {}",
-                                    table_id, collection_name, schema_result.status));
+                                    schema_name, collection_name, schema_result.status));
     }
     k2::dto::SKVRecord record(collection_name, schema_result.schema);
 
     // Serialize key data into SKVRecord
-    record.serializeNext<k2::String>(table_id);
-    record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+    record.serializeNext<int64_t>(base_table_oid);
+    record.serializeNext<int64_t>(index_oid);       
     for (std::shared_ptr<SqlValue> value : key_values) {
         K2Adapter::SerializeValueToSKVRecord(*(value.get()), record);
     }
@@ -1196,7 +1198,7 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     }
 
     k2::dto::Key key = record.getKey();
-    K2LOG_D(log::k2Adapter, "Returning row id for table {} from SKV partition key: {}", table_id, key.partitionKey);
+    K2LOG_D(log::k2Adapter, "Returning row id for table {} from SKV partition key: {}", schema_name, key.partitionKey);
     K2LOG_V(log::k2Adapter, "GetRowId took {}", k2::Clock::now() - start);
     return SerializeSKVRecordToString(record);
 }
@@ -1269,8 +1271,8 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     } else {
         // Serialize key data into SKVRecord
         K2LOG_V(log::k2Adapter, "Serializing with data");
-        record.serializeNext<k2::String>(request.table_id);
-        record.serializeNext<k2::String>(""); // TODO index ID needs to be added to the request
+        record.serializeNext<int64_t>(request.base_table_oid);
+        record.serializeNext<int64_t>(request.index_oid); 
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (expr->getType() == SqlOpExpr::ExprType::UNBOUND) {
                 K2LOG_D(log::k2Adapter, "Stopping key serialization due to unbound value");

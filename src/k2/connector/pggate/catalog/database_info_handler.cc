@@ -117,7 +117,7 @@ ListDatabaseResult DatabaseInfoHandler::ListDatabases(std::shared_ptr<PgTxnHandl
     ListDatabaseResult response;
     auto create_result = k2_adapter_->CreateScanRead(collection_name_, schema_name_).get();
     if (!create_result.status.is2xxOK()) {
-        K2LOG_E(log::catalog, "Failed to create scan read due to {}", create_result.status);
+        K2LOG_E(log::catalog, "Failed to create scan read for ListDatabases due to {} in collection {}.", create_result.status, collection_name_);
         response.status = K2Adapter::K2StatusToYBStatus(create_result.status);
         return response;
     }
