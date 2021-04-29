@@ -87,11 +87,8 @@ std::shared_ptr<SqlOpCondition> PgDmlRead::AllocColumnBindConditionExprVar(PgCol
   return col->AllocBindConditionExpr(read_req_);
 }
 
-// Allocate variable for target.
-std::shared_ptr<SqlOpExpr> PgDmlRead::AllocTargetVar() {
-  std::shared_ptr<SqlOpExpr> target = std::make_shared<SqlOpExpr>();
-  read_req_->targets.push_back(target);
-  return target;
+std::vector<PgExpr *>& PgDmlRead::GetTargets() {
+  return read_req_->targets;
 }
 
 // Allocate column expression.

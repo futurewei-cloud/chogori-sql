@@ -95,24 +95,18 @@ Status PgDml::AppendTargetVar(PgExpr *target) {
   // Append to targets_.
   targets_.push_back(target);
 
-  // Allocate associated expression.
-  std::shared_ptr<SqlOpExpr> expr_var = AllocTargetVar();
-
-  // Prepare expression. Except for constants and place_holders, all other expressions can be
-  // evaluate just one time during prepare.
-  RETURN_NOT_OK(PrepareExpression(target, expr_var));
-
-  // Link the given expression "attr_value" with the allocated protobuf. Note that except for
-  // constants and place_holders, all other expressions can be setup just one time during prepare.
-  // Example:
-  // - Bind values for a target of SELECT
-  //   SELECT AVG(col + ?) FROM a_table;
-  expr_binds_[expr_var] = target;
   if (!target->is_colref()) {
       return STATUS(InternalError, "Unexpected expression, only column refs supported in SKV");
   }
+
+  PgColumnRef *col_ref = static_cast<PgColumnRef *>(target);
+  PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(col_ref->attr_num()));
+  col_ref->set_attr_name(col->attr_name());
+
   // update the name mapping for the targets
-  targets_by_name_[((PgColumnRef*)target)->attr_name()] = target;
+  targets_by_name_[col_ref->attr_name()] = target;
+  std::vector<PgExpr *> req_targets = GetTargets();
+  req_targets.push_back(col_ref);
 
   return Status::OK();
 }

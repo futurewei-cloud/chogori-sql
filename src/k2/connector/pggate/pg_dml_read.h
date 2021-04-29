@@ -124,8 +124,8 @@ class PgDmlRead : public PgDml {
   std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
   std::shared_ptr<SqlOpCondition> AllocColumnBindConditionExprVar(PgColumn *col);
 
-  // Allocate variable for target.
-  std::shared_ptr<SqlOpExpr> AllocTargetVar() override;
+  // get target vectors
+  std::vector<PgExpr *>& GetTargets() override;
 
   // Allocate column expression.
   std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;

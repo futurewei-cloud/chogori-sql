@@ -174,10 +174,8 @@ std::shared_ptr<SqlOpExpr> PgDmlWrite::AllocColumnAssignVar(PgColumn *col) {
   return col->AllocAssign(write_req_);
 }
 
-std::shared_ptr<SqlOpExpr> PgDmlWrite::AllocTargetVar() {
-  std::shared_ptr<SqlOpExpr> target_var = std::make_shared<SqlOpExpr>();
-  write_req_->targets.push_back(target_var);
-  return target_var;
+std::vector<PgExpr *>& PgDmlWrite::GetTargets() {
+  return write_req_->targets;
 }
 
 Status PgDmlWrite::SetWriteTime(const uint64_t write_time) {

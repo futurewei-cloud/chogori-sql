@@ -772,18 +772,20 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                     scan->addProjection(schema->fields[keyIdx].name);
                 }
             }
-            for (const std::shared_ptr<SqlOpExpr>& target : request->targets) {
-                if (target->getType() != SqlOpExpr::ExprType::COLUMN_ID) {
+            for (PgExpr * target : request->targets) {
+                if (!target->is_colref()) {
                     prom->set_exception(std::make_exception_ptr(std::logic_error("Non-projection type in read targets")));
                     return;
                 }
 
+                PgColumnRef *col_ref = static_cast<PgColumnRef *>(target);
+
                 // Skip the virtual column which is not stored in K2
-                if (target->getId() == VIRTUAL_COLUMN) {
+                if (col_ref->attr_num() == VIRTUAL_COLUMN) {
                     continue;
                 }
 
-                k2::String name = target->getName();
+                k2::String name = col_ref->attr_name();
                 // Skip key fields which were already projected above
                 bool skip = false;
                 for (uint32_t keyIdx : schema->partitionKeyFields) {
@@ -1172,8 +1174,8 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     return SerializeSKVRecordToString(record);
 }
 
-std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version, 
-    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<std::shared_ptr<SqlValue>> key_values) 
+std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version,
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<std::shared_ptr<SqlValue>> key_values)
 {
     auto start = k2::Clock::now();
     CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, schema_name, schema_version);
@@ -1186,7 +1188,7 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
 
     // Serialize key data into SKVRecord
     record.serializeNext<int64_t>(base_table_oid);
-    record.serializeNext<int64_t>(index_oid);       
+    record.serializeNext<int64_t>(index_oid);
     for (std::shared_ptr<SqlValue> value : key_values) {
         K2Adapter::SerializeValueToSKVRecord(*(value.get()), record);
     }
@@ -1272,7 +1274,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         // Serialize key data into SKVRecord
         K2LOG_V(log::k2Adapter, "Serializing with data");
         record.serializeNext<int64_t>(request.base_table_oid);
-        record.serializeNext<int64_t>(request.index_oid); 
+        record.serializeNext<int64_t>(request.index_oid);
         for (const std::shared_ptr<SqlOpExpr>& expr : request.key_column_values) {
             if (expr->getType() == SqlOpExpr::ExprType::UNBOUND) {
                 K2LOG_D(log::k2Adapter, "Stopping key serialization due to unbound value");
