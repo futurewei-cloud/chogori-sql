@@ -236,8 +236,7 @@ namespace gate {
         std::vector<std::shared_ptr<SqlOpExpr>> ybctid_column_values;
 
         // Projection, aggregate, etc.
-        std::vector<std::shared_ptr<SqlOpExpr>> targets;
-
+        std::vector<PgExpr *> targets;
         PgExpr* range_conds;
         PgExpr* where_conds;
 
@@ -284,7 +283,7 @@ namespace gate {
         // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
         std::vector<ColumnValue> column_new_values;
         // K2 SKV does not support the following three cluases for writes:
-        std::vector<std::shared_ptr<SqlOpExpr>> targets;
+        std::vector<PgExpr *> targets;
         std::shared_ptr<SqlOpExpr> where_expr;
         std::shared_ptr<SqlOpCondition> condition_expr;
 

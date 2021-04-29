@@ -143,8 +143,8 @@ class PgDml : public PgStatement {
         const PgObjectId& index_object_id,
         const PgPrepareParameters *prepare_params);
 
-  // Allocate doc expression for a SELECTed expression.
-  virtual std::shared_ptr<SqlOpExpr> AllocTargetVar() = 0;
+  // Get target vector
+  virtual std::vector<PgExpr *>& GetTargets() = 0;
 
   // Allocate doc expression for expression whose value is bounded to a column.
   virtual std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) = 0;

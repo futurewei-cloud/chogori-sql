@@ -98,8 +98,8 @@ class PgDmlWrite : public PgDml {
   // Allocate column expression.
   std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
 
-  // Allocate target for selected or returned expressions.
-  std::shared_ptr<SqlOpExpr> AllocTargetVar() override;
+  // Get target vector
+  std::vector<PgExpr *>& GetTargets() override;
 
   // Allocate column expression.
   std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;
