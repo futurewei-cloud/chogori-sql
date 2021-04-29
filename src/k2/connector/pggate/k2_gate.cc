@@ -83,6 +83,19 @@ CBFuture<k2::Status> K23SIGate::createCollection(k2::dto::CollectionCreateReques
     return result;
 }
 
+CBFuture<k2::Status> K23SIGate::dropCollection(const k2::String& collectionName)
+{
+    CollectionDropRequest req{.collectionName = collectionName, .prom = {}};
+
+    auto result = CBFuture<Status>(req.prom.get_future(), [st = Clock::now()] {
+        session::gate_drop_collection_latency->observe(Clock::now() - st);
+    });
+
+    K2LOG_D(log::k2Client, "drop collection: cname={}", collectionName);
+    pushQ(collectionDropTxQ, std::move(req));
+    return result;
+}
+
 CBFuture<CreateScanReadResult> K23SIGate::createScanRead(const k2::String& collectionName,
                                                             const k2::String& schemaName) {
     ScanReadCreateRequest cr{.collectionName = collectionName, .schemaName = schemaName, .prom = {}};

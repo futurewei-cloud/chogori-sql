@@ -199,6 +199,24 @@ seastar::future<> PGK2Client::_pollCreateCollectionQ() {
     });
 }
 
+seastar::future<> PGK2Client::_pollDropCollectionQ() {
+    return pollQ(collectionDropTxQ, [this](auto& req) {
+        K2LOG_D(log::k2ss, "Collection drop... {}", req);
+        if (_stop) {
+            return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
+        }
+        k2::dto::CollectionDropRequest request{std::move(req.collectionName)};
+
+        return k2::RPC().callRPC<k2::dto::CollectionDropRequest, k2::dto::CollectionDropResponse>
+                        (k2::dto::Verbs::CPO_COLLECTION_DROP, request,
+                        *(_client->cpo_client.cpo), k2::Duration(10s)).then([this, &req] (auto&& response) {
+                auto& [status, k2response] = response;
+                K2LOG_D(log::k2ss, "Collection drop received {}", status);
+                req.prom.set_value(std::move(status));
+            });
+    });
+}
+
 seastar::future<> PGK2Client::_pollReadQ() {
     return pollQ(readTxQ, [this](auto& req) mutable {
         K2LOG_D(log::k2ss, "Read... {}", req);
@@ -320,7 +338,8 @@ seastar::future<> PGK2Client::_pollForWork() {
         _pollBeginQ(), _pollEndQ(), _pollSchemaGetQ(),
         _pollSchemaCreateQ(), _pollScanReadQ(), _pollReadQ(),
         _pollWriteQ(), _pollCreateScanReadQ(), _pollUpdateQ(),
-        _pollCreateCollectionQ())
+        _pollCreateCollectionQ(),
+        _pollDropCollectionQ())
         .discard_result();  // TODO: collection creation is rare, maybe consider some optimization later on to pull on demand only.
 }
 

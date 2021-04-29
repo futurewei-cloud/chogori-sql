@@ -1762,8 +1762,6 @@ ServerLoop(void)
 		if (pmState == PM_RUN || pmState == PM_RECOVERY ||
 			pmState == PM_HOT_STANDBY)
 		{
-			if (CheckpointerPID == 0)
-				CheckpointerPID = StartCheckpointer();
 			if (BgWriterPID == 0)
 				BgWriterPID = StartBackgroundWriter();
 		}
@@ -2591,8 +2589,6 @@ SIGHUP_handler(SIGNAL_ARGS)
 			signal_child(StartupPID, SIGHUP);
 		if (BgWriterPID != 0)
 			signal_child(BgWriterPID, SIGHUP);
-		if (CheckpointerPID != 0)
-			signal_child(CheckpointerPID, SIGHUP);
 		if (WalWriterPID != 0)
 			signal_child(WalWriterPID, SIGHUP);
 		if (WalReceiverPID != 0)
@@ -2920,8 +2916,6 @@ reaper(SIGNAL_ARGS)
 			 * when we entered consistent recovery state.  It doesn't matter
 			 * if this fails, we'll just try again later.
 			 */
-			if (CheckpointerPID == 0)
-				CheckpointerPID = StartCheckpointer();
 			if (BgWriterPID == 0)
 				BgWriterPID = StartBackgroundWriter();
 			if (WalWriterPID == 0)
@@ -3740,42 +3734,6 @@ PostmasterStateMachine(void)
 				 * any, when we started immediate shutdown or entered
 				 * FatalError state.
 				 */
-			}
-			else
-			{
-				/*
-				 * If we get here, we are proceeding with normal shutdown. All
-				 * the regular children are gone, and it's time to tell the
-				 * checkpointer to do a shutdown checkpoint.
-				 */
-				Assert(Shutdown > NoShutdown);
-				/* Start the checkpointer if not running */
-				if (CheckpointerPID == 0)
-					CheckpointerPID = StartCheckpointer();
-				/* And tell it to shut down */
-				if (CheckpointerPID != 0)
-				{
-					signal_child(CheckpointerPID, SIGUSR2);
-					pmState = PM_SHUTDOWN;
-				}
-				else
-				{
-					/*
-					 * If we failed to fork a checkpointer, just shut down.
-					 * Any required cleanup will happen at next restart. We
-					 * set FatalError so that an "abnormal shutdown" message
-					 * gets logged when we exit.
-					 */
-					FatalError = true;
-					pmState = PM_WAIT_DEAD_END;
-
-					/* Kill the walsenders, archiver and stats collector too */
-					SignalChildren(SIGQUIT);
-					if (PgArchPID != 0)
-						signal_child(PgArchPID, SIGQUIT);
-					if (PgStatPID != 0)
-						signal_child(PgStatPID, SIGQUIT);
-				}
 			}
 		}
 	}
@@ -5119,8 +5077,6 @@ sigusr1_handler(SIGNAL_ARGS)
 		 * Crank up the background tasks.  It doesn't matter if this fails,
 		 * we'll just try again later.
 		 */
-		Assert(CheckpointerPID == 0);
-		CheckpointerPID = StartCheckpointer();
 		Assert(BgWriterPID == 0);
 		BgWriterPID = StartBackgroundWriter();
 

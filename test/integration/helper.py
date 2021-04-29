@@ -34,6 +34,9 @@ args, unknown = parser.parse_known_args()
 def getConn():
     return psycopg2.connect(dbname=args.db, user="postgres", port=args.port, host="localhost")
 
+def getConnForDB(db):
+    return psycopg2.connect(dbname=db, user="postgres", port=args.port, host="localhost")
+
 # Helper function for tests. Executes given SQL and commits.
 def commitSQLWithNewConn(connFunc, sql):
     conn = connFunc()

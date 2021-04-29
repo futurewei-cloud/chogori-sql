@@ -66,6 +66,12 @@ struct CollectionCreateRequest {
     K2_DEF_FMT(CollectionCreateRequest, ccr);
 };
 
+struct CollectionDropRequest {
+    k2::String collectionName;
+    std::promise<k2::Status> prom;
+    K2_DEF_FMT(CollectionDropRequest, collectionName);
+};
+
 struct CreateScanReadResult {
     k2::Status status;
     std::shared_ptr<k2::Query> query;
@@ -142,6 +148,7 @@ inline std::queue<EndTxnRequest> endTxQ;
 inline std::queue<SchemaGetRequest> schemaGetTxQ;
 inline std::queue<SchemaCreateRequest> schemaCreateTxQ;
 inline std::queue<CollectionCreateRequest> collectionCreateTxQ;
+inline std::queue<CollectionDropRequest> collectionDropTxQ;
 inline std::queue<ScanReadCreateRequest> scanReadCreateTxQ;
 inline std::queue<ScanReadRequest> scanReadTxQ;
 inline std::queue<ReadRequest> readTxQ;

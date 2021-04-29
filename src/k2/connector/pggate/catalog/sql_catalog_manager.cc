@@ -236,7 +236,7 @@ namespace catalog {
             if (result.clusterInfo->GetCatalogVersion() > catalog_version_) {
                 catalog_version_.store(result.clusterInfo->GetCatalogVersion(), std::memory_order_relaxed);
             }
-            
+
         }
         K2LOG_D(log::catalog, "Get InitDBDone successfully {}", init_db_done_);
         response.isInitDbDone = init_db_done_;
@@ -345,7 +345,7 @@ namespace catalog {
             K2LOG_E(log::catalog, "Failed to create SKV collection {} due to {}", request.databaseId, ccResult);
             response.status = K2Adapter::K2StatusToYBStatus(ccResult);
             return response;
-        }      
+        }
 
         // step 2.2 Add new database(database) entry into default cluster database table and update in-memory cache
         std::shared_ptr<DatabaseInfo> new_ns = std::make_shared<DatabaseInfo>();
@@ -489,7 +489,7 @@ namespace catalog {
     }
 
     DeleteDatabaseResponse SqlCatalogManager::DeleteDatabase(const DeleteDatabaseRequest& request) {
-        DeleteDatabaseResponse response;
+        DeleteDatabaseResponse response{};
         K2LOG_D(log::catalog, "Deleting database with name: {}, id: {}", request.databaseName, request.databaseId);
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         // TODO: use a background task to refresh the database caches to avoid fetching from SKV on each call
@@ -518,13 +518,7 @@ namespace catalog {
                 tb_txnHandler->AbortTransaction();
                 return response;
             }
-            // delete table data
-            DeleteTableResult tb_data_result = table_info_handler_->DeleteTableData(tb_txnHandler, request.databaseId, table_result.tableInfo);
-            if (!tb_data_result.status.ok()) {
-                response.status = std::move(tb_data_result.status);
-                tb_txnHandler->AbortTransaction();
-                return response;
-            }
+            // No need to delete table data, it will be dropped with the SKV collection
             // delete table schema metadata
             DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_txnHandler, request.databaseId, table_result.tableInfo);
             if (!tb_metadata_result.status.ok()) {
@@ -545,10 +539,15 @@ namespace catalog {
         tb_txnHandler->CommitTransaction();
         ns_txnHandler->CommitTransaction();
 
+
+        // Increment catalog version?
         // remove database from local cache
         database_id_map_.erase(database_info->GetDatabaseId());
         database_name_map_.erase(database_info->GetDatabaseName());
-        response.status = Status(); // OK;
+
+        auto drop_result = k2_adapter_->DropCollection(database_info->GetDatabaseId()).get();
+
+        response.status = k2pg::gate::K2Adapter::K2StatusToYBStatus(drop_result);
         return response;
     }
 
@@ -600,7 +599,7 @@ namespace catalog {
             }
 
             // return table already present error if table already exists
-           response.status = STATUS_FORMAT(AlreadyPresent, 
+           response.status = STATUS_FORMAT(AlreadyPresent,
                 "Table $0 has already existed in $1", request.tableName, request.databaseName);
             K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.databaseName);
             return response;
@@ -646,7 +645,7 @@ namespace catalog {
             response.tableInfo = new_table_info;
         }  catch (const std::exception& e) {
             txnHandler->AbortTransaction();
-            response.status = STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2", 
+            response.status = STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2",
                 request.tableName, database_info->GetDatabaseId(), e.what());
             K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, database_info->GetDatabaseId());
         }
@@ -687,7 +686,7 @@ namespace catalog {
             txnHandler->AbortTransaction();
             // cannot find the base table
             K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, database_info->GetDatabaseId());
-  		    response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, database_info->GetDatabaseId());          
+  		    response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, database_info->GetDatabaseId());
             return response;
         }
 
@@ -706,7 +705,7 @@ namespace catalog {
                 } else {
                     txnHandler->CommitTransaction();
                     // return index already present error if index already exists
-                    response.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1", 
+                    response.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1",
                         index_table_id, database_info->GetDatabaseId());
                     K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, database_info->GetDatabaseId());
                     return response;
@@ -770,9 +769,9 @@ namespace catalog {
             K2LOG_D(log::catalog, "Created index id: {}, name: {} in {}", new_index_info.table_id(), request.tableName, database_info->GetDatabaseId());
         } catch (const std::exception& e) {
             txnHandler->AbortTransaction();
-            response.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}", 
+            response.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}",
                 request.tableName, e.what(), database_info->GetDatabaseId());
-            K2LOG_E(log::catalog, "Failed to create index {} in {}", 
+            K2LOG_E(log::catalog, "Failed to create index {} in {}",
                 request.tableName, database_info->GetDatabaseId());
         }
         return response;

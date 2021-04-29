@@ -59,6 +59,7 @@ private:
     seastar::future<> _pollWriteQ();
     seastar::future<> _pollUpdateQ();
     seastar::future<> _pollCreateCollectionQ();
+    seastar::future<> _pollDropCollectionQ();
 
     bool _stop = false;
 };

@@ -133,7 +133,7 @@ Status PgSession::DropDatabase(const string& database_name, PgOid database_oid) 
 
 Status PgSession::RenameDatabase(const std::string& database_name, PgOid database_oid, std::optional<std::string> rename_to) {
   // TODO: add implementation
-  return Status::OK();
+  return STATUS(NotSupported, "RenameDatabase not supported");
 }
 
 Status PgSession::CreateTable(
@@ -269,7 +269,7 @@ Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>
 
   if (!ShouldHandleTransactionally(**op)) {
     InvalidateForeignKeyReferenceCache();
-  } 
+  }
 
   if (ops_count == 1) {
     // run a single operation
