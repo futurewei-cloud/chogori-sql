@@ -937,7 +937,7 @@ static void parse_const(Const *node, FDWExprRefValues *ref_values) {
 	if (node->constisnull || node->constbyval)
 		val->value = node->constvalue;
 	else
-		val->value = datumCopy(node->constvalue, node->constbyval, node->constlen);
+		val->value = PointerGetDatum(node->constvalue);
 
 	ref_values->const_values = lappend(ref_values->const_values, val);
 }
