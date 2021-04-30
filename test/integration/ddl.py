@@ -24,7 +24,7 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn, getConnForDB
+from helper import commitSQL, selectOneRecord, getConn
 
 
 class TestDDL(unittest.TestCase):
@@ -52,15 +52,6 @@ class TestDDL(unittest.TestCase):
         commitSQL(self.sharedConn, "CREATE TABLE ddltest4 (id integer, dataA integer);")
         with self.assertRaises(psycopg2.errors.InternalError):
             commitSQL(self.sharedConn, "ALTER TABLE ddltest4 ADD txtcol text;")
-
-    def test_dropAndCreateDatabase(self):
-        # Drop database cannot be executed against the currently connected DB
-        conn = getConnForDB("template1")
-        # Drop database must be executed outside of a transaction. autocommit=True does this
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute("DROP DATABASE postgres;")
-            cur.execute("CREATE DATABASE postgres;")
 
 # TODO add table already exists error case after #216 is fixed
 

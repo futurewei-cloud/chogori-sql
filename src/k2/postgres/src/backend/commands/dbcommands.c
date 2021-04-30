@@ -1049,21 +1049,23 @@ removing_database_from_system:
 	 */
 	pgstat_drop_database(db_id);
 
-	/*
-	 * Tell checkpointer to forget any pending fsync and unlink requests for
-	 * files in the database; else the fsyncs will fail at next checkpoint, or
-	 * worse, it will delete files that belong to a newly created database
-	 * with the same OID.
-	 */
-	ForgetDatabaseFsyncRequests(db_id);
+	if (!IsYugaByteEnabled()) {
+        /*
+         * Tell checkpointer to forget any pending fsync and unlink requests for
+         * files in the database; else the fsyncs will fail at next checkpoint, or
+         * worse, it will delete files that belong to a newly created database
+         * with the same OID.
+         */
+        ForgetDatabaseFsyncRequests(db_id);
 
-	/*
-	 * Force a checkpoint to make sure the checkpointer has received the
-	 * message sent by ForgetDatabaseFsyncRequests. On Windows, this also
-	 * ensures that background procs don't hold any open files, which would
-	 * cause rmdir() to fail.
-	 */
-	RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
+        /*
+         * Force a checkpoint to make sure the checkpointer has received the
+         * message sent by ForgetDatabaseFsyncRequests. On Windows, this also
+         * ensures that background procs don't hold any open files, which would
+         * cause rmdir() to fail.
+         */
+        RequestCheckpoint(CHECKPOINT_IMMEDIATE | CHECKPOINT_FORCE | CHECKPOINT_WAIT);
+    }
 
 	/*
 	 * Remove all tablespace subdirs belonging to the database.

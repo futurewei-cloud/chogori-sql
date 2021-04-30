@@ -984,6 +984,10 @@ RequestCheckpoint(int flags)
 		return;
 	}
 
+	if (IsYugaByteEnabled()) {
+        return;
+    }
+
 	/*
 	 * Atomically set the request flags, and take a snapshot of the counters.
 	 * When we see ckpt_started > old_started, we know the flags we set here
