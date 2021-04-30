@@ -539,12 +539,12 @@ namespace catalog {
         tb_txnHandler->CommitTransaction();
         ns_txnHandler->CommitTransaction();
 
-
-        // Increment catalog version?
         // remove database from local cache
         database_id_map_.erase(database_info->GetDatabaseId());
         database_name_map_.erase(database_info->GetDatabaseName());
 
+        // DropCollection will remove the K2 collection, all of its schemas, and all of its data.
+        // It is non-transactional with no rollback ability, but that matches PG's drop database semantics.
         auto drop_result = k2_adapter_->DropCollection(database_info->GetDatabaseId()).get();
 
         response.status = k2pg::gate::K2Adapter::K2StatusToYBStatus(drop_result);
@@ -804,7 +804,7 @@ namespace catalog {
             return response;
         }
 
-        // TODO: refactor followign SKV lookup code(till cache update) into tableHandler class 
+        // TODO: refactor followign SKV lookup code(till cache update) into tableHandler class
         // Can't find the id from cache above, now look into storage.
         std::string database_id = PgObjectId::GetDatabaseUuid(request.databaseOid);
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
