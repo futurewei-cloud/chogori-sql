@@ -502,41 +502,15 @@ namespace catalog {
         }
         std::shared_ptr<DatabaseInfo> database_info = result.databaseInfo;
 
-        // delete all database tables and indexes
-        std::shared_ptr<PgTxnHandler> tb_txnHandler = NewTransaction();
-        ListTableIdsResult list_table_result = table_info_handler_->ListTableIds(tb_txnHandler, request.databaseId, true);
-        if (!list_table_result.status.ok()) {
-            response.status = std::move(list_table_result.status);
-            tb_txnHandler->AbortTransaction();
-            return response;
-        }
-        for (auto& table_id : list_table_result.tableIds) {
-            GetTableResult table_result = table_info_handler_->GetTable(tb_txnHandler, request.databaseId,
-                    request.databaseName, table_id);
-            if (!table_result.status.ok() || table_result.tableInfo == nullptr) {
-                response.status = std::move(table_result.status);
-                tb_txnHandler->AbortTransaction();
-                return response;
-            }
-            // No need to delete table data, it will be dropped with the SKV collection
-            // delete table schema metadata
-            DeleteTableResult tb_metadata_result = table_info_handler_->DeleteTableMetadata(tb_txnHandler, request.databaseId, table_result.tableInfo);
-            if (!tb_metadata_result.status.ok()) {
-                response.status = std::move(tb_metadata_result.status);
-                tb_txnHandler->AbortTransaction();
-                return response;
-            }
-        }
+        // No need to delete table data or metadata, it will be dropped with the SKV collection
 
         std::shared_ptr<PgTxnHandler> ns_txnHandler = NewTransaction();
         DeleteDataseResult del_result = database_info_handler_->DeleteDatabase(ns_txnHandler, database_info);
         if (!del_result.status.ok()) {
             response.status = std::move(del_result.status);
-            tb_txnHandler->AbortTransaction();
             ns_txnHandler->AbortTransaction();
             return response;
         }
-        tb_txnHandler->CommitTransaction();
         ns_txnHandler->CommitTransaction();
 
         // remove database from local cache
