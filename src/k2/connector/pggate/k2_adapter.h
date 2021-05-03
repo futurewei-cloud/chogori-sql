@@ -48,7 +48,7 @@ using k2pg::sql::PgOperator;
 //  5) K2Adapter self-managment APIs, e.g. ctor, dtor, Init() etc.
 class K2Adapter {
 public:
-  // 1/5 SKV Schema APIs
+  // 1/5 SKV Schema and collection APIs (CPO operations)
   CBFuture<k2::CreateSchemaResult> CreateSchema(const std::string& collectionName, std::shared_ptr<k2::dto::Schema> schema)
     { return k23si_->createSchema(collectionName, *schema.get()); };
 
@@ -56,7 +56,8 @@ public:
     { return k23si_->getSchema(collectionName, schemaName, schemaVersion); }
 
   CBFuture<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
-  // TODO: Add DeleteColection later when it is supported on CPO/K23si
+  CBFuture<k2::Status> DropCollection(const std::string& collection_name)
+    { return k23si_->dropCollection(collection_name); }
 
   // 2/5 K2-3SI transaction APIs
   CBFuture<K23SITxn> BeginTransaction();

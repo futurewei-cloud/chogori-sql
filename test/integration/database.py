@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 '''
 MIT License
 
@@ -24,16 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 '''
 
-import psycopg2
 import unittest
+import psycopg2
+from helper import getConnForDB
 
-# Test scripts:
-from ddl import TestDDL
-from database import TestDatabase
-from dmlbasic import TestDMLBasic
-from compoundkey import TestCompoundKey
-from isolation import TestIsolation
-from aggregate import TestAggregation
-from join import TestJoin
 
-unittest.main()
+class TestDatabase(unittest.TestCase):
+
+    def test_dropAndCreateDatabase(self):
+        # Drop database cannot be executed against the currently connected DB
+        conn = getConnForDB("template1")
+        # Drop database must be executed outside of a transaction. autocommit=True does this
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute("DROP DATABASE postgres;")
+            cur.execute("CREATE DATABASE postgres;")

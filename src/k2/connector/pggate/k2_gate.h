@@ -38,7 +38,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace gate {
 
-// This class is the client library for interacting with K2. 
+// This class is the client library for interacting with K2.
 // Most importantly, it allows the user to start a new K2 transaction.
 // Also it expose other non transaction related APIs, mostly SKV schema related APIs.
 class K23SIGate {
@@ -55,6 +55,7 @@ public:
     CBFuture<k2::GetSchemaResult> getSchema(const k2::String& collectionName, const k2::String& schemaName, uint64_t schemaVersion);
     CBFuture<k2::CreateSchemaResult> createSchema(const k2::String& collectionName, k2::dto::Schema& schema);
     CBFuture<k2::Status> createCollection(k2::dto::CollectionCreateRequest&& ccr);
+    CBFuture<k2::Status> dropCollection(const k2::String& collectionName);
     // TODO: Add DeleteColection later when it is supported on CPO/K23si
     CBFuture<CreateScanReadResult> createScanRead(const k2::String& collectionName,
                                                      const k2::String& schemaName);

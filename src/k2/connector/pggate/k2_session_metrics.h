@@ -32,6 +32,7 @@ inline std::unique_ptr<Histogram> thread_pool_qwait;
 inline std::unique_ptr<Histogram> gate_get_schema_latency;
 inline std::unique_ptr<Histogram> gate_create_schema_latency;
 inline std::unique_ptr<Histogram> gate_create_collection_latency;
+inline std::unique_ptr<Histogram> gate_drop_collection_latency;
 inline std::unique_ptr<Histogram> gate_create_scanread_latency;
 
 inline void start() {
@@ -55,6 +56,7 @@ inline void start() {
     gate_get_schema_latency.reset(new Histogram("gate_get_schema_latency", "latency of schema get in usec", 1, 1.3, 78, {}));
     gate_create_schema_latency.reset(new Histogram("gate_create_schema_latency", "latency of schema create in usec", 1, 1.3, 78, {}));
     gate_create_collection_latency.reset(new Histogram("gate_create_collection_latency", "latency of collection create in usec", 1, 1.3, 78, {}));
+    gate_drop_collection_latency.reset(new Histogram("gate_drop_collection_latency", "latency of collection drop in usec", 1, 1.3, 78, {}));
     gate_create_scanread_latency.reset(new Histogram("gate_create_scanread_latency", "latency of scan read create in usec", 1, 1.3, 78, {}));
 
 }
