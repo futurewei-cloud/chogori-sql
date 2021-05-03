@@ -182,11 +182,6 @@ size_t PgCreateTable::PrimaryKeyRangeColumnCount() const {
 }
 
 Status PgCreateTable::Exec() {
-  TableProperties table_properties;
-  // always use transaction for create table
-  table_properties.SetTransactional(true);
-  schema_builder_.SetTableProperties(table_properties);
-
   // Construct schema.
   PgSchema schema = schema_builder_.Build();
   K2LOG_D(log::pg,
@@ -353,11 +348,6 @@ Status PgCreateIndex::Exec() {
   if (!ybbasectid_added_) {
     RETURN_NOT_OK(AddYBbasectidColumn());
   }
-
-  TableProperties table_properties;
-  // always use transaction for create table
-  table_properties.SetTransactional(true);
-  schema_builder_.SetTableProperties(table_properties);
 
   // Construct schema.
   PgSchema schema = schema_builder_.Build();

@@ -243,48 +243,6 @@ namespace sql {
         SortingType sorting_type_;
     };
 
-    class TableProperties {
-        public:
-        TableProperties() = default;
-        ~TableProperties() = default;
-
-        bool operator==(const TableProperties& other) const {
-            return default_time_to_live_ == other.default_time_to_live_;
-        }
-
-        bool operator!=(const TableProperties& other) const {
-            return !(*this == other);
-        }
-
-        bool HasDefaultTimeToLive() const {
-            return (default_time_to_live_ != kNoDefaultTtl);
-        }
-
-        void SetDefaultTimeToLive(uint64_t default_time_to_live) {
-            default_time_to_live_ = default_time_to_live;
-        }
-
-        int64_t DefaultTimeToLive() const {
-            return default_time_to_live_;
-        }
-
-        bool is_transactional() const {
-            return is_transactional_;
-        }
-
-        void SetTransactional(bool is_transactional) {
-            is_transactional_ = is_transactional;
-        }
-
-        void Reset();
-
-        std::string ToString() const;
-
-        private:
-        static const int kNoDefaultTtl = -1;
-        bool is_transactional_ = false;
-        int64_t default_time_to_live_ = kNoDefaultTtl;
-    };
 
     // The schema for a set of rows.
     //
@@ -327,15 +285,14 @@ namespace sql {
         // caught. If an invalid schema is passed to this constructor, an
         // assertion will be fired!
         Schema(const vector<ColumnSchema>& cols,
-                int key_columns,
-                const TableProperties& table_properties = TableProperties())
+                int key_columns)
             : name_to_index_bytes_(0),
             // TODO: C++11 provides a single-arg constructor
             name_to_index_(10,
                 NameToIndexMap::hasher(),
                 NameToIndexMap::key_equal(),
                 NameToIndexMapAllocator(&name_to_index_bytes_)) {
-                CHECK_OK(Reset(cols, key_columns, table_properties));
+                CHECK_OK(Reset(cols, key_columns));
         }
 
         // Construct a schema with the given information.
@@ -346,23 +303,21 @@ namespace sql {
         // assertion will be fired!
         Schema(const vector<ColumnSchema>& cols,
                 const vector<ColumnId>& ids,
-                int key_columns,
-                const TableProperties& table_properties = TableProperties())
+                int key_columns)
             : name_to_index_bytes_(0),
             name_to_index_(10,
                 NameToIndexMap::hasher(),
                 NameToIndexMap::key_equal(),
                 NameToIndexMapAllocator(&name_to_index_bytes_)) {
-                CHECK_OK(Reset(cols, ids, key_columns, table_properties));
+                CHECK_OK(Reset(cols, ids, key_columns));
         }
 
         // Reset this Schema object to the given schema.
         // If this fails, the Schema object is left in an inconsistent
         // state and may not be used.
-        CHECKED_STATUS Reset(const vector<ColumnSchema>& cols, int key_columns,
-            const TableProperties& table_properties = TableProperties()) {
+        CHECKED_STATUS Reset(const vector<ColumnSchema>& cols, int key_columns) {
             std::vector <ColumnId> ids;
-            return Reset(cols, ids, key_columns, table_properties);
+            return Reset(cols, ids, key_columns);
         }
 
         // Reset this Schema object to the given schema.
@@ -370,8 +325,7 @@ namespace sql {
         // state and may not be used.
         CHECKED_STATUS Reset(const vector<ColumnSchema>& cols,
             const vector<ColumnId>& ids,
-            int key_columns,
-            const TableProperties& table_properties = TableProperties());
+            int key_columns);
 
         // Return the number of columns in this schema
         size_t num_columns() const {
@@ -435,14 +389,6 @@ namespace sql {
                 column_names.push_back(col.name());
             }
             return column_names;
-        }
-
-        const TableProperties& table_properties() const {
-            return table_properties_;
-        }
-
-        void SetDefaultTimeToLive(const uint64_t& ttl_msec) {
-            table_properties_.SetDefaultTimeToLive(ttl_msec);
         }
 
         // Return the column index corresponding to the given column,
@@ -531,7 +477,6 @@ namespace sql {
         bool Equals(const Schema &other) const {
             if (this == &other) return true;
             if (this->num_key_columns_ != other.num_key_columns_) return false;
-            if (this->table_properties_ != other.table_properties_) return false;
             if (this->cols_.size() != other.cols_.size()) return false;
 
             for (size_t i = 0; i < other.cols_.size(); i++) {
@@ -593,8 +538,6 @@ namespace sql {
         // Cached indicator whether any columns are nullable.
         bool has_nullables_;
 
-        TableProperties table_properties_;
-
         // initialie schema version to zero
         uint32_t version_ = 0;
     };
@@ -632,16 +575,12 @@ namespace sql {
             return next_id_;
         }
 
-        void SetTableProperties(TableProperties& table_properties) {
-            table_properties_ = table_properties;
-        }
-
         Schema Build() const {
-            return Schema(cols_, col_ids_, num_key_columns_, table_properties_);
+            return Schema(cols_, col_ids_, num_key_columns_);
         }
 
         Schema BuildWithoutIds() const {
-            return Schema(cols_, num_key_columns_, table_properties_);
+            return Schema(cols_, num_key_columns_);
         }
 
         CHECKED_STATUS AddColumn(const ColumnSchema& column, bool is_key);
@@ -693,7 +632,6 @@ namespace sql {
         vector<ColumnSchema> cols_;
         std::unordered_set<string> col_names_;
         size_t num_key_columns_;
-        TableProperties table_properties_;
 
         DISALLOW_COPY_AND_ASSIGN(SchemaBuilder);
     };

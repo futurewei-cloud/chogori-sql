@@ -319,7 +319,7 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
                          t_table_id, table->database_id());
   }
 
-  return std::make_shared<PgTableDesc>(itr->second, table->database_id(), table->schema().table_properties().is_transactional());
+  return std::make_shared<PgTableDesc>(itr->second, table->database_id());
 }
 
 Result<bool> PgSession::IsInitDbDone() {

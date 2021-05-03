@@ -60,7 +60,7 @@ using k2pg::sql::catalog::CatalogConsts;
 
 PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false),
     database_id_(pg_table->database_id()), table_id_(pg_table->table_id()), base_table_oid_(pg_table->table_oid()), index_oid_(0),
-    schema_version_(pg_table->schema().version()), transactional_(pg_table->schema().table_properties().is_transactional()),
+    schema_version_(pg_table->schema().version()), 
     hash_column_num_(pg_table->schema().num_hash_key_columns()), key_column_num_(pg_table->schema().num_key_columns())
 {
   // create PgTableDesc from a table
@@ -91,13 +91,13 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
 
   collection_name_ = CatalogConsts::physical_collection(database_id_, pg_table->is_shared());
 
-  K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
-    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
+  K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}",
+    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size());
 }
 
-PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& database_id, bool is_transactional) : is_index_(true),
+PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& database_id) : is_index_(true),
     database_id_(database_id), table_id_(index_info.table_id()), base_table_oid_(index_info.base_table_oid()), index_oid_(index_info.table_oid()),
-    schema_version_(index_info.version()), transactional_(is_transactional),
+    schema_version_(index_info.version()), 
     hash_column_num_(index_info.hash_column_count()), key_column_num_(index_info.key_column_count())
 {
   // create PgTableDesc from an index
@@ -126,8 +126,8 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& databas
 
   collection_name_ = CatalogConsts::physical_collection(database_id_, index_info.is_shared());
 
-  K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}, transactional={}",
-    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size(), transactional_);
+  K2LOG_D(log::pg, "PgTableDesc table_id={}, ns_id={}, collection_name={}, schema_version={}, hash_columns={}, key_columns={}, columns={}",
+    table_id_, database_id_, collection_name_, schema_version_, hash_column_num_, key_column_num_, columns_.size());
 }
 
 Result<PgColumn *> PgTableDesc::FindColumn(int attr_num) {

@@ -142,7 +142,6 @@ class TableInfoHandler {
                 {k2::dto::FieldType::STRING, "TableUuid", false, false},
                 {k2::dto::FieldType::BOOL, "IsSysTable", false, false},
                 {k2::dto::FieldType::BOOL, "IsShared", false, false},
-                {k2::dto::FieldType::BOOL, "IsTransactional", false, false},
                 {k2::dto::FieldType::BOOL, "IsIndex", false, false},
                 {k2::dto::FieldType::BOOL, "IsUnique", false, false},
                 {k2::dto::FieldType::STRING, "BaseTableId", false, false},
