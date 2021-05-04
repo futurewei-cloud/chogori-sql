@@ -67,7 +67,7 @@ class DatabaseInfoHandler {
     typedef std::shared_ptr<DatabaseInfoHandler> SharedPtr;
 
     k2::dto::Schema schema_ {
-        .name = CatalogConsts::skv_schema_name_database_info,
+        .name = CatalogConsts::skv_schema_name_database_meta,
         .version = 1,
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::STRING, "DatabaseId", false, false},

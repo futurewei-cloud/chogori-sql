@@ -135,7 +135,7 @@ namespace catalog {
         CHECK(!initted_.load(std::memory_order_relaxed));
 
         // step 1/4 create the SKV collection for the primary
-        auto ccResult = k2_adapter_->CreateCollection(CatalogConsts::skv_collection_name_sql_primary, CatalogConsts::default_cluster_id).get();
+        auto ccResult = k2_adapter_->CreateCollection(CatalogConsts::skv_collection_name_default_cluster, CatalogConsts::default_cluster_id).get();
         if (!ccResult.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", ccResult);
             return K2Adapter::K2StatusToYBStatus(ccResult);
@@ -371,9 +371,9 @@ namespace catalog {
         // step 2.3 Add new system tables for the new database(database)
         std::shared_ptr<PgTxnHandler> target_txnHandler = NewTransaction();
         K2LOG_D(log::catalog, "Creating system tables for target database {}", new_ns->GetDatabaseId());
-        CreateSysTablesResult table_result = table_info_handler_->CheckAndCreateSystemTables(target_txnHandler, new_ns->GetDatabaseId());
+        CreateDBMetaTablesResult table_result = table_info_handler_->CreateDBMetaTables(target_txnHandler, new_ns->GetDatabaseId());
         if (!table_result.status.ok()) {
-            K2LOG_E(log::catalog, "Failed to create system tables for target database {} due to {}",
+            K2LOG_E(log::catalog, "Failed to create meta tables for target database {} due to {}",
                 new_ns->GetDatabaseId(), table_result.status.code());
             target_txnHandler->AbortTransaction();
             ns_txnHandler->AbortTransaction();
@@ -537,9 +537,9 @@ namespace catalog {
 
         // preload tables for a database
         thread_pool_.enqueue([this, request] () {
-            ListTablesFromStorageRequest req {.databaseName = request.databaseName, .isSysTableIncluded=true};
+            CacheTablesFromStorageRequest req {.databaseName = request.databaseName, .isSysTableIncluded=true};
             K2LOG_I(log::catalog, "Preloading database {}", req.databaseName);
-            ListTablesFromStorageResponse result = ListTablesFromStorage(req);
+            CacheTablesFromStorageResponse result = CacheTablesFromStorage(req);
             if (!result.status.ok()) {
               K2LOG_W(log::catalog, "Failed to preloading database {} due to {}", req.databaseName, result.status.code());
             }
@@ -707,8 +707,8 @@ namespace catalog {
             if (CatalogConsts::is_on_physical_collection(database_info->GetDatabaseId(), new_index_info.is_shared())) {
                 K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
                 // create a SKV schema to insert the actual index data
-                CreateUpdateSKVSchemaResult skv_schema_result =
-                    table_info_handler_->CreateOrUpdateIndexSKVSchema(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
+                CreateSKVSchemaResult skv_schema_result =
+                    table_info_handler_->CreateIndexSKVSchema(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
                 if (!skv_schema_result.status.ok()) {
                     txnHandler->AbortTransaction();
                     response.status = std::move(skv_schema_result.status);
@@ -900,9 +900,9 @@ namespace catalog {
         return response;
     }
 
-    ListTablesFromStorageResponse SqlCatalogManager::ListTablesFromStorage(const ListTablesFromStorageRequest& request) {
+    CacheTablesFromStorageResponse SqlCatalogManager::CacheTablesFromStorage(const CacheTablesFromStorageRequest& request) {
         K2LOG_D(log::catalog, "Listing tables for database {}", request.databaseName);
-        ListTablesFromStorageResponse response;
+        CacheTablesFromStorageResponse response;
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);

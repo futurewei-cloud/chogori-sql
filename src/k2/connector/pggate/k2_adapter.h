@@ -55,7 +55,7 @@ public:
   CBFuture<k2::GetSchemaResult> GetSchema(const std::string& collectionName, const std::string& schemaName, uint64_t schemaVersion)
     { return k23si_->getSchema(collectionName, schemaName, schemaVersion); }
 
-  CBFuture<k2::Status> CreateCollection(const std::string& collection_name, const std::string& nsName);
+  CBFuture<k2::Status> CreateCollection(const std::string& collection_name, const std::string& DBName);
   CBFuture<k2::Status> DropCollection(const std::string& collection_name)
     { return k23si_->dropCollection(collection_name); }
 

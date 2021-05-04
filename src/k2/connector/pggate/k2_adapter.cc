@@ -978,19 +978,19 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
     return result;
 }
 
-CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& nsName)
+CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_name, const std::string& DBName)
 {
     auto start = k2::Clock::now();
-    K2LOG_I(log::k2Adapter, "Create collection: name={}, ns={}", collection_name, nsName);
+    K2LOG_I(log::k2Adapter, "Create collection: name={} for Database: {}", collection_name, DBName);
 
     // Working around json conversion to/from k2::String which uses b64
-    std::vector<std::string> stdRangeEnds = conf_()["create_collections"][nsName]["range_ends"];
+    std::vector<std::string> stdRangeEnds = conf_()["create_collections"][DBName]["range_ends"];
     std::vector<k2::String> rangeEnds;
     for (const std::string& end : stdRangeEnds) {
         rangeEnds.emplace_back(end);
     }
 
-    std::vector<std::string> stdEndpoints = conf_()["create_collections"][nsName]["endpoints"];
+    std::vector<std::string> stdEndpoints = conf_()["create_collections"][DBName]["endpoints"];
     std::vector<k2::String> endpoints;
     for (const std::string& ep : stdEndpoints) {
         endpoints.emplace_back(ep);

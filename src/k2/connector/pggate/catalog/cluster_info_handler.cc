@@ -30,8 +30,8 @@ namespace sql {
 namespace catalog {
 
 ClusterInfoHandler::ClusterInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
-    : collection_name_(CatalogConsts::skv_collection_name_sql_primary),
-      schema_name_(CatalogConsts::skv_schema_name_cluster_info) {
+    : collection_name_(CatalogConsts::skv_collection_name_default_cluster),
+      schema_name_(CatalogConsts::skv_schema_name_cluster_meta) {
     schema_ptr_ = std::make_shared<k2::dto::Schema>(schema_);
     k2_adapter_ = k2_adapter;
 }

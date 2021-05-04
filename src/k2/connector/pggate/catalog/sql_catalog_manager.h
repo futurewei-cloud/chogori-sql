@@ -67,9 +67,9 @@ avoid moving data around after renaming a table.
 
 To store a TableInfo with possible multiple IndexInfo on SKV (an IndexInfo represents a secondary index for a table),
 we have the following three catalog tables with fixed schema defined in table_info_handler.h for each database
-1) table head: store table and index informaton. One entry for a table or an index
-2) table column: store column information for a table. One entry for a table column
-3) index column: store index column for an index. One entry for an index column
+1) table meta: store table and index informaton. One entry for a table or an index
+2) table column meta: store column information for a table. One entry for a table column
+3) index column meta: store index column for an index. One entry for an index column
 
 The TableInfoHandler is used to persist or read a TableInfo/IndexInfo object on SKV. When a TableInfo is stored to the
 above catalog tables, the actual SKV schema is obtained dynamically and is created by TableInfoHandler as well by
@@ -222,12 +222,12 @@ namespace catalog {
         std::shared_ptr<TableInfo> tableInfo;
     };
 
-    struct ListTablesFromStorageRequest {
+    struct CacheTablesFromStorageRequest {
         std::string databaseName;
         bool isSysTableIncluded = false;
     };
 
-    struct ListTablesFromStorageResponse {
+    struct CacheTablesFromStorageResponse {
         Status status;
         std::string databaseId;
         std::vector<std::shared_ptr<TableInfo>> tableInfos;
@@ -355,7 +355,7 @@ namespace catalog {
 
         std::shared_ptr<TableInfo> GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
 
-        ListTablesFromStorageResponse ListTablesFromStorage(const ListTablesFromStorageRequest& request);
+        CacheTablesFromStorageResponse CacheTablesFromStorage(const CacheTablesFromStorageRequest& request);
 
         // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
         std::shared_ptr<PgTxnHandler> NewTransaction();
