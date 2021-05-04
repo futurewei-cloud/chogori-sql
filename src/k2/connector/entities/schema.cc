@@ -85,18 +85,6 @@ namespace sql {
                                    order_);
     }
 
-    void TableProperties::Reset() {
-        default_time_to_live_ = kNoDefaultTtl;
-    }
-
-    string TableProperties::ToString() const {
-        std::string result("{ ");
-        if (HasDefaultTimeToLive()) {
-            result += yb::Format("default_time_to_live: $0 ", default_time_to_live_);
-        }
-        return result + " }";
-    }
-
     Schema::Schema(const Schema& other)
             : name_to_index_bytes_(0),
               name_to_index_(10,
@@ -131,7 +119,6 @@ namespace sql {
         }
 
         has_nullables_ = other.has_nullables_;
-        table_properties_ = other.table_properties_;
     }
 
     void Schema::swap(Schema& other) {
@@ -143,17 +130,14 @@ namespace sql {
         name_to_index_.swap(other.name_to_index_);
         id_to_index_.swap(other.id_to_index_);
         std::swap(has_nullables_, other.has_nullables_);
-        std::swap(table_properties_, other.table_properties_);
     }
 
     Status Schema::Reset(const vector<ColumnSchema>& cols,
                          const vector<ColumnId>& ids,
-                         int key_columns,
-                         const TableProperties& table_properties) {
+                         int key_columns) {
         cols_ = cols;
         num_key_columns_ = key_columns;
         num_hash_key_columns_ = 0;
-        table_properties_ = table_properties;
 
         // Determine whether any column is nullable or static, and count number of hash columns.
         has_nullables_ = false;
@@ -245,9 +229,7 @@ namespace sql {
         }
 
         return StrCat("Schema [\n\t",
-                      JoinStrings(col_strs, ",\n\t"),
-                      "\n]\nproperties: ",
-                      table_properties().ToString());
+                      JoinStrings(col_strs, ",\n\t"));
     }
 
     Result<int> Schema::ColumnIndexByName(GStringPiece col_name) const {
@@ -284,7 +266,6 @@ namespace sql {
         col_names_.clear();
         num_key_columns_ = 0;
         next_id_ = kFirstColumnId;
-        table_properties_.Reset();
     }
 
     void SchemaBuilder::Reset(const Schema& schema) {
@@ -305,7 +286,6 @@ namespace sql {
         } else {
             next_id_ = *std::max_element(col_ids_.begin(), col_ids_.end()) + 1;
         }
-        table_properties_ = schema.table_properties_;
     }
 
     Status SchemaBuilder::AddColumn(const string& name,

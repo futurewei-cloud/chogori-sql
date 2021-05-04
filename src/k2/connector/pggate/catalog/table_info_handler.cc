@@ -715,8 +715,6 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
         index_head.deserializeNext<bool>();
         // IsShared
         index_head.deserializeNext<bool>();
-        // IsTransactional
-        index_head.deserializeNext<bool>();
         // IsIndex
         index_head.deserializeNext<bool>();
         // IsUnique
@@ -757,8 +755,6 @@ GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnH
         record.deserializeNext<bool>();
         // IsShared
         response.isShared = record.deserializeNext<bool>().value();
-        // IsTransactional
-        record.deserializeNext<bool>();
         // IsIndex
         response.isIndex = record.deserializeNext<bool>().value();
         response.status = Status(); // OK
@@ -892,8 +888,6 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableHeadRecord(const std::string& co
     record.serializeNext<bool>(table->is_sys_table());
     // IsShared
     record.serializeNext<bool>(table->is_shared());
-    // IsTransactional
-    record.serializeNext<bool>(table->schema().table_properties().is_transactional());
     // IsIndex
     record.serializeNext<bool>(false);
     // IsUnique (for index)
@@ -927,8 +921,6 @@ k2::dto::SKVRecord TableInfoHandler::DeriveIndexHeadRecord(const std::string& co
     record.serializeNext<bool>(is_sys_table);
     // IsShared
     record.serializeNext<bool>(index.is_shared());
-    // IsTransactional
-    record.serializeNext<bool>(true);
     // IsIndex
     record.serializeNext<bool>(true);
     // IsUnique (for index)
@@ -1221,8 +1213,6 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
     bool is_sys_table = table_head.deserializeNext<bool>().value();
     // IsShared
     bool is_shared = table_head.deserializeNext<bool>().value();
-    // IsTransactional
-    bool is_transactional = table_head.deserializeNext<bool>().value();
     // IsIndex
     bool is_index = table_head.deserializeNext<bool>().value();
     if (is_index) {
@@ -1238,9 +1228,6 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
     int32_t next_column_id = table_head.deserializeNext<int32_t>().value();
      // SchemaVersion
     uint32_t version = table_head.deserializeNext<int32_t>().value();
-
-    TableProperties table_properties;
-    table_properties.SetTransactional(is_transactional);
 
     vector<ColumnSchema> cols;
     int key_columns = 0;
@@ -1277,7 +1264,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
             key_columns++;
         }
     }
-    Schema table_schema(cols, ids, key_columns, table_properties);
+    Schema table_schema(cols, ids, key_columns);
     table_schema.set_version(version);
     std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(database_id, database_name, table_oid, table_name, table_uuid, table_schema);
     table_info->set_next_column_id(next_column_id);
@@ -1304,8 +1291,6 @@ IndexInfo TableInfoHandler::FetchAndBuildIndexInfo(std::shared_ptr<PgTxnHandler>
     index_head.deserializeNext<bool>();
     // IsShared
     bool is_shared = index_head.deserializeNext<bool>().value();
-    // IsTransactional
-    index_head.deserializeNext<bool>();
     // IsIndex
     bool is_index = index_head.deserializeNext<bool>().value();
     if (!is_index) {

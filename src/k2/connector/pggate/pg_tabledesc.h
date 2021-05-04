@@ -69,7 +69,7 @@ class PgTableDesc {
  public:
   explicit PgTableDesc(std::shared_ptr<TableInfo> pg_table);
 
-  explicit PgTableDesc(const IndexInfo& index_info, const std::string& database_id, bool is_transactional);
+  explicit PgTableDesc(const IndexInfo& index_info, const std::string& database_id);
 
   const std::string& database_id() const {
     return database_id_;
@@ -123,10 +123,6 @@ class PgTableDesc {
 
   CHECKED_STATUS GetColumnInfo(int16_t attr_number, bool *is_primary, bool *is_hash) const;
 
-  bool IsTransactional() const {
-    return transactional_;
-  };
-
   int GetPartitionCount() const {
     // TODO:  Assume 1 partition for now until we add logic to expose k2 storage partition counts
     return 1;
@@ -149,7 +145,6 @@ class PgTableDesc {
   PgOid base_table_oid_;  // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
   PgOid index_oid_;       // if is_index_, this is oid of the index, otherwiese 0
   uint32_t schema_version_;
-  bool transactional_;
   size_t hash_column_num_;
   size_t key_column_num_;
   std::vector<PgColumn> columns_;
