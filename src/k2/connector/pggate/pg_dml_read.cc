@@ -79,12 +79,8 @@ void PgDmlRead::SetForwardScan(const bool is_forward_scan) {
 }
 
 // Allocate column variable.
-std::shared_ptr<SqlOpExpr> PgDmlRead::AllocColumnBindVar(PgColumn *col) {
+std::shared_ptr<BindVariable> PgDmlRead::AllocColumnBindVar(PgColumn *col) {
   return col->AllocBind(read_req_);
-}
-
-std::shared_ptr<SqlOpCondition> PgDmlRead::AllocColumnBindConditionExprVar(PgColumn *col) {
-  return col->AllocBindConditionExpr(read_req_);
 }
 
 std::vector<PgExpr *>& PgDmlRead::GetTargets() {
@@ -92,7 +88,7 @@ std::vector<PgExpr *>& PgDmlRead::GetTargets() {
 }
 
 // Allocate column expression.
-std::shared_ptr<SqlOpExpr> PgDmlRead::AllocColumnAssignVar(PgColumn *col) {
+std::shared_ptr<BindVariable> PgDmlRead::AllocColumnAssignVar(PgColumn *col) {
   // SELECT statement should not have an assign expression (SET clause).
   K2ASSERT(log::pg, false, "Pure virtual function is being call");
   return nullptr;
@@ -109,15 +105,6 @@ Status PgDmlRead::SetUnboundPrimaryBinds() {
     return Status::OK();
   }
 
-  for (size_t i = 0; i < bind_desc_->num_key_columns(); i++) {
-    PgColumn& col = bind_desc_->columns()[i];
-    std::shared_ptr<SqlOpExpr> expr = col.bind_var();
-
-    if (expr_binds_.find(expr) == expr_binds_.end()) {
-      expr->setType(SqlOpExpr::ExprType::UNBOUND);
-    }
-  }
-
   return Status::OK();
 }
 
@@ -131,21 +118,31 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
   // Find column.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
 
-  // Alloc the expression
-  std::shared_ptr<SqlOpCondition> condition_expr_var = AllocColumnBindConditionExprVar(col);
+  if (attr_value != NULL) {
+    PgOperator *top_expr;
+    if (col->is_primary()) {
+      // bind to range_conds
+      if (read_req_->range_conds == NULL) {
+        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", nullptr);
+        read_req_->range_conds = range_expr.get();
+        AddExpr(std::move(range_expr));
+      }
+      top_expr = static_cast<PgOperator *>(read_req_->range_conds);
+    } else {
+      // bind to where_conds
+      if (read_req_->where_conds == NULL) {
+        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", nullptr);
+        read_req_->where_conds = where_expr.get();
+        AddExpr(std::move(where_expr));
+      }
+      top_expr = static_cast<PgOperator *>(read_req_->where_conds);
+    }
 
-  if (attr_value != nullptr) {
-    condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_EQ);
-
-    std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-    op1_var->setColumnName(col->attr_name());
-    condition_expr_var->addOperand(op1_var);
-
-    std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
-    condition_expr_var->addOperand(op2_var);
-
-    // read value from attr_value, which should be a PgConstant
-    RETURN_NOT_OK(PrepareExpression(attr_value, op2_var));
+    PgOperator eq_opr("=", nullptr);
+    PgColumnRef col(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+    eq_opr.AppendArg(&col);
+    eq_opr.AppendArg(attr_value);
+    top_expr->AppendArg(&eq_opr);
   }
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
@@ -172,49 +169,38 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 
   CHECK(!col->desc()->is_hash()) << "This method cannot be used for binding hash column!";
 
-  // Alloc the doc condition
-  std::shared_ptr<SqlOpCondition> condition_expr_var = AllocColumnBindConditionExprVar(col);
+  K2ASSERT(log::pg, attr_value != NULL && attr_value_end != NULL, "Between operator should not have NULL values");
 
-  if (attr_value != nullptr) {
-    if (attr_value_end != nullptr) {
-      condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_BETWEEN);
-      std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-      op1_var->setColumnName(col->attr_name());
-      condition_expr_var->addOperand(op1_var);
-
-      std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
-      condition_expr_var->addOperand(op2_var);
-      std::shared_ptr<SqlOpExpr> op3_var = std::make_shared<SqlOpExpr>();
-      condition_expr_var->addOperand(op3_var);
-
-      RETURN_NOT_OK(PrepareExpression(attr_value, op2_var));
-      RETURN_NOT_OK(PrepareExpression(attr_value_end, op3_var));
-    } else {
-      condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_GE);
-      std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-      op1_var->setColumnName(col->attr_name());
-      condition_expr_var->addOperand(op1_var);
-
-      std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
-      condition_expr_var->addOperand(op2_var);
-
-      RETURN_NOT_OK(PrepareExpression(attr_value, op2_var));
-    }
+  PgOperator *top_expr;
+  if (col->is_primary()) {
+      // bind to range_conds
+      if (read_req_->range_conds == NULL) {
+        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", nullptr);
+        read_req_->range_conds = range_expr.get();
+        AddExpr(std::move(range_expr));
+      }
+      top_expr = static_cast<PgOperator *>(read_req_->range_conds);
   } else {
-    if (attr_value_end != nullptr) {
-      condition_expr_var->setOp(PgExpr::Opcode::PG_EXPR_LE);
-      std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-      op1_var->setColumnName(col->attr_name());
-      condition_expr_var->addOperand(op1_var);
-
-      std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
-      condition_expr_var->addOperand(op2_var);
-
-      RETURN_NOT_OK(PrepareExpression(attr_value_end, op2_var));
-    } else {
-      // Unreachable.
-    }
+      // bind to where_conds
+      if (read_req_->where_conds == NULL) {
+        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", nullptr);
+        read_req_->where_conds = where_expr.get();
+        AddExpr(std::move(where_expr));
+      }
+      top_expr = static_cast<PgOperator *>(read_req_->where_conds);
   }
+
+  PgOperator opr1(">=", nullptr);
+  PgColumnRef col1(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+  opr1.AppendArg(&col1);
+  opr1.AppendArg(attr_value);
+  top_expr->AppendArg(&opr1);
+
+  PgOperator opr2("<=", nullptr);
+  PgColumnRef col2(attr_num, attr_value_end->type_entity(), attr_value_end->type_attrs());
+  opr2.AppendArg(&col2);
+  opr2.AppendArg(attr_value_end);
+  top_expr->AppendArg(&opr2);
 
   return Status::OK();
 }
@@ -229,84 +215,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
   DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kYBTupleId))
     << "Operator IN cannot be applied to ROWID";
 
-  // Find column.
-  PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
-
-  if (col->desc()->is_hash()) {
-    // Alloc the expression variable.
-    std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
-    if (bind_var == nullptr) {
-      bind_var = AllocColumnBindVar(col);
-    } else {
-      if (expr_binds_.find(bind_var) != expr_binds_.end()) {
-        K2LOG_W(log::pg, "Column {} is already bound to another value", attr_num);
-      }
-    }
-
-    std::shared_ptr<SqlOpCondition> doc_condition = std::make_shared<SqlOpCondition>();
-    doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
-    std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-    op1_var->setColumnName(col->attr_name());
-    doc_condition->addOperand(op1_var);
-    bind_var->setCondition(doc_condition);
-
-    // There's no "list of expressions" field so we simulate it with an artificial nested OR
-    // with repeated operands, one per bind expression.
-    // This is only used for operation unrolling in pg_op_.
-    std::shared_ptr<SqlOpCondition> nested_condition = std::make_shared<SqlOpCondition>();
-    nested_condition->setOp(PgExpr::Opcode::PG_EXPR_OR);
-    std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>(nested_condition);
-    doc_condition->addOperand(op2_var);
-
-    for (int i = 0; i < n_attr_values; i++) {
-      std::shared_ptr<SqlOpExpr> attr_var = std::make_shared<SqlOpExpr>();
-      nested_condition->addOperand(attr_var);
-
-      RETURN_NOT_OK(PrepareExpression(attr_values[i], attr_var));
-
-      expr_binds_[attr_var] = attr_values[i];
-
-      if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-        CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        K2LOG_D(log::pg, "kYBTupleId was bound and ybctid_bind_ is set as true");
-        ybctid_bind_ = true;
-      }
-    }
-  } else {
-    // Alloc the condition variable
-    std::shared_ptr<SqlOpCondition> doc_condition = AllocColumnBindConditionExprVar(col);
-    doc_condition->setOp(PgExpr::Opcode::PG_EXPR_IN);
-    std::shared_ptr<SqlOpExpr> op1_var = std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::COLUMN_ID, col->attr_num());
-    op1_var->setColumnName(col->attr_name());
-    doc_condition->addOperand(op1_var);
-    std::shared_ptr<SqlOpExpr> op2_var = std::make_shared<SqlOpExpr>();
-    doc_condition->addOperand(op2_var);
-
-    for (int i = 0; i < n_attr_values; i++) {
-      // Link the given expression "attr_value" with the allocated request variable.
-      // Note that except for constants and place_holders, all other expressions can be setup
-      // just one time during prepare.
-      // Examples:
-      // - Bind values for primary columns in where clause.
-      //     WHERE hash = ?
-      // - Bind values for a column in INSERT statement.
-      //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
-
-      if (attr_values[i]) {
-        std::shared_ptr<SqlOpExpr> attr_val = std::make_shared<SqlOpExpr>();
-        RETURN_NOT_OK(PrepareExpression(attr_values[i], attr_val));
-        op2_var->addListValue(attr_val->getValue());
-      }
-
-      if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-        CHECK(attr_values[i]->is_constant()) << "Column ybctid must be bound to constant";
-        K2LOG_D(log::pg, "kYBTupleId was bound and ybctid_bind_ is set as true");
-        ybctid_bind_ = true;
-      }
-    }
-  }
-
-  return Status::OK();
+  throw std::logic_error("K2 does not support set operator yet");
 }
 
 Status PgDmlRead::PopulateAttrName(PgExpr *pg_expr) {

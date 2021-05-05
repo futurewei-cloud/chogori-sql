@@ -150,19 +150,16 @@ class PgColumn {
   void Init(PgSystemAttrNum attr_num);
 
   // Bindings for write requests.
-  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
-  std::shared_ptr<SqlOpExpr> AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id);
-  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<BindVariable> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<BindVariable> AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id);
+  std::shared_ptr<BindVariable> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   // Bindings for read requests.
-  std::shared_ptr<SqlOpExpr> AllocKeyBind(std::shared_ptr<SqlOpReadRequest> write_req);
-  std::shared_ptr<SqlOpExpr> AllocBind(std::shared_ptr<SqlOpReadRequest> read_req);
-
-  // Bindings for read requests.
-  std::shared_ptr<SqlOpCondition> AllocBindConditionExpr(std::shared_ptr<SqlOpReadRequest> read_req);
+  std::shared_ptr<BindVariable> AllocKeyBind(std::shared_ptr<SqlOpReadRequest> write_req);
+  std::shared_ptr<BindVariable> AllocBind(std::shared_ptr<SqlOpReadRequest> read_req);
 
   // Assign values for write requests.
-  std::shared_ptr<SqlOpExpr> AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req);
+  std::shared_ptr<BindVariable> AllocAssign(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   ColumnDesc *desc() {
     return &desc_;
@@ -180,15 +177,15 @@ class PgColumn {
     return desc_.is_primary();
   }
 
-  std::shared_ptr<SqlOpExpr> bind_var() {
+  std::shared_ptr<BindVariable> bind_var() {
     return bind_var_;
   }
 
-  std::shared_ptr<SqlOpExpr> assign_var() {
+  std::shared_ptr<BindVariable> assign_var() {
     return assign_var_;
   }
 
-  int attr_num() const {
+  int32_t attr_num() const {
     return desc_.attr_num();
   }
 
@@ -228,11 +225,11 @@ class PgColumn {
   //   structures for associated expressions of the primary columns in the specified order.
   // - During DML execution, the reserved expression spaces will be filled with actual values.
   // - The data-member "primary_exprs" is to map column id with the reserved expression spaces.
-  std::shared_ptr<SqlOpExpr> bind_var_ = nullptr;
-  std::shared_ptr<SqlOpCondition> bind_condition_expr_var_ = nullptr;
+  std::shared_ptr<BindVariable> bind_var_ = nullptr;
+//  std::shared_ptr<SqlOpCondition> bind_condition_expr_var_ = nullptr;
 
   // new-values of a column in the tuple.
-  std::shared_ptr<SqlOpExpr> assign_var_ = nullptr;
+  std::shared_ptr<BindVariable> assign_var_ = nullptr;
 
   // Wether or not this column must be read from DB for the SQL request.
   bool read_requested_ = false;

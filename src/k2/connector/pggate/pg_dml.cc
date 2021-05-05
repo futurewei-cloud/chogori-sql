@@ -111,13 +111,10 @@ Status PgDml::AppendTargetVar(PgExpr *target) {
   return Status::OK();
 }
 
-Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> target_var)
+Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<BindVariable> target_var)
 {
   // Find column from targeted table.
   PgColumn *pg_col = VERIFY_RESULT(target_desc_->FindColumn(attr_num));
-
-  if (target_var)
-    target_var->setColumnId(pg_col->id(), pg_col->attr_name());
 
   // Mark non-virtual column for writing
   if (!pg_col->is_virtual_column()) {
@@ -127,9 +124,7 @@ Status PgDml::PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> targ
   return Status::OK();
 }
 
-Status PgDml::PrepareColumnForWrite(PgColumn *pg_col, std::shared_ptr<SqlOpExpr> assign_var) {
-  assign_var->setColumnId(pg_col->id(), pg_col->attr_name());
-
+Status PgDml::PrepareColumnForWrite(PgColumn *pg_col, std::shared_ptr<BindVariable> assign_var) {
   // Mark non-virtual column for writing.
   if (!pg_col->is_virtual_column()) {
     pg_col->set_write_requested(true);
@@ -151,7 +146,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
   K2LOG_V(log::pg, "Bind column with attr_num: {}, name: {}, value: {}", attr_num, col->attr_name(), (*attr_value));
 
   // Alloc the expression variable.
-  std::shared_ptr<SqlOpExpr> bind_var = col->bind_var();
+  std::shared_ptr<BindVariable> bind_var = col->bind_var();
   if (bind_var == nullptr) {
     bind_var = AllocColumnBindVar(col);
   } else {
@@ -160,7 +155,6 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
     }
   }
 
-  // Link the expression and expression variable for SKV. During execution, expr will write result to the storage api.
   RETURN_NOT_OK(PrepareExpression(attr_value, bind_var));
 
   // Link the given expression "attr_value" with the allocated doc api. Note that except for
@@ -185,7 +179,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
 Status PgDml::UpdateBindVars() {
   K2LOG_V(log::pg, "Updating bind variables");
   for (const auto &entry : expr_binds_) {
-    std::shared_ptr<SqlOpExpr> expr_var = entry.first;
+    std::shared_ptr<BindVariable> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
     RETURN_NOT_OK(PrepareExpression(attr_value, expr_var));
   }
@@ -208,7 +202,7 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
   K2LOG_V(log::pg, "Assign column with attr_num: {}, name: {}, value: {}", attr_num, col->attr_name(), (*attr_value));
 
   // Alloc the expression.
-  std::shared_ptr<SqlOpExpr> assign_var = col->assign_var();
+  std::shared_ptr<BindVariable> assign_var = col->assign_var();
   if (assign_var == nullptr) {
     assign_var = AllocColumnAssignVar(col);
   } else {
@@ -235,9 +229,9 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
 }
 
 Status PgDml::UpdateAssignVars() {
-  K2LOG_V(log::pg, "Updating assigned PgExpr to SqlOpExpr");
+  K2LOG_V(log::pg, "Updating assigned PgExpr to binding variable");
   for (const auto &entry : expr_assigns_) {
-    std::shared_ptr<SqlOpExpr> expr_var = entry.first;
+    std::shared_ptr<BindVariable> expr_var = entry.first;
     PgExpr *attr_value = entry.second;
     RETURN_NOT_OK(PrepareExpression(attr_value, expr_var));
   }
@@ -360,7 +354,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 }
 
 Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
-  vector<std::shared_ptr<SqlValue>> values;
+  std::vector<SqlValue *> values;
   auto attrs_end = attrs + nattrs;
   for (auto& c : target_desc_->columns()) {
     for (auto attr = attrs; attr != attrs_end; ++attr) {
@@ -372,13 +366,15 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
 
         if (attr->attr_num == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
           // get the pre-bound kYBRowId column and its value
-          std::shared_ptr<SqlOpExpr> bind_var = c.bind_var();
-          std::shared_ptr<SqlValue> value = bind_var->getValue();
-          K2ASSERT(log::pg, bind_var != nullptr && value != nullptr, "kYBRowId column must be pre-bound");
+          std::shared_ptr<BindVariable> bind_var = c.bind_var();
+          PgConstant * pg_const = static_cast<PgConstant *>(bind_var->expr);
+          K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kYBRowId column must be pre-bound");
+          SqlValue *value = pg_const->getValue();
           values.push_back(value);
         } else {
-          std::shared_ptr<SqlValue> value = std::make_shared<SqlValue>(attr->type_entity, attr->datum, false);
-          values.push_back(value);
+          // how to free the memory for the value?
+          SqlValue value(attr->type_entity, attr->datum, false);
+          values.push_back(&value);
         }
       }
     }
@@ -401,34 +397,22 @@ bool PgDml::has_aggregate_targets() {
   return num_aggregate_targets > 0;
 }
 
-Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_var) {
+Status PgDml::PrepareExpression(PgExpr *target, std::shared_ptr<BindVariable> expr_var) {
   if (target->is_colref()) {
     // PgColumnRef
     PgColumnRef *col_ref = static_cast<PgColumnRef *>(target);
     PgColumn *col = VERIFY_RESULT(target_desc_->FindColumn(col_ref->attr_num()));
     col_ref->set_attr_name(col->attr_name());
+    expr_var->expr = col_ref;
     PrepareColumnForRead(col_ref->attr_num(), expr_var);
   } else if (target->is_constant()) {
-    // PgConstant
-    PgConstant *col_const = static_cast<PgConstant *>(target);
-    // the PgExpr *target is accessed by PG as well, need a copy of the value for SKV so that
-    // we don't accidentally delete the value that is needed by PG when free the value owned by shared_ptrs.
-    auto col_val = std::make_shared<SqlValue>(*(col_const->getValue()));
-    expr_var->setValue(col_val);
+    expr_var->expr = target;
   } else {
     // PgOperator
     // we only consider logic expressions for now
     // TODO: add aggregation function support once SKV supports that
     if (target->is_logic_expr()) {
-      std::shared_ptr<SqlOpCondition> op_cond = std::make_shared<SqlOpCondition>();
-      PgOperator *op_var = static_cast<PgOperator *>(target);
-      const std::vector<PgExpr*> & args = op_var->getArgs();
-      for (PgExpr *arg : args) {
-        std::shared_ptr<SqlOpExpr> arg_expr = std::make_shared<SqlOpExpr>();
-        PrepareExpression(arg, arg_expr);
-        op_cond->addOperand(arg_expr);
-      }
-      expr_var->setCondition(op_cond);
+      expr_var->expr = target;
     }
   }
   K2LOG_V(log::pg, "Finished PrepareExpression target:{} var expr {}", (*target), (*expr_var));

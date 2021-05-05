@@ -604,8 +604,9 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     // populate ybctid values.
     request->ybctid_column_values.clear();
     for (const std::string& ybctid : ybctids) {
+        PgConstant pg_const(NULL, SqlValue(ybctid));
         // use one batch for now, could split into multiple batches later for optimization
-        request->ybctid_column_values.push_back(std::make_shared<SqlOpExpr>(SqlOpExpr::ExprType::VALUE, std::make_shared<SqlValue>(ybctid)));
+        request->ybctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), &pg_const));
     }
     K2LOG_D(log::pg, "Populated {} ybctids in op read request for table {}",
             request->ybctid_column_values.size(), request->table_id);

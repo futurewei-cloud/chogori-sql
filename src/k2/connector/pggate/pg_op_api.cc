@@ -20,63 +20,6 @@
 
 namespace k2pg {
 namespace gate {
-    std::ostream& operator<<(std::ostream& os, const SqlOpExpr& expr) {
-        os << "(SqlOpExpr: type: " << expr.type_ << ", expr: ";
-        switch(expr.type_) {
-            case SqlOpExpr::ExprType::VALUE: {
-                if (expr.value_ == nullptr) {
-                    os << "NULL";
-                } else {
-                    os << (*expr.value_.get());
-                }
-            } break;
-            case SqlOpExpr::ExprType::LIST_VALUES: {
-                os << "[";
-                for (auto value : expr.values_) {
-                    if (value == nullptr) {
-                        os << "NULL, ";
-                    } else {
-                        os << (*value.get()) << ", ";
-                    }
-                }
-                os << "]";
-            } break;
-            case SqlOpExpr::ExprType::COLUMN_ID: {
-                os << "id: " << expr.id_ << ", name: " << expr.attr_name_;
-            } break;
-            case SqlOpExpr::ExprType::BIND_ID: {
-                os << expr.id_;
-            } break;
-            case SqlOpExpr::ExprType::ALIAS_ID: {
-                os << expr.id_;
-            } break;
-            case SqlOpExpr::ExprType::CONDITION: {
-                if (expr.condition_ == nullptr) {
-                    os << "NULL";
-                } else {
-                    os << (*expr.condition_.get());
-                }
-            } break;
-            default: os << "UNKNOWN";
-        }
-        os << ")";
-        return os;
-    }
-
-    std::ostream& operator<<(std::ostream& os, const SqlOpCondition& cond) {
-        os << "(SqlOpCondition: op: " << cond.op_;
-        os << ", operands: [";
-        for (auto operand : cond.operands_) {
-            if (operand == nullptr) {
-                os << "NULL, ";
-            } else {
-                os << (*operand.get()) << ", ";
-            }
-        }
-        os << "])";
-        return os;
-    }
-
     std::unique_ptr<SqlOpReadRequest> SqlOpReadRequest::clone() {
        std::unique_ptr<SqlOpReadRequest> newRequest = std::make_unique<SqlOpReadRequest>();
        newRequest->client_id = client_id;
@@ -92,7 +35,6 @@ namespace gate {
        newRequest->targets = targets;
        newRequest->range_conds = range_conds;
        newRequest->where_conds = where_conds;
-       newRequest->condition_expr = condition_expr;
        newRequest->is_forward_scan = is_forward_scan;
        newRequest->distinct = distinct;
        newRequest->is_aggregate = is_aggregate;
