@@ -42,7 +42,7 @@ using k2pg::gate::K2Adapter;
 using k2pg::sql::PgObjectId;
 using yb::Status;
 
-struct CreateDBMetaTablesResult {
+struct CreateMetaTablesResult {
     Status status;
 };
 
@@ -189,7 +189,7 @@ class TableInfoHandler {
     };
 
     // create above three meta tables for a DB
-    CreateDBMetaTablesResult CreateDBMetaTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name);
+    CreateMetaTablesResult CreateMetaTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name);
 
     // Create or update a user defined table fully, including all its secondary indexes if any.
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);

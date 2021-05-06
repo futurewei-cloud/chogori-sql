@@ -40,8 +40,8 @@ TableInfoHandler::TableInfoHandler(std::shared_ptr<K2Adapter> k2_adapter)
 TableInfoHandler::~TableInfoHandler() {
 }
 
-CreateDBMetaTablesResult TableInfoHandler::CreateDBMetaTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name) {
-    CreateDBMetaTablesResult response;
+CreateMetaTablesResult TableInfoHandler::CreateMetaTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name) {
+    CreateMetaTablesResult response;
     try {
         auto createResult = k2_adapter_->CreateSchema(collection_name, table_meta_SKVSchema_).get();
         if (!createResult.status.is2xxOK()) {
@@ -87,7 +87,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
         }
 
         // we only create(a new version of) the table(and its indexes) SKV schemas only when the table is not a "shared" table.
-        // BUGBUG - for shared table, in default collection, it should have all version of SKV schema before a new version is created in this collection.
+        // For now, we do not have scenario that a shared table need to upgrade schema.
         if (CatalogConsts::is_on_physical_collection(table->database_id(), table->is_shared())) {
             K2LOG_D(log::catalog, "Persisting table SKV schema id: {}, name: {} in {}", table->table_id(), table->table_name(), table->database_id());
             // persist SKV table and index schemas

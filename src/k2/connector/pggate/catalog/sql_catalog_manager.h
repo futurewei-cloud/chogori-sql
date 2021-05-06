@@ -222,17 +222,6 @@ namespace catalog {
         std::shared_ptr<TableInfo> tableInfo;
     };
 
-    struct CacheTablesFromStorageRequest {
-        std::string databaseName;
-        bool isSysTableIncluded = false;
-    };
-
-    struct CacheTablesFromStorageResponse {
-        Status status;
-        std::string databaseId;
-        std::vector<std::shared_ptr<TableInfo>> tableInfos;
-    };
-
     struct DeleteTableRequest {
         uint32_t databaseOid;
         uint32_t tableOid;
@@ -355,7 +344,7 @@ namespace catalog {
 
         std::shared_ptr<TableInfo> GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
 
-        CacheTablesFromStorageResponse CacheTablesFromStorage(const CacheTablesFromStorageRequest& request);
+        Status CacheTablesFromStorage(const std::string& databaseName, bool isSysTableIncluded);
 
         // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
         std::shared_ptr<PgTxnHandler> NewTransaction();

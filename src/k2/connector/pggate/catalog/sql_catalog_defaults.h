@@ -35,8 +35,8 @@ namespace catalog {
 
 struct CatalogConsts {
     // const for PG primary cluster and corresponding sql primary SKV collection
-    static const std::string default_cluster_id;
-    static const std::string skv_collection_name_default_cluster;
+    static const std::string primary_cluster_id;
+    static const std::string skv_collection_name_primary_cluster;
 
     // two meta tables/SKVSchemas in PG primary cluster(corresponding SKV collection)
     static const std::string skv_schema_name_cluster_meta;
