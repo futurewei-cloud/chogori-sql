@@ -34,17 +34,21 @@ namespace sql {
 namespace catalog {
 
 struct CatalogConsts {
-    static const std::string default_cluster_id;
-    static const std::string skv_collection_name_sql_primary;
-    static const std::string skv_schema_name_cluster_info;
-    static const std::string skv_schema_name_database_info;
+    // const for PG primary cluster and corresponding sql primary SKV collection
+    static const std::string primary_cluster_id;
+    static const std::string skv_collection_name_primary_cluster;
+
+    // two meta tables/SKVSchemas in PG primary cluster(corresponding SKV collection)
+    static const std::string skv_schema_name_cluster_meta;
+    static const std::string skv_schema_name_database_meta;
     
-    static const std::string skv_schema_name_sys_catalog_tablehead;
-    static const std::string skv_schema_name_sys_catalog_tablecolumn;
-    static const std::string skv_schema_name_sys_catalog_indexcolumn;
-    static const PgOid oid_sys_catalog_tablehead;
-    static const PgOid oid_sys_catalog_tablecolumn;
-    static const PgOid oid_sys_catalog_indexcolumn;
+    // table/index and their column meta tables - exist in every 
+    static const std::string skv_schema_name_table_meta;
+    static const std::string skv_schema_name_tablecolumn_meta;
+    static const std::string skv_schema_name_indexcolumn_meta;
+    static const PgOid oid_table_meta;
+    static const PgOid oid_tablecolumn_meta;
+    static const PgOid oid_indexcolumn_meta;
 
     static const std::string TABLE_ID_COLUMN_NAME;
     static const std::string INDEX_ID_COLUMN_NAME;
