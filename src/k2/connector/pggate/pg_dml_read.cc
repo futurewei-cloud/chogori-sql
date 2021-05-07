@@ -48,6 +48,7 @@
 
 #include "pggate/pg_dml_read.h"
 #include "pggate/pg_select.h"
+#include "pggate/pg_gate_typedefs.h"
 
 namespace k2pg {
 namespace gate {
@@ -118,12 +119,14 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
   // Find column.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
 
+  // BOOLOID 16
+  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
   if (attr_value != NULL) {
     PgOperator *top_expr;
     if (col->is_primary()) {
       // bind to range_conds
       if (read_req_->range_conds == NULL) {
-        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", nullptr);
+        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", bool_type);
         read_req_->range_conds = range_expr.get();
         AddExpr(std::move(range_expr));
       }
@@ -131,14 +134,14 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
     } else {
       // bind to where_conds
       if (read_req_->where_conds == NULL) {
-        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", nullptr);
+        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", bool_type);
         read_req_->where_conds = where_expr.get();
         AddExpr(std::move(where_expr));
       }
       top_expr = static_cast<PgOperator *>(read_req_->where_conds);
     }
 
-    PgOperator eq_opr("=", nullptr);
+    PgOperator eq_opr("=", bool_type);
     PgColumnRef col(attr_num, attr_value->type_entity(), attr_value->type_attrs());
     eq_opr.AppendArg(&col);
     eq_opr.AppendArg(attr_value);
@@ -171,11 +174,13 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 
   K2ASSERT(log::pg, attr_value != NULL && attr_value_end != NULL, "Between operator should not have NULL values");
 
+  // BOOLOID 16
+  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
   PgOperator *top_expr;
   if (col->is_primary()) {
       // bind to range_conds
       if (read_req_->range_conds == NULL) {
-        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", nullptr);
+        std::unique_ptr<PgExpr> range_expr = std::make_unique<PgOperator>("and", bool_type);
         read_req_->range_conds = range_expr.get();
         AddExpr(std::move(range_expr));
       }
@@ -183,20 +188,20 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
   } else {
       // bind to where_conds
       if (read_req_->where_conds == NULL) {
-        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", nullptr);
+        std::unique_ptr<PgExpr> where_expr = std::make_unique<PgOperator>("and", bool_type);
         read_req_->where_conds = where_expr.get();
         AddExpr(std::move(where_expr));
       }
       top_expr = static_cast<PgOperator *>(read_req_->where_conds);
   }
 
-  PgOperator opr1(">=", nullptr);
+  PgOperator opr1(">=", bool_type);
   PgColumnRef col1(attr_num, attr_value->type_entity(), attr_value->type_attrs());
   opr1.AppendArg(&col1);
   opr1.AppendArg(attr_value);
   top_expr->AppendArg(&opr1);
 
-  PgOperator opr2("<=", nullptr);
+  PgOperator opr2("<=", bool_type);
   PgColumnRef col2(attr_num, attr_value_end->type_entity(), attr_value_end->type_attrs());
   opr2.AppendArg(&col2);
   opr2.AppendArg(attr_value_end);

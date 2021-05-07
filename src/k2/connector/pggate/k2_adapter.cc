@@ -17,6 +17,8 @@
 #include "pg_gate_defaults.h"
 #include "pg_op_api.h"
 
+#include "pggate/pg_gate_typedefs.h"
+
 namespace k2pg {
 namespace gate {
 
@@ -632,10 +634,12 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->endScanRecord = std::move(endRecord);
 
             if (request->where_conds != NULL || !leftover_exprs.empty()) {
+                // BOOLOID 16
+                const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
                 PgOperator * pg_opr;
                 if (request->where_conds == NULL) {
                     // create a temporary and operator
-                    PgOperator and_op("and", NULL);
+                    PgOperator and_op("and", bool_type);
                     pg_opr = &and_op;
                 } else {
                     pg_opr = static_cast<PgOperator *>(request->where_conds);
@@ -915,7 +919,7 @@ k2::dto::SKVRecord K2Adapter::YBCTIDToRecord(const std::string& collection,
     }
 
     if (!ybctid_column_value->expr->is_constant()) {
-        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a constant");
+        K2LOG_W(log::k2Adapter, "ybctid_column_value value is not a constant: {}", *ybctid_column_value->expr);
         throw std::invalid_argument("Non value type in ybctid_column_value");
     }
 

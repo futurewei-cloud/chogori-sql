@@ -47,12 +47,14 @@
 //
 
 #include "pggate/pg_column.h"
+#include "pggate/pg_gate_typedefs.h"
 #include "k2_includes.h"
 
 namespace k2pg
 {
   namespace gate
   {
+    using sql::PgConstant;
 
     void PgColumn::Init(PgSystemAttrNum attr_num)
     {
@@ -107,8 +109,10 @@ namespace k2pg
 
     std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
       if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
+        // NAMEOID 19 for string type
+        const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(19);
         SqlValue value(std::move(row_id));
-        PgConstant *pg_const = new sql::PgConstant(NULL, std::move(value));
+        PgConstant *pg_const = new PgConstant(string_type, std::move(value));
         bind_var_ = std::make_shared<BindVariable>(id(), pg_const);
         K2LOG_D(log::pg, "Allocating row id key binding variable {} for column name: {}, order: {} for write request",
             *bind_var_.get(), attr_name(), attr_num());

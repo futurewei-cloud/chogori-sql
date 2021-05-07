@@ -51,6 +51,7 @@
 #include "common/type/decimal.h"
 #include "pggate/pg_op.h"
 #include "pggate/pg_env.h"
+#include "pggate/pg_gate_typedefs.h"
 #include "pggate/catalog/sql_catalog_defaults.h" // for the table/index name constants
 #include "common/ybc-internal.h"
 #include <string>
@@ -600,13 +601,14 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     PgReadOpTemplate *read_op = GetReadOp(0);
     read_op->set_active(true);
     std::shared_ptr<SqlOpReadRequest> request = read_op->request();
-
+    const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(19);
     // populate ybctid values.
     request->ybctid_column_values.clear();
     for (const std::string& ybctid : ybctids) {
-        PgConstant pg_const(NULL, SqlValue(ybctid));
+        // TODO:: how to release this
+        PgConstant *pg_const = new PgConstant(string_type, SqlValue(ybctid));
         // use one batch for now, could split into multiple batches later for optimization
-        request->ybctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), &pg_const));
+        request->ybctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const));
     }
     K2LOG_D(log::pg, "Populated {} ybctids in op read request for table {}",
             request->ybctid_column_values.size(), request->table_id);
