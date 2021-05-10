@@ -141,11 +141,13 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
       top_expr = static_cast<PgOperator *>(read_req_->where_conds);
     }
 
-    PgOperator eq_opr("=", bool_type);
-    PgColumnRef col(attr_num, attr_value->type_entity(), attr_value->type_attrs());
-    eq_opr.AppendArg(&col);
-    eq_opr.AppendArg(attr_value);
-    top_expr->AppendArg(&eq_opr);
+    std::unique_ptr<PgOperator> eq_opr = std::make_unique<PgOperator>("=", bool_type);
+    std::unique_ptr<PgColumnRef> col = std::make_unique<PgColumnRef>(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+    eq_opr->AppendArg(col.get());
+    eq_opr->AppendArg(attr_value);
+    top_expr->AppendArg(eq_opr.get());
+    AddExpr(std::move(col));
+    AddExpr(std::move(eq_opr));
   }
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
@@ -195,17 +197,21 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
       top_expr = static_cast<PgOperator *>(read_req_->where_conds);
   }
 
-  PgOperator opr1(">=", bool_type);
-  PgColumnRef col1(attr_num, attr_value->type_entity(), attr_value->type_attrs());
-  opr1.AppendArg(&col1);
-  opr1.AppendArg(attr_value);
-  top_expr->AppendArg(&opr1);
+  std::unique_ptr<PgOperator> opr1 = std::make_unique<PgOperator>(">=", bool_type);
+  std::unique_ptr<PgColumnRef> col1 = std::make_unique<PgColumnRef>(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+  opr1->AppendArg(col1.get());
+  opr1->AppendArg(attr_value);
+  top_expr->AppendArg(opr1.get());
+  AddExpr(std::move(col1));
+  AddExpr(std::move(opr1));
 
-  PgOperator opr2("<=", bool_type);
-  PgColumnRef col2(attr_num, attr_value_end->type_entity(), attr_value_end->type_attrs());
-  opr2.AppendArg(&col2);
-  opr2.AppendArg(attr_value_end);
-  top_expr->AppendArg(&opr2);
+  std::unique_ptr<PgOperator> opr2 = std::make_unique<PgOperator>("<=", bool_type);
+  std::unique_ptr<PgColumnRef> col2 = std::make_unique<PgColumnRef>(attr_num, attr_value_end->type_entity(), attr_value_end->type_attrs());
+  opr2->AppendArg(col2.get());
+  opr2->AppendArg(attr_value_end);
+  top_expr->AppendArg(opr2.get());
+  AddExpr(std::move(col2));
+  AddExpr(std::move(opr2));
 
   return Status::OK();
 }

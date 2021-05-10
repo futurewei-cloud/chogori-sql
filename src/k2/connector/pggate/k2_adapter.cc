@@ -704,9 +704,6 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         SqlOpResponse& response = op->response();
         response.skipped = false;
 
-        // if (writeRequest->targets.size() || writeRequest->where_expr || writeRequest->condition_expr) {
-        //     throw std::logic_error("Targets, where, and condition expressions are not supported for write");
-        // }
         if (writeRequest->targets.size()) {
             throw std::logic_error("Targets are not supported for write");
         }

@@ -22,7 +22,7 @@
 
     "prometheus_port": -1,
     "prometheus_push_interval_ms": 10000,
-    "prometheus_push_address": "",
+    "prometheus_push_address": "127.0.0.1:9091",
 
     "cpo": "tcp+k2rpc://0.0.0.0:9000",
     "tso_endpoint": "tcp+k2rpc://0.0.0.0:13000",
