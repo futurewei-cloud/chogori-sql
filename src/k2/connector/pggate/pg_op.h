@@ -207,6 +207,9 @@ private:
 
 //----------------------------------- Data Members -----------------------------------------------
 protected:
+    // Add expressions that are belong to this PgOp.
+    void AddExpr(std::unique_ptr<PgExpr> expr);
+
     // Session control.
     std::shared_ptr<PgSession> pg_session_;
 
@@ -251,6 +254,9 @@ protected:
     // - This is the maximum number of read/write requests being sent to servers at one time.
     // - When it is 1, there's no optimization. Available requests is executed one at a time.
     int32_t parallelism_level_ = 100;
+
+    // Expression list to be destroyed as soon as the PgOp is garbage collected
+    std::list<std::unique_ptr<PgExpr>> exprs_;
 
 private:
     // Result set either from selected or returned targets is cached in a list of strings.

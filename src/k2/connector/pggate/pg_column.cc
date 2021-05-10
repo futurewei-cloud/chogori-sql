@@ -48,6 +48,7 @@
 
 #include "pggate/pg_column.h"
 #include "pggate/pg_gate_typedefs.h"
+#include "pggate/pg_statement.h"
 #include "k2_includes.h"
 
 namespace k2pg
@@ -107,13 +108,14 @@ namespace k2pg
       return bind_var_;
     }
 
-    std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
+    std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(PgStatement *stmt, std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
       if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
         // NAMEOID 19 for string type
         const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(19);
-        SqlValue value(std::move(row_id));
-        PgConstant *pg_const = new PgConstant(string_type, std::move(value));
-        bind_var_ = std::make_shared<BindVariable>(id(), pg_const);
+        std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(row_id));
+        bind_var_ = std::make_shared<BindVariable>(id(), pg_const.get());
+        // the PgConstant's life cycle in the bind_var should be managed by the statement
+        stmt->AddExpr(std::move(pg_const));
         K2LOG_D(log::pg, "Allocating row id key binding variable {} for column name: {}, order: {} for write request",
             *bind_var_.get(), attr_name(), attr_num());
         write_req->key_column_values.push_back(bind_var_);

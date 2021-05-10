@@ -522,7 +522,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
             idx++;
         } else {
             // If any read failed, abort and fail the batch
-            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", YBCTIDToString(request->ybctid_column_values[idx]), read.status.message);
+            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", k2::HexCodec::encode(YBCTIDToString(request->ybctid_column_values[idx])), read.status.message);
             status = std::move(read.status);
             break;
         }

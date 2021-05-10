@@ -523,6 +523,10 @@ Result<std::list<PgOpResult>> PgOp::ProcessResponseResult() {
     return result;
 }
 
+void PgOp::AddExpr(std::unique_ptr<PgExpr> expr) {
+  exprs_.push_back(std::move(expr));
+}
+
 //-------------------------------------------------------------------------------------------------
 
 PgReadOp::PgReadOp(const std::shared_ptr<PgSession>& pg_session,
@@ -605,10 +609,11 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     // populate ybctid values.
     request->ybctid_column_values.clear();
     for (const std::string& ybctid : ybctids) {
-        // TODO:: how to release this
-        PgConstant *pg_const = new PgConstant(string_type, SqlValue(ybctid));
+        std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(ybctid));
         // use one batch for now, could split into multiple batches later for optimization
-        request->ybctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const));
+        request->ybctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const.get()));
+        // add to the expr list so that it could be released once PgOP is out of scope
+        AddExpr(std::move(pg_const));
     }
     K2LOG_D(log::pg, "Populated {} ybctids in op read request for table {}",
             request->ybctid_column_values.size(), request->table_id);

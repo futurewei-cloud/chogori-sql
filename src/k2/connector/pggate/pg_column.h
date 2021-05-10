@@ -151,7 +151,7 @@ class PgColumn {
 
   // Bindings for write requests.
   std::shared_ptr<BindVariable> AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req);
-  std::shared_ptr<BindVariable> AllocKeyBindForRowId(std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id);
+  std::shared_ptr<BindVariable> AllocKeyBindForRowId(PgStatement *stmt, std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id);
   std::shared_ptr<BindVariable> AllocBind(std::shared_ptr<SqlOpWriteRequest> write_req);
 
   // Bindings for read requests.

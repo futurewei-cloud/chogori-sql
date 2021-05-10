@@ -79,10 +79,7 @@ void PgDmlWrite::PrepareColumns() {
       // generate new rowid for kYBRowId column when no primary keys are defined
       std::string row_id = pg_session()->GenerateNewRowid();
       K2LOG_D(log::pg, "Generated new row id {}", k2::HexCodec::encode(row_id));
-      std::shared_ptr<BindVariable> bind_var = col.AllocKeyBindForRowId(write_req_, row_id);
-      // the PgConstant's life cycle in the bind_var should be managed by the statement
-//      std::unique_ptr<PgExpr> bind_expr = std::make_unique<PgExpr>(bind_var->expr);
-//      AddExpr(std::move(bind_expr));
+      std::shared_ptr<BindVariable> bind_var = col.AllocKeyBindForRowId(this, write_req_, row_id);
       // set the row_id bind
       row_id_bind_.emplace(col.bind_var());
     } else {
