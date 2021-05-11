@@ -605,7 +605,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
     PgReadOpTemplate *read_op = GetReadOp(0);
     read_op->set_active(true);
     std::shared_ptr<SqlOpReadRequest> request = read_op->request();
-    const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(19);
+    const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(STRING_TYPE_OID);
     // populate ybctid values.
     request->ybctid_column_values.clear();
     for (const std::string& ybctid : ybctids) {

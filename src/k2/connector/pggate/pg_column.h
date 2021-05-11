@@ -189,6 +189,10 @@ class PgColumn {
     return desc_.attr_num();
   }
 
+  int index() const {
+    return desc_.index();
+  }
+
   int id() const {
     return desc_.id();
   }
@@ -226,7 +230,6 @@ class PgColumn {
   // - During DML execution, the reserved expression spaces will be filled with actual values.
   // - The data-member "primary_exprs" is to map column id with the reserved expression spaces.
   std::shared_ptr<BindVariable> bind_var_ = nullptr;
-//  std::shared_ptr<SqlOpCondition> bind_condition_expr_var_ = nullptr;
 
   // new-values of a column in the tuple.
   std::shared_ptr<BindVariable> assign_var_ = nullptr;

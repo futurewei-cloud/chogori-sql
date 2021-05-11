@@ -119,8 +119,7 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
   // Find column.
   PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(attr_num));
 
-  // BOOLOID 16
-  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
+  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
   if (attr_value != NULL) {
     PgOperator *top_expr;
     if (col->is_primary()) {
@@ -176,8 +175,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 
   K2ASSERT(log::pg, attr_value != NULL && attr_value_end != NULL, "Between operator should not have NULL values");
 
-  // BOOLOID 16
-  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
+  const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
   PgOperator *top_expr;
   if (col->is_primary()) {
       // bind to range_conds

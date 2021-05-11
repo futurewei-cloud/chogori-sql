@@ -55,22 +55,24 @@ namespace gate {
     using k2::dto::expression::Operation;
     using k2::dto::expression::Value;
 
+    // a data structure used to store the binding information, i.e., a column reference and its binding expression
+    // here we use column index to reference a column and the binding expression is represented by PgExpr
     struct BindVariable {
         BindVariable() {
         };
 
-        BindVariable(int id_in) {
-            id = id_in;
+        BindVariable(int idx_in) {
+            idx = idx_in;
             expr = NULL;
         };
 
-        BindVariable(int id_in, PgExpr *expr_in) {
-            id = id_in;
+        BindVariable(int idx_in, PgExpr *expr_in) {
+            idx = idx_in;
             expr = expr_in;
         };
 
         friend std::ostream& operator<<(std::ostream& os, const BindVariable& variable) {
-            os << "(BindVariable: id: " << variable.id << ", expr: ";
+            os << "(BindVariable: id: " << variable.idx << ", expr: ";
             if (variable.expr == NULL) {
                 os << "NULL)";
             } else {
@@ -79,7 +81,9 @@ namespace gate {
             return os;
         }
 
-        int id;
+        // column index
+        int idx;
+        // binding expression
         PgExpr *expr;
     };
 

@@ -372,9 +372,9 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
           SqlValue *value = pg_const->getValue();
           values.push_back(value);
         } else {
-          // how to free the memory for the value?
-          SqlValue value(attr->type_entity, attr->datum, false);
-          values.push_back(&value);
+          std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(attr->type_entity, attr->datum, false);
+          values.push_back(pg_const->getValue());
+          AddExpr(std::move(pg_const));
         }
       }
     }

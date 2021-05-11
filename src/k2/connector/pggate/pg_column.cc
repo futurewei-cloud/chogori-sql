@@ -101,7 +101,7 @@ namespace k2pg
       if (is_primary() && bind_var_ == nullptr)
       {
         K2LOG_V(log::pg, "Allocating key binding variable for column name: {}, order: {}, for write request", attr_name(), attr_num());
-        bind_var_ = std::make_shared<BindVariable>(id());
+        bind_var_ = std::make_shared<BindVariable>(index());
         write_req->key_column_values.push_back(bind_var_);
       }
 
@@ -110,10 +110,9 @@ namespace k2pg
 
     std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(PgStatement *stmt, std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
       if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
-        // NAMEOID 19 for string type
-        const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(19);
+        const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(STRING_TYPE_OID);
         std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(row_id));
-        bind_var_ = std::make_shared<BindVariable>(id(), pg_const.get());
+        bind_var_ = std::make_shared<BindVariable>(index(), pg_const.get());
         // the PgConstant's life cycle in the bind_var should be managed by the statement
         stmt->AddExpr(std::move(pg_const));
         K2LOG_D(log::pg, "Allocating row id key binding variable {} for column name: {}, order: {} for write request",
@@ -135,13 +134,13 @@ namespace k2pg
         {
           if (write_req->ybctid_column_value == nullptr)
           {
-            bind_var_ = std::make_shared<BindVariable>(id());
+            bind_var_ = std::make_shared<BindVariable>(index());
             write_req->ybctid_column_value = bind_var_;
           }
         }
         else
         {
-          bind_var_ = std::make_shared<BindVariable>(id());
+          bind_var_ = std::make_shared<BindVariable>(index());
           write_req->column_values.push_back(bind_var_ );
         }
       }
@@ -154,7 +153,7 @@ namespace k2pg
       if (assign_var_ == nullptr)
       {
         K2LOG_V(log::pg, "Allocating assign variable for column name: {}, order: {}, for write request", attr_name(), attr_num());
-        assign_var_ = std::make_shared<BindVariable>(id());
+        assign_var_ = std::make_shared<BindVariable>(index());
         write_req->column_new_values.push_back(assign_var_);
       }
 
@@ -166,7 +165,7 @@ namespace k2pg
       if (is_primary() && bind_var_ == nullptr)
       {
         K2LOG_V(log::pg, "Allocating key binding variable for column name: {}, order: {}, for read request", attr_name(), attr_num());
-        bind_var_ = std::make_shared<BindVariable>(id());
+        bind_var_ = std::make_shared<BindVariable>(index());
         read_req->key_column_values.push_back(bind_var_);
       }
 
@@ -184,7 +183,7 @@ namespace k2pg
 
         K2LOG_V(log::pg, "Allocating binding variable for column name: {}, order: {}, for read request", attr_name(), attr_num());
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-          bind_var_ = std::make_shared<BindVariable>(id());
+          bind_var_ = std::make_shared<BindVariable>(index());
           read_req->ybctid_column_values.push_back(bind_var_);
         } else {
           K2LOG_E(log::pg, "Binds for other columns are not allowed");

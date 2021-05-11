@@ -522,7 +522,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
             idx++;
         } else {
             // If any read failed, abort and fail the batch
-            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", k2::HexCodec::encode(YBCTIDToString(request->ybctid_column_values[idx])), read.status.message);
+            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", k2::String(YBCTIDToString(request->ybctid_column_values[idx])), read.status.message);
             status = std::move(read.status);
             break;
         }
@@ -634,26 +634,24 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->endScanRecord = std::move(endRecord);
 
             if (request->where_conds != NULL || !leftover_exprs.empty()) {
-                // BOOLOID 16
-                const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(16);
-                PgOperator * pg_opr;
-                if (request->where_conds == NULL) {
-                    // create a temporary and operator
-                    PgOperator and_op("and", bool_type);
-                    pg_opr = &and_op;
+                const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
+                std::unique_ptr<PgOperator> top_ptr = std::make_unique<PgOperator>("and", bool_type);
+                PgOperator *top_opr;
+                if (request->where_conds != NULL) {
+                    top_opr = static_cast<PgOperator *>(request->where_conds);
                 } else {
-                    pg_opr = static_cast<PgOperator *>(request->where_conds);
+                    top_opr = top_ptr.get();
                 }
                 if (!leftover_exprs.empty()) {
                     // add the left over conditions to where conditions
                     // the top level expression is an AND, thus, we can add the left_over as its arguments
                     for (auto leftover_expr : leftover_exprs) {
-                        pg_opr->AppendArg(leftover_expr);
+                        top_opr->AppendArg(leftover_expr);
                     }
                 }
 
-                if (!pg_opr->getArgs().empty()) {
-                    scan->setFilterExpression(std::move(ToK2Expression(request->where_conds)));
+                if (!top_opr->getArgs().empty()) {
+                    scan->setFilterExpression(std::move(ToK2Expression(top_opr)));
                 }
             }
 
@@ -973,7 +971,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 }
 
 std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version,
-    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<SqlValue *> key_values)
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<SqlValue *>& key_values)
 {
     auto start = k2::Clock::now();
     CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, schema_name, schema_version);
@@ -1095,7 +1093,7 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
     std::vector<uint32_t> fieldsForUpdate;
 
     std::sort(values.begin(), values.end(), [] (std::shared_ptr<BindVariable> a, std::shared_ptr<BindVariable> b) {
-        return a->id < b->id; }
+        return a->idx < b->idx; }
     );
 
     for (std::shared_ptr<BindVariable> column : values) {
@@ -1104,7 +1102,8 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
         }
 
         // Assumes field ids need to be offset for the implicit tableID and indexID SKV fields
-        uint32_t skvIndex = column->id + SKV_FIELD_OFFSET;
+        K2ASSERT(log::k2Adapter, column->idx >= 0, "Column index cannot be negative value");
+        uint32_t skvIndex = column->idx + SKV_FIELD_OFFSET;
         if (skvIndex < record.schema->partitionKeyFields.size() &&
                         record.getFieldCursor() >= record.schema->partitionKeyFields.size()) {
             // PG gave us both rowid and the columns for key fields, so skip the column
