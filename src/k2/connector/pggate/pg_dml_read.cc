@@ -141,11 +141,12 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
     }
 
     std::unique_ptr<PgOperator> eq_opr = std::make_unique<PgOperator>("=", bool_type);
-    std::unique_ptr<PgColumnRef> col = std::make_unique<PgColumnRef>(attr_num, attr_value->type_entity(), attr_value->type_attrs());
-    eq_opr->AppendArg(col.get());
+    std::unique_ptr<PgColumnRef> col_ref = std::make_unique<PgColumnRef>(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+    col_ref->set_attr_name(col->attr_name());
+    eq_opr->AppendArg(col_ref.get());
     eq_opr->AppendArg(attr_value);
     top_expr->AppendArg(eq_opr.get());
-    AddExpr(std::move(col));
+    AddExpr(std::move(col_ref));
     AddExpr(std::move(eq_opr));
   }
 
@@ -197,6 +198,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 
   std::unique_ptr<PgOperator> opr1 = std::make_unique<PgOperator>(">=", bool_type);
   std::unique_ptr<PgColumnRef> col1 = std::make_unique<PgColumnRef>(attr_num, attr_value->type_entity(), attr_value->type_attrs());
+  col1->set_attr_name(col->attr_name());
   opr1->AppendArg(col1.get());
   opr1->AppendArg(attr_value);
   top_expr->AppendArg(opr1.get());
@@ -205,6 +207,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
 
   std::unique_ptr<PgOperator> opr2 = std::make_unique<PgOperator>("<=", bool_type);
   std::unique_ptr<PgColumnRef> col2 = std::make_unique<PgColumnRef>(attr_num, attr_value_end->type_entity(), attr_value_end->type_attrs());
+  col2->set_attr_name(col->attr_name());
   opr2->AppendArg(col2.get());
   opr2->AppendArg(attr_value_end);
   top_expr->AppendArg(opr2.get());

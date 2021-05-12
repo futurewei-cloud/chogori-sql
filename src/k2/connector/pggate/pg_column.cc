@@ -172,8 +172,7 @@ namespace k2pg
       return bind_var_;
     }
 
-    //--------------------------------------------------------------------------------------------------
-
+    // PG binds each column by a separate PG gate API and thus, we need to bind to one column at a time
     std::shared_ptr<BindVariable> PgColumn::AllocBind(std::shared_ptr<SqlOpReadRequest> read_req)
     {
       if (bind_var_ == nullptr)
