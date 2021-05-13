@@ -309,7 +309,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
             // there was a branch in the processing of previous condition and we cannot continue.
             // Ideally, this shouldn't happen if the query parser did its job well.
             // This is not an error, and so we can still process the request. PG would down-filter the result set after
-            K2LOG_W(log::k2Adapter, "Condition branched at previous key field. Use the condition as filter condition");
+            K2LOG_D(log::k2Adapter, "Condition branched at previous key field. Use the condition as filter condition");
             leftover_exprs.emplace_back(pg_expr);
             continue; // keep going so that we log all skipped expressions;
         }
