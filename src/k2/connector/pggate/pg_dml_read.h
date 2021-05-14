@@ -121,14 +121,13 @@ class PgDmlRead : public PgDml {
   CHECKED_STATUS PopulateAttrName(PgExpr *pg_expr);
 
    // Allocate column variable.
-  std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
-  std::shared_ptr<SqlOpCondition> AllocColumnBindConditionExprVar(PgColumn *col);
+  std::shared_ptr<BindVariable> AllocColumnBindVar(PgColumn *col) override;
 
   // get target vectors
   std::vector<PgExpr *>& GetTargets() override;
 
   // Allocate column expression.
-  std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;
+  std::shared_ptr<BindVariable> AllocColumnAssignVar(PgColumn *col) override;
 
   // Detect and set columns that have no bind-values.
   CHECKED_STATUS SetUnboundPrimaryBinds();

@@ -55,162 +55,36 @@ namespace gate {
     using k2::dto::expression::Operation;
     using k2::dto::expression::Value;
 
-    class SqlOpCondition;
-
-    // A SQL expression in a WHERE condition.
-    // TODO: change to use the Expression defined in K2 SKV
-    class SqlOpExpr {
-        public:
-        K2_DEF_ENUM_IC(ExprType,
-            VALUE,
-            LIST_VALUES,
-            COLUMN_ID,
-            BIND_ID,
-            ALIAS_ID,
-            CONDITION,
-            UNBOUND
-        );
-
-        SqlOpExpr(ExprType type, std::shared_ptr<SqlValue> value) : type_(type), value_(value) {
-        }
-
-        SqlOpExpr(ExprType type, int32_t id) : type_(type), id_(id) {
-        }
-
-        SqlOpExpr(std::shared_ptr<SqlOpCondition> condition) : type_(ExprType::CONDITION), condition_(condition) {
-        }
-
-        SqlOpExpr() {
-        }
-
-        ~SqlOpExpr() {
-        }
-
-        void setValue(std::shared_ptr<SqlValue> value) {
-            type_ = ExprType::VALUE;
-            value_ = value;
-        }
-
-        void setColumnId(int32_t id, const std::string& col_name) {
-            type_ = ExprType::COLUMN_ID;
-            id_ = id;
-            attr_name_ = col_name;
-        }
-
-        void setColumnName(const std::string& col_name) {
-            attr_name_ = col_name;
-        }
-
-        void setBindId(int32_t id) {
-            type_ = ExprType::BIND_ID;
-            id_ = id;
-        }
-
-        void setAliasId(int32_t id) {
-            type_ = ExprType::ALIAS_ID;
-            id_ = id;
-        }
-
-        void setCondition(std::shared_ptr<SqlOpCondition> condition) {
-            type_ = ExprType::CONDITION;
-            condition_ = condition;
-        }
-
-        void addListValue(std::shared_ptr<SqlValue> value) {
-            type_ = ExprType::LIST_VALUES;
-            values_.push_back(value);
-        }
-
-        void setType(ExprType type) {
-            type_ = type;
-        }
-
-        ExprType getType() {
-            return type_;
-        }
-
-        bool isValueType() {
-            return type_ == ExprType::VALUE;
-        }
-
-        std::shared_ptr<SqlValue> getValue() {
-            return value_;
-        }
-
-        int32_t getId() {
-            return id_;
-        }
-
-        const std::string& getName() {
-            return attr_name_;
-        }
-
-        std::shared_ptr<SqlOpCondition> getCondition() {
-            return condition_;
-        }
-
-        std::vector<std::shared_ptr<SqlValue>> getListValues() {
-            return values_;
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const SqlOpExpr& expr);
-
-        private:
-        ExprType type_;
-        std::shared_ptr<SqlValue> value_;
-        std::vector<std::shared_ptr<SqlValue>> values_;
-        std::shared_ptr<SqlOpCondition> condition_;
-        int32_t id_;
-        std::string attr_name_;
-    };
-
-    class SqlOpCondition {
-        public:
-        SqlOpCondition() = default;
-        ~SqlOpCondition() = default;
-
-        void setOp(PgExpr::Opcode op) {
-            op_ = op;
-        }
-
-        PgExpr::Opcode getOp() {
-            return op_;
-        }
-
-        void addOperand(std::shared_ptr<SqlOpExpr> expr) {
-            operands_.push_back(expr);
-        }
-
-        std::vector<std::shared_ptr<SqlOpExpr>>& getOperands() {
-            return operands_;
-        }
-
-        friend std::ostream& operator<<(std::ostream& os, const SqlOpCondition& cond);
-
-        private:
-        PgExpr::Opcode op_;
-        std::vector<std::shared_ptr<SqlOpExpr>> operands_;
-    };
-
-    struct ColumnValue {
-        ColumnValue() {
+    // a data structure used to store the binding information, i.e., a column reference and its binding expression
+    // here we use column index to reference a column and the binding expression is represented by PgExpr
+    struct BindVariable {
+        BindVariable() {
         };
 
-        ColumnValue(int columnId, std::shared_ptr<SqlOpExpr> expression) : column_id(columnId), expr(expression) {
+        BindVariable(int idx_in) {
+            idx = idx_in;
+            expr = NULL;
         };
 
-        int column_id;
-        std::shared_ptr<SqlOpExpr> expr;
+        BindVariable(int idx_in, PgExpr *expr_in) {
+            idx = idx_in;
+            expr = expr_in;
+        };
 
-        friend std::ostream& operator<<(std::ostream& os, const ColumnValue& value) {
-            os << "(ColumnValue: id: " << value.column_id << ", expr: ";
-            if (value.expr == nullptr) {
+        friend std::ostream& operator<<(std::ostream& os, const BindVariable& variable) {
+            os << "(BindVariable: id: " << variable.idx << ", expr: ";
+            if (variable.expr == NULL) {
                 os << "NULL)";
             } else {
-                os << (*value.expr.get()) << ")";
+                os << (*variable.expr) << ")";
             }
             return os;
         }
+
+        // column index
+        int idx;
+        // binding expression
+        PgExpr *expr;
     };
 
     struct SqlOpPagingState {
@@ -232,16 +106,14 @@ namespace gate {
         // K2 SKV schema version
         uint64_t schema_version;
         // One of either key_column_values or ybctid_column_values
-        std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
-        std::vector<std::shared_ptr<SqlOpExpr>> ybctid_column_values;
+        std::vector<std::shared_ptr<BindVariable>> key_column_values;
+        std::vector<std::shared_ptr<BindVariable>> ybctid_column_values;
 
         // Projection, aggregate, etc.
         std::vector<PgExpr *> targets;
         PgExpr* range_conds;
         PgExpr* where_conds;
 
-        // Includes Scan Range start and end
-        std::shared_ptr<SqlOpCondition> condition_expr;
         bool is_forward_scan = true;
         bool distinct = false;
         // indicates if targets field above has aggregation
@@ -275,17 +147,15 @@ namespace gate {
         PgOid base_table_oid;   // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
         PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         uint64_t schema_version;
-        std::vector<std::shared_ptr<SqlOpExpr>> key_column_values;
-        std::shared_ptr<SqlOpExpr> ybctid_column_value;
+        std::vector<std::shared_ptr<BindVariable>> key_column_values;
+        std::shared_ptr<BindVariable> ybctid_column_value;
         // Not used with UPDATEs. Use column_new_values to UPDATE a value.
-        std::vector<ColumnValue> column_values;
+        std::vector<std::shared_ptr<BindVariable>> column_values;
         // Column New Values.
         // - Columns to be overwritten (UPDATE SET clause). This field can contain primary-key columns.
-        std::vector<ColumnValue> column_new_values;
+        std::vector<std::shared_ptr<BindVariable>> column_new_values;
         // K2 SKV does not support the following three cluases for writes:
         std::vector<PgExpr *> targets;
-        std::shared_ptr<SqlOpExpr> where_expr;
-        std::shared_ptr<SqlOpCondition> condition_expr;
 
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).

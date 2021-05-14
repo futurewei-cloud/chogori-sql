@@ -31,7 +31,7 @@ Status SqlCatalogClient::IsInitDbDone(bool* isDone) {
   GetInitDbRequest request;
   auto start = k2::Clock::now();
   GetInitDbResponse response = catalog_manager_->IsInitDbDone(request);
-  K2LOG_I(log::catalog, "IsInitDbDone took {}", k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "IsInitDbDone took {}", k2::Clock::now() - start);
   if(!response.status.ok()) {
     return response.status;
   }
@@ -65,7 +65,7 @@ Status SqlCatalogClient::CreateDatabase(const std::string& database_name,
   };
   auto start = k2::Clock::now();
   CreateDatabaseResponse response = catalog_manager_->CreateDatabase(request);
-  K2LOG_I(log::catalog, "CreateDatabase {} took {}", database_name, k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "CreateDatabase {} took {}", database_name, k2::Clock::now() - start);
   return response.status;
 }
 
@@ -80,7 +80,7 @@ Status SqlCatalogClient::UseDatabase(const std::string& database_name) {
   UseDatabaseRequest request {.databaseName = database_name};
   auto start = k2::Clock::now();
   UseDatabaseResponse response = catalog_manager_->UseDatabase(request);
-  K2LOG_I(log::catalog, "UseDatabase {} took {}", database_name, k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "UseDatabase {} took {}", database_name, k2::Clock::now() - start);
   return response.status;
 }
 
@@ -104,7 +104,7 @@ Status SqlCatalogClient::CreateTable(
   };
   auto start = k2::Clock::now();
   CreateTableResponse response = catalog_manager_->CreateTable(request);
-  K2LOG_I(log::catalog, "CreateTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "CreateTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
   return response.status;
 }
 
@@ -135,7 +135,7 @@ Status SqlCatalogClient::CreateIndexTable(
   };
   auto start = k2::Clock::now();
   CreateIndexTableResponse response = catalog_manager_->CreateIndexTable(request);
-  K2LOG_I(log::catalog, "CreateIndexTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "CreateIndexTable {} in {} took {}", table_name, database_name, k2::Clock::now() - start);
   return response.status;
 }
 
@@ -169,7 +169,7 @@ Status SqlCatalogClient::OpenTable(const PgOid database_oid, const PgOid table_o
   };
   auto start = k2::Clock::now();
   GetTableSchemaResponse response = catalog_manager_->GetTableSchema(request);
-  K2LOG_I(log::catalog, "GetTableSchema ({} : {}) took {}", database_oid, table_oid, k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "GetTableSchema ({} : {}) took {}", database_oid, table_oid, k2::Clock::now() - start);
   if (!response.status.ok()) {
      return response.status;
   }
@@ -190,7 +190,7 @@ Status SqlCatalogClient::ReservePgOids(const PgOid database_oid,
   };
   auto start = k2::Clock::now();
   ReservePgOidsResponse response = catalog_manager_->ReservePgOid(request);
-  K2LOG_I(log::catalog, "ReservePgOid took {}", k2::Clock::now() - start);
+  K2LOG_D(log::catalog, "ReservePgOid took {}", k2::Clock::now() - start);
   if (!response.status.ok()) {
      return response.status;
   }

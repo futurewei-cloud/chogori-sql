@@ -85,8 +85,8 @@ public:
 
   // 4/5 Utility APIs and Misc.
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
-  std::string GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version, 
-    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<std::shared_ptr<SqlValue>> key_values); 
+  std::string GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version,
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<SqlValue *>& key_values);
   static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
 
   static void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
@@ -138,13 +138,13 @@ public:
 
   // Sorts values by field index, serializes values into SKVRecord, and returns skv indexes of written fields
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
-                                                std::vector<ColumnValue>& values);
+                                                std::vector<std::shared_ptr<BindVariable>>& values);
 
-  static std::string YBCTIDToString(std::shared_ptr<SqlOpExpr> ybctid_column_value);
+  static std::string YBCTIDToString(std::shared_ptr<BindVariable> ybctid_column_value);
   static std::string SerializeSKVRecordToString(k2::dto::SKVRecord& record);
   static k2::dto::SKVRecord YBCTIDToRecord(const std::string& collection,
                                       std::shared_ptr<k2::dto::Schema> schema,
-                                      std::shared_ptr<SqlOpExpr> ybctid_column_value);
+                                      std::shared_ptr<BindVariable> ybctid_column_value);
 
   // Column ID of the virtual column which is not stored in k2 data
   static constexpr int32_t VIRTUAL_COLUMN = -8;

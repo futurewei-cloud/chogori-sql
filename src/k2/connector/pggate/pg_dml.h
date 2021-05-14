@@ -86,9 +86,9 @@ class PgDml : public PgStatement {
   // Prepare column for both ends.
   // - Prepare request to communicate with storage.
   // - Prepare PgExpr to send data back to Postgres layer.
-  CHECKED_STATUS PrepareColumnForRead(int attr_num, std::shared_ptr<SqlOpExpr> target_var);
+  CHECKED_STATUS PrepareColumnForRead(int attr_num, std::shared_ptr<BindVariable> target_var);
 
-  CHECKED_STATUS PrepareColumnForWrite(PgColumn *pg_col, std::shared_ptr<SqlOpExpr> assign_var);
+  CHECKED_STATUS PrepareColumnForWrite(PgColumn *pg_col, std::shared_ptr<BindVariable> assign_var);
 
   // Bind a column with an expression.
   // - For a secondary-index-scan, this bind specify the value of the secondary key which is used to
@@ -147,10 +147,10 @@ class PgDml : public PgStatement {
   virtual std::vector<PgExpr *>& GetTargets() = 0;
 
   // Allocate doc expression for expression whose value is bounded to a column.
-  virtual std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) = 0;
+  virtual std::shared_ptr<BindVariable> AllocColumnBindVar(PgColumn *col) = 0;
 
   // Allocate doc expression for expression whose value is assigned to a column (SET clause).
-  virtual std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) = 0;
+  virtual std::shared_ptr<BindVariable> AllocColumnAssignVar(PgColumn *col) = 0;
 
   // Specify target of the query in request.
   CHECKED_STATUS AppendTargetVar(PgExpr *target);
@@ -161,8 +161,8 @@ class PgDml : public PgStatement {
   // Update set values.
   CHECKED_STATUS UpdateAssignVars();
 
-  // set up SqlOpExpr based on PgExpr
-  CHECKED_STATUS PrepareExpression(PgExpr *target, std::shared_ptr<SqlOpExpr> expr_var);
+  // set up binding variable based on PgExpr
+  CHECKED_STATUS PrepareExpression(PgExpr *target, std::shared_ptr<BindVariable> expr_var);
 
   // -----------------------------------------------------------------------------------------------
   // Data members that define the DML statement.
@@ -229,9 +229,9 @@ class PgDml : public PgStatement {
   // * Bind values are used to identify the selected rows to be operated on.
   // * Set values are used to hold columns' new values in the selected rows.
   bool ybctid_bind_ = false;
-  std::unordered_map<std::shared_ptr<SqlOpExpr>, PgExpr*> expr_binds_;
-  std::unordered_map<std::shared_ptr<SqlOpExpr>, PgExpr*> expr_assigns_;
-  std::optional<std::shared_ptr<SqlOpExpr>> row_id_bind_ = std::nullopt;
+  std::unordered_map<std::shared_ptr<BindVariable>, PgExpr*> expr_binds_;
+  std::unordered_map<std::shared_ptr<BindVariable>, PgExpr*> expr_assigns_;
+  std::optional<std::shared_ptr<BindVariable>> row_id_bind_ = std::nullopt;
 
   // Used for colocated TRUNCATE that doesn't bind any columns.
   // We don't support it for now and just keep it here as a place holder
@@ -254,15 +254,6 @@ class PgDml : public PgStatement {
   // - Under certain conditions, to optimize the performance, the PgGate layer might operate on
   //   the INDEX subquery itself.
   std::shared_ptr<PgSelectIndex> secondary_index_query_;
-
-  //------------------------------------------------------------------------------------------------
-  // Hashed and range values/components used to compute the tuple id.
-  //
-  // These members are populated by the AddYBTupleIdColumn function and the tuple id is retrieved
-  // using the GetYBTupleId function.
-  //
-  // These members are not used internally by the statement and are simply a utility for computing
-  // the tuple id (ybctid).
 };
 
 }  // namespace gate

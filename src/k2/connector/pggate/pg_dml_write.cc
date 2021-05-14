@@ -79,7 +79,7 @@ void PgDmlWrite::PrepareColumns() {
       // generate new rowid for kYBRowId column when no primary keys are defined
       std::string row_id = pg_session()->GenerateNewRowid();
       K2LOG_D(log::pg, "Generated new row id {}", k2::HexCodec::encode(row_id));
-      col.AllocKeyBindForRowId(write_req_, row_id);
+      std::shared_ptr<BindVariable> bind_var = col.AllocKeyBindForRowId(this, write_req_, row_id);
       // set the row_id bind
       row_id_bind_.emplace(col.bind_var());
     } else {
@@ -96,10 +96,10 @@ Status PgDmlWrite::Exec() {
   RETURN_NOT_OK(UpdateBindVars());
   RETURN_NOT_OK(UpdateAssignVars());
 
-  if (write_req_->ybctid_column_value != nullptr) {
-    std::shared_ptr<SqlOpExpr> expr_var = write_req_->ybctid_column_value;
-    CHECK(expr_var->isValueType() && expr_var->getValue() != nullptr && expr_var->getValue()->isBinaryValue())
-      << "YBCTID must be of BINARY datatype";
+  if (write_req_->ybctid_column_value != nullptr && write_req_->ybctid_column_value->expr != NULL) {
+    std::shared_ptr<BindVariable> expr_var = write_req_->ybctid_column_value;
+    PgConstant *pg_const = static_cast<PgConstant *>(expr_var->expr);
+    K2ASSERT(log::pg, pg_const != NULL && pg_const->getValue() != NULL && pg_const->getValue()->isBinaryValue(), "YBCTID must be of BINARY datatype");
   }
 
   // Initialize sql operator.
@@ -166,11 +166,11 @@ void PgDmlWrite::AllocWriteRequest() {
   sql_op_ = std::make_shared<PgWriteOp>(pg_session_, target_desc_, table_object_id_, std::move(wop));
 }
 
-std::shared_ptr<SqlOpExpr> PgDmlWrite::AllocColumnBindVar(PgColumn *col) {
+std::shared_ptr<BindVariable> PgDmlWrite::AllocColumnBindVar(PgColumn *col) {
   return col->AllocBind(write_req_);
 }
 
-std::shared_ptr<SqlOpExpr> PgDmlWrite::AllocColumnAssignVar(PgColumn *col) {
+std::shared_ptr<BindVariable> PgDmlWrite::AllocColumnAssignVar(PgColumn *col) {
   return col->AllocAssign(write_req_);
 }
 

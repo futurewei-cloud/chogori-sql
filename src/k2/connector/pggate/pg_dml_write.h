@@ -96,13 +96,13 @@ class PgDmlWrite : public PgDml {
   void AllocWriteRequest();
 
   // Allocate column expression.
-  std::shared_ptr<SqlOpExpr> AllocColumnBindVar(PgColumn *col) override;
+  std::shared_ptr<BindVariable> AllocColumnBindVar(PgColumn *col) override;
 
   // Get target vector
   std::vector<PgExpr *>& GetTargets() override;
 
   // Allocate column expression.
-  std::shared_ptr<SqlOpExpr> AllocColumnAssignVar(PgColumn *col) override;
+  std::shared_ptr<BindVariable> AllocColumnAssignVar(PgColumn *col) override;
 
   // Delete allocated target for columns that have no bind-values.
   CHECKED_STATUS DeleteEmptyPrimaryBinds();
