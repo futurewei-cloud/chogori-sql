@@ -276,7 +276,7 @@ k2::dto::expression::Value K2Adapter::ToK2ColumnRef(PgColumnRef* pg_colref) {
 }
 
 Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr *>& leftover_exprs, k2::dto::SKVRecord& start, k2::dto::SKVRecord& end) {
-    if (range_conds == NULL) {
+    if (range_conds == nullptr) {
         return Status::OK();
     }
 
@@ -633,14 +633,14 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->startScanRecord = std::move(startRecord);
             scan->endScanRecord = std::move(endRecord);
 
-            if (request->where_conds != NULL || !leftover_exprs.empty()) {
+            if (request->where_conds != nullptr || !leftover_exprs.empty()) {
                 const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
-                std::unique_ptr<PgOperator> top_ptr = std::make_unique<PgOperator>("and", bool_type);
+                PgOperator top_and_opr("and", bool_type);
                 PgOperator *top_opr;
-                if (request->where_conds != NULL) {
+                if (request->where_conds != nullptr) {
                     top_opr = static_cast<PgOperator *>(request->where_conds);
                 } else {
-                    top_opr = top_ptr.get();
+                    top_opr = &top_and_opr;
                 }
                 if (!leftover_exprs.empty()) {
                     // add the left over conditions to where conditions
@@ -651,7 +651,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 }
 
                 if (!top_opr->getArgs().empty()) {
-                    scan->setFilterExpression(std::move(ToK2Expression(top_opr)));
+                    scan->setFilterExpression(ToK2Expression(top_opr));
                 }
             }
 
@@ -909,7 +909,7 @@ std::string K2Adapter::SerializeSKVRecordToString(k2::dto::SKVRecord& record) {
 k2::dto::SKVRecord K2Adapter::YBCTIDToRecord(const std::string& collection,
                                       std::shared_ptr<k2::dto::Schema> schema,
                                       std::shared_ptr<BindVariable> ybctid_column_value) {
-    if (ybctid_column_value == nullptr || ybctid_column_value->expr == NULL) {
+    if (ybctid_column_value == nullptr || ybctid_column_value->expr == nullptr) {
         return k2::dto::SKVRecord();
     }
 
@@ -1072,7 +1072,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
         record.serializeNext<int64_t>(request.base_table_oid);
         record.serializeNext<int64_t>(request.index_oid);
         for (std::shared_ptr<BindVariable> column_value : request.key_column_values) {
-            if (column_value->expr == NULL) {
+            if (column_value->expr == nullptr) {
                 K2LOG_D(log::k2Adapter, "Stopping key serialization due to unbound value");
                 break;
             }
@@ -1097,6 +1097,10 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
     );
 
     for (std::shared_ptr<BindVariable> column : values) {
+        if (column == nullptr) {
+           throw std::logic_error("Null binding variable in column_values");
+        }
+
         if (!column->expr->is_constant()) {
             throw std::logic_error("Non value type in column_values");
         }
@@ -1128,7 +1132,7 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
 }
 
 std::string K2Adapter::YBCTIDToString(std::shared_ptr<BindVariable> ybctid_column_value) {
-    if (ybctid_column_value == nullptr || ybctid_column_value->expr == NULL) {
+    if (ybctid_column_value == nullptr || ybctid_column_value->expr == nullptr) {
         return "";
     }
 
