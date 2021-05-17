@@ -736,6 +736,120 @@ GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnH
     return response;
 }
 
+CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid,
+    const Schema& index_schema, bool is_unique, bool is_shared, bool is_not_exist, bool skip_index_backfill, IndexPermissions index_permissions) {
+    CreateIndexTableResult result;
+    std::string index_table_id = PgObjectId::GetTableId(table_oid);
+    std::string index_table_uuid = PgObjectId::GetTableUuid(database_info->GetDatabaseOid(), table_oid);
+
+    K2LOG_D(log::catalog, "Creating index ns name: {}, index name: {}, base table oid: {}",
+            database_info->GetDatabaseId(), index_name, base_table_info->table_oid());
+ 
+    if (base_table_info->has_secondary_indexes()) {
+        const IndexMap& index_map = base_table_info->secondary_indexes();
+        const auto itr = index_map.find(index_table_id);
+        // the index has already been defined
+        if (itr != index_map.end()) {
+            // return if 'create .. if not exist' clause is specified
+            if (is_not_exist) {
+                const IndexInfo& index_info = itr->second;
+                result.indexInfo = std::make_shared<IndexInfo>(index_info);
+                result.status = Status(); // OK;
+                return result;
+            } else {
+                // return index already present error if index already exists
+                result.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1",
+                        index_table_id, database_info->GetDatabaseId());
+                K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, database_info->GetDatabaseId());
+                return result;
+            }
+        }
+    }
+    try {
+       // use default index permission, could be customized by user/api
+        IndexInfo new_index_info = BuildIndexInfo(base_table_info, database_info->GetDatabaseId(), table_oid, index_table_uuid,
+                index_schema, is_unique, is_shared, index_permissions);
+
+        K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
+        // persist the index metadata to the system catalog SKV tables
+        PersistIndexMetaResult index_meta_result = PersistIndexMeta(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
+        if (!index_meta_result.status.ok())
+        {
+                result.status = std::move(index_meta_result.status);
+                K2LOG_E(log::catalog, "Failed to persist index meta {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
+                    database_info->GetDatabaseId(), result.status);
+                return result;
+        }
+
+        if (CatalogConsts::is_on_physical_collection(database_info->GetDatabaseId(), new_index_info.is_shared())) {
+            K2LOG_D(log::catalog, "Persisting index SKV schema id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
+            // create a SKV schema to insert the actual index data
+            CreateSKVSchemaResult skv_schema_result = CreateIndexSKVSchema(txnHandler, database_info->GetDatabaseId(), base_table_info, new_index_info);
+            if (!skv_schema_result.status.ok()) {
+                result.status = std::move(skv_schema_result.status);
+                K2LOG_E(log::catalog, "Failed to persist index SKV schema id: {}, name: {}, in {} due to {}", new_index_info.table_id(), new_index_info.table_name(),
+                    database_info->GetDatabaseId(), result.status);
+                return result;
+            }
+        } else {
+            K2LOG_D(log::catalog, "Skip persisting index SKV schema id: {}, name: {} in {}, shared: {}", new_index_info.table_id(), new_index_info.table_name(),
+                database_info->GetDatabaseId(), new_index_info.is_shared());
+        }
+
+        // update the base table with the new index
+        base_table_info->add_secondary_index(new_index_info.table_id(), new_index_info);
+
+        if (!skip_index_backfill) {
+            // TODO: add logic to backfill the index
+            K2LOG_W(log::catalog, "Index backfill is not supported yet");
+        }
+
+        result.status = Status();
+        result.indexInfo = std::make_shared<IndexInfo>(new_index_info);
+    } catch (const std::exception& e) {
+        result.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}",
+            index_name, e.what(), database_info->GetDatabaseId());
+        K2LOG_E(log::catalog, "Failed to create index {} in {}",
+            index_name, database_info->GetDatabaseId());
+    }
+    return result;
+}
+
+IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
+                const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
+    std::vector<IndexColumn> columns;
+    for (ColumnId col_id: index_schema.column_ids()) {
+        int col_idx = index_schema.find_column_by_id(col_id);
+        if (col_idx == Schema::kColumnNotFound) {
+            throw std::runtime_error("Cannot find column with id " + col_id);
+        }
+        const ColumnSchema& col_schema = index_schema.column(col_idx);
+        int32_t base_column_id = -1;
+        if (col_schema.name().compare("ybuniqueidxkeysuffix") != 0 && col_schema.name().compare("ybidxbasectid") != 0) {
+            // skip checking "ybuniqueidxkeysuffix" and "ybidxbasectid" on base table, which only exist on index table
+            std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
+            if (!pair.first) {
+                throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());
+            }
+            base_column_id = pair.second;
+        }
+        K2LOG_D(log::catalog,
+            "Index column id: {}, name: {}, type: {}, is_primary: {}, is_hash: {}, order: {}",
+            col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_primary(), col_schema.is_hash(), col_schema.order());
+        // TODO: change all Table schema and index schema to use is_hash and is_range directly instead of is_primary
+        bool is_range = false;
+        if (col_schema.is_primary() && !col_schema.is_hash()) {
+            is_range = true;
+        }
+        IndexColumn col(col_id, col_schema.name(), col_schema.type()->id(), col_schema.is_nullable(),
+                col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), base_column_id);
+        columns.push_back(col);
+    }
+    IndexInfo index_info(index_name, table_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
+            is_unique, is_shared, columns, index_permissions);
+    return index_info;    
+}
+
 void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema) {
     // "TableId"
     k2::dto::SchemaField table_id_field;

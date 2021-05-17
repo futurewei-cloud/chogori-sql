@@ -349,9 +349,6 @@ namespace catalog {
         // start a new PG transaction and return the handler of it. NOTE: the underhood transaction has begun.
         std::shared_ptr<PgTxnHandler> NewTransaction();
 
-        IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
-                const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
-
         std::shared_ptr<DatabaseInfo> CheckAndLoadDatabaseByName(const std::string& database_name);
 
         std::shared_ptr<DatabaseInfo> CheckAndLoadDatabaseById(const std::string& database_id);
