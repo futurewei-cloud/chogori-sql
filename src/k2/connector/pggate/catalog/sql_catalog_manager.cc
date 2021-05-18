@@ -730,116 +730,20 @@ namespace catalog {
             response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
             return response;
         }
+        std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();    
+        GetTableSchemaResult table_schema_result = table_info_handler_->GetTableSchema(txnHandler, database_info,
+                table_id,
+                [&] () { return GetCachedIndexInfoById(table_uuid); },
+                [&] (const string &db_id) { return CheckAndLoadDatabaseById(db_id); },
+                [&] () { return NewTransaction(); }
+                );
+        response.status = std::move(table_schema_result.status);
+        if (table_schema_result.status.ok() && table_schema_result.tableInfo != nullptr)
+            response.tableInfo = table_schema_result.tableInfo;
 
-        std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        // fetch the table from SKV
-        K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
-        GetTableTypeInfoResult table_type_info_result = table_info_handler_->GetTableTypeInfo(txnHandler, database_info->GetDatabaseId(), table_id);
-        if (!table_type_info_result.status.ok()) {
-            txnHandler->AbortTransaction();
-            K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                table_id, database_info->GetDatabaseId(), table_type_info_result.status);
-            response.status = std::move(table_type_info_result.status);
-            response.tableInfo = nullptr;
-            return response;
-        }
-
-        // check the physical collection for a table
-        std::string physical_collection = CatalogConsts::physical_collection(database_id, table_type_info_result.isShared);
-        if (table_type_info_result.isShared) {
-            // check if the shared table is stored on a different collection
-            if (physical_collection.compare(database_id) != 0) {
-                // shared table is on a different collection, first finish the existing collection
-                txnHandler->CommitTransaction();
-                K2LOG_I(log::catalog, "Shared table {} is not in {} but in {} instead", table_id, database_id, physical_collection);
-                // load the shared database info
-                database_info = CheckAndLoadDatabaseById(physical_collection);
-                if (database_info == nullptr) {
-                    K2LOG_E(log::catalog, "Cannot find database {} for shared table {}", physical_collection, table_id);
-                    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0 for shared table $1", physical_collection, table_id);
-                    return response;
-                }
-                // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
-                txnHandler = NewTransaction();
-            }
-        }
-
-        if (!table_type_info_result.isIndex) {
-            K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, physical_collection);
-            // the table id belongs to a table
-            GetTableResult table_result = table_info_handler_->GetTable(txnHandler, physical_collection, database_info->GetDatabaseName(),
-                table_id);
-            if (!table_result.status.ok()) {
-                txnHandler->AbortTransaction();
-                K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
-                    table_id, physical_collection, table_result.status);
-                response.status = std::move(table_result.status);
-                response.tableInfo = nullptr;
-                return response;
-            }
-            if (table_result.tableInfo == nullptr) {
-                txnHandler->CommitTransaction();
-                K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
-                response.status = STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection);
-                response.tableInfo = nullptr;
-                return response;
-            }
-
-            response.tableInfo = table_result.tableInfo;
-            txnHandler->CommitTransaction();
-            response.status = Status(); // OK;
-            // update table cache
-            UpdateTableCache(response.tableInfo);
-            K2LOG_D(log::catalog, "Returned schema for table name: {}, id: {}",
-                response.tableInfo->table_name(), response.tableInfo->table_id());
-            return response;
-        }
-
-        // Check the index table
-        K2LOG_D(log::catalog, "Fetching table schema for index {} in ns {}", table_id, physical_collection);
-        std::shared_ptr<IndexInfo> index_ptr = GetCachedIndexInfoById(table_uuid);
-        std::string base_table_id;
-        if (index_ptr == nullptr) {
-            // not founnd in cache, try to check the base table id from SKV
-            GetBaseTableIdResult table_id_result = table_info_handler_->GetBaseTableId(txnHandler, physical_collection, table_id);
-            if (!table_id_result.status.ok()) {
-                txnHandler->AbortTransaction();
-                K2LOG_E(log::catalog, "Failed to check base table id for index {} in {}, due to {}",
-                    table_id, physical_collection, table_id_result.status.code());
-                response.status = std::move(table_id_result.status);
-                response.tableInfo = nullptr;
-                return response;
-            }
-            base_table_id = table_id_result.baseTableId;
-        } else {
-            base_table_id = index_ptr->base_table_id();
-        }
-
-        if (base_table_id.empty()) {
-            // cannot find the id as either a table id or an index id
-            txnHandler->AbortTransaction();
-            K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
-            response.status = STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection);
-            response.tableInfo = nullptr;
-            return response;
-        }
-
-        K2LOG_D(log::catalog, "Fetching base table schema {} for index {} in {}", base_table_id, table_id, physical_collection);
-        GetTableResult base_table_result = table_info_handler_->GetTable(txnHandler, physical_collection, database_info->GetDatabaseName(),
-                base_table_id);
-        if (!base_table_result.status.ok()) {
-            txnHandler->AbortTransaction();
-            response.status = std::move(base_table_result.status);
-            response.tableInfo = nullptr;
-            return response;
-        }
-        txnHandler->CommitTransaction();
-        response.status = Status(); // OK;
-        response.tableInfo = base_table_result.tableInfo;
         // update table cache
         UpdateTableCache(response.tableInfo);
-        K2LOG_D(log::catalog, "Returned base table schema id: {}, name {}, for index: {}",
-            base_table_id, response.tableInfo->table_name(), table_id);
+
         return response;
     }
 

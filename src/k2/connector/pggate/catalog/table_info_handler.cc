@@ -815,6 +815,119 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
     return result;
 }
 
+
+GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id, std::function<std::shared_ptr<IndexInfo>()> fnc_indx, std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db, std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx)
+{
+    GetTableSchemaResult result;
+    std::shared_ptr<PgTxnHandler> localTxnHandler = txnHandler;
+    std::shared_ptr<DatabaseInfo> local_database_info = database_info;
+
+    K2LOG_D(log::catalog, "Checking if table {} is an index or not", table_id);
+    GetTableTypeInfoResult table_type_info_result = GetTableTypeInfo(localTxnHandler, local_database_info->GetDatabaseId(), table_id);
+    if (!table_type_info_result.status.ok()) {
+        localTxnHandler->AbortTransaction();
+        K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
+                table_id, local_database_info->GetDatabaseId(), table_type_info_result.status);
+        result.status = std::move(table_type_info_result.status);
+        result.tableInfo = nullptr;
+        return result;
+    }
+
+    // check the physical collection for a table
+    std::string physical_collection = CatalogConsts::physical_collection(local_database_info->GetDatabaseId(), table_type_info_result.isShared);
+    if (table_type_info_result.isShared) {
+        // check if the shared table is stored on a different collection
+        if (physical_collection.compare(database_info->GetDatabaseId()) != 0) {
+            // shared table is on a different collection, first finish the existing collection
+            localTxnHandler->CommitTransaction();
+            K2LOG_I(log::catalog, "Shared table {} is not in {} but in {} instead", table_id, database_info->GetDatabaseId(), physical_collection);
+            // load the shared database info
+            local_database_info = fnc_db(physical_collection);
+            if (database_info == nullptr) {
+                K2LOG_E(log::catalog, "Cannot find database {} for shared table {}", physical_collection, table_id);
+                result.status = STATUS_FORMAT(NotFound, "Cannot find database $0 for shared table $1", physical_collection, table_id);
+                return result;
+            }
+            // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
+            localTxnHandler = fnc_tx();
+        }
+    }
+
+    if (!table_type_info_result.isIndex) {
+        K2LOG_D(log::catalog, "Fetching table schema {} in ns {}", table_id, physical_collection);
+        // the table id belongs to a table
+        GetTableResult table_result = GetTable(localTxnHandler, physical_collection, local_database_info->GetDatabaseName(),
+            table_id);
+        if (!table_result.status.ok()) {
+            localTxnHandler->AbortTransaction();
+            K2LOG_E(log::catalog, "Failed to check table {} in ns {}, due to {}",
+                table_id, physical_collection, table_result.status);
+            result.status = std::move(table_result.status);
+            result.tableInfo = nullptr;
+            return result;
+        }
+        if (table_result.tableInfo == nullptr) {
+            localTxnHandler->CommitTransaction();
+            K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
+            result.status = STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection);
+            result.tableInfo = nullptr;
+            return result;
+        }
+
+        result.tableInfo = table_result.tableInfo;
+        localTxnHandler->CommitTransaction();
+        result.status = Status(); // OK;
+        
+        K2LOG_D(log::catalog, "Returned schema for table name: {}, id: {}",
+            result.tableInfo->table_name(), result.tableInfo->table_id());
+        return result;
+    }
+    std::string base_table_id;
+    std::shared_ptr<IndexInfo> index_ptr = fnc_indx();
+
+    if (index_ptr == nullptr) {
+        // not founnd in cache, try to check the base table id from SKV
+        GetBaseTableIdResult table_id_result = GetBaseTableId(localTxnHandler, physical_collection, table_id);
+        if (!table_id_result.status.ok()) {
+            localTxnHandler->AbortTransaction();
+            K2LOG_E(log::catalog, "Failed to check base table id for index {} in {}, due to {}",
+                table_id, physical_collection, table_id_result.status.code());
+            result.status = std::move(table_id_result.status);
+            result.tableInfo = nullptr;
+            return result;
+        }
+        base_table_id = table_id_result.baseTableId;
+    } else {
+        base_table_id = index_ptr->base_table_id();
+    }
+
+    if (base_table_id.empty()) {
+        // cannot find the id as either a table id or an index id
+        localTxnHandler->AbortTransaction();
+        K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
+        result.status = STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection);
+        result.tableInfo = nullptr;
+        return result;
+    }
+
+    K2LOG_D(log::catalog, "Fetching base table schema {} for index {} in {}", base_table_id, table_id, physical_collection);
+    GetTableResult base_table_result = GetTable(localTxnHandler, physical_collection, local_database_info->GetDatabaseName(),
+            base_table_id);
+    if (!base_table_result.status.ok()) {
+        localTxnHandler->AbortTransaction();
+        result.status = std::move(base_table_result.status);
+        result.tableInfo = nullptr;
+        return result;
+    }
+    localTxnHandler->CommitTransaction();
+    result.status = Status(); // OK;
+    result.tableInfo = base_table_result.tableInfo;
+    // update table cache
+    K2LOG_D(log::catalog, "Returned base table schema id: {}, name {}, for index: {}",
+        base_table_id, result.tableInfo->table_name(), table_id);
+    return result;
+}
+
 IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
     std::vector<IndexColumn> columns;

@@ -59,6 +59,11 @@ struct GetTableResult {
     std::shared_ptr<TableInfo> tableInfo;
 };
 
+struct GetTableSchemaResult {
+    Status status;
+    std::shared_ptr<TableInfo> tableInfo;
+};
+
 struct ListTablesResult {
     Status status;
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
@@ -200,6 +205,10 @@ class TableInfoHandler {
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
     GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
+    GetTableSchemaResult GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id,
+                std::function<std::shared_ptr<IndexInfo>()> fnc_indx,
+                std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db,
+                std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx);
 
     ListTablesResult ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, bool isSysTableIncluded);
 
