@@ -388,9 +388,9 @@ PgDropIndex::~PgDropIndex() {
 }
 
 Status PgDropIndex::Exec() {
-  PgOid *base_table_oid = nullptr;
-  Status s = pg_session_->DropIndex(table_object_id_, base_table_oid);
-  PgObjectId base_table_object_id(table_object_id_.GetDatabaseOid(), *base_table_oid);
+  PgOid base_table_oid{};
+  Status s = pg_session_->DropIndex(table_object_id_, &base_table_oid);
+  PgObjectId base_table_object_id(table_object_id_.GetDatabaseOid(), base_table_oid);
 
   pg_session_->InvalidateTableCache(table_object_id_);
   pg_session_->InvalidateTableCache(base_table_object_id);

@@ -1115,7 +1115,7 @@ static void pgBindScanKeys(Relation relation,
 							YbFdwExecState *fdw_state,
 							PgFdwScanPlan scan_plan) {
 	if (list_length(fdw_state->remote_exprs) == 0) {
-		elog(WARNING, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
+		elog(DEBUG4, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
 		return;
 	}
 
@@ -1125,7 +1125,7 @@ static void pgBindScanKeys(Relation relation,
 	parse_conditions(fdw_state->remote_exprs, scan_plan->paramLI, &context);
 	elog(DEBUG4, "FDW: found %d opr_conds from %d remote exprs for relation: %d", list_length(context.opr_conds), list_length(fdw_state->remote_exprs), relation->rd_id);
 	if (list_length(context.opr_conds) == 0) {
-		elog(WARNING, "FDW: No Opr conditions are found to bind keys for relation: %d", relation->rd_id);
+		elog(DEBUG4, "FDW: No Opr conditions are found to bind keys for relation: %d", relation->rd_id);
 		return;
 	}
 
