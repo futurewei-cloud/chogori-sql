@@ -8,5 +8,7 @@
 #   - yb_insert_conflict
 # Other tests are YugaByte tests.
 ####################################################################################################
+test: yb_insert_conflict
+test: yb_dml_insert_conflict
 test: yb_dml_read_time
 test: yb_dml_single_row

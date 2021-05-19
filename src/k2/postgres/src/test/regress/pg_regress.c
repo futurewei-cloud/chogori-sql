@@ -61,8 +61,8 @@ static char *shellprog = SHELLPROG;
  * Windows-style newlines, but the comparison files might or might not.
  */
 #ifndef WIN32
-const char *basic_diff_opts = "--ignore-trailing-space";
-const char *pretty_diff_opts = "-C3 --ignore-trailing-space";
+const char *basic_diff_opts = "-w -B";
+const char *pretty_diff_opts = "-C3 -w -B";
 #else
 const char *basic_diff_opts = "-w";
 const char *pretty_diff_opts = "-w -C3";

@@ -886,7 +886,7 @@ static void parse_expr(Expr *node, FDWExprRefValues *ref_values) {
 
 static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 	if (list_length(node->args) != 2) {
-		elog(WARNING, "FDW: we only handle binary opclause, actual args length: %d for node %s", list_length(node->args), nodeToString(node));
+		elog(DEBUG4, "FDW: we only handle binary opclause, actual args length: %d for node %s", list_length(node->args), nodeToString(node));
 		return;
 	} else {
 		elog(DEBUG4, "FDW: handing binary opclause for node %s", nodeToString(node));
