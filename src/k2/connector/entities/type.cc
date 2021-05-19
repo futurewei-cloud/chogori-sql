@@ -61,19 +61,19 @@ namespace sql {
 
     shared_ptr<SQLType> SQLType::Create(DataType data_type, const vector<shared_ptr<SQLType>>& params) {
         switch (data_type) {
-            case DataType::LIST:
+            case DataType::K2SQL_DATA_TYPE_LIST:
                 DCHECK_EQ(params.size(), 1);
-                return CreateCollectionType<DataType::LIST>(params);
-            case DataType::MAP:
+                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_LIST>(params);
+            case DataType::K2SQL_DATA_TYPE_MAP:
                 DCHECK_EQ(params.size(), 2);
-                return CreateCollectionType<DataType::MAP>(params);
-            case DataType::SET:
+                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_MAP>(params);
+            case DataType::K2SQL_DATA_TYPE_SET:
                 DCHECK_EQ(params.size(), 1);
-                return CreateCollectionType<DataType::SET>(params);
-            case DataType::TUPLE:
-                return CreateCollectionType<DataType::TUPLE>(params);
+                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_SET>(params);
+            case DataType::K2SQL_DATA_TYPE_TUPLE:
+                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_TUPLE>(params);
                 // User-defined types cannot be created like this
-            case DataType::USER_DEFINED_TYPE:
+            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
                 LOG(FATAL) << "Unsupported constructor for user-defined type";
                 return nullptr;
             default:
@@ -84,71 +84,71 @@ namespace sql {
 
     shared_ptr<SQLType> SQLType::Create(DataType data_type) {
         switch (data_type) {
-            case DataType::UNKNOWN_DATA:
-                return CreatePrimitiveType<DataType::UNKNOWN_DATA>();
-            case DataType::NULL_VALUE_TYPE:
-                return CreatePrimitiveType<DataType::NULL_VALUE_TYPE>();
-            case DataType::UINT8:
-                return CreatePrimitiveType<DataType::UINT8>();
-            case DataType::INT8:
-                return CreatePrimitiveType<DataType::INT8>();
-            case DataType::UINT16:
-                return CreatePrimitiveType<DataType::UINT16>();
-            case DataType::INT16:
-                return CreatePrimitiveType<DataType::INT16>();
-            case DataType::UINT32:
-                return CreatePrimitiveType<DataType::UINT32>();
-            case DataType::INT32:
-                return CreatePrimitiveType<DataType::INT32>();
-            case DataType::UINT64:
-                return CreatePrimitiveType<DataType::UINT64>();
-            case DataType::INT64:
-                return CreatePrimitiveType<DataType::INT64>();
-            case DataType::STRING:
-                return CreatePrimitiveType<DataType::STRING>();
-            case DataType::BOOL:
-                return CreatePrimitiveType<DataType::BOOL>();
-            case DataType::FLOAT:
-                return CreatePrimitiveType<DataType::FLOAT>();
-            case DataType::DOUBLE:
-                return CreatePrimitiveType<DataType::DOUBLE>();
-            case DataType::BINARY:
-                return CreatePrimitiveType<DataType::BINARY>();
-            case DataType::TIMESTAMP:
-                return CreatePrimitiveType<DataType::TIMESTAMP>();
-            case DataType::DECIMAL:
-                return CreatePrimitiveType<DataType::DECIMAL>();
-            case DataType::VARINT:
-                return CreatePrimitiveType<DataType::VARINT>();
-            case DataType::INET:
-                return CreatePrimitiveType<DataType::INET>();
-            case DataType::JSONB:
-                return CreatePrimitiveType<DataType::JSONB>();
-            case DataType::UUID:
-                return CreatePrimitiveType<DataType::UUID>();
-            case DataType::TIMEUUID:
-                return CreatePrimitiveType<DataType::TIMEUUID>();
-            case DataType::DATE:
-                return CreatePrimitiveType<DataType::DATE>();
-            case DataType::TIME:
-                return CreatePrimitiveType<DataType::TIME>();
+            case DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA>();
+            case DataType::K2SQL_DATA_TYPE_NULL_VALUE_TYPE:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_NULL_VALUE_TYPE>();
+            case DataType::K2SQL_DATA_TYPE_UINT8:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UINT8>();
+            case DataType::K2SQL_DATA_TYPE_INT8:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INT8>();
+            case DataType::K2SQL_DATA_TYPE_UINT16:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UINT16>();
+            case DataType::K2SQL_DATA_TYPE_INT16:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INT16>();
+            case DataType::K2SQL_DATA_TYPE_UINT32:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UINT32>();
+            case DataType::K2SQL_DATA_TYPE_INT32:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INT32>();
+            case DataType::K2SQL_DATA_TYPE_UINT64:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UINT64>();
+            case DataType::K2SQL_DATA_TYPE_INT64:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INT64>();
+            case DataType::K2SQL_DATA_TYPE_STRING:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_STRING>();
+            case DataType::K2SQL_DATA_TYPE_BOOL:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_BOOL>();
+            case DataType::K2SQL_DATA_TYPE_FLOAT:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_FLOAT>();
+            case DataType::K2SQL_DATA_TYPE_DOUBLE:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_DOUBLE>();
+            case DataType::K2SQL_DATA_TYPE_BINARY:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_BINARY>();
+            case DataType::K2SQL_DATA_TYPE_TIMESTAMP:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TIMESTAMP>();
+            case DataType::K2SQL_DATA_TYPE_DECIMAL:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_DECIMAL>();
+            case DataType::K2SQL_DATA_TYPE_VARINT:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_VARINT>();
+            case DataType::K2SQL_DATA_TYPE_INET:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INET>();
+            case DataType::K2SQL_DATA_TYPE_JSONB:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_JSONB>();
+            case DataType::K2SQL_DATA_TYPE_UUID:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UUID>();
+            case DataType::K2SQL_DATA_TYPE_TIMEUUID:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TIMEUUID>();
+            case DataType::K2SQL_DATA_TYPE_DATE:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_DATE>();
+            case DataType::K2SQL_DATA_TYPE_TIME:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TIME>();
 
                 // Create empty parametric types and raise error during semantic check.
-            case DataType::LIST:
+            case DataType::K2SQL_DATA_TYPE_LIST:
                 return CreateTypeList();
-            case DataType::MAP:
+            case DataType::K2SQL_DATA_TYPE_MAP:
                 return CreateTypeMap();
-            case DataType::SET:
+            case DataType::K2SQL_DATA_TYPE_SET:
                 return CreateTypeSet();
-            case DataType::TUPLE:
-                return CreateCollectionType<DataType::TUPLE>({});
+            case DataType::K2SQL_DATA_TYPE_TUPLE:
+                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_TUPLE>({});
 
                 // Datatype for variadic builtin function.
-            case TYPEARGS:
-                return CreatePrimitiveType<DataType::TYPEARGS>();
+            case DataType::K2SQL_DATA_TYPE_TYPEARGS:
+                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TYPEARGS>();
 
                 // User-defined types cannot be created like this
-            case DataType::USER_DEFINED_TYPE:
+            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
                 LOG(FATAL) << "Unsupported constructor for user-defined type";
                 return nullptr;
 
@@ -160,12 +160,12 @@ namespace sql {
 
     bool SQLType::IsValidPrimaryType(DataType type) {
         switch (type) {
-            case DataType::MAP: FALLTHROUGH_INTENDED;
-            case DataType::SET: FALLTHROUGH_INTENDED;
-            case DataType::LIST: FALLTHROUGH_INTENDED;
-            case DataType::TUPLE: FALLTHROUGH_INTENDED;
-            case DataType::JSONB: FALLTHROUGH_INTENDED;
-            case DataType::USER_DEFINED_TYPE:
+            case DataType::K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_LIST: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_TUPLE: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_JSONB: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
                 return false;
 
             default:
@@ -178,7 +178,7 @@ namespace sql {
     shared_ptr<SQLType> SQLType::CreateTypeMap(std::shared_ptr<SQLType> key_type,
                                              std::shared_ptr<SQLType> value_type) {
         vector<shared_ptr<SQLType>> params = {key_type, value_type};
-        return CreateCollectionType<DataType::MAP>(params);
+        return CreateCollectionType<DataType::K2SQL_DATA_TYPE_MAP>(params);
     }
 
     std::shared_ptr<SQLType> SQLType::CreateTypeMap(DataType key_type, DataType value_type) {
@@ -187,7 +187,7 @@ namespace sql {
 
     shared_ptr<SQLType> SQLType::CreateTypeList(std::shared_ptr<SQLType> value_type) {
         vector<shared_ptr<SQLType>> params(1, value_type);
-        return CreateCollectionType<DataType::LIST>(params);
+        return CreateCollectionType<DataType::K2SQL_DATA_TYPE_LIST>(params);
     }
 
     std::shared_ptr<SQLType> SQLType::CreateTypeList(DataType value_type) {
@@ -196,7 +196,7 @@ namespace sql {
 
     shared_ptr<SQLType> SQLType::CreateTypeSet(std::shared_ptr<SQLType> value_type) {
         vector<shared_ptr<SQLType>> params(1, value_type);
-        return CreateCollectionType<DataType::SET>(params);
+        return CreateCollectionType<DataType::K2SQL_DATA_TYPE_SET>(params);
     }
 
     std::shared_ptr<SQLType> SQLType::CreateTypeSet(DataType value_type) {
@@ -205,34 +205,34 @@ namespace sql {
 
     const string SQLType::ToDataTypeString(const DataType& datatype) {
         switch (datatype) {
-            case DataType::UNKNOWN_DATA: return "unknown";
-            case DataType::NULL_VALUE_TYPE: return "anytype";
-            case DataType::INT8: return "tinyint";
-            case DataType::INT16: return "smallint";
-            case DataType::INT32: return "int";
-            case DataType::INT64: return "bigint";
-            case DataType::UINT32: return "uint32";
-            case DataType::STRING: return "text";
-            case DataType::BOOL: return "boolean";
-            case DataType::FLOAT: return "float";
-            case DataType::DOUBLE: return "double";
-            case DataType::BINARY: return "blob";
-            case DataType::TIMESTAMP: return "timestamp";
-            case DataType::DECIMAL: return "decimal";
-            case DataType::VARINT: return "varint";
-            case DataType::INET: return "inet";
-            case DataType::JSONB: return "jsonb";
-            case DataType::LIST: return "list";
-            case DataType::MAP: return "map";
-            case DataType::SET: return "set";
-            case DataType::UUID: return "uuid";
-            case DataType::TIMEUUID: return "timeuuid";
-            case DataType::TUPLE: return "tuple";
-            case DataType::TYPEARGS: return "typeargs";
-            case DataType::FROZEN: return "frozen";
-            case DataType::USER_DEFINED_TYPE: return "user_defined_type";
-            case DataType::DATE: return "date";
-            case DataType::TIME: return "time";
+            case DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA: return "unknown";
+            case DataType::K2SQL_DATA_TYPE_NULL_VALUE_TYPE: return "anytype";
+            case DataType::K2SQL_DATA_TYPE_INT8: return "tinyint";
+            case DataType::K2SQL_DATA_TYPE_INT16: return "smallint";
+            case DataType::K2SQL_DATA_TYPE_INT32: return "int";
+            case DataType::K2SQL_DATA_TYPE_INT64: return "bigint";
+            case DataType::K2SQL_DATA_TYPE_UINT32: return "uint32";
+            case DataType::K2SQL_DATA_TYPE_STRING: return "text";
+            case DataType::K2SQL_DATA_TYPE_BOOL: return "boolean";
+            case DataType::K2SQL_DATA_TYPE_FLOAT: return "float";
+            case DataType::K2SQL_DATA_TYPE_DOUBLE: return "double";
+            case DataType::K2SQL_DATA_TYPE_BINARY: return "blob";
+            case DataType::K2SQL_DATA_TYPE_TIMESTAMP: return "timestamp";
+            case DataType::K2SQL_DATA_TYPE_DECIMAL: return "decimal";
+            case DataType::K2SQL_DATA_TYPE_VARINT: return "varint";
+            case DataType::K2SQL_DATA_TYPE_INET: return "inet";
+            case DataType::K2SQL_DATA_TYPE_JSONB: return "jsonb";
+            case DataType::K2SQL_DATA_TYPE_LIST: return "list";
+            case DataType::K2SQL_DATA_TYPE_MAP: return "map";
+            case DataType::K2SQL_DATA_TYPE_SET: return "set";
+            case DataType::K2SQL_DATA_TYPE_UUID: return "uuid";
+            case DataType::K2SQL_DATA_TYPE_TIMEUUID: return "timeuuid";
+            case DataType::K2SQL_DATA_TYPE_TUPLE: return "tuple";
+            case DataType::K2SQL_DATA_TYPE_TYPEARGS: return "typeargs";
+            case DataType::K2SQL_DATA_TYPE_FROZEN: return "frozen";
+            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE: return "user_defined_type";
+            case DataType::K2SQL_DATA_TYPE_DATE: return "date";
+            case DataType::K2SQL_DATA_TYPE_TIME: return "time";
             default: return "unknown";
         }
         LOG (FATAL) << "Invalid datatype: " << datatype;
@@ -241,34 +241,34 @@ namespace sql {
 
     std::ostream& operator<<(std::ostream& os, const DataType& data_type) {
          switch (data_type) {
-            case DataType::UNKNOWN_DATA: return os << "unknown";
-            case DataType::NULL_VALUE_TYPE: return os << "anytype";
-            case DataType::INT8: return os << "tinyint";
-            case DataType::INT16: return os << "smallint";
-            case DataType::INT32: return os << "int";
-            case DataType::INT64: return os << "bigint";
-            case DataType::UINT32: return os << "uint32";
-            case DataType::STRING: return os << "text";
-            case DataType::BOOL: return os << "boolean";
-            case DataType::FLOAT: return os << "float";
-            case DataType::DOUBLE: return os << "double";
-            case DataType::BINARY: return os << "blob";
-            case DataType::TIMESTAMP: return os << "timestamp";
-            case DataType::DECIMAL: return os << "decimal";
-            case DataType::VARINT: return os << "varint";
-            case DataType::INET: return os << "inet";
-            case DataType::JSONB: return os << "jsonb";
-            case DataType::LIST: return os << "list";
-            case DataType::MAP: return os << "map";
-            case DataType::SET: return os << "set";
-            case DataType::UUID: return os << "uuid";
-            case DataType::TIMEUUID: return os << "timeuuid";
-            case DataType::TUPLE: return os << "tuple";
-            case DataType::TYPEARGS: return os << "typeargs";
-            case DataType::FROZEN: return os << "frozen";
-            case DataType::USER_DEFINED_TYPE: return os << "user_defined_type";
-            case DataType::DATE: return os << "date";
-            case DataType::TIME: return os << "time";
+            case DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA: return os << "unknown";
+            case DataType::K2SQL_DATA_TYPE_NULL_VALUE_TYPE: return os << "anytype";
+            case DataType::K2SQL_DATA_TYPE_INT8: return os << "tinyint";
+            case DataType::K2SQL_DATA_TYPE_INT16: return os << "smallint";
+            case DataType::K2SQL_DATA_TYPE_INT32: return os << "int";
+            case DataType::K2SQL_DATA_TYPE_INT64: return os << "bigint";
+            case DataType::K2SQL_DATA_TYPE_UINT32: return os << "uint32";
+            case DataType::K2SQL_DATA_TYPE_STRING: return os << "text";
+            case DataType::K2SQL_DATA_TYPE_BOOL: return os << "boolean";
+            case DataType::K2SQL_DATA_TYPE_FLOAT: return os << "float";
+            case DataType::K2SQL_DATA_TYPE_DOUBLE: return os << "double";
+            case DataType::K2SQL_DATA_TYPE_BINARY: return os << "blob";
+            case DataType::K2SQL_DATA_TYPE_TIMESTAMP: return os << "timestamp";
+            case DataType::K2SQL_DATA_TYPE_DECIMAL: return os << "decimal";
+            case DataType::K2SQL_DATA_TYPE_VARINT: return os << "varint";
+            case DataType::K2SQL_DATA_TYPE_INET: return os << "inet";
+            case DataType::K2SQL_DATA_TYPE_JSONB: return os << "jsonb";
+            case DataType::K2SQL_DATA_TYPE_LIST: return os << "list";
+            case DataType::K2SQL_DATA_TYPE_MAP: return os << "map";
+            case DataType::K2SQL_DATA_TYPE_SET: return os << "set";
+            case DataType::K2SQL_DATA_TYPE_UUID: return os << "uuid";
+            case DataType::K2SQL_DATA_TYPE_TIMEUUID: return os << "timeuuid";
+            case DataType::K2SQL_DATA_TYPE_TUPLE: return os << "tuple";
+            case DataType::K2SQL_DATA_TYPE_TYPEARGS: return os << "typeargs";
+            case DataType::K2SQL_DATA_TYPE_FROZEN: return os << "frozen";
+            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE: return os << "user_defined_type";
+            case DataType::K2SQL_DATA_TYPE_DATE: return os << "date";
+            case DataType::K2SQL_DATA_TYPE_TIME: return os << "time";
             default: return os << "unknown";
         }
     }

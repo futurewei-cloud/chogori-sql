@@ -59,7 +59,6 @@
 namespace k2pg {
 namespace gate {
 
-using k2pg::sql::DataType;
 using k2pg::sql::SQLType;
 using k2pg::sql::ColumnSchema;
 using k2pg::sql::PgSystemAttrNum;
@@ -69,7 +68,7 @@ class ColumnDesc {
  public:
   typedef std::shared_ptr<ColumnDesc> SharedPtr;
 
-  ColumnDesc() : sql_type_(SQLType::Create(DataType::UNKNOWN_DATA)) {
+  ColumnDesc() : sql_type_(SQLType::Create(DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA)) {
   }
 
   void Init(int index,

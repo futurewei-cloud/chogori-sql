@@ -974,7 +974,7 @@ YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
   if (type_entity) {
     return type_entity->yb_type;
   }
-  return YB_YQL_DATA_TYPE_UNKNOWN_DATA;
+  return K2SQL_DATA_TYPE_UNKNOWN_DATA;
 }
 
 bool YBCPgAllowForPrimaryKey(const YBCPgTypeEntity *type_entity) {

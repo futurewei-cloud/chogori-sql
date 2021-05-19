@@ -146,7 +146,7 @@ PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
     //
     bool is_hash = !(is_pg_catalog_table_);
     CHECK_OK(AddColumn("ybrowid", static_cast<int32_t>(PgSystemAttrNum::kYBRowId),
-                       YB_YQL_DATA_TYPE_BINARY, is_hash, true /* is_range */));
+                       K2SQL_DATA_TYPE_BINARY, is_hash, true /* is_range */));
   }
 }
 
@@ -313,7 +313,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
     RETURN_NOT_OK(
         PgCreateTable::AddColumnImpl("ybuniqueidxkeysuffix",
                                      yb::to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
-                                     YB_YQL_DATA_TYPE_BINARY,
+                                     K2SQL_DATA_TYPE_BINARY,
                                      false /* is_hash */,
                                      true /* is_range */));
   }
@@ -323,7 +323,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   // any or before exec() below.
   RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",
                                              yb::to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
-                                             YB_YQL_DATA_TYPE_BINARY,
+                                             K2SQL_DATA_TYPE_BINARY,
                                              false /* is_hash */,
                                              !is_unique_index_ /* is_range */));
   ybbasectid_added_ = true;

@@ -95,8 +95,8 @@ namespace sql {
         static std::shared_ptr<SQLType> CreateTypeMap() {
             // Create default map type: MAP <UNKNOWN -> UNKNOWN>.
             static const std::shared_ptr<SQLType> default_map =
-            CreateTypeMap(SQLType::Create(DataType::UNKNOWN_DATA),
-                      SQLType::Create(DataType::UNKNOWN_DATA));
+            CreateTypeMap(SQLType::Create(DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA),
+                      SQLType::Create(DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA));
             return default_map;
         }
 
@@ -105,7 +105,7 @@ namespace sql {
         static std::shared_ptr<SQLType> CreateTypeList(DataType val_type);
         static std::shared_ptr<SQLType> CreateTypeList() {
             // Create default list type: LIST <UNKNOWN>.
-            static const std::shared_ptr<SQLType> default_list = CreateTypeList(DataType::UNKNOWN_DATA);
+            static const std::shared_ptr<SQLType> default_list = CreateTypeList(DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA);
             return default_list;
         }
 
@@ -114,7 +114,7 @@ namespace sql {
         static std::shared_ptr<SQLType> CreateTypeSet(DataType value_type);
         static std::shared_ptr<SQLType> CreateTypeSet() {
             // Create default set type: SET <UNKNOWN>.
-            static const std::shared_ptr<SQLType> default_set = CreateTypeSet(DataType::UNKNOWN_DATA);
+            static const std::shared_ptr<SQLType> default_set = CreateTypeSet(DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA);
             return default_set;
         }
 
@@ -143,14 +143,14 @@ namespace sql {
 
         std::shared_ptr<SQLType> keys_type() const {
             switch (id_) {
-                case MAP:
+                case K2SQL_DATA_TYPE_MAP:
                     return params_[0];
-                case LIST:
-                    return SQLType::Create(INT32);
-                case SET:
+                case K2SQL_DATA_TYPE_LIST:
+                    return SQLType::Create(K2SQL_DATA_TYPE_INT32);
+                case K2SQL_DATA_TYPE_SET:
                     // set has no keys, only values
                     return nullptr;
-                case TUPLE:
+                case K2SQL_DATA_TYPE_TUPLE:
                     LOG(FATAL) << "Tuple type not implemented yet";
 
                 default:
@@ -161,13 +161,13 @@ namespace sql {
 
         std::shared_ptr<SQLType> values_type() const {
             switch (id_) {
-                case MAP:
+                case K2SQL_DATA_TYPE_MAP:
                     return params_[1];
-                case LIST:
+                case K2SQL_DATA_TYPE_LIST:
                     return params_[0];
-                case SET:
+                case K2SQL_DATA_TYPE_SET:
                     return params_[0];
-                case TUPLE:
+                case K2SQL_DATA_TYPE_TUPLE:
                     LOG(FATAL) << "Tuple type not implemented yet";
 
                 default:
@@ -185,7 +185,7 @@ namespace sql {
         // Predicates.
 
         bool IsCollection() const {
-            return id_ == MAP || id_ == SET || id_ == LIST || id_ == TUPLE;
+            return id_ == K2SQL_DATA_TYPE_MAP || id_ == K2SQL_DATA_TYPE_SET || id_ == K2SQL_DATA_TYPE_LIST || id_ == K2SQL_DATA_TYPE_TUPLE;
         }
 
         bool IsUnknown() const {
@@ -209,11 +209,11 @@ namespace sql {
                 return params_.empty();
             } else {
                 // checking number of params
-                if (id_ == MAP && params_.size() != 2) {
+                if (id_ == K2SQL_DATA_TYPE_MAP && params_.size() != 2) {
                     return false; // expect two type parameters for maps
-                } else if ((id_ == SET || id_ == LIST) && params_.size() != 1) {
+                } else if ((id_ == K2SQL_DATA_TYPE_SET || id_ == K2SQL_DATA_TYPE_LIST) && params_.size() != 1) {
                     return false; // expect one type parameter for set and list
-                } else if (id_ == TUPLE && params_.size() == 0) {
+                } else if (id_ == K2SQL_DATA_TYPE_TUPLE && params_.size() == 0) {
                     return false; // expect at least one type parameters for tuples
                 }
                 // recursively checking params
@@ -260,7 +260,7 @@ namespace sql {
 
         //------------------------------------------------------------------------------------------------
         // static methods
-        static const int kMaxTypeIndex = DataType::JSONB + 1;
+        static const int kMaxTypeIndex = DataType::K2SQL_DATA_TYPE_JSONB + 1;
 
         // When a new type is added in the enum "DataType", kMaxTypeIndex should be updated for this
         // module to work properly. The DCHECKs in this struct would failed if kMaxTypeIndex is wrong.
@@ -269,25 +269,25 @@ namespace sql {
         }
 
         static bool IsInteger(DataType t) {
-            return (t >= INT8 && t <= INT64) || t == VARINT;
+            return (t >= K2SQL_DATA_TYPE_INT8 && t <= K2SQL_DATA_TYPE_INT64) || t == K2SQL_DATA_TYPE_VARINT;
         }
 
         static bool IsJson(DataType t) {
-            return t == JSONB;
+            return t == K2SQL_DATA_TYPE_JSONB;
         }
 
         static bool IsNumeric(DataType t) {
-            return IsInteger(t) || t == FLOAT || t == DOUBLE || t == DECIMAL;
+            return IsInteger(t) || t == K2SQL_DATA_TYPE_FLOAT || t == K2SQL_DATA_TYPE_DOUBLE || t == K2SQL_DATA_TYPE_DECIMAL;
         }
 
         // NULL_VALUE_TYPE represents type of a null value.
         static bool IsNull(DataType t) {
-            return t == NULL_VALUE_TYPE;
+            return t == K2SQL_DATA_TYPE_NULL_VALUE_TYPE;
         }
 
         // Type is not yet set (VOID).
         static bool IsUnknown(DataType t) {
-            return t == DataType::UNKNOWN_DATA;
+            return t == DataType::K2SQL_DATA_TYPE_UNKNOWN_DATA;
         }
 
         private:

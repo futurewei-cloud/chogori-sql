@@ -87,9 +87,9 @@ const std::unordered_map<string, PgExpr::Opcode> kOperatorNames = {
 PgExpr::PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity)
     : opcode_(opcode), type_entity_(type_entity) , type_attrs_({0}) {
   DCHECK(type_entity_) << "Datatype of result must be specified for expression";
-  DCHECK(type_entity_->yb_type != YB_YQL_DATA_TYPE_NOT_SUPPORTED &&
-         type_entity_->yb_type != YB_YQL_DATA_TYPE_UNKNOWN_DATA &&
-         type_entity_->yb_type != YB_YQL_DATA_TYPE_NULL_VALUE_TYPE)
+  DCHECK(type_entity_->yb_type != K2SQL_DATA_TYPE_NOT_SUPPORTED &&
+         type_entity_->yb_type != K2SQL_DATA_TYPE_UNKNOWN_DATA &&
+         type_entity_->yb_type != K2SQL_DATA_TYPE_NULL_VALUE_TYPE)
     << "Invalid datatype for YSQL expressions";
   DCHECK(type_entity_->datum_to_yb) << "Conversion from datum to YB format not defined";
   DCHECK(type_entity_->yb_to_datum) << "Conversion from YB to datum format not defined";
@@ -98,9 +98,9 @@ PgExpr::PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity)
 PgExpr::PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs)
     : opcode_(opcode), type_entity_(type_entity), type_attrs_(*type_attrs) {
   DCHECK(type_entity_) << "Datatype of result must be specified for expression";
-  DCHECK(type_entity_->yb_type != YB_YQL_DATA_TYPE_NOT_SUPPORTED &&
-         type_entity_->yb_type != YB_YQL_DATA_TYPE_UNKNOWN_DATA &&
-         type_entity_->yb_type != YB_YQL_DATA_TYPE_NULL_VALUE_TYPE)
+  DCHECK(type_entity_->yb_type != K2SQL_DATA_TYPE_NOT_SUPPORTED &&
+         type_entity_->yb_type != K2SQL_DATA_TYPE_UNKNOWN_DATA &&
+         type_entity_->yb_type != K2SQL_DATA_TYPE_NULL_VALUE_TYPE)
     << "Invalid datatype for YSQL expressions";
   DCHECK(type_entity_->datum_to_yb) << "Conversion from datum to YB format not defined";
   DCHECK(type_entity_->yb_to_datum) << "Conversion from YB to datum format not defined";

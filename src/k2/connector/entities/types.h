@@ -120,15 +120,15 @@ static int GenericCompare(const void *lhs, const void *rhs) {
 }
 
 template<>
-struct DataTypeTraits<UINT8> {
-  static const DataType physical_type = UINT8;
+struct DataTypeTraits<K2SQL_DATA_TYPE_UINT8> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_UINT8;
   typedef uint8_t cpp_type;
   static const char *name() {
     return "uint8";
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<UINT8>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_UINT8>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -137,8 +137,8 @@ struct DataTypeTraits<UINT8> {
 };
 
 template<>
-struct DataTypeTraits<INT8> {
-  static const DataType physical_type = INT8;
+struct DataTypeTraits<K2SQL_DATA_TYPE_INT8> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_INT8;
   typedef int8_t cpp_type;
 
   static const char *name() {
@@ -146,7 +146,7 @@ struct DataTypeTraits<INT8> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<INT8>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_INT8>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -155,15 +155,15 @@ struct DataTypeTraits<INT8> {
 };
 
 template<>
-struct DataTypeTraits<UINT16> {
-  static const DataType physical_type = UINT16;
+struct DataTypeTraits<K2SQL_DATA_TYPE_UINT16> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_UINT16;
   typedef uint16_t cpp_type;
   static const char *name() {
     return "uint16";
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<UINT16>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_UINT16>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -172,8 +172,8 @@ struct DataTypeTraits<UINT16> {
 };
 
 template<>
-struct DataTypeTraits<INT16> {
-  static const DataType physical_type = INT16;
+struct DataTypeTraits<K2SQL_DATA_TYPE_INT16> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_INT16;
   typedef int16_t cpp_type;
 
   static const char *name() {
@@ -181,7 +181,7 @@ struct DataTypeTraits<INT16> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<INT16>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_INT16>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -190,8 +190,8 @@ struct DataTypeTraits<INT16> {
 };
 
 template<>
-struct DataTypeTraits<UINT32> {
-  static const DataType physical_type = UINT32;
+struct DataTypeTraits<K2SQL_DATA_TYPE_UINT32> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_UINT32;
   typedef uint32_t cpp_type;
 
   static const char *name() {
@@ -199,7 +199,7 @@ struct DataTypeTraits<UINT32> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<UINT32>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_UINT32>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -208,8 +208,8 @@ struct DataTypeTraits<UINT32> {
 };
 
 template<>
-struct DataTypeTraits<INT32> {
-  static const DataType physical_type = INT32;
+struct DataTypeTraits<K2SQL_DATA_TYPE_INT32> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_INT32;
   typedef int32_t cpp_type;
 
   static const char *name() {
@@ -217,7 +217,7 @@ struct DataTypeTraits<INT32> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<INT32>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_INT32>(lhs, rhs);
   }
   static const cpp_type* min_value() {
     return &MathLimits<cpp_type>::kMin;
@@ -225,15 +225,15 @@ struct DataTypeTraits<INT32> {
 };
 
 template<>
-struct DataTypeTraits<UINT64> {
-  static const DataType physical_type = UINT64;
+struct DataTypeTraits<K2SQL_DATA_TYPE_UINT64> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_UINT64;
   typedef uint64_t cpp_type;
   static const char *name() {
     return "uint64";
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<UINT64>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_UINT64>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -242,8 +242,8 @@ struct DataTypeTraits<UINT64> {
 };
 
 template<>
-struct DataTypeTraits<INT64> {
-  static const DataType physical_type = INT64;
+struct DataTypeTraits<K2SQL_DATA_TYPE_INT64> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_INT64;
   typedef int64_t cpp_type;
 
   static const char *name() {
@@ -251,7 +251,7 @@ struct DataTypeTraits<INT64> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<INT64>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_INT64>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -260,8 +260,8 @@ struct DataTypeTraits<INT64> {
 };
 
 template<>
-struct DataTypeTraits<FLOAT> {
-  static const DataType physical_type = FLOAT;
+struct DataTypeTraits<K2SQL_DATA_TYPE_FLOAT> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_FLOAT;
   typedef float cpp_type;
 
   static const char *name() {
@@ -269,7 +269,7 @@ struct DataTypeTraits<FLOAT> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<FLOAT>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_FLOAT>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -278,8 +278,8 @@ struct DataTypeTraits<FLOAT> {
 };
 
 template<>
-struct DataTypeTraits<DOUBLE> {
-  static const DataType physical_type = DOUBLE;
+struct DataTypeTraits<K2SQL_DATA_TYPE_DOUBLE> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_DOUBLE;
   typedef double cpp_type;
 
   static const char *name() {
@@ -287,7 +287,7 @@ struct DataTypeTraits<DOUBLE> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<DOUBLE>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_DOUBLE>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -296,8 +296,8 @@ struct DataTypeTraits<DOUBLE> {
 };
 
 template<>
-struct DataTypeTraits<BINARY> {
-  static const DataType physical_type = BINARY;
+struct DataTypeTraits<K2SQL_DATA_TYPE_BINARY> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_BINARY;
   typedef Slice cpp_type;
 
   static const char *name() {
@@ -317,8 +317,8 @@ struct DataTypeTraits<BINARY> {
 };
 
 template<>
-struct DataTypeTraits<BOOL> {
-  static const DataType physical_type = BOOL;
+struct DataTypeTraits<K2SQL_DATA_TYPE_BOOL> {
+  static const DataType physical_type = K2SQL_DATA_TYPE_BOOL;
   typedef bool cpp_type;
 
   static const char* name() {
@@ -326,7 +326,7 @@ struct DataTypeTraits<BOOL> {
   }
 
   static int Compare(const void *lhs, const void *rhs) {
-    return GenericCompare<BOOL>(lhs, rhs);
+    return GenericCompare<K2SQL_DATA_TYPE_BOOL>(lhs, rhs);
   }
 
   static const cpp_type* min_value() {
@@ -352,91 +352,91 @@ struct DerivedTypeTraits {
 };
 
 template<>
-struct DataTypeTraits<STRING> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_STRING> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "string";
   }
 };
 
 template<>
-struct DataTypeTraits<INET> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_INET> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "inet";
   }
 };
 
 template<>
-struct DataTypeTraits<JSONB> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_JSONB> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "jsonb";
   }
 };
 
 template<>
-struct DataTypeTraits<UUID> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_UUID> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "uuid";
   }
 };
 
 template<>
-struct DataTypeTraits<TIMEUUID> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_TIMEUUID> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "timeuuid";
   }
 };
 
 template<>
-struct DataTypeTraits<MAP> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_MAP> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "map";
   }
 };
 
 template<>
-struct DataTypeTraits<SET> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_SET> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "set";
   }
 };
 
 template<>
-struct DataTypeTraits<LIST> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_LIST> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "list";
   }
 };
 
 template<>
-struct DataTypeTraits<USER_DEFINED_TYPE> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_USER_DEFINED_TYPE> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "user_defined_type";
   }
 };
 
 template<>
-struct DataTypeTraits<FROZEN> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_FROZEN> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "frozen";
   }
 };
 
 template<>
-struct DataTypeTraits<DECIMAL> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_DECIMAL> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "decimal";
   }
 };
 
 template<>
-struct DataTypeTraits<VARINT> : public DerivedTypeTraits<BINARY>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_VARINT> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "varint";
   }
 };
 
 template<>
-struct DataTypeTraits<TIMESTAMP> : public DerivedTypeTraits<INT64>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_TIMESTAMP> : public DerivedTypeTraits<K2SQL_DATA_TYPE_INT64>{
   static const int US_TO_S = 1000L * 1000L;
 
   static const char* name() {
@@ -446,14 +446,14 @@ struct DataTypeTraits<TIMESTAMP> : public DerivedTypeTraits<INT64>{
 
 // XXX: use signed int32 for DATE because SQL standard does not support unsigned integers
 template<>
-struct DataTypeTraits<DATE> : public DerivedTypeTraits<INT32>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_DATE> : public DerivedTypeTraits<K2SQL_DATA_TYPE_INT32>{
   static const char* name() {
     return "date";
   }
 };
 
 template<>
-struct DataTypeTraits<TIME> : public DerivedTypeTraits<INT64>{
+struct DataTypeTraits<K2SQL_DATA_TYPE_TIME> : public DerivedTypeTraits<K2SQL_DATA_TYPE_INT64>{
   static const char* name() {
     return "time";
   }
@@ -497,41 +497,41 @@ class Variant {
     Clear();
     type_ = type;
     switch (type_) {
-      case UNKNOWN_DATA:
+      case K2SQL_DATA_TYPE_UNKNOWN_DATA:
         LOG(FATAL) << "Unreachable";
-      case BOOL:
+      case K2SQL_DATA_TYPE_BOOL:
         numeric_.b1 = *static_cast<const bool *>(value);
         break;
-      case INT8:
+      case K2SQL_DATA_TYPE_INT8:
         numeric_.i8 = *static_cast<const int8_t *>(value);
         break;
-      case INT16:
+      case K2SQL_DATA_TYPE_INT16:
         numeric_.i16 = *static_cast<const int16_t *>(value);
         break;
-      case INT32:
+      case K2SQL_DATA_TYPE_INT32:
         numeric_.i32 = *static_cast<const int32_t *>(value);
         break;
-      case DATE:
+      case K2SQL_DATA_TYPE_DATE:
         numeric_.i32 = *static_cast<const uint32_t *>(value);
         break;
-      case TIMESTAMP:
-      case TIME:
-      case INT64:
+      case K2SQL_DATA_TYPE_TIMESTAMP:
+      case K2SQL_DATA_TYPE_TIME:
+      case K2SQL_DATA_TYPE_INT64:
         numeric_.i64 = *static_cast<const int64_t *>(value);
         break;
-      case FLOAT:
+      case K2SQL_DATA_TYPE_FLOAT:
         numeric_.float_val = *static_cast<const float *>(value);
         break;
-      case DOUBLE:
+      case K2SQL_DATA_TYPE_DOUBLE:
         numeric_.double_val = *static_cast<const double *>(value);
         break;
-      case STRING: FALLTHROUGH_INTENDED;
-      case INET: FALLTHROUGH_INTENDED;
-      case UUID: FALLTHROUGH_INTENDED;
-      case TIMEUUID: FALLTHROUGH_INTENDED;
-      case FROZEN: FALLTHROUGH_INTENDED;
-      case JSONB: FALLTHROUGH_INTENDED;
-      case BINARY:
+      case K2SQL_DATA_TYPE_STRING: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_INET: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_UUID: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_TIMEUUID: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_FROZEN: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_JSONB: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_BINARY:
         {
           const Slice *str = static_cast<const Slice *>(value);
           // In the case that str->size() == 0, then the 'Clear()' above has already
@@ -544,13 +544,13 @@ class Variant {
           }
         }
         break;
-      case MAP: FALLTHROUGH_INTENDED;
-      case SET: FALLTHROUGH_INTENDED;
-      case LIST:
+      case K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_LIST:
         LOG(FATAL) << "Default values for collection types not supported, found: "
                    << type_;
-      case DECIMAL: FALLTHROUGH_INTENDED;
-      case USER_DEFINED_TYPE:
+      case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
         LOG(FATAL) << "Unsupported data type: " << type_;
 
       default: LOG(FATAL) << "Unknown data type: " << type_;
@@ -562,7 +562,7 @@ class Variant {
   // on the next set/clear call.
   void Reset(const std::string& data) {
     Slice slice(data);
-    Reset(STRING, &slice);
+    Reset(K2SQL_DATA_TYPE_STRING, &slice);
   }
 
   // Set the variant to a STRING type.
@@ -570,7 +570,7 @@ class Variant {
   // on the next set/clear call.
   void Reset(const char *data, size_t size) {
     Slice slice(data, size);
-    Reset(STRING, &slice);
+    Reset(K2SQL_DATA_TYPE_STRING, &slice);
   }
 
   // Returns the type of the Variant
@@ -587,28 +587,28 @@ class Variant {
   //    static_cast<const Slice *>(variant.value())
   const void *value() const {
     switch (type_) {
-      case UNKNOWN_DATA: LOG(FATAL) << "Attempted to access value of unknown data type";
-      case BOOL:         return &(numeric_.b1);
-      case INT8:         return &(numeric_.i8);
-      case INT16:        return &(numeric_.i16);
-      case INT32:        return &(numeric_.i32);
-      case INT64:        return &(numeric_.i64);
-      case FLOAT:        return (&numeric_.float_val);
-      case DOUBLE:       return (&numeric_.double_val);
-      case STRING:       FALLTHROUGH_INTENDED;
-      case INET:         FALLTHROUGH_INTENDED;
-      case UUID:         FALLTHROUGH_INTENDED;
-      case TIMEUUID:     FALLTHROUGH_INTENDED;
-      case FROZEN:       FALLTHROUGH_INTENDED;
-      case BINARY:       return &vstr_;
-      case MAP: FALLTHROUGH_INTENDED;
-      case SET: FALLTHROUGH_INTENDED;
-      case LIST:
+      case K2SQL_DATA_TYPE_UNKNOWN_DATA: LOG(FATAL) << "Attempted to access value of unknown data type";
+      case K2SQL_DATA_TYPE_BOOL:         return &(numeric_.b1);
+      case K2SQL_DATA_TYPE_INT8:         return &(numeric_.i8);
+      case K2SQL_DATA_TYPE_INT16:        return &(numeric_.i16);
+      case K2SQL_DATA_TYPE_INT32:        return &(numeric_.i32);
+      case K2SQL_DATA_TYPE_INT64:        return &(numeric_.i64);
+      case K2SQL_DATA_TYPE_FLOAT:        return (&numeric_.float_val);
+      case K2SQL_DATA_TYPE_DOUBLE:       return (&numeric_.double_val);
+      case K2SQL_DATA_TYPE_STRING:       FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_INET:         FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_UUID:         FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_TIMEUUID:     FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_FROZEN:       FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_BINARY:       return &vstr_;
+      case K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_LIST:
         LOG(FATAL) << "Default values for collection types not supported, found: "
                    << type_;
 
-      case DECIMAL: FALLTHROUGH_INTENDED;
-      case USER_DEFINED_TYPE:
+      case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
         LOG(FATAL) << "Unsupported data type: " << type_;
 
       default: LOG(FATAL) << "Unknown data type: " << type_;

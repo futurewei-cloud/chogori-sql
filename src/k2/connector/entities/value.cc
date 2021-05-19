@@ -37,7 +37,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
   null_value_ = is_null;
 
  switch (type_entity->yb_type) {
-    case YB_YQL_DATA_TYPE_INT8:
+    case K2SQL_DATA_TYPE_INT8:
       type_ = ValueType::INT;
       if (!is_null) {
         int8_t value;
@@ -46,7 +46,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_INT16:
+    case K2SQL_DATA_TYPE_INT16:
       type_ = ValueType::INT;
       if (!is_null) {
         int16_t value;
@@ -55,7 +55,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_INT32:
+    case K2SQL_DATA_TYPE_INT32:
       type_ = ValueType::INT;
       if (!is_null) {
         int32_t value;
@@ -64,7 +64,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_INT64:
+    case K2SQL_DATA_TYPE_INT64:
       type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
@@ -73,7 +73,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_UINT32:
+    case K2SQL_DATA_TYPE_UINT32:
       type_ = ValueType::INT;
       if (!is_null) {
         uint32_t value;
@@ -82,7 +82,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_UINT8:
+    case K2SQL_DATA_TYPE_UINT8:
       type_ = ValueType::INT;
       if (!is_null) {
         uint8_t value;
@@ -91,7 +91,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_UINT16:
+    case K2SQL_DATA_TYPE_UINT16:
       type_ = ValueType::INT;
       if (!is_null) {
         uint16_t value;
@@ -100,7 +100,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_UINT64:
+    case K2SQL_DATA_TYPE_UINT64:
       type_ = ValueType::INT;
       if (!is_null) {
         uint64_t value;
@@ -109,7 +109,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_STRING:
+    case K2SQL_DATA_TYPE_STRING:
       type_ = ValueType::SLICE;
       if (!is_null) {
         char *value;
@@ -119,7 +119,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_BOOL:
+    case K2SQL_DATA_TYPE_BOOL:
       type_ = ValueType::BOOL;
       if (!is_null) {
         bool value;
@@ -128,7 +128,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_FLOAT:
+    case K2SQL_DATA_TYPE_FLOAT:
       type_ = ValueType::FLOAT;
       if (!is_null) {
         float value;
@@ -137,7 +137,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_DOUBLE:
+    case K2SQL_DATA_TYPE_DOUBLE:
       type_ = ValueType::DOUBLE;
       if (!is_null) {
         double value;
@@ -146,7 +146,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_BINARY:
+    case K2SQL_DATA_TYPE_BINARY:
       type_ = ValueType::SLICE;
       if (!is_null) {
         uint8_t *value;
@@ -156,7 +156,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_TIMESTAMP:
+    case K2SQL_DATA_TYPE_TIMESTAMP:
       type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
@@ -165,7 +165,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_DECIMAL:
+    case K2SQL_DATA_TYPE_DECIMAL:
       type_ = ValueType::SLICE;
       if (!is_null) {
         char* plaintext;
@@ -176,20 +176,20 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case YB_YQL_DATA_TYPE_VARINT:
-    case YB_YQL_DATA_TYPE_INET:
-    case YB_YQL_DATA_TYPE_LIST:
-    case YB_YQL_DATA_TYPE_MAP:
-    case YB_YQL_DATA_TYPE_SET:
-    case YB_YQL_DATA_TYPE_UUID:
-    case YB_YQL_DATA_TYPE_TIMEUUID:
-    case YB_YQL_DATA_TYPE_TUPLE:
-    case YB_YQL_DATA_TYPE_TYPEARGS:
-    case YB_YQL_DATA_TYPE_USER_DEFINED_TYPE:
-    case YB_YQL_DATA_TYPE_FROZEN:
-    case YB_YQL_DATA_TYPE_DATE: // Not used for PG storage
-    case YB_YQL_DATA_TYPE_TIME: // Not used for PG storage
-    case YB_YQL_DATA_TYPE_JSONB:
+    case K2SQL_DATA_TYPE_VARINT:
+    case K2SQL_DATA_TYPE_INET:
+    case K2SQL_DATA_TYPE_LIST:
+    case K2SQL_DATA_TYPE_MAP:
+    case K2SQL_DATA_TYPE_SET:
+    case K2SQL_DATA_TYPE_UUID:
+    case K2SQL_DATA_TYPE_TIMEUUID:
+    case K2SQL_DATA_TYPE_TUPLE:
+    case K2SQL_DATA_TYPE_TYPEARGS:
+    case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
+    case K2SQL_DATA_TYPE_FROZEN:
+    case K2SQL_DATA_TYPE_DATE: // Not used for PG storage
+    case K2SQL_DATA_TYPE_TIME: // Not used for PG storage
+    case K2SQL_DATA_TYPE_JSONB:
     default:
       LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
   }

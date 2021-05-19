@@ -24,46 +24,40 @@ Copyright(c) 2020 Futurewei Cloud
 #ifndef CHOGORI_SQL_DATA_TYPE_H
 #define CHOGORI_SQL_DATA_TYPE_H
 
-namespace k2pg {
-namespace sql {
-
-    // this type definition is synced with the PgDataType in pg_gate_typedefs.h. We might not support all of them
-    typedef enum PgSqlDataType {
-        NOT_SUPPORTED = -1,
-        UNKNOWN_DATA = 999,
-        NULL_VALUE_TYPE = 0,
-        INT8 = 1,
-        INT16 = 2,
-        INT32 = 3,
-        INT64 = 4,
-        STRING = 5,
-        BOOL = 6,
-        FLOAT = 7,
-        DOUBLE = 8,
-        BINARY = 9,
-        TIMESTAMP = 10,
-        DECIMAL = 11,
-        VARINT = 12,
-        INET = 13,
-        LIST = 14,
-        MAP = 15,
-        SET = 16,
-        UUID = 17,
-        TIMEUUID = 18,
-        TUPLE = 19,
-        TYPEARGS = 20,
-        USER_DEFINED_TYPE = 21,
-        FROZEN = 22,
-        DATE = 23,
-        TIME = 24,
-        JSONB = 25,
-        UINT8 = 100,
-        UINT16 = 101,
-        UINT32 = 102,
-        UINT64 = 103
-    } DataType;
-
-}  // namespace sql
-}  // namespace k2pg
+// this type definition is synced with the PgDataType in pg_gate_typedefs.h. We might not support all of them
+typedef enum K2SqlDataType {
+    K2SQL_DATA_TYPE_NOT_SUPPORTED = -1,
+    K2SQL_DATA_TYPE_UNKNOWN_DATA = 999,
+    K2SQL_DATA_TYPE_NULL_VALUE_TYPE = 0,
+    K2SQL_DATA_TYPE_INT8 = 1,
+    K2SQL_DATA_TYPE_INT16 = 2,
+    K2SQL_DATA_TYPE_INT32 = 3,
+    K2SQL_DATA_TYPE_INT64 = 4,
+    K2SQL_DATA_TYPE_STRING = 5,
+    K2SQL_DATA_TYPE_BOOL = 6,
+    K2SQL_DATA_TYPE_FLOAT = 7,
+    K2SQL_DATA_TYPE_DOUBLE = 8,
+    K2SQL_DATA_TYPE_BINARY = 9,
+    K2SQL_DATA_TYPE_TIMESTAMP = 10,
+    K2SQL_DATA_TYPE_DECIMAL = 11,
+    K2SQL_DATA_TYPE_VARINT = 12,
+    K2SQL_DATA_TYPE_INET = 13,
+    K2SQL_DATA_TYPE_LIST = 14,
+    K2SQL_DATA_TYPE_MAP = 15,
+    K2SQL_DATA_TYPE_SET = 16,
+    K2SQL_DATA_TYPE_UUID = 17,
+    K2SQL_DATA_TYPE_TIMEUUID = 18,
+    K2SQL_DATA_TYPE_TUPLE = 19,
+    K2SQL_DATA_TYPE_TYPEARGS = 20,
+    K2SQL_DATA_TYPE_USER_DEFINED_TYPE = 21,
+    K2SQL_DATA_TYPE_FROZEN = 22,
+    K2SQL_DATA_TYPE_DATE = 23,
+    K2SQL_DATA_TYPE_TIME = 24,
+    K2SQL_DATA_TYPE_JSONB = 25,
+    K2SQL_DATA_TYPE_UINT8 = 100,
+    K2SQL_DATA_TYPE_UINT16 = 101,
+    K2SQL_DATA_TYPE_UINT32 = 102,
+    K2SQL_DATA_TYPE_UINT64 = 103
+} DataType;
 
 #endif //CHOGORI_SQL_DATA_TYPE_H
