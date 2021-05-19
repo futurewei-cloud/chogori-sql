@@ -76,7 +76,6 @@ class TypeInfoResolver {
     AddMapping<K2SQL_DATA_TYPE_INT32>();
     AddMapping<K2SQL_DATA_TYPE_UINT64>();
     AddMapping<K2SQL_DATA_TYPE_INT64>();
-    AddMapping<K2SQL_DATA_TYPE_VARINT>();
     AddMapping<K2SQL_DATA_TYPE_TIMESTAMP>();
     AddMapping<K2SQL_DATA_TYPE_DATE>();
     AddMapping<K2SQL_DATA_TYPE_TIME>();
@@ -85,16 +84,10 @@ class TypeInfoResolver {
     AddMapping<K2SQL_DATA_TYPE_FLOAT>();
     AddMapping<K2SQL_DATA_TYPE_DOUBLE>();
     AddMapping<K2SQL_DATA_TYPE_BINARY>();
-    AddMapping<K2SQL_DATA_TYPE_INET>();
-    AddMapping<K2SQL_DATA_TYPE_JSONB>();
     AddMapping<K2SQL_DATA_TYPE_MAP>();
     AddMapping<K2SQL_DATA_TYPE_SET>();
     AddMapping<K2SQL_DATA_TYPE_LIST>();
     AddMapping<K2SQL_DATA_TYPE_DECIMAL>();
-    AddMapping<K2SQL_DATA_TYPE_UUID>();
-    AddMapping<K2SQL_DATA_TYPE_TIMEUUID>();
-    AddMapping<K2SQL_DATA_TYPE_USER_DEFINED_TYPE>();
-    AddMapping<K2SQL_DATA_TYPE_FROZEN>();
   }
 
   template<DataType type> void AddMapping() {

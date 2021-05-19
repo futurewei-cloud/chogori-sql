@@ -359,34 +359,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_STRING> : public DerivedTypeTraits<K2SQL_D
 };
 
 template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_INET> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "inet";
-  }
-};
-
-template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_JSONB> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "jsonb";
-  }
-};
-
-template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_UUID> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "uuid";
-  }
-};
-
-template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_TIMEUUID> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "timeuuid";
-  }
-};
-
-template<>
 struct DataTypeTraits<K2SQL_DATA_TYPE_MAP> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "map";
@@ -408,30 +380,9 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_LIST> : public DerivedTypeTraits<K2SQL_DAT
 };
 
 template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_USER_DEFINED_TYPE> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "user_defined_type";
-  }
-};
-
-template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_FROZEN> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "frozen";
-  }
-};
-
-template<>
 struct DataTypeTraits<K2SQL_DATA_TYPE_DECIMAL> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
   static const char* name() {
     return "decimal";
-  }
-};
-
-template<>
-struct DataTypeTraits<K2SQL_DATA_TYPE_VARINT> : public DerivedTypeTraits<K2SQL_DATA_TYPE_BINARY>{
-  static const char* name() {
-    return "varint";
   }
 };
 
@@ -526,11 +477,6 @@ class Variant {
         numeric_.double_val = *static_cast<const double *>(value);
         break;
       case K2SQL_DATA_TYPE_STRING: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_INET: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_UUID: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_TIMEUUID: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_FROZEN: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_JSONB: FALLTHROUGH_INTENDED;
       case K2SQL_DATA_TYPE_BINARY:
         {
           const Slice *str = static_cast<const Slice *>(value);
@@ -550,8 +496,6 @@ class Variant {
         LOG(FATAL) << "Default values for collection types not supported, found: "
                    << type_;
       case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
-        LOG(FATAL) << "Unsupported data type: " << type_;
 
       default: LOG(FATAL) << "Unknown data type: " << type_;
     }
@@ -596,10 +540,6 @@ class Variant {
       case K2SQL_DATA_TYPE_FLOAT:        return (&numeric_.float_val);
       case K2SQL_DATA_TYPE_DOUBLE:       return (&numeric_.double_val);
       case K2SQL_DATA_TYPE_STRING:       FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_INET:         FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_UUID:         FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_TIMEUUID:     FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_FROZEN:       FALLTHROUGH_INTENDED;
       case K2SQL_DATA_TYPE_BINARY:       return &vstr_;
       case K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
       case K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
@@ -608,8 +548,6 @@ class Variant {
                    << type_;
 
       case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
-        LOG(FATAL) << "Unsupported data type: " << type_;
 
       default: LOG(FATAL) << "Unknown data type: " << type_;
     }

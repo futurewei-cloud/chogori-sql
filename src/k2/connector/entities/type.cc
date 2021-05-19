@@ -70,12 +70,6 @@ namespace sql {
             case DataType::K2SQL_DATA_TYPE_SET:
                 DCHECK_EQ(params.size(), 1);
                 return CreateCollectionType<DataType::K2SQL_DATA_TYPE_SET>(params);
-            case DataType::K2SQL_DATA_TYPE_TUPLE:
-                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_TUPLE>(params);
-                // User-defined types cannot be created like this
-            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
-                LOG(FATAL) << "Unsupported constructor for user-defined type";
-                return nullptr;
             default:
                 DCHECK_EQ(params.size(), 0);
                 return Create(data_type);
@@ -118,16 +112,6 @@ namespace sql {
                 return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TIMESTAMP>();
             case DataType::K2SQL_DATA_TYPE_DECIMAL:
                 return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_DECIMAL>();
-            case DataType::K2SQL_DATA_TYPE_VARINT:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_VARINT>();
-            case DataType::K2SQL_DATA_TYPE_INET:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_INET>();
-            case DataType::K2SQL_DATA_TYPE_JSONB:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_JSONB>();
-            case DataType::K2SQL_DATA_TYPE_UUID:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_UUID>();
-            case DataType::K2SQL_DATA_TYPE_TIMEUUID:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TIMEUUID>();
             case DataType::K2SQL_DATA_TYPE_DATE:
                 return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_DATE>();
             case DataType::K2SQL_DATA_TYPE_TIME:
@@ -140,17 +124,6 @@ namespace sql {
                 return CreateTypeMap();
             case DataType::K2SQL_DATA_TYPE_SET:
                 return CreateTypeSet();
-            case DataType::K2SQL_DATA_TYPE_TUPLE:
-                return CreateCollectionType<DataType::K2SQL_DATA_TYPE_TUPLE>({});
-
-                // Datatype for variadic builtin function.
-            case DataType::K2SQL_DATA_TYPE_TYPEARGS:
-                return CreatePrimitiveType<DataType::K2SQL_DATA_TYPE_TYPEARGS>();
-
-                // User-defined types cannot be created like this
-            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
-                LOG(FATAL) << "Unsupported constructor for user-defined type";
-                return nullptr;
 
             default:
                 LOG(FATAL) << "Not supported datatype " << SQLType::ToDataTypeString(data_type);
@@ -162,10 +135,7 @@ namespace sql {
         switch (type) {
             case DataType::K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
             case DataType::K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
-            case DataType::K2SQL_DATA_TYPE_LIST: FALLTHROUGH_INTENDED;
-            case DataType::K2SQL_DATA_TYPE_TUPLE: FALLTHROUGH_INTENDED;
-            case DataType::K2SQL_DATA_TYPE_JSONB: FALLTHROUGH_INTENDED;
-            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
+            case DataType::K2SQL_DATA_TYPE_LIST:
                 return false;
 
             default:
@@ -219,18 +189,9 @@ namespace sql {
             case DataType::K2SQL_DATA_TYPE_BINARY: return "blob";
             case DataType::K2SQL_DATA_TYPE_TIMESTAMP: return "timestamp";
             case DataType::K2SQL_DATA_TYPE_DECIMAL: return "decimal";
-            case DataType::K2SQL_DATA_TYPE_VARINT: return "varint";
-            case DataType::K2SQL_DATA_TYPE_INET: return "inet";
-            case DataType::K2SQL_DATA_TYPE_JSONB: return "jsonb";
             case DataType::K2SQL_DATA_TYPE_LIST: return "list";
             case DataType::K2SQL_DATA_TYPE_MAP: return "map";
             case DataType::K2SQL_DATA_TYPE_SET: return "set";
-            case DataType::K2SQL_DATA_TYPE_UUID: return "uuid";
-            case DataType::K2SQL_DATA_TYPE_TIMEUUID: return "timeuuid";
-            case DataType::K2SQL_DATA_TYPE_TUPLE: return "tuple";
-            case DataType::K2SQL_DATA_TYPE_TYPEARGS: return "typeargs";
-            case DataType::K2SQL_DATA_TYPE_FROZEN: return "frozen";
-            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE: return "user_defined_type";
             case DataType::K2SQL_DATA_TYPE_DATE: return "date";
             case DataType::K2SQL_DATA_TYPE_TIME: return "time";
             default: return "unknown";
@@ -255,18 +216,9 @@ namespace sql {
             case DataType::K2SQL_DATA_TYPE_BINARY: return os << "blob";
             case DataType::K2SQL_DATA_TYPE_TIMESTAMP: return os << "timestamp";
             case DataType::K2SQL_DATA_TYPE_DECIMAL: return os << "decimal";
-            case DataType::K2SQL_DATA_TYPE_VARINT: return os << "varint";
-            case DataType::K2SQL_DATA_TYPE_INET: return os << "inet";
-            case DataType::K2SQL_DATA_TYPE_JSONB: return os << "jsonb";
             case DataType::K2SQL_DATA_TYPE_LIST: return os << "list";
             case DataType::K2SQL_DATA_TYPE_MAP: return os << "map";
             case DataType::K2SQL_DATA_TYPE_SET: return os << "set";
-            case DataType::K2SQL_DATA_TYPE_UUID: return os << "uuid";
-            case DataType::K2SQL_DATA_TYPE_TIMEUUID: return os << "timeuuid";
-            case DataType::K2SQL_DATA_TYPE_TUPLE: return os << "tuple";
-            case DataType::K2SQL_DATA_TYPE_TYPEARGS: return os << "typeargs";
-            case DataType::K2SQL_DATA_TYPE_FROZEN: return os << "frozen";
-            case DataType::K2SQL_DATA_TYPE_USER_DEFINED_TYPE: return os << "user_defined_type";
             case DataType::K2SQL_DATA_TYPE_DATE: return os << "date";
             case DataType::K2SQL_DATA_TYPE_TIME: return os << "time";
             default: return os << "unknown";

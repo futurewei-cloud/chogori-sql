@@ -150,8 +150,6 @@ namespace sql {
                 case K2SQL_DATA_TYPE_SET:
                     // set has no keys, only values
                     return nullptr;
-                case K2SQL_DATA_TYPE_TUPLE:
-                    LOG(FATAL) << "Tuple type not implemented yet";
 
                 default:
                     // elementary types have no keys or values
@@ -167,8 +165,6 @@ namespace sql {
                     return params_[0];
                 case K2SQL_DATA_TYPE_SET:
                     return params_[0];
-                case K2SQL_DATA_TYPE_TUPLE:
-                    LOG(FATAL) << "Tuple type not implemented yet";
 
                 default:
                     // other types have no keys or values
@@ -185,7 +181,7 @@ namespace sql {
         // Predicates.
 
         bool IsCollection() const {
-            return id_ == K2SQL_DATA_TYPE_MAP || id_ == K2SQL_DATA_TYPE_SET || id_ == K2SQL_DATA_TYPE_LIST || id_ == K2SQL_DATA_TYPE_TUPLE;
+            return id_ == K2SQL_DATA_TYPE_MAP || id_ == K2SQL_DATA_TYPE_SET || id_ == K2SQL_DATA_TYPE_LIST;
         }
 
         bool IsUnknown() const {
@@ -213,8 +209,6 @@ namespace sql {
                     return false; // expect two type parameters for maps
                 } else if ((id_ == K2SQL_DATA_TYPE_SET || id_ == K2SQL_DATA_TYPE_LIST) && params_.size() != 1) {
                     return false; // expect one type parameter for set and list
-                } else if (id_ == K2SQL_DATA_TYPE_TUPLE && params_.size() == 0) {
-                    return false; // expect at least one type parameters for tuples
                 }
                 // recursively checking params
                 for (const auto &param : params_) {
@@ -260,20 +254,8 @@ namespace sql {
 
         //------------------------------------------------------------------------------------------------
         // static methods
-        static const int kMaxTypeIndex = DataType::K2SQL_DATA_TYPE_JSONB + 1;
-
-        // When a new type is added in the enum "DataType", kMaxTypeIndex should be updated for this
-        // module to work properly. The DCHECKs in this struct would failed if kMaxTypeIndex is wrong.
-        static bool IsValid(DataType type) {
-            return (type >= 0 && type < kMaxTypeIndex);
-        }
-
         static bool IsInteger(DataType t) {
-            return (t >= K2SQL_DATA_TYPE_INT8 && t <= K2SQL_DATA_TYPE_INT64) || t == K2SQL_DATA_TYPE_VARINT;
-        }
-
-        static bool IsJson(DataType t) {
-            return t == K2SQL_DATA_TYPE_JSONB;
+            return (t >= K2SQL_DATA_TYPE_INT8 && t <= K2SQL_DATA_TYPE_INT64); // || t == K2SQL_DATA_TYPE_VARINT;
         }
 
         static bool IsNumeric(DataType t) {

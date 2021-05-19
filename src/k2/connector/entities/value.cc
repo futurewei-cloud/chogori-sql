@@ -176,20 +176,11 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       }
       break;
 
-    case K2SQL_DATA_TYPE_VARINT:
-    case K2SQL_DATA_TYPE_INET:
     case K2SQL_DATA_TYPE_LIST:
     case K2SQL_DATA_TYPE_MAP:
     case K2SQL_DATA_TYPE_SET:
-    case K2SQL_DATA_TYPE_UUID:
-    case K2SQL_DATA_TYPE_TIMEUUID:
-    case K2SQL_DATA_TYPE_TUPLE:
-    case K2SQL_DATA_TYPE_TYPEARGS:
-    case K2SQL_DATA_TYPE_USER_DEFINED_TYPE:
-    case K2SQL_DATA_TYPE_FROZEN:
     case K2SQL_DATA_TYPE_DATE: // Not used for PG storage
     case K2SQL_DATA_TYPE_TIME: // Not used for PG storage
-    case K2SQL_DATA_TYPE_JSONB:
     default:
       LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
   }
