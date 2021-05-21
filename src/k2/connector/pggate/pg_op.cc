@@ -75,52 +75,52 @@ template <typename T>
 std::enable_if_t<isNumericType<T>(), Status>
 TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
     switch (type_entity->yb_type) {
-        case YB_YQL_DATA_TYPE_INT8: {
+        case K2SQL_DATA_TYPE_INT8: {
             int8_t val = (int8_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_INT16: {
+        case K2SQL_DATA_TYPE_INT16: {
             int16_t val = (int16_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_INT32: {
+        case K2SQL_DATA_TYPE_INT32: {
             int32_t val = (int32_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_INT64: {
+        case K2SQL_DATA_TYPE_INT64: {
             int64_t val = (int64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_UINT32: {
+        case K2SQL_DATA_TYPE_UINT32: {
             uint32_t val = (uint32_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_UINT64: {
+        case K2SQL_DATA_TYPE_UINT64: {
             uint64_t val = (uint64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_BOOL: {
+        case K2SQL_DATA_TYPE_BOOL: {
             bool val = (bool)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_FLOAT: {
+        case K2SQL_DATA_TYPE_FLOAT: {
             float val = (float)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_DOUBLE: {
+        case K2SQL_DATA_TYPE_DOUBLE: {
             double val = (double)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_TIMESTAMP: {
+        case K2SQL_DATA_TYPE_TIMESTAMP: {
             int64_t val = (int64_t)field.value();
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(&val, sizeof(val), type_attrs));
             break;
@@ -137,15 +137,15 @@ template <>
 Status
 TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<k2::String> field, PgTuple* pg_tuple) {
     switch (type_entity->yb_type) {
-        case YB_YQL_DATA_TYPE_BINARY: {
+        case K2SQL_DATA_TYPE_BINARY: {
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(field.value().c_str(), field.value().size(), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_STRING: {
+        case K2SQL_DATA_TYPE_STRING: {
             pg_tuple->WriteDatum(index, type_entity->yb_to_datum(field.value().c_str(), field.value().size(), type_attrs));
             break;
         }
-        case YB_YQL_DATA_TYPE_DECIMAL: {
+        case K2SQL_DATA_TYPE_DECIMAL: {
             // TODO use SKV/c++ -native decimal64 type
             std::string serialized_decimal(field.value().c_str(), field.value().size());
             Decimal yb_decimal;

@@ -82,7 +82,7 @@ namespace k2pg
                    false,
                    false,
                    idx,
-                   SQLType::Create(DataType::BINARY),
+                   SQLType::Create(DataType::K2SQL_DATA_TYPE_BINARY),
                    ColumnSchema::SortingType::kNotSpecified);
         return;
       }
