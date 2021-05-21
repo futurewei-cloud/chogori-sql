@@ -1,0 +1,84 @@
+# src/test/regress/yb_pg_type_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: Porting from PostgreSQL original tests.
+# This suite includes all tests on numeric datatypes that are enabled for YugaByte.
+####################################################################################################
+test: yb_oid
+test: yb_int2
+test: yb_pg_int4
+test: yb_pg_int8
+test: yb_numeric
+test: yb_numeric_big
+test: yb_money
+# src/test/regress/yb_pg_type_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: Porting from PostgreSQL original tests.
+# This suite includes all tests on datatypes that are enabled for YugaByte.
+####################################################################################################
+test: yb_boolean
+test: yb_date
+test: yb_time
+test: yb_timestamp
+test: yb_interval
+test: yb_inet
+test: yb_macaddr
+test: yb_macaddr8
+# src/test/regress/yb_pg_types_geometry_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: Porting from PostgreSQL original tests.
+# This suite includes all tests on geometry datatypes that are enabled for YugaByte.
+####################################################################################################
+test: yb_point
+test: yb_path
+test: yb_line
+test: yb_lseg
+test: yb_box
+test: yb_circle
+test: yb_polygon
+test: yb_geometry
+# src/test/regress/yb_pg_types_string_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: Porting from PostgreSQL original tests.
+# This suite includes all tests on datatypes that are enabled for YugaByte.
+####################################################################################################
+test: yb_bit
+test: yb_char
+test: yb_text
+test: yb_bytea
+test: yb_pg_json
+test: yb_tstypes
+test: yb_uuid
+
+# src/test/regress/yb_foreign_key_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: Porting from PostgreSQL original tests.
+# This includes tests for foreign key constraints.
+####################################################################################################
+test: yb_foreign_key
+test: yb_pg_foreign_key
+# src/test/regress/yb_misc_serial_schedule
+#
+####################################################################################################
+# This testsuite includes miscellaneous tests that are not yet characterized to a proper testsuite.
+# The tests in this schedule are not ported from PostgreSQL original tests.
+####################################################################################################
+test: yb_compound_key
+test: yb_select
+test: yb_guc
+# src/test/regress/yb_pg_dml_serial_schedule
+#
+####################################################################################################
+# Postgres Testsuites: This suite includes tests on dml statements.
+# NOTES:
+# The following tests are copied from Postgres original code. Whenever Postgres updates
+# these tests, we need to update ours also.
+#   - yb_insert_conflict
+# Other tests are YugaByte tests.
+####################################################################################################
+test: yb_dml_read_time
+test: yb_dml_single_row

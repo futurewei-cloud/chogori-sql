@@ -61,8 +61,8 @@ static char *shellprog = SHELLPROG;
  * Windows-style newlines, but the comparison files might or might not.
  */
 #ifndef WIN32
-const char *basic_diff_opts = "";
-const char *pretty_diff_opts = "-C3";
+const char *basic_diff_opts = "-w -B";
+const char *pretty_diff_opts = "-C3 -w -B";
 #else
 const char *basic_diff_opts = "-w";
 const char *pretty_diff_opts = "-w -C3";
@@ -2495,8 +2495,6 @@ regression_main(int argc, char *argv[], init_function ifunc, test_function tfunc
 		 */
 		if (!use_existing)
 		{
-			for (sl = dblist; sl; sl = sl->next)
-				drop_database_if_exists(sl->str);
 			for (sl = extraroles; sl; sl = sl->next)
 				drop_role_if_exists(sl->str);
 		}
@@ -2507,8 +2505,6 @@ regression_main(int argc, char *argv[], init_function ifunc, test_function tfunc
 	 */
 	if (!use_existing)
 	{
-		for (sl = dblist; sl; sl = sl->next)
-			create_database(sl->str);
 		for (sl = extraroles; sl; sl = sl->next)
 			create_role(sl->str, dblist);
 	}
