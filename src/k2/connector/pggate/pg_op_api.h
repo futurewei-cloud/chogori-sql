@@ -23,7 +23,6 @@
 #include <vector>
 #include <optional>
 
-#include "common/type/slice.h"
 #include "entities/entity_ids.h"
 #include "entities/schema.h"
 #include "entities/type.h"

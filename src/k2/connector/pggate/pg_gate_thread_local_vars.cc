@@ -18,7 +18,6 @@
 #include <setjmp.h>
 #include <unordered_map>
 
-#include "common/singleton.h"
 #include "common/status.h"
 
 namespace k2pg {

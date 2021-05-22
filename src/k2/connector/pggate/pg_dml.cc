@@ -48,7 +48,6 @@
 
 #include "pggate/pg_dml.h"
 #include "pggate/pg_select.h"
-#include "common/enums.h"
 
 namespace k2pg {
 namespace gate {

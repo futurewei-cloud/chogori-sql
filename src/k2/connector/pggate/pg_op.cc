@@ -49,11 +49,11 @@
 #include <boost/algorithm/string.hpp>
 
 #include "common/type/decimal.h"
+#include "common/ybc-internal.h"
 #include "pggate/pg_op.h"
 #include "pggate/pg_env.h"
 #include "pggate/pg_gate_typedefs.h"
 #include "pggate/catalog/sql_catalog_defaults.h" // for the table/index name constants
-#include "common/ybc-internal.h"
 #include <string>
 
 namespace k2pg {

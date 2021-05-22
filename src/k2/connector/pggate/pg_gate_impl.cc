@@ -60,10 +60,7 @@ namespace gate {
 using k2pg::sql::kPgByteArrayOid;
 
 PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count, YBCPgCallbacks callbacks)
-    : metric_registry_(new MetricRegistry()),
-      metric_entity_(METRIC_ENTITY_server.Instantiate(metric_registry_.get(), "k2.pggate")),
-      mem_tracker_(MemTracker::CreateTracker("PostgreSQL")),
-      k2_adapter_(CreateK2Adapter()),
+    : k2_adapter_(CreateK2Adapter()),
       catalog_manager_(CreateCatalogManager()),
       catalog_client_(CreateCatalogClient()),
       pg_callbacks_(callbacks),
