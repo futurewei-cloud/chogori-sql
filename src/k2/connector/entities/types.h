@@ -49,13 +49,13 @@
 #ifndef CHOGORI_SQL_TYPES_H
 #define CHOGORI_SQL_TYPES_H
 
+#include <limits>
 #include <stdint.h>
 #include <string>
 
 #include <glog/logging.h>
 
 #include "entities/data_type.h"
-#include "common/type/mathlimits.h"
 #include "common/type/slice.h"
 
 using std::string;
@@ -63,10 +63,6 @@ using yb::Slice;
 
 namespace k2pg {
 namespace sql {
-
-// The size of the in-memory format of the largest
-// type we support.
-const int kLargestTypeSize = sizeof(Slice);
 
 class TypeInfo;
 
@@ -85,9 +81,6 @@ class TypeInfo {
   const std::string& name() const { return name_; }
   const size_t size() const { return size_; }
   int Compare(const void *lhs, const void *rhs) const;
-  void CopyMinValue(void* dst) const {
-    memcpy(dst, min_value_, size_);
-  }
 
  private:
   friend class TypeInfoResolver;
@@ -97,7 +90,7 @@ class TypeInfo {
   const DataType physical_type_;
   const std::string name_;
   const size_t size_;
-  const void* const min_value_;
+  // min/max values should be derived from physical type, no need to store here
 
   typedef int (*CompareFunc)(const void *, const void *);
   const CompareFunc compare_func_;
@@ -130,10 +123,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_UINT8> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_UINT8>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -148,10 +137,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_INT8> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_INT8>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -164,10 +149,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_UINT16> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_UINT16>(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
   }
 };
 
@@ -183,10 +164,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_INT16> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_INT16>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -200,10 +177,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_UINT32> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_UINT32>(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
   }
 };
 
@@ -219,9 +192,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_INT32> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_INT32>(lhs, rhs);
   }
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -234,10 +204,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_UINT64> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_UINT64>(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
   }
 };
 
@@ -253,10 +219,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_INT64> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_INT64>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -271,10 +233,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_FLOAT> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_FLOAT>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
-  }
 };
 
 template<>
@@ -288,10 +246,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_DOUBLE> {
 
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_DOUBLE>(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return &MathLimits<cpp_type>::kMin;
   }
 };
 
@@ -309,11 +263,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_BINARY> {
     const Slice *rhs_slice = reinterpret_cast<const Slice *>(rhs);
     return lhs_slice->compare(*rhs_slice);
   }
-
-  static const cpp_type* min_value() {
-    static Slice s("");
-    return &s;
-  }
 };
 
 template<>
@@ -328,11 +277,6 @@ struct DataTypeTraits<K2SQL_DATA_TYPE_BOOL> {
   static int Compare(const void *lhs, const void *rhs) {
     return GenericCompare<K2SQL_DATA_TYPE_BOOL>(lhs, rhs);
   }
-
-  static const cpp_type* min_value() {
-    static bool b = false;
-    return &b;
-  }
 };
 
 // Base class for types that are derived, that is that have some other type as the
@@ -344,10 +288,6 @@ struct DerivedTypeTraits {
 
   static int Compare(const void *lhs, const void *rhs) {
     return DataTypeTraits<PhysicalType>::Compare(lhs, rhs);
-  }
-
-  static const cpp_type* min_value() {
-    return DataTypeTraits<PhysicalType>::min_value();
   }
 };
 
@@ -429,6 +369,10 @@ class Variant {
     Clear();
   }
 
+  // Disallow copying
+  Variant& operator=(const Variant&) = delete;
+  Variant(const Variant&) = delete;
+
   template<DataType Type>
   void Reset(const typename DataTypeTraits<Type>::cpp_type& value) {
     Reset(Type, &value);
@@ -476,7 +420,7 @@ class Variant {
       case K2SQL_DATA_TYPE_DOUBLE:
         numeric_.double_val = *static_cast<const double *>(value);
         break;
-      case K2SQL_DATA_TYPE_STRING: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_STRING: [[fallthrough]];
       case K2SQL_DATA_TYPE_BINARY:
         {
           const Slice *str = static_cast<const Slice *>(value);
@@ -490,12 +434,12 @@ class Variant {
           }
         }
         break;
-      case K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_MAP: [[fallthrough]];
+      case K2SQL_DATA_TYPE_SET: [[fallthrough]];
       case K2SQL_DATA_TYPE_LIST:
         LOG(FATAL) << "Default values for collection types not supported, found: "
                    << type_;
-      case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_DECIMAL: [[fallthrough]];
 
       default: LOG(FATAL) << "Unknown data type: " << type_;
     }
@@ -539,15 +483,15 @@ class Variant {
       case K2SQL_DATA_TYPE_INT64:        return &(numeric_.i64);
       case K2SQL_DATA_TYPE_FLOAT:        return (&numeric_.float_val);
       case K2SQL_DATA_TYPE_DOUBLE:       return (&numeric_.double_val);
-      case K2SQL_DATA_TYPE_STRING:       FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_STRING:       [[fallthrough]];
       case K2SQL_DATA_TYPE_BINARY:       return &vstr_;
-      case K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
-      case K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_MAP: [[fallthrough]];
+      case K2SQL_DATA_TYPE_SET: [[fallthrough]];
       case K2SQL_DATA_TYPE_LIST:
         LOG(FATAL) << "Default values for collection types not supported, found: "
                    << type_;
 
-      case K2SQL_DATA_TYPE_DECIMAL: FALLTHROUGH_INTENDED;
+      case K2SQL_DATA_TYPE_DECIMAL: [[fallthrough]];
 
       default: LOG(FATAL) << "Unknown data type: " << type_;
     }
@@ -585,8 +529,6 @@ class Variant {
   DataType type_;
   NumericValue numeric_;
   Slice vstr_;
-
-  DISALLOW_COPY_AND_ASSIGN(Variant);
 };
 
 }  // namespace sql

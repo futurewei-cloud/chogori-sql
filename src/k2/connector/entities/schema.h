@@ -65,27 +65,6 @@
 #include "common/strings/stringpiece.h"
 #include "common/util/stl_util.h"
 
-// Check that two schemas are equal, yielding a useful error message in the case that
-// they are not.
-#define DCHECK_SCHEMA_EQ(s1, s2) \
-  do { \
-    DCHECK((s1).Equals((s2))) << "Schema " << (s1).ToString() \
-                              << " does not match " << (s2).ToString(); \
-  } while (0);
-
-#define DCHECK_KEY_PROJECTION_SCHEMA_EQ(s1, s2) \
-  do { \
-    DCHECK((s1).KeyEquals((s2))) << "Key-Projection Schema " \
-                                 << (s1).ToString() << " does not match " \
-                                 << (s2).ToString(); \
-  } while (0);
-
-#ifndef DISALLOW_COPY_AND_ASSIGN
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
-#endif
-
 namespace k2pg {
 namespace sql {
     using yb::Result;
@@ -557,6 +536,8 @@ namespace sql {
         public:
         SchemaBuilder() { Reset(); }
         explicit SchemaBuilder(const Schema& schema) { Reset(schema); }
+        SchemaBuilder(const SchemaBuilder&) = delete;
+        SchemaBuilder& operator=(const Variant&) = delete;
 
         void Reset();
         void Reset(const Schema& schema);
@@ -632,8 +613,6 @@ namespace sql {
         vector<ColumnSchema> cols_;
         std::unordered_set<string> col_names_;
         size_t num_key_columns_;
-
-        DISALLOW_COPY_AND_ASSIGN(SchemaBuilder);
     };
 }  // namespace sql
 }  // namespace k2pg
