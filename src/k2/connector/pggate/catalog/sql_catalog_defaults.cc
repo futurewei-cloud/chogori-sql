@@ -35,7 +35,7 @@ const std::string CatalogConsts::skv_collection_name_primary_cluster =  "K2RESVD
 const std::string CatalogConsts::skv_schema_name_cluster_meta =         "K2RESVD_SCHEMA_SQL_CLUSTER_META";
 const std::string CatalogConsts::skv_schema_name_database_meta =        "K2RESVD_SCHEMA_SQL_DATABASE_META";
 
-// Names of three system meta tables holding definition of tables, table columns, index columns (as using Postgre provided sys catalog pg_class, pg_index, etc is too complex) 
+// Names of three system meta tables holding definition of tables, table columns, index columns (as using Postgre provided sys catalog pg_class, pg_index, etc is too complex)
 // All database/SKV collection, except "sql primary cluster", contains a set of them.
 // TODO: consider remvoing them as these string name can be generate from their Oid respectively
 const std::string CatalogConsts::skv_schema_name_table_meta =           "K2RESVD_SCHEMA_SQL_TABLE_META";

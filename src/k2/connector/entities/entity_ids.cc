@@ -15,9 +15,6 @@
 
 #include "entities/entity_ids.h"
 
-#include "common/strings/escaping.h"
-#include "common/cast.h"
-
 namespace k2pg {
 namespace sql {
 using boost::uuids::uuid;
@@ -30,6 +27,8 @@ const uint32_t kPgProcTableOid = 1255;  // Hardcoded for pg_proc. (in pg_proc.h)
 
 // Static initialization is OK because this won't be used in another static initialization.
 const TableId kPgProcTableId = PgObjectId::GetTableUuid(kTemplate1Oid, kPgProcTableOid);
+
+static char hex_chars[] = "0123456789abcdef";
 
 //-------------------------------------------------------------------------------------------------
 
@@ -58,6 +57,17 @@ void UuidSetTableIds(const uint32_t table_oid, uuid* id) {
   id->data[15] = table_oid & 0xFF;
 }
 
+std::string b2a_hex(const char* input, int len) {
+  std::string result;
+  result.resize(len << 1);
+  const unsigned char* b = reinterpret_cast<const unsigned char*>(input);
+  for (int i = 0; i < len; i++) {
+    result[i * 2 + 0] = hex_chars[b[i] >> 4];
+    result[i * 2 + 1] = hex_chars[b[i] & 0xf];
+  }
+  return result;
+}
+
 std::string UuidToString(uuid* id) {
   // Set variant that is stored in octet 7, which is index 8, since indexes count backwards.
   // Variant must be 0b10xxxxxx for RFC 4122 UUID variant 1.
@@ -67,7 +77,6 @@ std::string UuidToString(uuid* id) {
   // Set version that is stored in octet 9 which is index 6, since indexes count backwards.
   id->data[6] &= 0x0F;
   id->data[6] |= (kUuidVersion << 4);
-
   return b2a_hex(yb::util::to_char_ptr(id->data), sizeof(id->data));
 }
 
@@ -172,9 +181,9 @@ Result<uint32_t> PgObjectId::GetDatabaseOidByTableUuid(const std::string& table_
 
     bool IsValidRowMarkType(RowMarkType row_mark_type) {
         switch (row_mark_type) {
-            case RowMarkType::ROW_MARK_EXCLUSIVE: FALLTHROUGH_INTENDED;
-            case RowMarkType::ROW_MARK_NOKEYEXCLUSIVE: FALLTHROUGH_INTENDED;
-            case RowMarkType::ROW_MARK_SHARE: FALLTHROUGH_INTENDED;
+            case RowMarkType::ROW_MARK_EXCLUSIVE: [[fallthrough]];
+            case RowMarkType::ROW_MARK_NOKEYEXCLUSIVE: [[fallthrough]];
+            case RowMarkType::ROW_MARK_SHARE: [[fallthrough]];
             case RowMarkType::ROW_MARK_KEYSHARE:
             return true;
             break;

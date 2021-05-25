@@ -47,7 +47,6 @@
 //
 
 #include "entities/type.h"
-#include "common/macros.h"
 
 namespace k2pg {
 namespace sql {
@@ -133,8 +132,8 @@ namespace sql {
 
     bool SQLType::IsValidPrimaryType(DataType type) {
         switch (type) {
-            case DataType::K2SQL_DATA_TYPE_MAP: FALLTHROUGH_INTENDED;
-            case DataType::K2SQL_DATA_TYPE_SET: FALLTHROUGH_INTENDED;
+            case DataType::K2SQL_DATA_TYPE_MAP: [[fallthrough]];
+            case DataType::K2SQL_DATA_TYPE_SET: [[fallthrough]];
             case DataType::K2SQL_DATA_TYPE_LIST:
                 return false;
 
