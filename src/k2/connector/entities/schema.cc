@@ -64,7 +64,6 @@ namespace sql {
     using std::unordered_set;
     using yb::Result;
     using yb::Status;
-    using yb::IdMapping;
 
     string ColumnSchema::ToString() const {
         return fmt::format("{}[{}]", name_, TypeToString());
@@ -189,7 +188,7 @@ namespace sql {
             if (ids[i] > max_col_id_) {
                 max_col_id_ = ids[i];
             }
-            id_to_index_.set(ids[i], i);
+            id_to_index_.insert(std::make_pair(ids[i], i));
         }
 
         // Ensure clustering columns have a default sorting type of 'ASC' if not specified.

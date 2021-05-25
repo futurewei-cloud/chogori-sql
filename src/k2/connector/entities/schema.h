@@ -60,14 +60,12 @@
 #include <glog/logging.h>
 
 #include "entities/type.h"
-#include "common/id_mapping.h"
 #include "common/result.h"
 
 namespace k2pg {
 namespace sql {
     using yb::Result;
     using yb::Status;
-    using yb::IdMapping;
 
     typedef int32_t ColumnId;
     constexpr ColumnId kFirstColumnId = 0;
@@ -448,11 +446,11 @@ namespace sql {
         // If no such column exists, returns kColumnNotFound.
         int find_column_by_id(ColumnId id) const {
             DCHECK(cols_.empty() || has_column_ids());
-            int ret = id_to_index_[id];
-            if (ret == -1) {
-                return kColumnNotFound;
+            auto iter = id_to_index_.find(id);
+            if (iter == id_to_index_.end()) {
+               return kColumnNotFound;
             }
-            return ret;
+            return (*iter).second;
         }
 
         static ColumnId first_column_id();
@@ -475,8 +473,8 @@ namespace sql {
         vector<ColumnId> col_ids_;
         vector<size_t> col_offsets_;
 
-        std::unordered_map<std::string, int> name_to_index_;
-        IdMapping id_to_index_;
+        std::unordered_map<std::string, size_t> name_to_index_;
+        std::unordered_map<int, int> id_to_index_;
 
         // Cached indicator whether any columns are nullable.
         bool has_nullables_;
