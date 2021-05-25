@@ -55,7 +55,6 @@
 #include <boost/functional/hash/hash.hpp>
 
 #include "common/result.h"
-#include "common/type/strongly_typed_string.h"
 
 namespace k2pg {
 namespace sql {
