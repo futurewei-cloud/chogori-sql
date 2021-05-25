@@ -736,14 +736,13 @@ GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnH
     return response;
 }
 
-CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid,
-    const Schema& index_schema, bool is_unique, bool is_shared, bool is_not_exist, bool skip_index_backfill, IndexPermissions index_permissions) {
+CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, CreateIndexTableParams &index_params) {
     CreateIndexTableResult result;
-    std::string index_table_id = PgObjectId::GetTableId(table_oid);
-    std::string index_table_uuid = PgObjectId::GetTableUuid(database_info->GetDatabaseOid(), table_oid);
+    std::string index_table_id = PgObjectId::GetTableId(index_params.table_oid);
+    std::string index_table_uuid = PgObjectId::GetTableUuid(database_info->GetDatabaseOid(), index_params.table_oid);
 
     K2LOG_D(log::catalog, "Creating index ns name: {}, index name: {}, base table oid: {}",
-            database_info->GetDatabaseId(), index_name, base_table_info->table_oid());
+            database_info->GetDatabaseId(), index_params.index_name, base_table_info->table_oid());
  
     if (base_table_info->has_secondary_indexes()) {
         const IndexMap& index_map = base_table_info->secondary_indexes();
@@ -751,7 +750,7 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
         // the index has already been defined
         if (itr != index_map.end()) {
             // return if 'create .. if not exist' clause is specified
-            if (is_not_exist) {
+            if (index_params.is_not_exist) {
                 const IndexInfo& index_info = itr->second;
                 result.indexInfo = std::make_shared<IndexInfo>(index_info);
                 result.status = Status(); // OK;
@@ -767,8 +766,8 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
     }
     try {
        // use default index permission, could be customized by user/api
-        IndexInfo new_index_info = BuildIndexInfo(base_table_info, database_info->GetDatabaseId(), table_oid, index_table_uuid,
-                index_schema, is_unique, is_shared, index_permissions);
+        IndexInfo new_index_info = BuildIndexInfo(base_table_info, database_info->GetDatabaseId(), index_params.table_oid, index_table_uuid,
+                index_params.index_schema, index_params.is_unique, index_params.is_shared, index_params.index_permissions);
 
         K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
         // persist the index metadata to the system catalog SKV tables
@@ -799,7 +798,7 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
         // update the base table with the new index
         base_table_info->add_secondary_index(new_index_info.table_id(), new_index_info);
 
-        if (!skip_index_backfill) {
+        if (!index_params.skip_index_backfill) {
             // TODO: add logic to backfill the index
             K2LOG_W(log::catalog, "Index backfill is not supported yet");
         }
@@ -808,15 +807,15 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
         result.indexInfo = std::make_shared<IndexInfo>(new_index_info);
     } catch (const std::exception& e) {
         result.status = STATUS_FORMAT(RuntimeError, "Failed to create index {} due to {} in {}",
-            index_name, e.what(), database_info->GetDatabaseId());
+            index_params.index_name, e.what(), database_info->GetDatabaseId());
         K2LOG_E(log::catalog, "Failed to create index {} in {}",
-            index_name, database_info->GetDatabaseId());
+            index_params.index_name, database_info->GetDatabaseId());
     }
     return result;
 }
 
 
-GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id, std::function<std::shared_ptr<IndexInfo>()> fnc_indx, std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db, std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx)
+GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id, std::shared_ptr<IndexInfo> index_info, std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db, std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx)
 {
     GetTableSchemaResult result;
     std::shared_ptr<PgTxnHandler> localTxnHandler = txnHandler;
@@ -883,9 +882,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         return result;
     }
     std::string base_table_id;
-    std::shared_ptr<IndexInfo> index_ptr = fnc_indx();
-
-    if (index_ptr == nullptr) {
+    if (index_info == nullptr) {
         // not founnd in cache, try to check the base table id from SKV
         GetBaseTableIdResult table_id_result = GetBaseTableId(localTxnHandler, physical_collection, table_id);
         if (!table_id_result.status.ok()) {
@@ -898,7 +895,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         }
         base_table_id = table_id_result.baseTableId;
     } else {
-        base_table_id = index_ptr->base_table_id();
+        base_table_id = index_info->base_table_id();
     }
 
     if (base_table_id.empty()) {

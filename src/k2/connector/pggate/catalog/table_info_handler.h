@@ -116,6 +116,17 @@ struct CreateIndexTableResult {
     std::shared_ptr<IndexInfo> indexInfo;
 };
 
+struct CreateIndexTableParams {
+    std::string index_name;
+    uint32_t table_oid;
+    Schema index_schema;
+    bool is_unique;
+    bool is_shared;
+    bool is_not_exist;
+    bool skip_index_backfill;
+    IndexPermissions index_permissions;
+};
+
 class TableInfoHandler {
     public:
     typedef std::shared_ptr<TableInfoHandler> SharedPtr;
@@ -206,7 +217,7 @@ class TableInfoHandler {
 
     GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
     GetTableSchemaResult GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id,
-                std::function<std::shared_ptr<IndexInfo>()> fnc_indx,
+                std::shared_ptr<IndexInfo> index_info,
                 std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db,
                 std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx);
 
@@ -243,8 +254,7 @@ class TableInfoHandler {
     GetTableTypeInfoResult GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
 
     // create index table (handle create if exists flag)
-    CreateIndexTableResult CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid,
-        const Schema& index_schema, bool is_unique, bool is_shared, bool is_not_exist, bool skip_index_backfill, IndexPermissions index_permissions);
+    CreateIndexTableResult CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, CreateIndexTableParams &index_params);
 
     private:
     CopySKVTableResult CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,

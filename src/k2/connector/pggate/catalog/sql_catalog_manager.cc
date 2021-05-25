@@ -661,10 +661,21 @@ namespace catalog {
   		        response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, database_info->GetDatabaseId());
             return response;
         }
+        
+        CreateIndexTableParams index_params;
+        index_params.index_name = request.tableName;
+        index_params.table_oid = request.tableOid;
+        index_params.index_schema = request.schema;
+        index_params.is_unique = request.isUnique;
+        index_params.is_shared = request.isSharedTable;
+        index_params.is_not_exist = request.isNotExist;
+        index_params.skip_index_backfill = request.skipIndexBackfill;
+        index_params.index_permissions = IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE;
+
         // create the table index
-        CreateIndexTableResult index_table_result = table_info_handler_->CreateIndexTable(txnHandler, database_info, base_table_info, request.tableName,
-             request.tableOid, request.schema, request.isUnique, request.isSharedTable, request.isNotExist, request.skipIndexBackfill, IndexPermissions::INDEX_PERM_READ_WRITE_AND_DELETE);
-        if (index_table_result.status.ok() && index_table_result.indexInfo != nullptr) {
+        CreateIndexTableResult index_table_result = table_info_handler_->CreateIndexTable(txnHandler, database_info, base_table_info, index_params);
+        if (index_table_result.status.ok()) {
+            K2ASSERT(log::catalog, index_table_result.indexInfo != nullptr, "Table index can't be null");
             K2LOG_D(log::catalog, "Updating cache for table id: {}, name: {} in {}", index_table_result.indexInfo->table_id(), index_table_result.indexInfo->table_name(), database_info->GetDatabaseId());
             // update table cache
             UpdateTableCache(base_table_info);
@@ -680,15 +691,9 @@ namespace catalog {
             K2LOG_D(log::catalog, "Created index ns name: {}, ns oid: {}, index name: {}, index oid: {}, base table oid: {}",
                 request.databaseName, request.databaseOid, request.tableName, request.tableOid, request.baseTableOid);
         } else {
-            // this is returned if index exists isNotExist is false
-            // the error AlreadyPresent should not abort the transaction (we don't return the index table)
-            if (index_table_result.status.code() == ::yb::Status::BOOST_PP_CAT(k, AlreadyPresent)) {
-                txnHandler->CommitTransaction();
-            } else {
-                txnHandler->AbortTransaction();
-                K2LOG_E(log::catalog, "Failed to create index ns name: {}, ns oid: {}, index name: {}, index oid: {}, base table oid: {}",
-                    request.databaseName, request.databaseOid, request.tableName, request.tableOid, request.baseTableOid);
-            }
+            txnHandler->AbortTransaction();
+            K2LOG_E(log::catalog, "Failed to create index ns name: {}, ns oid: {}, index name: {}, index oid: {}, base table oid: {}",
+                request.databaseName, request.databaseOid, request.tableName, request.tableOid, request.baseTableOid);
         }
         response.status = std::move(index_table_result.status);
         return response;
@@ -730,12 +735,13 @@ namespace catalog {
             response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
             return response;
         }
-        std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();    
+        std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
+        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
         GetTableSchemaResult table_schema_result = table_info_handler_->GetTableSchema(txnHandler, database_info,
                 table_id,
-                [&] () { return GetCachedIndexInfoById(table_uuid); },
-                [&] (const string &db_id) { return CheckAndLoadDatabaseById(db_id); },
-                [&] () { return NewTransaction(); }
+                index_info,
+                [this] (const string &db_id) { return CheckAndLoadDatabaseById(db_id); },
+                [this] () { return NewTransaction(); }
                 );
         response.status = std::move(table_schema_result.status);
         if (table_schema_result.status.ok() && table_schema_result.tableInfo != nullptr)
