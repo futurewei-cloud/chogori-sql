@@ -24,7 +24,7 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn, tableExists, secIndexExists
+from helper import commitSQL, selectOneRecord, getConn, tableExists
 
 
 class TestDDL(unittest.TestCase):
@@ -58,20 +58,6 @@ class TestDDL(unittest.TestCase):
         commitSQL(self.sharedConn, "DROP TABLE ddltest5 CASCADE;")
         exists = tableExists(self.sharedConn, "ddltest5")
         self.assertEqual(exists, False)
-
-    def test_secondaryIndexOnTable(self):
-        commitSQL(self.sharedConn, "CREATE TABLE ddltest6(id integer, dataA integer, dataB integer);")
-        commitSQL(self.sharedConn, "CREATE UNIQUE INDEX id_data_idx61 ON ddltest6(id, dataB);")
-        commitSQL(self.sharedConn, "CREATE INDEX id_data_idx62 ON ddltest6(dataA);")
-        exists = secIndexExists(self.sharedConn, "ddltest6", "id_data_idx61")
-        self.assertEqual(exists, True)
-        exists = secIndexExists(self.sharedConn, "ddltest6", "id_data_idx62")
-        self.assertEqual(exists, True)
-        commitSQL(self.sharedConn, "DROP TABLE ddltest6 CASCADE;")
-        exists = secIndexExists(self.sharedConn, "ddltest6", "id_data_idx61")
-        self.assertEqual(exists, False)
-        exists = secIndexExists(self.sharedConn, "ddltest6", "id_data_idx62")
-        self.assertEqual(exists, False)
-
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest5 (id integer, dataA text, dataB text);")
 
 # TODO add table already exists error case after #216 is fixed
