@@ -137,6 +137,7 @@ typedef struct FDWExprRefValues
 	List *column_refs;
 	List *const_values;
 	ParamListInfo paramLI; // parameters binding information for prepare statements
+    bool column_ref_first;
 } FDWExprRefValues;
 
 typedef struct FDWOprCond
@@ -144,6 +145,7 @@ typedef struct FDWOprCond
 	Oid opno;  // PG_OPERATOR OID of the operator
 	FDWColumnRef *ref; // column reference
 	FDWConstValue *val; // column value
+    bool column_ref_first;
 } FDWOprCond;
 
 typedef struct foreign_expr_cxt {
@@ -855,6 +857,9 @@ static void parse_conditions(List *exprs, ParamListInfo paramLI, foreign_expr_cx
 			foreach(rlc, ref_values.const_values) {
 				opr_cond->val = (FDWConstValue *)lfirst(rlc);
 			}
+
+            opr_cond->column_ref_first = ref_values.column_ref_first;
+
 			expr_cxt->opr_conds = lappend(expr_cxt->opr_conds, opr_cond);
 		}
 	}
@@ -899,14 +904,27 @@ static void parse_op_expr(OpExpr *node, FDWExprRefValues *ref_values) {
 		case F_SCALARLTSEL: // Less than <
 		case F_SCALARLESEL: // Less Equal <=
 		case F_SCALARGTSEL: // Greater than >
-		case F_SCALARGESEL: // Greater Euqal >=
+		case F_SCALARGESEL: // Greater Equal >=
 			elog(DEBUG4, "FDW: parsing OpExpr: %d", get_oprrest(node->opno));
+
+            // Creating the FDWExprRefValues loses the tree structure of the original expression
+            // so we need to keep track if the column reference or the constant was first
+            bool checkOrder = true;
+
 			ref_values->opno = node->opno;
 			foreach(lc, node->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
 				parse_expr(arg, ref_values);
+
+                if (checkOrder && list_length(ref_values->column_refs) == 1) {
+                    ref_values->column_ref_first = true;
+                } else if (checkOrder) {
+                    ref_values->column_ref_first = false;
+                }
+                checkOrder = false;
 			}
+
 			break;
 		default:
 			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", get_oprrest(node->opno));
@@ -1082,21 +1100,25 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 	YBCPgExpr opr_expr = NULL;
 	const YBCPgTypeEntity *type_ent = YBCPgFindTypeEntity(BYTEAOID);
 	char *opr_name = NULL;
+
+    // YBCPgEpxr and FDWOprCond separate column refs and constant literals without keeping the
+    // structure of the expression, so we need to switch the direction of the comparison if the
+    // column reference was not first in the original expression.
 	switch(get_oprrest(opr_cond->opno)) {
 		case F_EQSEL: //  equal =
 			opr_name = "=";
 			break;
 		case F_SCALARLTSEL: // Less than <
-			opr_name = "<";
+			opr_name = opr_cond->column_ref_first ? "<" : ">";
 			break;
 		case F_SCALARLESEL: // Less Equal <=
-			opr_name = "<=";
+			opr_name = opr_cond->column_ref_first ? "<=" : ">=";
 			break;
 		case F_SCALARGTSEL: // Greater than >
-			opr_name = ">";
+			opr_name = opr_cond->column_ref_first ? ">" : "<";
 			break;
 		case F_SCALARGESEL: // Greater Euqal >=
-			opr_name = ">=";
+			opr_name = opr_cond->column_ref_first ? ">=" : "<=";
 			break;
 		default:
 			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", opr_cond->opno);
