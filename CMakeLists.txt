@@ -54,4 +54,5 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres/configure_helper.sh    ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres    "-DSEASTAR_API_LEVEL=6 -lybpggate -lybcommon -lk2entities  -lgflags -lybutf -lprom -lpromhttp -lmicrohttpd -std=gnu++17"     "-L/usr/local/lib/k2/ -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/common -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/entities -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/pggate -L${CMAKE_CURRENT_SOURCE_DIR}/build/src/k2/connector/utf"      "-I${CMAKE_CURRENT_SOURCE_DIR}/src/k2/connector"     <INSTALL_DIR>
     PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src/k2/postgres
     EXCLUDE_FROM_ALL 1
+    BUILD_ALWAYS 1
     BUILD_COMMAND make -j -f Makefile installcheck "PG_CPP_LIBS=-lybpggate -lk2entities -lk23si_client -lcpo_client -ltso_client -ldto -lappbase -ltransport -lcrc32c -lconfig -lcommon -lseastar -lboost_thread -lyaml-cpp -lboost_program_options -lfmt -libverbs -lhwloc -lnuma -lcrypto++ -ldl -lrt -lprotobuf -lgnutls -lprom -lpromhttp -lmicrohttpd")
