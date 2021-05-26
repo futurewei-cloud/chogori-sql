@@ -24,7 +24,7 @@ SOFTWARE.
 
 import unittest
 import psycopg2
-from helper import commitSQL, selectOneRecord, getConn
+from helper import commitSQL, selectOneRecord, getConn, tableExists
 
 
 class TestDDL(unittest.TestCase):
@@ -53,5 +53,11 @@ class TestDDL(unittest.TestCase):
         with self.assertRaises(psycopg2.errors.InternalError):
             commitSQL(self.sharedConn, "ALTER TABLE ddltest4 ADD txtcol text;")
 
-# TODO add table already exists error case after #216 is fixed
+    def test_dropBasicTable(self):
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest5 (id integer, dataA integer);")
+        commitSQL(self.sharedConn, "DROP TABLE ddltest5 CASCADE;")
+        exists = tableExists(self.sharedConn, "ddltest5")
+        self.assertEqual(exists, False)
+        commitSQL(self.sharedConn, "CREATE TABLE ddltest5 (id integer, dataA text, dataB text);")
 
+# TODO add table already exists error case after #216 is fixed

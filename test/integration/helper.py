@@ -60,3 +60,19 @@ def selectOneRecord(conn, sql):
             if len(result) != 1:
                 raise RuntimeError("Expected one record but did not get it")
             return result[0]
+
+def tableExists(conn, table_str):
+    exists = False
+    with conn:
+        cur = conn.cursor()
+        cur.execute("SELECT EXISTS(SELECT relname FROM pg_class where relname='" + table_str + "')")
+        exists = cur.fetchone()[0]
+    return exists
+
+def secIndexExists(conn, table_str, index_str):
+    exists = False
+    with conn:
+        cur = conn.cursor()
+        cur.execute("SELECT EXISTS(SELECT * FROM pg_class t, pg_class i, pg_index ix WHERE t.oid = ix.indrelid AND i.oid = ix.indexrelid AND t.relname='" + table_str + "' AND i.relname = '" + index_str + "')")
+        exists = cur.fetchone()[0]
+    return exists
