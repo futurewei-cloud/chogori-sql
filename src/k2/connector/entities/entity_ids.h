@@ -53,6 +53,7 @@
 #include <set>
 
 #include <boost/functional/hash/hash.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 
 #include "common/result.h"
 
@@ -106,6 +107,24 @@ namespace sql {
     static const uint32_t kPgIndexTableOid = 2610;  // Hardcoded for pg_index. (in pg_index.h)
 
     extern const TableId kPgProcTableId;
+
+    // Convert a strongly typed enum to its underlying type.
+    // Based on an answer to this StackOverflow question: https://goo.gl/zv2Wg3
+    template <typename E>
+    constexpr typename std::underlying_type<E>::type to_underlying(E e) {
+        return static_cast<typename std::underlying_type<E>::type>(e);
+    }
+
+    class ObjectIdGenerator {
+        public:
+        ObjectIdGenerator() {}
+        ~ObjectIdGenerator() {}
+
+        std::string Next(bool binary_id = false);
+
+        private:
+        boost::uuids::random_generator oid_generator_;
+    };
 
     // A class to identify a Postgres object by oid and the database oid it belongs to.
     class PgObjectId {

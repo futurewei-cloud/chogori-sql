@@ -28,8 +28,6 @@ const uint32_t kPgProcTableOid = 1255;  // Hardcoded for pg_proc. (in pg_proc.h)
 // Static initialization is OK because this won't be used in another static initialization.
 const TableId kPgProcTableId = PgObjectId::GetTableUuid(kTemplate1Oid, kPgProcTableOid);
 
-static char hex_chars[] = "0123456789abcdef";
-
 //-------------------------------------------------------------------------------------------------
 
 namespace {
@@ -42,6 +40,7 @@ namespace {
 // |        database       |           | vsn |     | var |     |           |        table          |
 // |          oid          |           |     |     |     |     |           |         oid           |
 // +-----------------------------------------------------------------------------------------------+
+static char hex_chars[] = "0123456789abcdef";
 
 void UuidSetDatabaseId(const uint32_t database_oid, uuid* id) {
   id->data[0] = database_oid >> 24 & 0xFF;
@@ -81,6 +80,12 @@ std::string UuidToString(uuid* id) {
 }
 
 } // namespace
+
+std::string ObjectIdGenerator::Next(const bool binary_id) {
+  boost::uuids::uuid oid = oid_generator_();
+  return binary_id ? string(yb::util::to_char_ptr(oid.data), sizeof(oid.data))
+                   : b2a_hex(yb::util::to_char_ptr(oid.data), sizeof(oid.data));
+}
 
 std::string PgObjectId::GetDatabaseUuid() const {
   return GetDatabaseUuid(database_oid_);

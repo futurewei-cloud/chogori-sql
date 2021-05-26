@@ -54,7 +54,6 @@
 
 #include <k2/common/Chrono.h>
 
-#include "common/oid_generator.h"
 #include "entities/entity_ids.h"
 #include "entities/index.h"
 #include "entities/schema.h"
@@ -76,7 +75,7 @@ using k2pg::sql::IndexPermissions;
 using k2pg::sql::PgObjectId;
 using k2pg::sql::PgOid;
 using k2pg::sql::catalog::SqlCatalogClient;
-using yb::ObjectIdGenerator;
+using k2pg::sql::ObjectIdGenerator;
 using yb::Status;
 
 // a place holder for a operation that it could be buffered in PG session for batch process

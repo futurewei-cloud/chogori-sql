@@ -53,7 +53,6 @@ namespace k2pg {
 namespace gate {
 
 using namespace k2pg::sql;
-using yb::to_underlying;
 
 PgDml::PgDml(std::shared_ptr<PgSession> pg_session, const PgObjectId& table_object_id)
     : PgStatement(pg_session), table_object_id_(table_object_id) {
@@ -363,7 +362,7 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
                                    attr->attr_num);
         }
 
-        if (attr->attr_num == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
+        if (attr->attr_num == k2pg::sql::to_underlying(PgSystemAttrNum::kYBRowId)) {
           // get the pre-bound kYBRowId column and its value
           std::shared_ptr<BindVariable> bind_var = c.bind_var();
           PgConstant * pg_const = static_cast<PgConstant *>(bind_var->expr);

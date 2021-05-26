@@ -75,7 +75,7 @@ void PgDmlWrite::PrepareColumns() {
   // Assume that the storage layer requires that primary columns must be listed in their created-order,
   // the slots for primary column bind expressions are allocated here in correct order.
   for (PgColumn &col : target_desc_->columns()) {
-    if (col.attr_num() == yb::to_underlying(PgSystemAttrNum::kYBRowId)) {
+    if (col.attr_num() == k2pg::sql::to_underlying(PgSystemAttrNum::kYBRowId)) {
       // generate new rowid for kYBRowId column when no primary keys are defined
       std::string row_id = pg_session()->GenerateNewRowid();
       K2LOG_D(log::pg, "Generated new row id {}", k2::HexCodec::encode(row_id));
