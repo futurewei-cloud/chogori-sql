@@ -16,4 +16,4 @@ mkdir -p pgroot/data
 ./run_k2_platform.sh
 sleep 5
 
-/build/src/k2/postgres/bin/initdb --locale=C -D pgroot/data
+/build/src/k2/postgres/bin/initdb -E UTF8 --locale=C -D pgroot/data
