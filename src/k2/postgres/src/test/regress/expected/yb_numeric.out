@@ -845,7 +845,6 @@ ERROR:  operand, lower bound, and upper bound cannot be NaN
 -- normal operation
 CREATE TABLE width_bucket_test (operand_num numeric, operand_f8 float8);
 COPY width_bucket_test (operand_num) FROM stdin;
---
 -- UPDATE width_bucket_test SET operand_f8 = operand_num::float8;
 --
 -- SELECT

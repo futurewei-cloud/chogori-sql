@@ -1124,6 +1124,20 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", opr_cond->opno);
 			return opr_expr;
 	}
+
+    // Whitelist of types we support for filter pushdown
+    switch (opr_cond->ref->attr_typid) {
+        case BOOLOID:
+        case INT8OID:
+        case INT2OID:
+        case INT4OID:
+        case FLOAT4OID:
+        case FLOAT8OID:
+            break;
+        default:
+            return opr_expr;
+    }
+
 	YBCPgNewOperator(fdw_state->handle,  opr_name, type_ent, &opr_expr);
 	YBCPgTypeAttrs ref_type_attrs = { opr_cond->ref->atttypmod};
 	YBCPgExpr col_ref = YBCNewColumnRef(fdw_state->handle, opr_cond->ref->attr_num, opr_cond->ref->attr_typid, &ref_type_attrs);
