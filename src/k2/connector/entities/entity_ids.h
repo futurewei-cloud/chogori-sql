@@ -60,7 +60,6 @@
 namespace k2pg {
 namespace sql {
     using yb::Result;
-    using yb::Format;
 
     using TableName = std::string;
     using UDTypeName = std::string;
@@ -168,6 +167,7 @@ namespace sql {
         Result<uint32_t> GetDatabaseOidByUuid(const std::string& namespace_uuid);
         static uint32_t GetTableOidByTableUuid(const std::string& table_uuid);
         static Result<uint32_t> GetDatabaseOidByTableUuid(const std::string& table_uuid);
+        std::string ToString() const;
 
         const PgOid GetDatabaseOid() const {
             return database_oid_;
@@ -179,10 +179,6 @@ namespace sql {
 
         bool IsValid() const {
             return database_oid_ != kPgInvalidOid && object_oid_ != kPgInvalidOid;
-        }
-
-        std::string ToString() const {
-            return Format("{$0, $1}", database_oid_, object_oid_);
         }
 
         bool operator== (const PgObjectId& other) const {

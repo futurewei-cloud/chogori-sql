@@ -11,9 +11,11 @@
 // under the License.
 //
 
+#include "entities/entity_ids.h"
+
 #include <boost/uuid/nil_generator.hpp>
 
-#include "entities/entity_ids.h"
+#include <fmt/format.h>
 
 namespace k2pg {
 namespace sql {
@@ -85,6 +87,10 @@ std::string ObjectIdGenerator::Next(const bool binary_id) {
   boost::uuids::uuid oid = oid_generator_();
   return binary_id ? string(yb::util::to_char_ptr(oid.data), sizeof(oid.data))
                    : b2a_hex(yb::util::to_char_ptr(oid.data), sizeof(oid.data));
+}
+
+std::string PgObjectId::ToString() const {
+  return fmt::format("{{}, {}}", database_oid_, object_oid_);
 }
 
 std::string PgObjectId::GetDatabaseUuid() const {
