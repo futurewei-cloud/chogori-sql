@@ -59,6 +59,11 @@ struct GetTableResult {
     std::shared_ptr<TableInfo> tableInfo;
 };
 
+struct GetTableSchemaResult {
+    Status status;
+    std::shared_ptr<TableInfo> tableInfo;
+};
+
 struct ListTablesResult {
     Status status;
     std::vector<std::shared_ptr<TableInfo>> tableInfos;
@@ -104,6 +109,22 @@ struct GetTableTypeInfoResult {
     Status status;
     bool isShared;
     bool isIndex;
+};
+
+struct CreateIndexTableResult {
+    Status status;
+    std::shared_ptr<IndexInfo> indexInfo;
+};
+
+struct CreateIndexTableParams {
+    std::string index_name;
+    uint32_t table_oid;
+    Schema index_schema;
+    bool is_unique;
+    bool is_shared;
+    bool is_not_exist;
+    bool skip_index_backfill;
+    IndexPermissions index_permissions;
 };
 
 class TableInfoHandler {
@@ -195,6 +216,10 @@ class TableInfoHandler {
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
     GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
+    GetTableSchemaResult GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id,
+                std::shared_ptr<IndexInfo> index_info,
+                std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db,
+                std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx);
 
     ListTablesResult ListTables(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, bool isSysTableIncluded);
 
@@ -227,6 +252,9 @@ class TableInfoHandler {
 
     // check if passed id is that for a table or index, and if it is a shared table/index(just one instance shared by all databases and resides in primary cluster)
     GetTableTypeInfoResult GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+
+    // create index table (handle create if exists flag)
+    CreateIndexTableResult CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, CreateIndexTableParams &index_params);
 
     private:
     CopySKVTableResult CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
@@ -277,6 +305,9 @@ class TableInfoHandler {
     std::shared_ptr<TableInfo> BuildTableInfo(const std::string& database_id, const std::string& database_name, k2::dto::SKVRecord& table_meta, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_table_meta);
+    
+    IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
+                const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
