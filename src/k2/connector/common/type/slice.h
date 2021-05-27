@@ -43,9 +43,9 @@
 #include <map>
 #include <string>
 
+#include <glog/logging.h>
+
 #include "common/strings/fastmem.h"
-#include "common/strings/stringpiece.h"
-#include "common/strings/faststring.h"
 #include "common/cast.h"
 
 
@@ -86,14 +86,6 @@ class Slice {
   // Create a slice that refers to s[0,strlen(s)-1]
   Slice(const char* s) // NOLINT(runtime/explicit)
       : Slice(util::to_uchar_ptr(s), strlen(s)) {}
-
-  // Create a slice that refers to the contents of the faststring.
-  // Note that further appends to the faststring may invalidate this slice.
-  Slice(const faststring &s) // NOLINT(runtime/explicit)
-      : Slice(s.data(), s.size()) {}
-
-  Slice(const GStringPiece& s) // NOLINT(runtime/explicit)
-      : Slice(util::to_uchar_ptr(s.data()), s.size()) {}
 
   // Create a single slice from SliceParts using buf as storage.
   // buf must exist as long as the returned Slice exists.

@@ -312,7 +312,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   if (is_unique_index_) {
     RETURN_NOT_OK(
         PgCreateTable::AddColumnImpl("ybuniqueidxkeysuffix",
-                                     yb::to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
+                                     k2pg::sql::to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
                                      K2SQL_DATA_TYPE_BINARY,
                                      false /* is_hash */,
                                      true /* is_range */));
@@ -322,7 +322,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   // at the end of the primary key of the index, i.e. either before any non-primary-key column if
   // any or before exec() below.
   RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",
-                                             yb::to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
+                                             k2pg::sql::to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
                                              K2SQL_DATA_TYPE_BINARY,
                                              false /* is_hash */,
                                              !is_unique_index_ /* is_range */));

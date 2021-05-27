@@ -47,7 +47,8 @@
 //
 
 #include "entities/index.h"
-#include "common/format.h"
+
+#include <fmt/format.h>
 
 using std::vector;
 using std::unordered_map;
@@ -115,7 +116,7 @@ namespace sql {
     Result<const IndexInfo*> IndexMap::FindIndex(const std::string& index_id) const {
         const auto itr = find(index_id);
         if (itr == end()) {
-            return STATUS(NotFound, yb::Format("Index id $0 not found", index_id));
+            return STATUS(NotFound, fmt::format("Index id {} not found", index_id));
         }
         return &itr->second;
     }

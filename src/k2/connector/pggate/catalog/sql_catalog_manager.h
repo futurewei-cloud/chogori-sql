@@ -87,7 +87,6 @@ and task state checking APIs later by using thread pools.
 
 #include "common/env.h"
 #include "common/status.h"
-#include "common/concurrent/locks.h"
 #include "entities/entity_ids.h"
 #include "entities/schema.h"
 #include "entities/index.h"

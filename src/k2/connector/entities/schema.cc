@@ -51,13 +51,9 @@
 #include <set>
 #include <algorithm>
 
-#include "common/strings/substitute.h"
-#include "common/strings/strcat.h"
-#include "common/strings/join.h"
-#include "common/format.h"
-#include "common/port.h"
+#include <fmt/format.h>
+
 #include "common/status.h"
-#include "common/util/map-util.h"
 
 namespace k2pg {
 namespace sql {
@@ -68,29 +64,21 @@ namespace sql {
     using std::unordered_set;
     using yb::Result;
     using yb::Status;
-    using yb::IdMapping;
 
     string ColumnSchema::ToString() const {
-        return strings::Substitute("$0[$1]",
-                                   name_,
-                                   TypeToString());
+        return fmt::format("{}[{}]", name_, TypeToString());
     }
 
     string ColumnSchema::TypeToString() const {
-        return strings::Substitute("$0, $1, $2, $3, $4",
-                                   type_info()->name(),
-                                   is_nullable_ ? "NULLABLE" : "NOT NULL",
-                                   is_primary_ ? "PRIMARY KEY" : "NOT A PRIMARY KEY",
-                                   is_hash_ ? "HASH KEY" : "NOT A HASH KEY",
-                                   order_);
+        return fmt::format("{}, {}, {}, {}, {}",
+                            type_info()->name(),
+                            is_nullable_ ? "NULLABLE" : "NOT NULL",
+                            is_primary_ ? "PRIMARY KEY" : "NOT A PRIMARY KEY",
+                            is_hash_ ? "HASH KEY" : "NOT A HASH KEY",
+                            order_);
     }
 
-    Schema::Schema(const Schema& other)
-            : name_to_index_bytes_(0),
-              name_to_index_(10,
-                             NameToIndexMap::hasher(),
-                             NameToIndexMap::key_equal(),
-                             NameToIndexMapAllocator(&name_to_index_bytes_)) {
+    Schema::Schema(const Schema& other) {
         CopyFrom(other);
     }
 
@@ -168,11 +156,9 @@ namespace sql {
         // Verify that the key columns are not nullable nor static
         for (int i = 0; i < key_columns; ++i) {
             if (PREDICT_FALSE(cols_[i].is_nullable())) {
-                return STATUS(InvalidArgument,
-                              "Bad schema", strings::Substitute("Nullable key columns are not "
-                                                                "supported: $0", cols_[i].name()));
+                return STATUS(InvalidArgument, "Bad schema",
+                    fmt::format("Nullable key columns are not supported: {}", cols_[i].name()));
             }
-
         }
 
         // Calculate the offset of each column in the row format.
@@ -182,7 +168,7 @@ namespace sql {
         name_to_index_.clear();
         for (const ColumnSchema &col : cols_) {
             // The map uses the 'name' string from within the ColumnSchema object.
-            if (!InsertIfNotPresent(&name_to_index_, col.name(), i++)) {
+            if (!name_to_index_.insert(std::make_pair(col.name(), i++)).second) {
                 return STATUS(InvalidArgument, "Duplicate column name", col.name());
             }
 
@@ -202,7 +188,7 @@ namespace sql {
             if (ids[i] > max_col_id_) {
                 max_col_id_ = ids[i];
             }
-            id_to_index_.set(ids[i], i);
+            id_to_index_.insert(std::make_pair(ids[i], i));
         }
 
         // Ensure clustering columns have a default sorting type of 'ASC' if not specified.
@@ -217,10 +203,10 @@ namespace sql {
     }
 
     string Schema::ToString() const {
-        vector<string> col_strs;
+        vector<std::string> col_strs;
         if (has_column_ids()) {
             for (int i = 0; i < cols_.size(); ++i) {
-                col_strs.push_back(strings::Substitute("$0:$1", col_ids_[i], cols_[i].ToString()));
+                col_strs.push_back(fmt::format("{}:{}", col_ids_[i], cols_[i].ToString()));
             }
         } else {
             for (const ColumnSchema &col : cols_) {
@@ -228,16 +214,13 @@ namespace sql {
             }
         }
 
-        return StrCat("Schema [\n\t",
-                      JoinStrings(col_strs, ",\n\t"));
-    }
-
-    Result<int> Schema::ColumnIndexByName(GStringPiece col_name) const {
-        auto index = find_column(col_name);
-        if (index == kColumnNotFound) {
-            return STATUS_FORMAT(Corruption, "$0 not found in schema $1", col_name, name_to_index_);
+        std::string s = "Schema [\n\t";
+        for (vector<std::string>::const_iterator p = col_strs.begin(); p != col_strs.end(); ++p) {
+            s += *p;
+            if (p != col_strs.end() - 1)
+                s += ",\n\t";
         }
-        return index;
+        return s;
     }
 
     Result<ColumnId> Schema::ColumnIdByName(const std::string& column_name) const {
@@ -347,7 +330,8 @@ namespace sql {
     }
 
     Status SchemaBuilder::AddColumn(const ColumnSchema& column, bool is_key) {
-        if (ContainsKey(col_names_, column.name())) {
+        auto it = col_names_.find(column.name());
+        if (it != col_names_.end()) {
             return STATUS(AlreadyPresent, "The column already exists", column.name());
         }
 
@@ -364,6 +348,5 @@ namespace sql {
         next_id_ = ColumnId(next_id_ + 1);
         return Status::OK();
     }
-
 }  // namespace sql
 }  // namespace k2pg

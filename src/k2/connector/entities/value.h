@@ -26,7 +26,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include "common/macros.h"
 #include "common/type/slice.h"
 #include "pggate/pg_gate_typedefs.h"
 #include <k2/common/Common.h>

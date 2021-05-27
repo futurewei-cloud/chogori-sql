@@ -35,8 +35,6 @@
 #include <memory>
 #include <unordered_map>
 
-#include "common/singleton.h"
-
 using std::shared_ptr;
 using std::unordered_map;
 
@@ -49,7 +47,6 @@ TypeInfo::TypeInfo(TypeTraitsClass t)
     physical_type_(TypeTraitsClass::physical_type),
     name_(TypeTraitsClass::name()),
     size_(TypeTraitsClass::size),
-    min_value_(TypeTraitsClass::min_value()),
     compare_func_(TypeTraitsClass::Compare) {
 }
 
@@ -59,6 +56,9 @@ int TypeInfo::Compare(const void *lhs, const void *rhs) const {
 
 class TypeInfoResolver {
  public:
+  TypeInfoResolver& operator=(const TypeInfoResolver&) = delete;
+  TypeInfoResolver(const TypeInfoResolver&) = delete;
+
   const TypeInfo* GetTypeInfo(DataType t) {
     const TypeInfo *type_info = mapping_[t].get();
     CHECK(type_info != nullptr) <<
@@ -66,7 +66,6 @@ class TypeInfoResolver {
     return type_info;
   }
 
- private:
   TypeInfoResolver() {
     AddMapping<K2SQL_DATA_TYPE_UINT8>();
     AddMapping<K2SQL_DATA_TYPE_INT8>();
@@ -90,6 +89,7 @@ class TypeInfoResolver {
     AddMapping<K2SQL_DATA_TYPE_DECIMAL>();
   }
 
+  private:
   template<DataType type> void AddMapping() {
     TypeTraits<type> traits;
     mapping_.insert(make_pair(type, shared_ptr<TypeInfo>(new TypeInfo(traits))));
@@ -98,13 +98,15 @@ class TypeInfoResolver {
   unordered_map<DataType,
                 shared_ptr<const TypeInfo>,
                 std::hash<size_t> > mapping_;
-
-  friend class Singleton<TypeInfoResolver>;
-  DISALLOW_COPY_AND_ASSIGN(TypeInfoResolver);
 };
 
+// for C++11 or upper, if control enters the declaration concurrently while the variable is being initialized,
+// the concurrent execution shall wait for completion of the initialization.
+// thus this is thread safe
+static TypeInfoResolver typeInfoResolver;
+
 const TypeInfo* GetTypeInfo(DataType type) {
-  return Singleton<TypeInfoResolver>::get()->GetTypeInfo(type);
+  return typeInfoResolver.GetTypeInfo(type);
 }
 
 }  // namespace sql

@@ -18,7 +18,6 @@
 #pragma once
 #include <boost/function.hpp>
 
-#include "common/concurrent/async_util.h"
 #include "common/status.h"
 #include "entities/schema.h"
 #include "entities/expr.h"

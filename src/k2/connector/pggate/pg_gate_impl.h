@@ -53,8 +53,6 @@
 #include <thread>
 #include <unordered_map>
 
-#include "common/metrics/metrics.h"
-#include "common/sys/mem_tracker.h"
 #include "entities/entity_ids.h"
 #include "entities/expr.h"
 #include "entities/index.h"
@@ -72,9 +70,6 @@
 namespace k2pg {
 namespace gate {
 
-using yb::MemTracker;
-using yb::MetricEntity;
-using yb::MetricRegistry;
 using yb::Status;
 using k2pg::sql::PgExpr;
 using k2pg::sql::PgObjectId;
@@ -355,9 +350,7 @@ class PgGateApiImpl {
   CHECKED_STATUS DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                    int32_t nattrs, uint64_t *ybctid);
 
-// DB Operations: WHERE(partially supported by K2-SKV)
-// TODO: ORDER_BY, GROUP_BY, etc.
-
+  // DB Operations: WHERE(partially supported by K2-SKV)
   //------------------------------------------------------------------------------------------------
   // Select.
   CHECKED_STATUS NewSelect(const PgObjectId& table_object_id,
@@ -369,7 +362,7 @@ class PgGateApiImpl {
 
   CHECKED_STATUS ExecSelect(PgStatement *handle, const PgExecParameters *exec_params);
 
-// INSERT ------------------------------------------------------------------------------------------
+  // INSERT ------------------------------------------------------------------------------------------
 
   CHECKED_STATUS NewInsert(const PgObjectId& table_object_id,
                            bool is_single_row_txn,
@@ -471,13 +464,6 @@ class PgGateApiImpl {
   std::shared_ptr<SqlCatalogManager> CreateCatalogManager();
 
   std::shared_ptr<SqlCatalogClient> CreateCatalogClient();
-
-  // Metrics.
-  gscoped_ptr<MetricRegistry> metric_registry_;
-  scoped_refptr<MetricEntity> metric_entity_;
-
-  // Memory tracker.
-  std::shared_ptr<MemTracker> mem_tracker_;
 
   // TODO(neil) Map for environments (we should have just one ENV?). Environments should contain
   // all the custom flags the PostgreSQL sets. We ignore them all for now.

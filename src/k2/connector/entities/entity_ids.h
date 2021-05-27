@@ -53,14 +53,13 @@
 #include <set>
 
 #include <boost/functional/hash/hash.hpp>
+#include <boost/uuid/uuid_generators.hpp>
 
 #include "common/result.h"
-#include "common/type/strongly_typed_string.h"
 
 namespace k2pg {
 namespace sql {
     using yb::Result;
-    using yb::Format;
 
     using TableName = std::string;
     using UDTypeName = std::string;
@@ -108,6 +107,24 @@ namespace sql {
 
     extern const TableId kPgProcTableId;
 
+    // Convert a strongly typed enum to its underlying type.
+    // Based on an answer to this StackOverflow question: https://goo.gl/zv2Wg3
+    template <typename E>
+    constexpr typename std::underlying_type<E>::type to_underlying(E e) {
+        return static_cast<typename std::underlying_type<E>::type>(e);
+    }
+
+    class ObjectIdGenerator {
+        public:
+        ObjectIdGenerator() {}
+        ~ObjectIdGenerator() {}
+
+        std::string Next(bool binary_id = false);
+
+        private:
+        boost::uuids::random_generator oid_generator_;
+    };
+
     // A class to identify a Postgres object by oid and the database oid it belongs to.
     class PgObjectId {
         public:
@@ -150,6 +167,7 @@ namespace sql {
         Result<uint32_t> GetDatabaseOidByUuid(const std::string& namespace_uuid);
         static uint32_t GetTableOidByTableUuid(const std::string& table_uuid);
         static Result<uint32_t> GetDatabaseOidByTableUuid(const std::string& table_uuid);
+        std::string ToString() const;
 
         const PgOid GetDatabaseOid() const {
             return database_oid_;
@@ -161,10 +179,6 @@ namespace sql {
 
         bool IsValid() const {
             return database_oid_ != kPgInvalidOid && object_oid_ != kPgInvalidOid;
-        }
-
-        std::string ToString() const {
-            return Format("{$0, $1}", database_oid_, object_oid_);
         }
 
         bool operator== (const PgObjectId& other) const {

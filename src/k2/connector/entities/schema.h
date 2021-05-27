@@ -60,37 +60,12 @@
 #include <glog/logging.h>
 
 #include "entities/type.h"
-#include "common/id_mapping.h"
 #include "common/result.h"
-#include "common/strings/stringpiece.h"
-#include "common/util/stl_util.h"
-
-// Check that two schemas are equal, yielding a useful error message in the case that
-// they are not.
-#define DCHECK_SCHEMA_EQ(s1, s2) \
-  do { \
-    DCHECK((s1).Equals((s2))) << "Schema " << (s1).ToString() \
-                              << " does not match " << (s2).ToString(); \
-  } while (0);
-
-#define DCHECK_KEY_PROJECTION_SCHEMA_EQ(s1, s2) \
-  do { \
-    DCHECK((s1).KeyEquals((s2))) << "Key-Projection Schema " \
-                                 << (s1).ToString() << " does not match " \
-                                 << (s2).ToString(); \
-  } while (0);
-
-#ifndef DISALLOW_COPY_AND_ASSIGN
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-  TypeName(const TypeName&);               \
-  void operator=(const TypeName&)
-#endif
 
 namespace k2pg {
 namespace sql {
     using yb::Result;
     using yb::Status;
-    using yb::IdMapping;
 
     typedef int32_t ColumnId;
     constexpr ColumnId kFirstColumnId = 0;
@@ -262,12 +237,6 @@ namespace sql {
         Schema()
         : num_key_columns_(0),
             num_hash_key_columns_(0),
-            name_to_index_bytes_(0),
-            // TODO: C++11 provides a single-arg constructor
-            name_to_index_(10,
-                NameToIndexMap::hasher(),
-                NameToIndexMap::key_equal(),
-                NameToIndexMapAllocator(&name_to_index_bytes_)),
             has_nullables_(false) {
         }
 
@@ -285,13 +254,7 @@ namespace sql {
         // caught. If an invalid schema is passed to this constructor, an
         // assertion will be fired!
         Schema(const vector<ColumnSchema>& cols,
-                int key_columns)
-            : name_to_index_bytes_(0),
-            // TODO: C++11 provides a single-arg constructor
-            name_to_index_(10,
-                NameToIndexMap::hasher(),
-                NameToIndexMap::key_equal(),
-                NameToIndexMapAllocator(&name_to_index_bytes_)) {
+                int key_columns) {
                 CHECK_OK(Reset(cols, key_columns));
         }
 
@@ -303,12 +266,7 @@ namespace sql {
         // assertion will be fired!
         Schema(const vector<ColumnSchema>& cols,
                 const vector<ColumnId>& ids,
-                int key_columns)
-            : name_to_index_bytes_(0),
-            name_to_index_(10,
-                NameToIndexMap::hasher(),
-                NameToIndexMap::key_equal(),
-                NameToIndexMapAllocator(&name_to_index_bytes_)) {
+                int key_columns) {
                 CHECK_OK(Reset(cols, ids, key_columns));
         }
 
@@ -393,7 +351,7 @@ namespace sql {
 
         // Return the column index corresponding to the given column,
         // or kColumnNotFound if the column is not in this schema.
-        int find_column(const GStringPiece col_name) const {
+        int find_column(const std::string col_name) const {
             auto iter = name_to_index_.find(col_name);
             if (PREDICT_FALSE(iter == name_to_index_.end())) {
                 return kColumnNotFound;
@@ -403,8 +361,6 @@ namespace sql {
         }
 
         Result<ColumnId> ColumnIdByName(const std::string& name) const;
-
-        Result<int> ColumnIndexByName(GStringPiece col_name) const;
 
         std::pair<bool, ColumnId> FindColumnIdByName(const std::string& col_name) const;
 
@@ -424,7 +380,7 @@ namespace sql {
         }
 
         // Returns true if the specified column (by name) is a key
-        bool is_key_column(const GStringPiece col_name) const {
+        bool is_key_column(const std::string col_name) const {
             return is_key_column(find_column(col_name));
         }
 
@@ -439,7 +395,7 @@ namespace sql {
         }
 
         // Returns true if the specified column (by name) is a hash key
-        bool is_hash_key_column(const GStringPiece col_name) const {
+        bool is_hash_key_column(const std::string col_name) const {
             return is_hash_key_column(find_column(col_name));
         }
 
@@ -454,7 +410,7 @@ namespace sql {
         }
 
         // Returns true if the specified column (by name) is a range column
-        bool is_range_column(const GStringPiece col_name) const {
+        bool is_range_column(const std::string col_name) const {
             return is_range_column(find_column(col_name));
         }
 
@@ -490,11 +446,11 @@ namespace sql {
         // If no such column exists, returns kColumnNotFound.
         int find_column_by_id(ColumnId id) const {
             DCHECK(cols_.empty() || has_column_ids());
-            int ret = id_to_index_[id];
-            if (ret == -1) {
-                return kColumnNotFound;
+            auto iter = id_to_index_.find(id);
+            if (iter == id_to_index_.end()) {
+               return kColumnNotFound;
             }
-            return ret;
+            return (*iter).second;
         }
 
         static ColumnId first_column_id();
@@ -517,23 +473,8 @@ namespace sql {
         vector<ColumnId> col_ids_;
         vector<size_t> col_offsets_;
 
-        // The keys of this map are GStringPiece references to the actual name members of the
-        // ColumnSchema objects inside cols_. This avoids an extra copy of those strings,
-        // and also allows us to do lookups on the map using GStringPiece keys, sometimes
-        // avoiding copies.
-        //
-        // The map is instrumented with a counting allocator so that we can accurately
-        // measure its memory footprint.
-        int64_t name_to_index_bytes_;
-
-        typedef STLCountingAllocator<std::pair<const GStringPiece, size_t> > NameToIndexMapAllocator;
-
-        typedef std::unordered_map<GStringPiece, size_t, std::hash<GStringPiece>,
-            std::equal_to<GStringPiece>, NameToIndexMapAllocator> NameToIndexMap;
-
-        NameToIndexMap name_to_index_;
-
-        IdMapping id_to_index_;
+        std::unordered_map<std::string, size_t> name_to_index_;
+        std::unordered_map<int, int> id_to_index_;
 
         // Cached indicator whether any columns are nullable.
         bool has_nullables_;
@@ -557,6 +498,8 @@ namespace sql {
         public:
         SchemaBuilder() { Reset(); }
         explicit SchemaBuilder(const Schema& schema) { Reset(schema); }
+        SchemaBuilder(const SchemaBuilder&) = delete;
+        SchemaBuilder& operator=(const Variant&) = delete;
 
         void Reset();
         void Reset(const Schema& schema);
@@ -632,8 +575,6 @@ namespace sql {
         vector<ColumnSchema> cols_;
         std::unordered_set<string> col_names_;
         size_t num_key_columns_;
-
-        DISALLOW_COPY_AND_ASSIGN(SchemaBuilder);
     };
 }  // namespace sql
 }  // namespace k2pg

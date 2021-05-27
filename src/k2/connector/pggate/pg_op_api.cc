@@ -16,7 +16,6 @@
 //
 
 #include "pggate/pg_op_api.h"
-#include "common/endian.h"
 
 namespace k2pg {
 namespace gate {

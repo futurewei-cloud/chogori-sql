@@ -52,8 +52,8 @@
 #include <optional>
 #include <unordered_set>
 
-#include "common/oid_generator.h"
-#include "common/sys/monotime.h"
+#include <k2/common/Chrono.h>
+
 #include "entities/entity_ids.h"
 #include "entities/index.h"
 #include "entities/schema.h"
@@ -75,8 +75,7 @@ using k2pg::sql::IndexPermissions;
 using k2pg::sql::PgObjectId;
 using k2pg::sql::PgOid;
 using k2pg::sql::catalog::SqlCatalogClient;
-using yb::ObjectIdGenerator;
-using yb::MonoDelta;
+using k2pg::sql::ObjectIdGenerator;
 using yb::Status;
 
 // a place holder for a operation that it could be buffered in PG session for batch process
@@ -227,7 +226,7 @@ class PgSession {
   }
 
   void SetTimeout(const int timeout_ms) {
-      timeout_ = MonoDelta::FromMilliseconds(timeout_ms);
+    timeout_ = k2::Duration(1ms * timeout_ms);
   }
 
   // Returns true if the row referenced by ybctid exists in FK reference cache (Used for caching
@@ -322,7 +321,7 @@ class PgSession {
 
   std::atomic<int64_t> stmt_id_ = 1;
 
-  MonoDelta timeout_;
+  k2::Duration timeout_;
 };
 
 }  // namespace gate
