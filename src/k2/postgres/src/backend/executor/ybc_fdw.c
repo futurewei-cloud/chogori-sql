@@ -1126,6 +1126,9 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 	}
 
     // Whitelist of types we support for filter pushdown
+    // We pushdown: basic scalar types (int, float, bool),
+    // text and string types,
+    // and all PG internal types that map to K2 scalar types
     switch (opr_cond->ref->attr_typid) {
         case BOOLOID:
         case INT8OID:
@@ -1133,6 +1136,45 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
         case INT4OID:
         case FLOAT4OID:
         case FLOAT8OID:
+ CHAROID
+ NAMEOID
+ REGPROCOID
+ TEXTOID
+ OIDOID
+ XIDOID
+ CIDOID
+ PGDDLCOMMANDOID
+ SMGROID
+ CASHOID
+ VARCHAROID
+ DATEOID
+ TIMEOID
+ TIMESTAMPOID
+ TIMESTAMPTZOID
+ REGPROCEDUREOID
+ REGOPEROID
+ REGOPERATOROID
+ REGCLASSOID
+ REGTYPEOID
+ REGROLEOID
+ REGNAMESPACEOID
+LSNOID
+REGCONFIGOID
+REGDICTIONARYOID
+CSTRINGOID
+ANYOID
+VOIDOID
+TRIGGEROID
+EVTTRIGGEROID
+LANGUAGE_HANDLEROID
+INTERNALOID
+OPAQUEOID
+ANYELEMENTOID
+ANYNONARRAYOID
+ANYENUMOID
+FDW_HANDLEROID
+INDEX_AM_HANDLEROID
+TSM_HANDLEROID
             break;
         default:
             return opr_expr;
