@@ -1124,6 +1124,25 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 			elog(DEBUG4, "FDW: unsupported OpExpr type: %d", opr_cond->opno);
 			return opr_expr;
 	}
+
+    // Check for types we support for filter pushdown
+    // We pushdown: basic scalar types (int, float, bool),
+    // text and string types, and all PG internal types that map to K2 scalar types
+	const YBCPgTypeEntity *ref_type = YBCPgFindTypeEntity(opr_cond->ref->attr_typid);
+    switch (opr_cond->ref->attr_typid) {
+        case CHAROID:
+        case NAMEOID:
+        case TEXTOID:
+        case VARCHAROID:
+        case CSTRINGOID:
+            break;
+        default:
+            if (ref_type->yb_type == K2SQL_DATA_TYPE_BINARY || ref_type->yb_type == K2SQL_DATA_TYPE_STRING) {
+                return opr_expr;
+            }
+            break;
+    }
+
 	YBCPgNewOperator(fdw_state->handle,  opr_name, type_ent, &opr_expr);
 	YBCPgTypeAttrs ref_type_attrs = { opr_cond->ref->atttypmod};
 	YBCPgExpr col_ref = YBCNewColumnRef(fdw_state->handle, opr_cond->ref->attr_num, opr_cond->ref->attr_typid, &ref_type_attrs);
