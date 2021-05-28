@@ -38,8 +38,7 @@
 #include <utility>
 #include <vector>
 
-#include "common/util/map-util.h"
-#include "singleton.h"
+#include <fmt/format.h>
 
 using std::multimap;
 using std::pair;
@@ -47,17 +46,13 @@ using std::string;
 using std::unordered_set;
 using std::vector;
 
-// DEFINE_test_flag(bool, running_test, false, "Flag that is set to true when we running a test");
-
 namespace yb {
 namespace flag_tags_internal {
 
-// Singleton registry storing the set of tags for each flag.
+// registry storing the set of tags for each flag.
 class FlagTagRegistry {
  public:
-  static FlagTagRegistry* GetInstance() {
-    return Singleton<FlagTagRegistry>::get();
-  }
+  FlagTagRegistry() {};
 
   void Tag(const string& name, const string& tag) {
     tag_map_.insert(TagMap::value_type(name, tag));
@@ -68,26 +63,24 @@ class FlagTagRegistry {
     pair<TagMap::const_iterator, TagMap::const_iterator> range =
       tag_map_.equal_range(name);
     for (auto it = range.first; it != range.second; ++it) {
-      if (!InsertIfNotPresent(tags, it->second)) {
-        LOG(DFATAL) << "Flag " << name << " was tagged more than once with the tag '"
-                    << it->second << "'";
+      if (!tags->insert(it->second).second) {
+        throw std::runtime_error(fmt::format("Flag {} was tagged more than once with the tag {}", name, it->second));
       }
     }
   }
 
  private:
-  friend class Singleton<FlagTagRegistry>;
-  FlagTagRegistry() {}
+  FlagTagRegistry(const FlagTagRegistry&) = delete;
+  void operator=(const FlagTagRegistry&) = delete;
 
   typedef multimap<string, string> TagMap;
   TagMap tag_map_;
-
-  DISALLOW_COPY_AND_ASSIGN(FlagTagRegistry);
 };
 
+static FlagTagRegistry flag_tag_registry;
 
 FlagTagger::FlagTagger(const char* name, const char* tag) {
-  FlagTagRegistry::GetInstance()->Tag(name, tag);
+  flag_tag_registry.Tag(name, tag);
 }
 
 FlagTagger::~FlagTagger() {
@@ -99,7 +92,7 @@ using flag_tags_internal::FlagTagRegistry;
 
 void GetFlagTags(const string& flag_name,
                  unordered_set<string>* tags) {
-  FlagTagRegistry::GetInstance()->GetTags(flag_name, tags);
+  flag_tags_internal::flag_tag_registry.GetTags(flag_name, tags);
 }
 
 } // namespace yb
