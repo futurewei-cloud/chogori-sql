@@ -104,10 +104,6 @@ void YBCLogImpl(int severity,
                 const char* format,
                 ...) __attribute__((format(printf, 5, 6)));
 
-// Returns a string representation of the given block of binary data. The memory for the resulting
-// string is allocated using palloc.
-const char* YBCFormatBytesAsStr(const char* data, size_t size);
-
 const char* YBCGetStackTrace();
 
 #ifdef __cplusplus

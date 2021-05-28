@@ -12,8 +12,6 @@
 
 #include "ybc-internal.h"
 
-#include "common/log/logging.h"
-
 namespace yb {
 
 namespace {
