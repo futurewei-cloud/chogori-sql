@@ -35,14 +35,12 @@
 #include <string>
 #include <gflags/gflags.h>
 
+#include <fmt/format.h>
+
 #include "common/sys/cpu.h"
-#include "common/strings/split.h"
-#include "common/strings/substitute.h"
 #include "env.h"
 #include "common/util/env_util.h"
 #include "flag_tags.h"
-#include "common/log/logging.h"
-#include "common/util/path_util.h"
 #include "status.h"
 
 #if defined(__linux__)
@@ -63,9 +61,8 @@ namespace yb {
 const char* kTopLevelDataDirName = "yb-data";
 
 Status BadCPUStatus(const base::CPU& cpu, const char* instruction_set) {
-  return STATUS(NotSupported, strings::Substitute(
-      "The CPU on this system ($0) does not support the $1 instruction "
-      "set which is required for running YB.",
+  return STATUS(NotSupported, fmt::format(
+      "The CPU on this system ({}) does not support the {} instruction set which is required for running YB.",
       cpu.cpu_brand(), instruction_set));
 }
 

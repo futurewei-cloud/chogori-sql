@@ -24,8 +24,7 @@
 #include "ybc-internal.h"
 #include "env.h"
 #include "scope_exit.h"
-#include "init.h"
-#include "common/flag_tags.h"
+#include "flag_tags.h"
 
 using std::string;
 DEFINE_string(process_info_dir, "", \
@@ -98,7 +97,8 @@ Status InitGFlags(const char* argv0) {
     }
   }
 
-  RETURN_NOT_OK(CheckCPUFlags());
+  // bypass CPU flag checking
+
   // Use InitGoogleLoggingSafeBasic() instead of InitGoogleLoggingSafe() to avoid calling
   // google::InstallFailureSignalHandler(). This will prevent interference with PostgreSQL's
   // own signal handling.
