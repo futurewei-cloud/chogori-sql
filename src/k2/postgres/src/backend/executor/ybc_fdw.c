@@ -1125,59 +1125,22 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 			return opr_expr;
 	}
 
-    // Whitelist of types we support for filter pushdown
+    // Check for types we support for filter pushdown
     // We pushdown: basic scalar types (int, float, bool),
-    // text and string types,
-    // and all PG internal types that map to K2 scalar types
+    // text and string types, and all PG internal types that map to K2 scalar types
+	const YBCPgTypeEntity *ref_type = YBCPgFindTypeEntity(opr_cond->ref->attr_typid);
     switch (opr_cond->ref->attr_typid) {
-        case BOOLOID:
-        case INT8OID:
-        case INT2OID:
-        case INT4OID:
-        case FLOAT4OID:
-        case FLOAT8OID:
- CHAROID
- NAMEOID
- REGPROCOID
- TEXTOID
- OIDOID
- XIDOID
- CIDOID
- PGDDLCOMMANDOID
- SMGROID
- CASHOID
- VARCHAROID
- DATEOID
- TIMEOID
- TIMESTAMPOID
- TIMESTAMPTZOID
- REGPROCEDUREOID
- REGOPEROID
- REGOPERATOROID
- REGCLASSOID
- REGTYPEOID
- REGROLEOID
- REGNAMESPACEOID
-LSNOID
-REGCONFIGOID
-REGDICTIONARYOID
-CSTRINGOID
-ANYOID
-VOIDOID
-TRIGGEROID
-EVTTRIGGEROID
-LANGUAGE_HANDLEROID
-INTERNALOID
-OPAQUEOID
-ANYELEMENTOID
-ANYNONARRAYOID
-ANYENUMOID
-FDW_HANDLEROID
-INDEX_AM_HANDLEROID
-TSM_HANDLEROID
+        case CHAROID:
+        case NAMEOID:
+        case TEXTOID:
+        case VARCHAROID:
+        case CSTRINGOID:
             break;
         default:
-            return opr_expr;
+            if (ref_type->yb_type == K2SQL_DATA_TYPE_BINARY || ref_type->yb_type == K2SQL_DATA_TYPE_STRING) {
+                return opr_expr;
+            }
+            break;
     }
 
 	YBCPgNewOperator(fdw_state->handle,  opr_name, type_ent, &opr_expr);
