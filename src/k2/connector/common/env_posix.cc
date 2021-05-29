@@ -961,7 +961,7 @@ class PosixEnv : public Env {
   }
 
   CHECKED_STATUS GetChildren(const std::string& dir,
-                             ExcludeDots exclude_dots,
+                             bool exclude_dots,
                              std::vector<std::string>* result) override {
     ThreadRestrictions::AssertIOAllowed();
     result->clear();
@@ -1023,8 +1023,10 @@ class PosixEnv : public Env {
   }
 
   Status DeleteRecursively(const std::string &name) override {
-    return Walk(name, POST_ORDER, Bind(&PosixEnv::DeleteRecursivelyCb,
-                                       Unretained(this)));
+    WalkCallback cb([this](FileType type, const string& dirname, const string& basename) {
+      return DeleteRecursivelyCb(type, dirname, basename);
+    });
+    return Walk(name, POST_ORDER, std::move(cb));
   }
 
   Result<uint64_t> GetFileSize(const std::string& fname) override {
@@ -1287,7 +1289,7 @@ class PosixEnv : public Env {
           break;
       }
       if (doCb) {
-        if (!cb.Run(type, DirName(ent->fts_path), ent->fts_name).ok()) {
+        if (!cb(type, DirName(ent->fts_path), ent->fts_name).ok()) {
           had_errors = true;
         }
       }
