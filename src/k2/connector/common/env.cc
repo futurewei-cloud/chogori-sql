@@ -18,18 +18,25 @@
 //
 
 #include "env.h"
-#include "common/strings/faststring.h"
-#include "common/util/path_util.h"
+
+#include <filesystem>
 
 namespace yb {
+
+namespace fs = std::filesystem;
 
 Env::~Env() {
 }
 
 CHECKED_STATUS Env::CreateDirs(const std::string& dirname) {
   if (!FileExists(dirname)) {
-    RETURN_NOT_OK(CreateDirs(DirName(dirname)));
-    RETURN_NOT_OK(CreateDir(dirname));
+    fs::path dir_path = dirname;
+    if (!dir_path.empty()) {
+      if (dir_path.has_parent_path()) {
+        RETURN_NOT_OK(CreateDirs(dir_path.parent_path().string()));
+      }
+      RETURN_NOT_OK(CreateDir(dirname));
+    }
   }
   return VERIFY_RESULT(IsDirectory(dirname)) ?
       Status::OK() : STATUS_FORMAT(IOError, "Not a directory: $0", dirname);
@@ -81,8 +88,8 @@ Status WriteStringToFileSync(Env* env, const Slice& data,
   return DoWriteStringToFile(env, data, fname, true);
 }
 
-Status ReadFileToString(Env* env, const std::string& fname, faststring* data) {
-  data->clear();
+Status ReadFileToString(Env* env, const std::string& fname, std::stringstream& data) {
+  data.clear();
   std::unique_ptr<SequentialFile> file;
   Status s = env->NewSequentialFile(fname, &file);
   if (!s.ok()) {
@@ -96,7 +103,7 @@ Status ReadFileToString(Env* env, const std::string& fname, faststring* data) {
     if (!s.ok()) {
       break;
     }
-    data->append(fragment.data(), fragment.size());
+    data.write(reinterpret_cast<const char *>(fragment.data()), fragment.size());
     if (fragment.empty()) {
       break;
     }

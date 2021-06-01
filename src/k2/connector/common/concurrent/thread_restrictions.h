@@ -33,8 +33,6 @@
 #ifndef YB_UTIL_THREAD_RESTRICTIONS_H
 #define YB_UTIL_THREAD_RESTRICTIONS_H
 
-#include "common/macros.h"
-
 #ifndef NDEBUG
 #define ENABLE_THREAD_RESTRICTIONS 1
 #endif
@@ -80,7 +78,8 @@ class ThreadRestrictions {
     // Whether IO is allowed when the ScopedAllowIO was constructed.
     bool previous_value_;
 
-    DISALLOW_COPY_AND_ASSIGN(ScopedAllowIO);
+    ScopedAllowIO(const ScopedAllowIO&) = delete;
+    ScopedAllowIO& operator=(const ScopedAllowIO&) = delete;
   };
 
   // Constructing a ScopedAllowWait temporarily allows waiting on the current
@@ -95,9 +94,9 @@ class ThreadRestrictions {
     // constructed.
     bool previous_value_;
 
-    DISALLOW_COPY_AND_ASSIGN(ScopedAllowWait);
+    ScopedAllowWait(const ScopedAllowWait&) = delete;
+    ScopedAllowWait& operator=(const ScopedAllowWait&) = delete;
   };
-
 
 #if ENABLE_THREAD_RESTRICTIONS
   // Set whether the current thread to make IO calls.
@@ -130,7 +129,9 @@ class ThreadRestrictions {
 #endif
 
  private:
-  DISALLOW_IMPLICIT_CONSTRUCTORS(ThreadRestrictions);
+  ThreadRestrictions() = delete;
+  ThreadRestrictions(const ThreadRestrictions&) = delete;
+  ThreadRestrictions& operator=(const ThreadRestrictions&) = delete;
 };
 
 } // namespace yb

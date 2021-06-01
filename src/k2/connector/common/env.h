@@ -32,6 +32,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <sstream>
 
 #include "common/sys/file_system.h"
 #include "result.h"
@@ -669,7 +670,7 @@ extern CHECKED_STATUS WriteStringToFileSync(Env* env, const Slice& data, const s
 
 // A utility routine: read contents of named file into *data
 extern CHECKED_STATUS ReadFileToString(Env* env, const std::string& fname,
-                               faststring* data);
+                               std::stringstream& data);
 
 // An implementation of Env that forwards all calls to another Env.
 // May be useful to clients who wish to override just part of the

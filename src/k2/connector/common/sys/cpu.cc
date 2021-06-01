@@ -24,6 +24,8 @@
 
 #include <algorithm>
 
+#include <sstream>
+
 #include "common/type/basictypes.h"
 #include "common/strings/stringpiece.h"
 
@@ -129,8 +131,9 @@ class LazyCpuInfoValue {
       {"CPU revision", &revision},
     };
 
-    std::string contents;
-    ReadFileToString(FilePath("/proc/cpuinfo"), &contents);
+    std::stringstream ss;
+    ReadFileToString(FilePath("/proc/cpuinfo"), ss);
+    std::string contents = ss.str();
     DCHECK(!contents.empty());
     if (contents.empty()) {
       return;

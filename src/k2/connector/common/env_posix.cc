@@ -34,6 +34,10 @@
 #include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
+#include <chrono>
+#include <thread>
+#include <filesystem>
+#include <mutex>
 
 #include <set>
 #include <vector>
@@ -51,23 +55,13 @@
 #include <glog/logging.h>
 
 #include "common/alignment.h"
-#include "common/bind.h"
 #include "common/env.h"
 #include "common/errno.h"
 #include "common/flag_tags.h"
-#include "common/stopwatch.h"
-#include "common/concurrent/atomicops.h"
-#include "common/concurrent/callback.h"
-#include "common/concurrent/locks.h"
 #include "common/concurrent/thread_restrictions.h"
-#include "common/log/logging.h"
-#include "common/strings/substitute.h"
 #include "common/sys/file_system_posix.h"
 #include "common/sys/malloc.h"
-#include "common/sys/monotime.h"
 #include "common/type/slice.h"
-#include "common/util/map-util.h"
-#include "common/util/path_util.h"
 
 // Copied from falloc.h. Useful for older kernels that lack support for
 // hole punching; fallocate(2) will return EOPNOTSUPP.
@@ -127,13 +121,13 @@ DEFINE_test_flag(bool, simulate_fs_without_fallocate, false,
 DEFINE_test_flag(int64, simulate_free_space_bytes, -1,
     "If a non-negative value, GetFreeSpaceBytes will return the specified value.");
 
-using base::subtle::Atomic64;
-using base::subtle::Barrier_AtomicIncrement;
 using std::vector;
 using strings::Substitute;
 
 static __thread uint64_t thread_local_id;
-static Atomic64 cur_thread_local_id_;
+static std::atomic<int64_t> cur_thread_local_id_;
+
+namespace fs = std::filesystem;
 
 namespace yb {
 
@@ -308,14 +302,14 @@ class PosixWritableFile : public WritableFile {
     ThreadRestrictions::AssertIOAllowed();
     uint64_t offset = std::max(filesize_, pre_allocated_size_);
     if (PREDICT_FALSE(FLAGS_TEST_simulate_fs_without_fallocate)) {
-      YB_LOG_FIRST_N(WARNING, 1) << "Simulating a filesystem without fallocate() support";
+      LOG_FIRST_N(WARNING, 1) << "Simulating a filesystem without fallocate() support";
       return Status::OK();
     }
     if (fallocate(fd_, 0, offset, size) < 0) {
       if (errno == EOPNOTSUPP) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
       } else if (errno == ENOSYS) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
       } else {
         return STATUS_IO_ERROR(filename_, errno);
       }
@@ -379,11 +373,9 @@ class PosixWritableFile : public WritableFile {
 
   Status Sync() override {
     ThreadRestrictions::AssertIOAllowed();
-    LOG_SLOW_EXECUTION(WARNING, 1000, Substitute("sync call for $0", filename_)) {
-      if (pending_sync_) {
-        pending_sync_ = false;
-        RETURN_NOT_OK(DoSync(fd_, filename_));
-      }
+    if (pending_sync_) {
+      pending_sync_ = false;
+      RETURN_NOT_OK(DoSync(fd_, filename_));
     }
     return Status::OK();
   }
@@ -757,9 +749,9 @@ class PosixRWFile final : public RWFile {
     ThreadRestrictions::AssertIOAllowed();
     if (fallocate(fd_, 0, offset, length) < 0) {
       if (errno == EOPNOTSUPP) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
       } else if (errno == ENOSYS) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
       } else {
         return STATUS_IO_ERROR(filename_, errno);
       }
@@ -799,11 +791,9 @@ class PosixRWFile final : public RWFile {
 
   Status Sync() override {
     ThreadRestrictions::AssertIOAllowed();
-    LOG_SLOW_EXECUTION(WARNING, 1000, Substitute("sync call for $0", filename())) {
-      if (pending_sync_) {
-        pending_sync_ = false;
-        RETURN_NOT_OK(DoSync(fd_, filename_));
-      }
+    if (pending_sync_) {
+      pending_sync_ = false;
+      RETURN_NOT_OK(DoSync(fd_, filename_));
     }
     return Status::OK();
   }
@@ -1141,7 +1131,7 @@ class PosixEnv : public Env {
     // because that function returns a totally opaque ID, which can't be
     // compared via normal means.
     if (thread_local_id == 0) {
-      thread_local_id = Barrier_AtomicIncrement(&cur_thread_local_id_, 1);
+      thread_local_id = cur_thread_local_id_++; //Barrier_AtomicIncrement(&cur_thread_local_id_, 1);
     }
     return thread_local_id;
   }
@@ -1172,7 +1162,7 @@ class PosixEnv : public Env {
 
   void SleepForMicroseconds(int micros) override {
     ThreadRestrictions::AssertWaitAllowed();
-    SleepFor(MonoDelta::FromMicroseconds(micros));
+    std::this_thread::sleep_for(std::chrono::microseconds(micros));
   }
 
   Status GetExecutablePath(string* path) override {
@@ -1233,6 +1223,24 @@ class PosixEnv : public Env {
     return !S_ISDIR(sbuf.st_mode) && (sbuf.st_mode & S_IXUSR);
   }
 
+  class FTS_Manager {
+    public:
+    FTS_Manager(char *paths[]) {
+      fts = fts_open(paths, FTS_PHYSICAL | FTS_XDEV | FTS_NOCHDIR, nullptr);
+    }
+
+    ~FTS_Manager() {
+      if (fts) { fts_close(fts); }
+    }
+
+    FTS	*GetFts() {
+      return fts;
+    }
+
+    private:
+    FTS	*fts;
+  };
+
   Status Walk(const string& root, DirectoryOrder order, const WalkCallback& cb) override {
     ThreadRestrictions::AssertIOAllowed();
     // Some sanity checks
@@ -1241,21 +1249,18 @@ class PosixEnv : public Env {
     CHECK_NE(root, ".");
     CHECK_NE(root, "");
 
-    // FTS requires a non-const copy of the name. strdup it and free() when
-    // we leave scope.
-    gscoped_ptr<char, FreeDeleter> name_dup(strdup(root.c_str()));
-    char *paths[] = { name_dup.get(), nullptr };
+    std::string name_dup = root;
 
-    // FTS_NOCHDIR is important here to make this thread-safe.
-    gscoped_ptr<FTS, FtsCloser> tree(
-        fts_open(paths, FTS_PHYSICAL | FTS_XDEV | FTS_NOCHDIR, nullptr));
-    if (!tree.get()) {
+    char *paths[] = { const_cast<char*>(name_dup.c_str()), nullptr };
+
+    std::unique_ptr<FTS_Manager> tree = std::make_unique<FTS_Manager>(paths);
+    if (!tree->GetFts()) {
       return STATUS_IO_ERROR(root, errno);
     }
 
     FTSENT *ent = nullptr;
     bool had_errors = false;
-    while ((ent = fts_read(tree.get())) != nullptr) {
+    while ((ent = fts_read(tree->GetFts())) != nullptr) {
       bool doCb = false;
       FileType type = DIRECTORY_TYPE;
       switch (ent->fts_info) {
@@ -1289,7 +1294,9 @@ class PosixEnv : public Env {
           break;
       }
       if (doCb) {
-        if (!cb(type, DirName(ent->fts_path), ent->fts_name).ok()) {
+        fs::path fts_path = ent->fts_path;
+        std::string dir_name = fts_path.parent_path().string();
+        if (!cb(type, dir_name, ent->fts_name).ok()) {
           had_errors = true;
         }
       }
@@ -1303,11 +1310,12 @@ class PosixEnv : public Env {
 
   Status Canonicalize(const string& path, string* result) override {
     ThreadRestrictions::AssertIOAllowed();
-    gscoped_ptr<char[], FreeDeleter> r(realpath(path.c_str(), nullptr));
+    char *r = realpath(path.c_str(), nullptr);
     if (!r) {
       return STATUS_IO_ERROR(path, errno);
     }
-    *result = string(r.get());
+    *result = r;
+    free(r);
     return Status::OK();
   }
 
@@ -1397,15 +1405,11 @@ class PosixEnv : public Env {
   }
 
  private:
-  // gscoped_ptr Deleter implementation for fts_close
-  struct FtsCloser {
-    void operator()(FTS *fts) const {
-      if (fts) { fts_close(fts); }
-    }
-  };
-
   Status DeleteRecursivelyCb(FileType type, const string& dirname, const string& basename) {
-    string full_path = JoinPathSegments(dirname, basename);
+    fs::path root_path = dirname;
+    fs::path base_path = basename;
+    fs::path joined_path = root_path / base_path;
+    string full_path = joined_path.string();
     Status s;
     switch (type) {
       case FILE_TYPE:

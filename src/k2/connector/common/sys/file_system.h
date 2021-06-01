@@ -18,12 +18,15 @@
 
 #include <boost/function.hpp>
 
-#include "common/coding/coding_consts.h"
 #include "common/type/slice.h"
 #include "common/result.h"
 #include "common/status.h"
 
 namespace yb {
+
+// The maximum length of a varint in bytes for 32 and 64 bits respectively.
+constexpr const unsigned int kMaxVarint32Length = 5;
+constexpr const unsigned int kMaxVarint64Length = 10;
 
 // Options for opening a file to read/write.
 struct FileSystemOptions {

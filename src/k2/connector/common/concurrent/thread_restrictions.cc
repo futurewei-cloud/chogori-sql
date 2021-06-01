@@ -30,10 +30,10 @@
 // under the License.
 //
 
+#include <thread>
+
 #include <glog/logging.h>
 
-#include "common/concurrent/thread.h"
-#include "common/concurrent/threadlocal.h"
 #include "common/concurrent/thread_restrictions.h"
 
 #ifdef ENABLE_THREAD_RESTRICTIONS
@@ -41,57 +41,41 @@
 namespace yb {
 
 namespace {
-
-struct LocalThreadRestrictions {
-  LocalThreadRestrictions()
-    : io_allowed(true),
-      wait_allowed(true),
-      singleton_allowed(true) {
-  }
-
-  bool io_allowed;
-  bool wait_allowed;
-  bool singleton_allowed;
-};
-
-LocalThreadRestrictions* LoadTLS() {
-  BLOCK_STATIC_THREAD_LOCAL(LocalThreadRestrictions, local_thread_restrictions);
-  return local_thread_restrictions;
-}
-
+  thread_local bool io_allowed = true;
+  thread_local bool wait_allowed = true;
 } // anonymous namespace
 
 bool ThreadRestrictions::SetIOAllowed(bool allowed) {
-  bool previous_allowed = LoadTLS()->io_allowed;
-  LoadTLS()->io_allowed = allowed;
+  bool previous_allowed = io_allowed;
+  io_allowed = allowed;
   return previous_allowed;
 }
 
 void ThreadRestrictions::AssertIOAllowed() {
-  CHECK(LoadTLS()->io_allowed)
+  CHECK(io_allowed)
     << "Function marked as IO-only was called from a thread that "
     << "disallows IO!  If this thread really should be allowed to "
     << "make IO calls, adjust the call to "
-    << "yb::ThreadRestrictions::SetIOAllowed() in this thread's "
+    << "ThreadRestrictions::SetIOAllowed() in this thread's "
     << "startup. "
-    << (Thread::current_thread() ? Thread::current_thread()->ToString() : "(not a yb::Thread)");
+    << std::this_thread::get_id();
 }
 
 bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
-  bool previous_allowed = LoadTLS()->wait_allowed;
-  LoadTLS()->wait_allowed = allowed;
+  bool previous_allowed = wait_allowed;
+  wait_allowed = allowed;
   return previous_allowed;
 }
 
 bool ThreadRestrictions::IsWaitAllowed() {
-  return LoadTLS()->wait_allowed;
+  return wait_allowed;
 }
 
 void ThreadRestrictions::AssertWaitAllowed() {
-  CHECK(LoadTLS()->wait_allowed)
+  CHECK(wait_allowed)
     << "Waiting is not allowed to be used on this thread to prevent "
     << "server-wide latency aberrations and deadlocks. "
-    << (Thread::current_thread() ? Thread::current_thread()->ToString() : "(not a yb::Thread)");
+    << std::this_thread::get_id();
 }
 
 } // namespace yb
