@@ -54,6 +54,8 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <fmt/format.h>
+
 #include "common/alignment.h"
 #include "common/env.h"
 #include "common/errno.h"
@@ -122,7 +124,6 @@ DEFINE_test_flag(int64, simulate_free_space_bytes, -1,
     "If a non-negative value, GetFreeSpaceBytes will return the specified value.");
 
 using std::vector;
-using strings::Substitute;
 
 static __thread uint64_t thread_local_id;
 static std::atomic<int64_t> cur_thread_local_id_;
@@ -236,7 +237,7 @@ static Status DoOpen(const string& filename, Env::CreateMode mode, int* fd, int 
     case Env::OPEN_EXISTING:
       break;
     default:
-      return STATUS(NotSupported, Substitute("Unknown create mode $0", mode));
+      return STATUS(NotSupported, fmt::format("Unknown create mode {}", mode));
   }
 
   const int f = open(filename.c_str(), flags | extra_flags, 0644);
@@ -425,7 +426,7 @@ class PosixWritableFile : public WritableFile {
 
     if (PREDICT_FALSE(written != nbytes)) {
       return STATUS(IOError,
-          Substitute("pwritev error: expected to write $0 bytes, wrote $1 bytes instead",
+          fmt::format("pwritev error: expected to write {} bytes, wrote {} bytes instead",
                      nbytes, written));
     }
 #else
@@ -441,7 +442,7 @@ class PosixWritableFile : public WritableFile {
 
       if (PREDICT_FALSE(written != data.size())) {
         return STATUS(IOError,
-            Substitute("pwrite error: expected to write $0 bytes, wrote $1 bytes instead",
+            fmt::format("pwrite error: expected to write {} bytes, wrote {} bytes instead",
                        data.size(), written));
       }
     }
@@ -623,7 +624,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
 
     if (PREDICT_FALSE(written != bytes_to_write)) {
       return STATUS(IOError,
-                    Substitute("pwritev error: expected to write $0 bytes, wrote $1 bytes instead",
+                    fmt::format("pwritev error: expected to write {} bytes, wrote {} bytes instead",
                                bytes_to_write, written));
     }
 
@@ -737,7 +738,7 @@ class PosixRWFile final : public RWFile {
 
     if (PREDICT_FALSE(written != data.size())) {
       return STATUS(IOError,
-          Substitute("pwrite error: expected to write $0 bytes, wrote $1 bytes instead",
+          fmt::format("pwrite error: expected to write {} bytes, wrote {} bytes instead",
                      data.size(), written));
     }
 
