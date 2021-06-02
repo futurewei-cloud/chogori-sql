@@ -16,6 +16,8 @@
 
 #include <k2/common/Common.h>
 #include <k2/common/FormattingUtils.h>
+
+#include "common/errno.h"
 #include "status.h"
 
 namespace yb {
@@ -33,7 +35,7 @@ struct TransactionErrorTag : IntegralErrorTag<TransactionErrorCode> {
   static constexpr uint8_t kCategory = 7;
 
   static std::string ToMessage(Value value) {
-    return ToString(value);
+    return fmt::format("{}", value);
   }
 };
 

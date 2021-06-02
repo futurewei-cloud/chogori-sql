@@ -26,6 +26,7 @@
 
 #include <stddef.h>         // For size_t
 #include "port.h"
+#include "common/common_defs.h"
 
 // The swigged version of an abstract class must be concrete if any methods
 // return objects of the abstract type. We keep it abstract in C++ and
@@ -34,7 +35,7 @@
 #define ABSTRACT = 0
 #endif
 
-// The COMPILE_ASSERT macro can be used to verify that a compile time
+/* // The COMPILE_ASSERT macro can be used to verify that a compile time
 // expression is true. For example, you could use it to verify the
 // size of a static array:
 //
@@ -54,7 +55,7 @@ struct CompileAssert {
 };
 
 #define COMPILE_ASSERT(expr, msg) \
-  typedef CompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1] ATTRIBUTE_UNUSED
+  typedef CompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1] ATTRIBUTE_UNUSED */
 
 // Implementation details of COMPILE_ASSERT:
 //

@@ -48,7 +48,7 @@ string ObjectIdGenerator::Next(const bool binary_id) {
   boost::uuids::uuid oid = oid_generator_[idx]();
   lck.unlock();
 
-  return binary_id ? string(util::to_char_ptr(oid.data), sizeof(oid.data))
+  return binary_id ? std::string(util::to_char_ptr(oid.data), sizeof(oid.data))
                    : b2a_hex(util::to_char_ptr(oid.data), sizeof(oid.data));
 }
 

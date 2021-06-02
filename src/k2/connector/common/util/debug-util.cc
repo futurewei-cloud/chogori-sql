@@ -74,6 +74,7 @@
 #include "common/sys/monotime.h"
 #include "common/concurrent/thread.h"
 #include "common/strings/string_trim.h"
+#include "common/format.h"
 
 using namespace std::literals;
 

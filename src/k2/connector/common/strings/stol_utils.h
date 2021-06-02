@@ -15,6 +15,7 @@
 #define YB_UTIL_STOL_UTILS_H
 
 #include "common/result.h"
+#include "common/format.h"
 
 namespace yb {
 
@@ -27,7 +28,7 @@ Result<Int> CheckedStoInt(Slice slice) {
   auto result = static_cast<Int>(*long_value);
   if (result != *long_value) {
     return STATUS_FORMAT(InvalidArgument,
-                         "$0 is out of range: [$1; $2]",
+                         "result is out of range: [{}, {}]",
                          std::numeric_limits<Int>::min(),
                          std::numeric_limits<Int>::max());
   }

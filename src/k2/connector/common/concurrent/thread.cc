@@ -61,6 +61,7 @@
 #include "common/concurrent/mutex.h"
 #include "common/util/os-util.h"
 #include "common/stopwatch.h"
+#include "common/format.h"
 
 METRIC_DEFINE_gauge_uint64(server, threads_started,
                            "Threads Started",
@@ -645,7 +646,7 @@ Status ThreadJoiner::Join() {
   LOG(WARNING) << "Failed to join:\n" << DumpThreadStack(thread_->tid_for_stack());
 #endif
 
-  return STATUS_FORMAT(Aborted, "Timed out after $0 joining on $1", waited, thread_->name_);
+  return STATUS_FORMAT(Aborted, "Timed out after {} joining on {}", waited.ToString(), thread_->name_);
 }
 
 Thread::~Thread() {

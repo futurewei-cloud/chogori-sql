@@ -21,6 +21,7 @@
 
 #include <gflags/gflags.h>
 #include <boost/algorithm/string.hpp>
+#include <fmt/format.h>
 
 #include "common/errno.h"
 #include "common/flag_tags.h"
@@ -83,13 +84,13 @@ namespace pgwrapper {
 
 namespace {
 
-Status WriteConfigFile(const string& path, const vector<string>& lines) {
+Status WriteConfigFile(const string& path, const std::vector<string>& lines) {
   std::ofstream conf_file;
   conf_file.open(path, std::ios_base::out | std::ios_base::trunc);
   if (!conf_file) {
     return STATUS_FORMAT(
         IOError,
-        "Failed to write ysql config file '%s': errno=$0: $1",
+        "Failed to write ysql config file '{}': errno={}: {}",
         path,
         errno,
         ErrnoToString(errno));
@@ -105,8 +106,8 @@ Status WriteConfigFile(const string& path, const vector<string>& lines) {
   return Status::OK();
 }
 
-void ReadCSVConfigValues(const string& csv, vector<string>* lines) {
-  vector<string> csv_lines;
+void ReadCSVConfigValues(const string& csv, std::vector<string>* lines) {
+  std::vector<string> csv_lines;
   boost::split(csv_lines, csv, boost::is_any_of(","));
   lines->insert(lines->end(), csv_lines.begin(), csv_lines.end());
 }
@@ -119,13 +120,13 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
   if (!conf_file) {
     return STATUS_FORMAT(
         IOError,
-        "Failed to read default postgres configuration '%s': errno=$0: $1",
+        "Failed to read default postgres configuration '{}': errno={}: {}",
         default_conf_path,
         errno,
         ErrnoToString(errno));
   }
 
-  vector<string> lines;
+  std::vector<string> lines;
   string line;
   while (std::getline(conf_file, line)) {
     lines.push_back(line);
@@ -180,7 +181,7 @@ Result<string> WritePostgresConfig(const PgProcessConf& conf) {
 }
 
 Result<string> WritePgHbaConfig(const PgProcessConf& conf) {
-  vector<string> lines;
+  std::vector<string> lines;
 
   if (FLAGS_ysql_enable_auth || conf.enable_tls) {
     const auto host_type =  conf.enable_tls ? "hostssl" : "host";
@@ -208,7 +209,7 @@ Result<string> WritePgHbaConfig(const PgProcessConf& conf) {
 }
 
 Result<vector<string>> WritePgConfigFiles(const PgProcessConf& conf) {
-  vector<string> args;
+  std::vector<string> args;
   args.push_back("-c");
   args.push_back(VERIFY_RESULT_PREPEND(WritePostgresConfig(conf),
       "Failed to write ysql pg configuration: "));
@@ -260,7 +261,7 @@ Status PgWrapper::PreflightCheck() {
 Status PgWrapper::Start() {
   auto postgres_executable = GetPostgresExecutablePath();
   RETURN_NOT_OK(CheckExecutableValid(postgres_executable));
-  vector<string> argv {
+  std::vector<string> argv {
     postgres_executable,
     "-D", conf_.data_dir,
     "-p", std::to_string(conf_.pg_port),
@@ -324,17 +325,17 @@ Status PgWrapper::InitDb(bool yb_enabled) {
   const string initdb_program_path = GetInitDbExecutablePath();
   RETURN_NOT_OK(CheckExecutableValid(initdb_program_path));
   if (!Env::Default()->FileExists(initdb_program_path)) {
-    return STATUS_FORMAT(IOError, "initdb not found at: $0", initdb_program_path);
+    return STATUS_FORMAT(IOError, "initdb not found at: {}", initdb_program_path);
   }
 
-  vector<string> initdb_args { initdb_program_path, "-D", conf_.data_dir, "-U", "postgres" };
+  std::vector<string> initdb_args { initdb_program_path, "-D", conf_.data_dir, "-U", "postgres" };
   Subprocess initdb_subprocess(initdb_program_path, initdb_args);
   SetCommonEnv(&initdb_subprocess, yb_enabled);
   int exit_code = 0;
   RETURN_NOT_OK(initdb_subprocess.Start());
   RETURN_NOT_OK(initdb_subprocess.Wait(&exit_code));
   if (exit_code != 0) {
-    return STATUS_FORMAT(RuntimeError, "$0 failed with exit code $1",
+    return STATUS_FORMAT(RuntimeError, "{} failed with exit code {}",
                          initdb_program_path,
                          exit_code);
   }
@@ -408,7 +409,7 @@ Status PgWrapper::CheckExecutableValid(const std::string& executable_path) {
   if (VERIFY_RESULT(Env::Default()->IsExecutableFile(executable_path))) {
     return Status::OK();
   }
-  return STATUS_FORMAT(NotFound, "Not an executable file: $0", executable_path);
+  return STATUS_FORMAT(NotFound, "Not an executable file: {}", executable_path);
 }
 
 void PgWrapper::SetCommonEnv(Subprocess* proc, bool yb_enabled) {
@@ -502,7 +503,7 @@ CHECKED_STATUS PgSupervisor::CleanupOldServerUnlocked() {
     }
 
     if (!postmaster_pid_file.good() || postgres_pid == 0) {
-      LOG(ERROR) << strings::Substitute("Error reading postgres process ID from file $0. $1 $2",
+      LOG(ERROR) << fmt::format("Error reading postgres process ID from file {}. {} {}",
           postmaster_pid_filename, ErrnoToString(errno), errno);
     } else {
       LOG(WARNING) << "Killing older postgres process: " << postgres_pid;
@@ -525,7 +526,7 @@ PgProcessState PgSupervisor::GetState() {
 CHECKED_STATUS PgSupervisor::ExpectStateUnlocked(PgProcessState expected_state) {
   if (state_ != expected_state) {
     return STATUS_FORMAT(
-        IllegalState, "Expected PostgreSQL server state to be $0, got $1", expected_state, state_);
+        IllegalState, "Expected PostgreSQL server state to be {}, got {}", expected_state, state_);
   }
   return Status::OK();
 }

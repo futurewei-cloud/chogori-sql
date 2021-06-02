@@ -41,7 +41,7 @@ void* YBCCStringToTextWithLen(const char* c, int size);
 
 // YBCStatus definition for Some common Status.
 
-YBCStatus YBCStatusNotSupport(const string& feature_name);
+YBCStatus YBCStatusNotSupport(const std::string& feature_name);
 
 // Duplicate the given string in memory allocated using PostgreSQL's palloc.
 const char* YBCPAllocStdString(const std::string& s);

@@ -27,6 +27,7 @@ Copyright(c) 2020 Futurewei Cloud
 #include "common/env.h"
 #include "common/status.h"
 #include "common/concurrent/locks.h"
+#include "common/format.h"
 
 namespace k2pg {
 namespace sql {

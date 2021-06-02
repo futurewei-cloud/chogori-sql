@@ -255,7 +255,7 @@ Status PgGateApiImpl::ExecCreateDatabase(PgStatement *handle) {
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  return down_cast<PgCreateDatabase*>(handle)->Exec();
+  return dynamic_cast<PgCreateDatabase*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::NewDropDatabase(const char *database_name,
@@ -271,7 +271,7 @@ Status PgGateApiImpl::ExecDropDatabase(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDropDatabase*>(handle)->Exec();
+  return dynamic_cast<PgDropDatabase*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::NewAlterDatabase(const char *database_name,
@@ -287,7 +287,7 @@ Status PgGateApiImpl::AlterDatabaseRenameDatabase(PgStatement *handle, const cha
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgAlterDatabase*>(handle)->RenameDatabase(new_name);
+  return dynamic_cast<PgAlterDatabase*>(handle)->RenameDatabase(new_name);
 }
 
 Status PgGateApiImpl::ExecAlterDatabase(PgStatement *handle) {
@@ -295,7 +295,7 @@ Status PgGateApiImpl::ExecAlterDatabase(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgAlterDatabase*>(handle)->Exec();
+  return dynamic_cast<PgAlterDatabase*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::ReserveOids(const PgOid database_oid,
@@ -343,7 +343,7 @@ Status PgGateApiImpl::CreateTableAddColumn(PgStatement *handle, const char *attr
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return AddColumn(down_cast<PgCreateTable*>(handle), attr_name, attr_num, attr_type,
+  return AddColumn(dynamic_cast<PgCreateTable*>(handle), attr_name, attr_num, attr_type,
       is_hash, is_range, is_desc, is_nulls_first);
 }
 
@@ -352,7 +352,7 @@ Status PgGateApiImpl::ExecCreateTable(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgCreateTable*>(handle)->Exec();
+  return dynamic_cast<PgCreateTable*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::NewAlterTable(const PgObjectId& table_object_id,
@@ -370,7 +370,7 @@ Status PgGateApiImpl::AlterTableAddColumn(PgStatement *handle, const char *name,
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  PgAlterTable *pg_stmt = dynamic_cast<PgAlterTable*>(handle);
   return pg_stmt->AddColumn(name, attr_type, order, is_not_null);
 }
 
@@ -381,7 +381,7 @@ Status PgGateApiImpl::AlterTableRenameColumn(PgStatement *handle, const char *ol
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  PgAlterTable *pg_stmt = dynamic_cast<PgAlterTable*>(handle);
   return pg_stmt->RenameColumn(oldname, newname);
 }
 
@@ -391,7 +391,7 @@ Status PgGateApiImpl::AlterTableDropColumn(PgStatement *handle, const char *name
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  PgAlterTable *pg_stmt = dynamic_cast<PgAlterTable*>(handle);
   return pg_stmt->DropColumn(name);
 }
 
@@ -402,7 +402,7 @@ Status PgGateApiImpl::AlterTableRenameTable(PgStatement *handle, const char *db_
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  PgAlterTable *pg_stmt = dynamic_cast<PgAlterTable*>(handle);
   return pg_stmt->RenameTable(db_name, newname);
 }
 
@@ -411,7 +411,7 @@ Status PgGateApiImpl::ExecAlterTable(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  PgAlterTable *pg_stmt = down_cast<PgAlterTable*>(handle);
+  PgAlterTable *pg_stmt = dynamic_cast<PgAlterTable*>(handle);
   return pg_stmt->Exec();
 }
 
@@ -428,7 +428,7 @@ Status PgGateApiImpl::ExecDropTable(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDropTable*>(handle)->Exec();
+  return dynamic_cast<PgDropTable*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::GetTableDesc(const PgObjectId& table_object_id,
@@ -484,7 +484,7 @@ Status PgGateApiImpl::SetIsSysCatalogVersionChange(PgStatement *handle) {
     case StmtOp::STMT_UPDATE:
     case StmtOp::STMT_DELETE:
     case StmtOp::STMT_INSERT:
-      down_cast<PgDmlWrite *>(handle)->SetIsSystemCatalogChange();
+      dynamic_cast<PgDmlWrite *>(handle)->SetIsSystemCatalogChange();
       return Status::OK();
     default:
       break;
@@ -503,7 +503,7 @@ Status PgGateApiImpl::SetCatalogCacheVersion(PgStatement *handle, uint64_t catal
     case StmtOp::STMT_INSERT:
     case StmtOp::STMT_UPDATE:
     case StmtOp::STMT_DELETE:
-      down_cast<PgDml *>(handle)->SetCatalogCacheVersion(catalog_cache_version);
+      dynamic_cast<PgDml *>(handle)->SetCatalogCacheVersion(catalog_cache_version);
       return Status::OK();
     default:
       break;
@@ -540,7 +540,7 @@ Status PgGateApiImpl::CreateIndexAddColumn(PgStatement *handle, const char *attr
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
 
-  return AddColumn(down_cast<PgCreateIndex*>(handle), attr_name, attr_num, attr_type,
+  return AddColumn(dynamic_cast<PgCreateIndex*>(handle), attr_name, attr_num, attr_type,
       is_hash, is_range, is_desc, is_nulls_first);
 }
 
@@ -549,7 +549,7 @@ Status PgGateApiImpl::ExecCreateIndex(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgCreateIndex*>(handle)->Exec();
+  return dynamic_cast<PgCreateIndex*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::NewDropIndex(const PgObjectId& index_id,
@@ -565,7 +565,7 @@ Status PgGateApiImpl::ExecDropIndex(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDropIndex*>(handle)->Exec();
+  return dynamic_cast<PgDropIndex*>(handle)->Exec();
 }
 
 Result<IndexPermissions> PgGateApiImpl::WaitUntilIndexPermissionsAtLeast(
@@ -636,51 +636,51 @@ Status PgGateApiImpl::DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
 // Binding -----------------------------------------------------------------------------------------
 
 Status PgGateApiImpl::DmlAppendTarget(PgStatement *handle, PgExpr *target) {
-  return down_cast<PgDml*>(handle)->AppendTarget(target);
+  return dynamic_cast<PgDml*>(handle)->AppendTarget(target);
 }
 
 Status PgGateApiImpl::DmlBindColumn(PgStatement *handle, int attr_num, PgExpr *attr_value) {
-  return down_cast<PgDml*>(handle)->BindColumn(attr_num, attr_value);
+  return dynamic_cast<PgDml*>(handle)->BindColumn(attr_num, attr_value);
 }
 
 Status PgGateApiImpl::DmlBindColumnCondEq(PgStatement *handle, int attr_num, PgExpr *attr_value) {
-  return down_cast<PgDmlRead*>(handle)->BindColumnCondEq(attr_num, attr_value);
+  return dynamic_cast<PgDmlRead*>(handle)->BindColumnCondEq(attr_num, attr_value);
 }
 
 Status PgGateApiImpl::DmlBindColumnCondBetween(PgStatement *handle, int attr_num, PgExpr *attr_value,
     PgExpr *attr_value_end) {
-  return down_cast<PgDmlRead*>(handle)->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
+  return dynamic_cast<PgDmlRead*>(handle)->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
 }
 
 Status PgGateApiImpl::DmlBindColumnCondIn(PgStatement *handle, int attr_num, int n_attr_values,
     PgExpr **attr_values) {
-  return down_cast<PgDmlRead*>(handle)->BindColumnCondIn(attr_num, n_attr_values, attr_values);
+  return dynamic_cast<PgDmlRead*>(handle)->BindColumnCondIn(attr_num, n_attr_values, attr_values);
 }
 
 Status PgGateApiImpl::DmlBindRangeConds(PgStatement *handle, PgExpr *range_conds) {
-  return down_cast<PgDmlRead*>(handle)->BindRangeConds(range_conds);
+  return dynamic_cast<PgDmlRead*>(handle)->BindRangeConds(range_conds);
 }
 
 Status PgGateApiImpl::DmlBindWhereConds(PgStatement *handle, PgExpr *where_conds) {
-  return down_cast<PgDmlRead*>(handle)->BindWhereConds(where_conds);
+  return dynamic_cast<PgDmlRead*>(handle)->BindWhereConds(where_conds);
 }
 
 Status PgGateApiImpl::DmlBindTable(PgStatement *handle) {
-  return down_cast<PgDml*>(handle)->BindTable();
+  return dynamic_cast<PgDml*>(handle)->BindTable();
 }
 
 CHECKED_STATUS PgGateApiImpl::DmlAssignColumn(PgStatement *handle, int attr_num, PgExpr *attr_value) {
-  return down_cast<PgDml*>(handle)->AssignColumn(attr_num, attr_value);
+  return dynamic_cast<PgDml*>(handle)->AssignColumn(attr_num, attr_value);
 }
 
 Status PgGateApiImpl::DmlFetch(PgStatement *handle, int32_t natts, uint64_t *values, bool *isnulls,
                            PgSysColumns *syscols, bool *has_data) {
-  return down_cast<PgDml*>(handle)->Fetch(natts, values, isnulls, syscols, has_data);
+  return dynamic_cast<PgDml*>(handle)->Fetch(natts, values, isnulls, syscols, has_data);
 }
 
 Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                     int32_t nattrs, uint64_t *ybctid) {
-  const string id = VERIFY_RESULT(down_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
+  const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
   const YBCPgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
   *ybctid = type_entity->yb_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();
@@ -693,7 +693,7 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
     case StmtOp::STMT_DELETE:
     case StmtOp::STMT_TRUNCATE:
       {
-        auto dml_write = down_cast<PgDmlWrite *>(handle);
+        auto dml_write = dynamic_cast<PgDmlWrite *>(handle);
         RETURN_NOT_OK(dml_write->Exec());
         if (rows_affected_count) {
           *rows_affected_count = dml_write->GetRowsAffectedCount();
@@ -777,7 +777,7 @@ Status PgGateApiImpl::UpdateConstant(PgExpr *expr, const char *value, bool is_nu
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid expression handle for constant");
   }
-  down_cast<PgConstant*>(expr)->UpdateConstant(value, is_null);
+  dynamic_cast<PgConstant*>(expr)->UpdateConstant(value, is_null);
   return Status::OK();
 }
 
@@ -786,7 +786,7 @@ Status PgGateApiImpl::UpdateConstant(PgExpr *expr, const char *value, int64_t by
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid expression handle for constant");
   }
-  down_cast<PgConstant*>(expr)->UpdateConstant(value, bytes, is_null);
+  dynamic_cast<PgConstant*>(expr)->UpdateConstant(value, bytes, is_null);
   return Status::OK();
 }
 
@@ -814,7 +814,7 @@ Status PgGateApiImpl::OperatorAppendArg(PgExpr *op_handle, PgExpr *arg) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid expression handle");
   }
-  down_cast<PgOperator*>(op_handle)->AppendArg(arg);
+  dynamic_cast<PgOperator*>(op_handle)->AppendArg(arg);
   return Status::OK();
 }
 
@@ -852,7 +852,7 @@ Status PgGateApiImpl::SetForwardScan(PgStatement *handle, bool is_forward_scan) 
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  down_cast<PgDmlRead*>(handle)->SetForwardScan(is_forward_scan);
+  dynamic_cast<PgDmlRead*>(handle)->SetForwardScan(is_forward_scan);
   return Status::OK();
 }
 
@@ -861,7 +861,7 @@ Status PgGateApiImpl::ExecSelect(PgStatement *handle, const PgExecParameters *ex
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDmlRead*>(handle)->Exec(exec_params);
+  return dynamic_cast<PgDmlRead*>(handle)->Exec(exec_params);
 }
 
 // Insert ------------------------------------------------------------------------------------------
@@ -881,7 +881,7 @@ Status PgGateApiImpl::ExecInsert(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgInsert*>(handle)->Exec();
+  return dynamic_cast<PgInsert*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
@@ -889,7 +889,7 @@ Status PgGateApiImpl::InsertStmtSetUpsertMode(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  down_cast<PgInsert*>(handle)->SetUpsertMode();
+  dynamic_cast<PgInsert*>(handle)->SetUpsertMode();
 
   return Status::OK();
 }
@@ -899,7 +899,7 @@ Status PgGateApiImpl::InsertStmtSetWriteTime(PgStatement *handle, const uint64_t
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  RETURN_NOT_OK(down_cast<PgInsert*>(handle)->SetWriteTime(write_time));
+  RETURN_NOT_OK(dynamic_cast<PgInsert*>(handle)->SetWriteTime(write_time));
   return Status::OK();
 }
 
@@ -920,7 +920,7 @@ Status PgGateApiImpl::ExecUpdate(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgUpdate*>(handle)->Exec();
+  return dynamic_cast<PgUpdate*>(handle)->Exec();
 }
 
 // Delete ------------------------------------------------------------------------------------------
@@ -940,7 +940,7 @@ Status PgGateApiImpl::ExecDelete(PgStatement *handle) {
     // Invalid handle.
     return STATUS(InvalidArgument, "Invalid statement handle");
   }
-  return down_cast<PgDelete*>(handle)->Exec();
+  return dynamic_cast<PgDelete*>(handle)->Exec();
 }
 
 Status PgGateApiImpl::BeginTransaction() {

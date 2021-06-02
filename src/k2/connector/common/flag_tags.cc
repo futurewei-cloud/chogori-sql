@@ -54,11 +54,11 @@ class FlagTagRegistry {
  public:
   FlagTagRegistry() {};
 
-  void Tag(const string& name, const string& tag) {
+  void Tag(const std::string& name, const std::string& tag) {
     tag_map_.insert(TagMap::value_type(name, tag));
   }
 
-  void GetTags(const string& name, unordered_set<string>* tags) {
+  void GetTags(const std::string& name, std::unordered_set<string>* tags) {
     tags->clear();
     pair<TagMap::const_iterator, TagMap::const_iterator> range =
       tag_map_.equal_range(name);
@@ -73,7 +73,7 @@ class FlagTagRegistry {
   FlagTagRegistry(const FlagTagRegistry&) = delete;
   void operator=(const FlagTagRegistry&) = delete;
 
-  typedef multimap<string, string> TagMap;
+  typedef std::multimap<string, string> TagMap;
   TagMap tag_map_;
 };
 
@@ -90,8 +90,8 @@ FlagTagger::~FlagTagger() {
 
 using flag_tags_internal::FlagTagRegistry;
 
-void GetFlagTags(const string& flag_name,
-                 unordered_set<string>* tags) {
+void GetFlagTags(const std::string& flag_name,
+                 std::unordered_set<string>* tags) {
   flag_tags_internal::flag_tag_registry.GetTags(flag_name, tags);
 }
 

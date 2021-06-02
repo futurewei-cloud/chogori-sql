@@ -27,10 +27,12 @@
 
 #include "common/concurrent/thread_annotations.h"
 
+#include "common/format.h"
 #include "common/concurrent/locks.h"
 #include "common/concurrent/priority_queue.h"
 #include "common/scope_exit.h"
 #include "common/concurrent/thread.h"
+#include "common/type/strongly_typed_bool.h"
 
 using namespace std::placeholders;
 

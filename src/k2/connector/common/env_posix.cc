@@ -209,7 +209,7 @@ class ScopedFdCloser {
 
 #define STATUS_IO_ERROR(context, err_number) IOError(context, err_number, __FILE__, __LINE__)
 
-static Status DoSync(int fd, const string& filename) {
+static Status DoSync(int fd, const std::string& filename) {
   ThreadRestrictions::AssertIOAllowed();
   if (FLAGS_never_fsync) return Status::OK();
   if (FLAGS_writable_file_use_fsync) {
@@ -224,7 +224,7 @@ static Status DoSync(int fd, const string& filename) {
   return Status::OK();
 }
 
-static Status DoOpen(const string& filename, Env::CreateMode mode, int* fd, int extra_flags = 0) {
+static Status DoOpen(const std::string& filename, Env::CreateMode mode, int* fd, int extra_flags = 0) {
   ThreadRestrictions::AssertIOAllowed();
   int flags = O_RDWR;
   switch (mode) {
@@ -280,12 +280,12 @@ class PosixWritableFile : public WritableFile {
   }
 
   Status Append(const Slice& data) override {
-    vector<Slice> data_vector;
+    std::vector<Slice> data_vector;
     data_vector.push_back(data);
     return AppendVector(data_vector);
   }
 
-  Status AppendVector(const vector<Slice>& data_vector) override {
+  Status AppendVector(const std::vector<Slice>& data_vector) override {
     ThreadRestrictions::AssertIOAllowed();
     static const size_t kIovMaxElements = IOV_MAX;
 
@@ -385,7 +385,7 @@ class PosixWritableFile : public WritableFile {
     return filesize_;
   }
 
-  const string& filename() const override { return filename_; }
+  const std::string& filename() const override { return filename_; }
 
  protected:
     const std::string filename_;
@@ -397,7 +397,7 @@ class PosixWritableFile : public WritableFile {
 
  private:
 
-  Status DoWritev(const vector<Slice>& data_vector,
+  Status DoWritev(const std::vector<Slice>& data_vector,
                   size_t offset, size_t n) {
     ThreadRestrictions::AssertIOAllowed();
 #if defined(__linux__)
@@ -506,7 +506,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
     return Status::OK();
   }
 
-  Status AppendVector(const vector<Slice> &data_vector) override {
+  Status AppendVector(const std::vector<Slice> &data_vector) override {
     ThreadRestrictions::AssertIOAllowed();
     for (auto const &slice : data_vector) {
       RETURN_NOT_OK(Append(slice));
@@ -676,7 +676,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
   }
 
   size_t next_write_offset_;
-  vector<std::shared_ptr<uint8_t>> block_ptr_vec_;
+  std::vector<std::shared_ptr<uint8_t>> block_ptr_vec_;
   size_t last_block_used_bytes_;
   size_t last_block_idx_;
   int block_size_;
@@ -688,7 +688,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
 class PosixRWFile final : public RWFile {
 // is not employed.
  public:
-  PosixRWFile(string fname, int fd, bool sync_on_close)
+  PosixRWFile(std::string fname, int fd, bool sync_on_close)
       : filename_(std::move(fname)),
         fd_(fd),
         sync_on_close_(sync_on_close),
@@ -716,7 +716,7 @@ class PosixRWFile final : public RWFile {
       DCHECK_LE(this_result.size(), rem);
       if (this_result.size() == 0) {
         // EOF
-        return STATUS_FORMAT(IOError, "EOF trying to read $0 bytes at offset $1", length, offset);
+        return STATUS_FORMAT(IOError, "EOF trying to read {} bytes at offset {}", length, offset);
       }
       dst += this_result.size();
       rem -= this_result.size();
@@ -831,7 +831,7 @@ class PosixRWFile final : public RWFile {
     return Status::OK();
   }
 
-  const string& filename() const override {
+  const std::string& filename() const override {
     return filename_;
   }
 
@@ -926,13 +926,13 @@ class PosixEnv : public Env {
     return file_factory_->NewTempWritableFile(opts, name_template, created_filename, result);
   }
 
-  virtual Status NewRWFile(const string& fname,
+  virtual Status NewRWFile(const std::string& fname,
                            std::unique_ptr<RWFile>* result) override {
     return file_factory_->NewRWFile(fname, result);
   }
 
   virtual Status NewRWFile(const RWFileOptions& opts,
-                           const string& fname,
+                           const std::string& fname,
                            std::unique_ptr<RWFile>* result) override {
     return file_factory_->NewRWFile(opts, fname, result);
   }
@@ -1014,7 +1014,7 @@ class PosixEnv : public Env {
   }
 
   Status DeleteRecursively(const std::string &name) override {
-    WalkCallback cb([this](FileType type, const string& dirname, const string& basename) {
+    WalkCallback cb([this](FileType type, const std::string& dirname, const std::string& basename) {
       return DeleteRecursivelyCb(type, dirname, basename);
     });
     return Walk(name, POST_ORDER, std::move(cb));
@@ -1041,7 +1041,7 @@ class PosixEnv : public Env {
         });
   }
 
-  Result<uint64_t> GetBlockSize(const string& fname) override {
+  Result<uint64_t> GetBlockSize(const std::string& fname) override {
     return GetFileStat(
         fname, "PosixEnv::GetBlockSize", [](const struct stat& sbuf) { return sbuf.st_blksize; });
   }
@@ -1070,7 +1070,7 @@ class PosixEnv : public Env {
     ThreadRestrictions::AssertIOAllowed();
     Status result;
     if (rename(src.c_str(), target.c_str()) != 0) {
-      result = STATUS_IO_ERROR(Format("Rename $0 => $1", src, target), errno);
+      result = STATUS_IO_ERROR(fmt::format("Rename {} => {}", src, target), errno);
     }
     return result;
   }
@@ -1112,7 +1112,7 @@ class PosixEnv : public Env {
   }
 
   Status GetTestDirectory(std::string* result) override {
-    string dir;
+    std::string dir;
     const char* env = getenv("TEST_TMPDIR");
     if (env && env[0] != '\0') {
       dir = env;
@@ -1166,7 +1166,7 @@ class PosixEnv : public Env {
     std::this_thread::sleep_for(std::chrono::microseconds(micros));
   }
 
-  Status GetExecutablePath(string* path) override {
+  Status GetExecutablePath(std::string* path) override {
     uint32_t size = 64;
     uint32_t len = 0;
     while (true) {
@@ -1197,7 +1197,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status IsDirectory(const string& path, bool* is_dir) override {
+  Status IsDirectory(const std::string& path, bool* is_dir) override {
     ThreadRestrictions::AssertIOAllowed();
     Status s;
     struct stat sbuf;
@@ -1242,7 +1242,7 @@ class PosixEnv : public Env {
     FTS	*fts;
   };
 
-  Status Walk(const string& root, DirectoryOrder order, const WalkCallback& cb) override {
+  Status Walk(const std::string& root, DirectoryOrder order, const WalkCallback& cb) override {
     ThreadRestrictions::AssertIOAllowed();
     // Some sanity checks
     CHECK_NE(root, "/");
@@ -1309,7 +1309,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status Canonicalize(const string& path, string* result) override {
+  Status Canonicalize(const std::string& path, std::string* result) override {
     ThreadRestrictions::AssertIOAllowed();
     char *r = realpath(path.c_str(), nullptr);
     if (!r) {
@@ -1351,38 +1351,38 @@ class PosixEnv : public Env {
     auto ret = statvfs(path.c_str(), &stat);
     if (ret != 0) {
       if (errno == EACCES) {
-        return STATUS_SUBSTITUTE(NotAuthorized,
-            "Caller doesn't have the required permission on a component of the path $0",
+        return STATUS_FORMAT(NotAuthorized,
+            "Caller doesn't have the required permission on a component of the path {}",
             path);
       } else if (errno == EIO) {
-        return STATUS_SUBSTITUTE(IOError,
-            "I/O error occurred while reading from '$0' filesystem",
+        return STATUS_FORMAT(IOError,
+            "I/O error occurred while reading from '{}' filesystem",
             path);
       } else if (errno == ELOOP) {
-        return STATUS_SUBSTITUTE(InternalError,
-            "Too many symbolic links while translating '$0' path",
+        return STATUS_FORMAT(InternalError,
+            "Too many symbolic links while translating '{}' path",
             path);
       } else if (errno == ENAMETOOLONG) {
-        return STATUS_SUBSTITUTE(NotSupported,
-            "Path '$0' is too long",
+        return STATUS_FORMAT(NotSupported,
+            "Path '{}' is too long",
             path);
       } else if (errno == ENOENT) {
-        return STATUS_SUBSTITUTE(NotFound,
-            "File specified by path '$0' doesn't exist",
+        return STATUS_FORMAT(NotFound,
+            "File specified by path '{}' doesn't exist",
             path);
       } else if (errno == ENOMEM) {
         return STATUS(InternalError, "Insufficient memory");
       } else if (errno == ENOSYS) {
-        return STATUS_SUBSTITUTE(NotSupported,
-            "Filesystem for path '$0' doesn't support statvfs",
+        return STATUS_FORMAT(NotSupported,
+            "Filesystem for path '{}' doesn't support statvfs",
             path);
       } else if (errno == ENOTDIR) {
-        return STATUS_SUBSTITUTE(InvalidArgument,
-            "A component of the path '$0' is not a directory",
+        return STATUS_FORMAT(InvalidArgument,
+            "A component of the path '{}' is not a directory",
             path);
       } else {
-        return STATUS_SUBSTITUTE(InternalError,
-            "Failed to read information about filesystem for path '%s': errno=$0: $1",
+        return STATUS_FORMAT(InternalError,
+            "Failed to read information about filesystem for path '{}': errno={}: {}",
             path,
             errno,
             ErrnoToString(errno));
@@ -1406,11 +1406,11 @@ class PosixEnv : public Env {
   }
 
  private:
-  Status DeleteRecursivelyCb(FileType type, const string& dirname, const string& basename) {
+  Status DeleteRecursivelyCb(FileType type, const std::string& dirname, const std::string& basename) {
     fs::path root_path = dirname;
     fs::path base_path = basename;
     fs::path joined_path = root_path / base_path;
-    string full_path = joined_path.string();
+    std::string full_path = joined_path.string();
     Status s;
     switch (type) {
       case FILE_TYPE:
@@ -1496,18 +1496,18 @@ class PosixFileFactory : public FileFactory {
       fd = ::mkstemp(fname.get());
     }
     if (fd < 0) {
-      return STATUS_IO_ERROR(Format("Call to mkstemp() failed on name template $0", name_template),
+      return STATUS_IO_ERROR(fmt::format("Call to mkstemp() failed on name template {}", name_template),
                              errno);
     }
     *created_filename = fname.get();
     return InstantiateNewWritableFile(*created_filename, fd, opts, result);
   }
 
-  Status NewRWFile(const string& fname, std::unique_ptr<RWFile>* result) override {
+  Status NewRWFile(const std::string& fname, std::unique_ptr<RWFile>* result) override {
     return NewRWFile(RWFileOptions(), fname, result);
   }
 
-  Status NewRWFile(const RWFileOptions& opts, const string& fname,
+  Status NewRWFile(const RWFileOptions& opts, const std::string& fname,
                    std::unique_ptr<RWFile>* result) override {
     int fd = -1;
     RETURN_NOT_OK(DoOpen(fname, opts.mode, &fd));
@@ -1565,7 +1565,7 @@ Env* Env::Default() {
 }
 
 FileFactory* Env::DefaultFileFactory() {
-  return down_cast<PosixEnv*>(Env::Default())->GetFileFactory();
+  return static_cast<PosixEnv*>(Env::Default())->GetFileFactory();
 }
 
 std::unique_ptr<Env> Env::NewDefaultEnv(std::unique_ptr<FileFactory> file_factory) {

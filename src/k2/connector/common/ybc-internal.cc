@@ -50,14 +50,14 @@ YBCStatus ToYBCStatus(Status&& status) {
 void FreeYBCStatus(YBCStatus status) {
   // Create Status object that receives control over provided status, so it will be destoyed with
   // yb_status.
-  Status yb_status(status, AddRef::kFalse);
+  Status yb_status(status, false);
 }
 
-YBCStatus YBCStatusNotSupport(const string& feature_name) {
+YBCStatus YBCStatusNotSupport(const std::string& feature_name) {
   if (feature_name.empty()) {
     return ToYBCStatus(STATUS(NotSupported, "Feature is not supported"));
   } else {
-    return ToYBCStatus(STATUS_FORMAT(NotSupported, "Feature '$0' not supported", feature_name));
+    return ToYBCStatus(STATUS_FORMAT(NotSupported, "Feature '{}' not supported", feature_name));
   }
 }
 

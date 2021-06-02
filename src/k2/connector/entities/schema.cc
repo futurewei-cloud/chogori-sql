@@ -120,8 +120,8 @@ namespace sql {
         std::swap(has_nullables_, other.has_nullables_);
     }
 
-    Status Schema::Reset(const vector<ColumnSchema>& cols,
-                         const vector<ColumnId>& ids,
+    Status Schema::Reset(const std::vector<ColumnSchema>& cols,
+                         const std::vector<ColumnId>& ids,
                          int key_columns) {
         cols_ = cols;
         num_key_columns_ = key_columns;
@@ -203,7 +203,7 @@ namespace sql {
     }
 
     string Schema::ToString() const {
-        vector<std::string> col_strs;
+        std::vector<std::string> col_strs;
         if (has_column_ids()) {
             for (int i = 0; i < cols_.size(); ++i) {
                 col_strs.push_back(fmt::format("{}:{}", col_ids_[i], cols_[i].ToString()));
@@ -215,7 +215,7 @@ namespace sql {
         }
 
         std::string s = "Schema [\n\t";
-        for (vector<std::string>::const_iterator p = col_strs.begin(); p != col_strs.end(); ++p) {
+        for (std::vector<std::string>::const_iterator p = col_strs.begin(); p != col_strs.end(); ++p) {
             s += *p;
             if (p != col_strs.end() - 1)
                 s += ",\n\t";
@@ -226,7 +226,7 @@ namespace sql {
     Result<ColumnId> Schema::ColumnIdByName(const std::string& column_name) const {
         size_t column_index = find_column(column_name);
         if (column_index == Schema::kColumnNotFound) {
-            return STATUS_FORMAT(NotFound, "Couldn't find column $0 in the schema", column_name);
+            return STATUS_FORMAT(NotFound, "Couldn't find column {} in the schema", column_name);
         }
         return ColumnId(column_id(column_index));
     }

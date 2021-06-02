@@ -38,12 +38,12 @@
 #include <boost/preprocessor/seq/for_each.hpp>
 #include <boost/preprocessor/tuple/elem.hpp>
 
-#include "common/type/strongly_typed_bool.h"
+#include <fmt/format.h>
+
+#include "common/common_defs.h"
+
 #include "endian.h"
 #include "common/type/slice.h"
-#include "format.h"
-
-#include "common/strings/substitute.h"
 
 // TODO: make Status K2Log compatible and indeed extended PGErrorCode at the same time
 
@@ -187,9 +187,6 @@ namespace yb {
     /**/
 
 #define YB_STATUS_FORWARD_MACRO(r, data, tuple) data tuple
-
-YB_STRONGLY_TYPED_BOOL(DupFileName);
-YB_STRONGLY_TYPED_BOOL(AddRef);
 
 // Extra error code assigned to status.
 class StatusErrorCode {
@@ -452,7 +449,7 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2 = Slice(),
          const StatusErrorCode* error = nullptr,
-         DupFileName dup_file_name = DupFileName::kFalse);
+         bool dup_file_name = false);
 
   Status(Code code,
          const char* file_name,
@@ -461,7 +458,7 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2,
          const StatusErrorCode& error,
-         DupFileName dup_file_name = DupFileName::kFalse)
+         bool dup_file_name = false)
       : Status(code, file_name, line_number, msg, msg2, &error, dup_file_name) {
   }
 
@@ -469,7 +466,7 @@ class STATUS_NODISCARD_CLASS Status {
          const char* file_name,
          int line_number,
          const StatusErrorCode& error,
-         DupFileName dup_file_name = DupFileName::kFalse)
+         bool dup_file_name = false)
       : Status(code, file_name, line_number, error.Message(), Slice(), error, dup_file_name) {
   }
 
@@ -478,7 +475,7 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const StatusErrorCode& error,
-         DupFileName dup_file_name = DupFileName::kFalse)
+         bool dup_file_name = false)
       : Status(code, file_name, line_number, msg, error.Message(), error, dup_file_name) {
   }
 
@@ -488,7 +485,7 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const Slice& errors,
-         DupFileName dup_file_name);
+         bool dup_file_name);
 
   Code code() const;
 
@@ -497,7 +494,7 @@ class STATUS_NODISCARD_CLASS Status {
   static const std::string& CategoryName(uint8_t category);
 
   // Adopt status that was previously exported to C interface.
-  explicit Status(YBCStatusStruct* state, AddRef add_ref);
+  explicit Status(YBCStatusStruct* state, bool add_ref);
 
   // Increments state ref count and returns pointer that could be used in C interface.
   YBCStatusStruct* RetainStruct() const;
@@ -561,23 +558,18 @@ inline std::ostream& operator<<(std::ostream& out, const Status& status) {
 
 #define STATUS(status_type, ...) \
     (Status(Status::BOOST_PP_CAT(k, status_type), __FILE__, __LINE__, __VA_ARGS__))
-#define STATUS_SUBSTITUTE(status_type, ...) \
-    (Status(Status::BOOST_PP_CAT(k, status_type), \
-            __FILE__, \
-            __LINE__, \
-            strings::Substitute(__VA_ARGS__)))
 
 #define STATUS_FORMAT(status_type, ...) \
     (::yb::Status(::yb::Status::BOOST_PP_CAT(k, status_type), \
             __FILE__, \
             __LINE__, \
-            ::yb::Format(__VA_ARGS__)))
+            fmt::format(__VA_ARGS__)))
 
 #define STATUS_EC_FORMAT(status_type, error_code, ...) \
     (::yb::Status(::yb::Status::BOOST_PP_CAT(k, status_type), \
             __FILE__, \
             __LINE__, \
-            ::yb::Format(__VA_ARGS__), error_code))
+            fmt::format(__VA_ARGS__), error_code))
 
 // Utility macros to perform the appropriate check. If the check fails,
 // returns the specified (error) Status, with the given message.
@@ -586,7 +578,7 @@ inline std::ostream& operator<<(std::ostream& out, const Status& status) {
     auto v1_tmp = (var1); \
     auto v2_tmp = (var2); \
     if (PREDICT_FALSE(!((v1_tmp)op(v2_tmp)))) return STATUS(type, \
-      yb::Format("$0: $1 vs. $2", (msg), v1_tmp, v2_tmp)); \
+      fmt::format("$0: $1 vs. $2", (msg), v1_tmp, v2_tmp)); \
   } while (0)
 #define SCHECK(expr, type, msg) SCHECK_OP(expr, ==, true, type, msg)
 #define SCHECK_EQ(var1, var2, type, msg) SCHECK_OP(var1, ==, var2, type, msg)
@@ -623,11 +615,6 @@ inline std::ostream& operator<<(std::ostream& out, const Status& status) {
 
 #endif
 
-#ifdef YB_HEADERS_NO_STUBS
-#define CHECKED_STATUS MUST_USE_RESULT ::yb::Status
-#else
-// Only for the build using client headers. MUST_USE_RESULT is undefined in that case.
 #define CHECKED_STATUS ::yb::Status
-#endif
 
 #endif  // YB_UTIL_STATUS_H_

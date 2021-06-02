@@ -253,7 +253,7 @@ namespace sql {
         // empty schema and then use Reset(...)  so that errors can be
         // caught. If an invalid schema is passed to this constructor, an
         // assertion will be fired!
-        Schema(const vector<ColumnSchema>& cols,
+        Schema(const std::vector<ColumnSchema>& cols,
                 int key_columns) {
                 CHECK_OK(Reset(cols, key_columns));
         }
@@ -264,8 +264,8 @@ namespace sql {
         // empty schema and then use Reset(...)  so that errors can be
         // caught. If an invalid schema is passed to this constructor, an
         // assertion will be fired!
-        Schema(const vector<ColumnSchema>& cols,
-                const vector<ColumnId>& ids,
+        Schema(const std::vector<ColumnSchema>& cols,
+                const std::vector<ColumnId>& ids,
                 int key_columns) {
                 CHECK_OK(Reset(cols, ids, key_columns));
         }
@@ -273,7 +273,7 @@ namespace sql {
         // Reset this Schema object to the given schema.
         // If this fails, the Schema object is left in an inconsistent
         // state and may not be used.
-        CHECKED_STATUS Reset(const vector<ColumnSchema>& cols, int key_columns) {
+        CHECKED_STATUS Reset(const std::vector<ColumnSchema>& cols, int key_columns) {
             std::vector <ColumnId> ids;
             return Reset(cols, ids, key_columns);
         }
@@ -281,8 +281,8 @@ namespace sql {
         // Reset this Schema object to the given schema.
         // If this fails, the Schema object is left in an inconsistent
         // state and may not be used.
-        CHECKED_STATUS Reset(const vector<ColumnSchema>& cols,
-            const vector<ColumnId>& ids,
+        CHECKED_STATUS Reset(const std::vector<ColumnSchema>& cols,
+            const std::vector<ColumnId>& ids,
             int key_columns);
 
         // Return the number of columns in this schema
@@ -315,7 +315,7 @@ namespace sql {
         inline Result<const ColumnSchema&> column_by_id(ColumnId id) const {
             int idx = find_column_by_id(id);
             if (idx < 0) {
-                return STATUS_FORMAT(InvalidArgument, "Column id $0 not found", id);
+                return STATUS_FORMAT(InvalidArgument, "Column id {} not found", id);
             }
             return cols_[idx];
         }
@@ -341,8 +341,8 @@ namespace sql {
             return col_ids_;
         }
 
-        const std::vector<string> column_names() const {
-            vector<string> column_names;
+        const std::vector<std::string> column_names() const {
+            std::vector<string> column_names;
             for (const auto& col : cols_) {
                 column_names.push_back(col.name());
             }
@@ -466,12 +466,12 @@ namespace sql {
         private:
         friend class SchemaBuilder;
 
-        vector<ColumnSchema> cols_;
+        std::vector<ColumnSchema> cols_;
         size_t num_key_columns_;
         size_t num_hash_key_columns_;
         ColumnId max_col_id_;
-        vector<ColumnId> col_ids_;
-        vector<size_t> col_offsets_;
+        std::vector<ColumnId> col_ids_;
+        std::vector<size_t> col_offsets_;
 
         std::unordered_map<std::string, size_t> name_to_index_;
         std::unordered_map<int, int> id_to_index_;
@@ -571,8 +571,8 @@ namespace sql {
         private:
 
         ColumnId next_id_;
-        vector<ColumnId> col_ids_;
-        vector<ColumnSchema> cols_;
+        std::vector<ColumnId> col_ids_;
+        std::vector<ColumnSchema> cols_;
         std::unordered_set<string> col_names_;
         size_t num_key_columns_;
     };

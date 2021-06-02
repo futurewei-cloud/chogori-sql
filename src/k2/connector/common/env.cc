@@ -39,7 +39,7 @@ CHECKED_STATUS Env::CreateDirs(const std::string& dirname) {
     }
   }
   return VERIFY_RESULT(IsDirectory(dirname)) ?
-      Status::OK() : STATUS_FORMAT(IOError, "Not a directory: $0", dirname);
+      Status::OK() : STATUS_FORMAT(IOError, "Not a directory: {}", dirname);
 }
 
 RandomAccessFile::~RandomAccessFile() {

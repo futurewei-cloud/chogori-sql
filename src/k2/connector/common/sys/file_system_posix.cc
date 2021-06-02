@@ -31,7 +31,7 @@
 #include <gflags/gflags.h>
 
 #include "common/errno.h"
-#include "common/coding/coding.h"
+#include "common/common-utils.h"
 #include "common/concurrent/thread_restrictions.h"
 #include "common/sys/malloc.h"
 
@@ -223,7 +223,7 @@ size_t PosixRandomAccessFile::memory_footprint() const {
 
 #ifdef __linux__
 size_t PosixRandomAccessFile::GetUniqueId(char* id) const {
-  return GetUniqueIdFromFile(fd_, pointer_cast<uint8_t*>(id));
+  return GetUniqueIdFromFile(fd_, reinterpret_cast<uint8_t*>(id));
 }
 #endif
 

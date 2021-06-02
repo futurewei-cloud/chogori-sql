@@ -284,7 +284,7 @@ class PgOperator : public PgExpr {
   }
 
   private:
-  const string opname_;
+  const std::string opname_;
   std::vector<PgExpr*> args_;
 };
 

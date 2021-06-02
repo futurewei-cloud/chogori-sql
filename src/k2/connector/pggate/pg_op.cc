@@ -366,11 +366,11 @@ void PgOp::ExecuteInit(const PgExecParameters *exec_params) {
     }
 }
 
-Result<RequestSent> PgOp::Execute() {
+Result<bool> PgOp::Execute() {
     // SKV is stateless and we have to call query execution every time, i.e., Exec & Fetch, Exec & Fetch
     exec_status_ = SendRequest();
     RETURN_NOT_OK(exec_status_);
-    return RequestSent(requestAsyncRunResult_.valid());
+    return requestAsyncRunResult_.valid();
 }
 
 Status PgOp::GetResult(std::list<PgOpResult> *rowsets) {
@@ -593,7 +593,7 @@ Status PgReadOp::InitializeRowIdOperators() {
     return Status::OK();
 }
 
-Status PgReadOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
+Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) {
     // This function is called only when ybctids were returned from INDEX, for example,
     //    SELECT xxx FROM <table> WHERE ybctid IN (SELECT ybctid FROM INDEX);
 
@@ -750,7 +750,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
     return result;
 }
 
-Status PgWriteOp::PopulateDmlByRowIdOps(const vector<std::string>& ybctids) {
+Status PgWriteOp::PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) {
     return STATUS(NotSupported, "PopulateDmlByRowIdOps() is not supported for PgWriteOp");
 }
 

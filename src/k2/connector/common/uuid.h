@@ -112,8 +112,8 @@ class Uuid {
     if (boost_uuid_.version() == boost::uuids::uuid::version_time_based) {
       return Status::OK();
     }
-    return STATUS_SUBSTITUTE(InvalidArgument,
-                             "Not a type 1 UUID. Current type: $0", boost_uuid_.version());
+    return STATUS_FORMAT(InvalidArgument,
+                             "Not a type 1 UUID. Current type: {}", boost_uuid_.version());
   }
 
   bool IsNil() const {

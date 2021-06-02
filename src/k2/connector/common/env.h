@@ -648,7 +648,8 @@ class RWFile {
   virtual const std::string& filename() const = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(RWFile);
+  RWFile(const RWFile&) = delete;
+  RWFile& operator=(const RWFile&) = delete;
 };
 
 // Identifies a locked file.

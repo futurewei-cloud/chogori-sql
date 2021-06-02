@@ -57,11 +57,11 @@ namespace k2pg {
 namespace sql {
 
     vector<ColumnId> IndexInfo::index_key_column_ids() const {
-        unordered_map<ColumnId, ColumnId> map;
+        std::unordered_map<ColumnId, ColumnId> map;
         for (const auto column : columns_) {
             map[column.base_column_id] = column.column_id;
         }
-        vector<ColumnId> ids;
+        std::vector<ColumnId> ids;
         ids.reserve(indexed_hash_column_ids_.size() + indexed_range_column_ids_.size());
         for (const auto id : indexed_hash_column_ids_) {
             ids.push_back(map[id]);

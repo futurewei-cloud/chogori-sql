@@ -13,7 +13,10 @@
 
 #include "common/type/varint.h"
 
+#include <string>
+
 #include <openssl/bn.h>
+#include "common/casts.h"
 
 namespace yb {
 namespace util {
@@ -55,8 +58,7 @@ Result<int64_t> VarInt::ToInt64() const {
                            : std::numeric_limits<int64_t>::max();
 
   if (value > bound) {
-    return STATUS_FORMAT(
-        InvalidArgument, "VarInt $0 cannot be converted to int64 due to overflow", *this);
+    return STATUS(InvalidArgument, "VarInt cannot be converted to int64 due to overflow");
   }
   return negative ? -value : value;
 }
@@ -69,7 +71,7 @@ Status VarInt::FromString(const char* cstr) {
   int parsed = BN_dec2bn(&temp, cstr);
   impl_.reset(temp);
   if (parsed == 0 || parsed != strlen(cstr)) {
-    return STATUS_FORMAT(InvalidArgument, "Cannot parse varint: $0", cstr);
+    return STATUS_FORMAT(InvalidArgument, "Cannot parse varint: {}", cstr);
   }
   return Status::OK();
 }
@@ -167,7 +169,7 @@ Status VarInt::DecodeFromComparable(const Slice &slice, size_t *num_decoded_byte
     ++idx;
     if (idx >= len) {
       return STATUS_FORMAT(
-          Corruption, "Encoded varint failure, no prefix termination: $0",
+          Corruption, "Encoded varint failure, no prefix termination: {}",
           slice.ToDebugHexString());
     }
     num_ones += 8;
@@ -181,7 +183,7 @@ Status VarInt::DecodeFromComparable(const Slice &slice, size_t *num_decoded_byte
   num_ones -= num_reserved_bits;
   if (num_ones > len) {
     return STATUS_FORMAT(
-        Corruption, "Not enough data in encoded varint: $0, $1",
+        Corruption, "Not enough data in encoded varint: {}, {}",
         slice.ToDebugHexString(), num_ones);
   }
   *num_decoded_bytes = num_ones;
@@ -198,7 +200,7 @@ Status VarInt::DecodeFromComparable(const Slice& slice) {
   return DecodeFromComparable(slice, &num_decoded_bytes);
 }
 
-Status VarInt::DecodeFromComparable(const string& str) {
+Status VarInt::DecodeFromComparable(const std::string& str) {
   return DecodeFromComparable(Slice(str));
 }
 

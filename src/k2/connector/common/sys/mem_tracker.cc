@@ -59,6 +59,7 @@
 #include "common/util/random_util.h"
 #include "common/status.h"
 #include "common/log/logging.h"
+#include "common/format.h"
 
 using namespace std::literals;
 

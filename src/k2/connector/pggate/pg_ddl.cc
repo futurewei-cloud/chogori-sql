@@ -202,7 +202,7 @@ Status PgCreateTable::Exec() {
       return STATUS(InvalidArgument, "Database not found", database_name_);
     }
     return STATUS_FORMAT(
-        InvalidArgument, "Invalid table definition: $0",
+        InvalidArgument, "Invalid table definition: {}",
         s.ToString(false /* include_file_and_line */, false /* include_code */));
   }
 
@@ -366,7 +366,7 @@ Status PgCreateIndex::Exec() {
       return STATUS(InvalidArgument, "Database not found", database_name_);
     }
     return STATUS_FORMAT(
-        InvalidArgument, "Invalid index table definition: $0",
+        InvalidArgument, "Invalid index table definition: {}",
         s.ToString(false /* include_file_and_line */, false /* include_code */));
   }
 

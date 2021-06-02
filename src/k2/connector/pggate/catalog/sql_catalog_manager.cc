@@ -92,7 +92,7 @@ namespace catalog {
             }
         } else {
             K2LOG_E(log::catalog, "Failed to load databases due to {}", nsresp.status);
-            return STATUS_FORMAT(IOError, "Failed to load databases due to error code $0",
+            return STATUS_FORMAT(IOError, "Failed to load databases due to error code {}",
                 nsresp.status.code());
         }
 
@@ -313,7 +313,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info != nullptr) {
             K2LOG_E(log::catalog, "Database {} has already existed", request.databaseName);
-            response.status = STATUS_FORMAT(AlreadyPresent, "Database $0 has already existed", request.databaseName);
+            response.status = STATUS_FORMAT(AlreadyPresent, "Database {} has already existed", request.databaseName);
             return response;
         }
 
@@ -325,7 +325,7 @@ namespace catalog {
             source_database_info = CheckAndLoadDatabaseById(request.sourceDatabaseId);
             if (source_database_info == nullptr) {
                 K2LOG_E(log::catalog, "Failed to find source databases {}", request.sourceDatabaseId);
-                response.status = STATUS_FORMAT(NotFound, "Sounrcedatabase $0 not found", request.sourceDatabaseId);
+                response.status = STATUS_FORMAT(NotFound, "Source database {} not found", request.sourceDatabaseId);
                 return response;
             }
             t_nextPgOid = source_database_info->GetNextPgOid();
@@ -531,7 +531,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", request.databaseName);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", request.databaseName);
             return response;
         }
 
@@ -556,7 +556,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find databaseName {}", request.databaseName);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", request.databaseName);
             return response;
         }
 
@@ -573,7 +573,7 @@ namespace catalog {
 
             // return table already present error if table already exists
            response.status = STATUS_FORMAT(AlreadyPresent,
-                "Table $0 has already existed in $1", request.tableName, request.databaseName);
+                "Table {} has already existed in {}", request.tableName, request.databaseName);
             K2LOG_E(log::catalog, "Table {} has already existed in {}", request.tableName, request.databaseName);
             return response;
         }
@@ -618,7 +618,7 @@ namespace catalog {
             response.tableInfo = new_table_info;
         }  catch (const std::exception& e) {
             txnHandler->AbortTransaction();
-            response.status = STATUS_FORMAT(RuntimeError, "Failed to create table $0  in $1 due to $2",
+            response.status = STATUS_FORMAT(RuntimeError, "Failed to create table {} in {} due to {}",
                 request.tableName, database_info->GetDatabaseId(), e.what());
             K2LOG_E(log::catalog, "Failed to create table {} in {}", request.tableName, database_info->GetDatabaseId());
         }
@@ -633,7 +633,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(request.databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find databaseName {}", request.databaseName);
-		    response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", request.databaseName);
+		    response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", request.databaseName);
             return response;
         }
         // generate table uuid from database oid and table oid
@@ -658,10 +658,10 @@ namespace catalog {
             txnHandler->AbortTransaction();
             // cannot find the base table
             K2LOG_E(log::catalog, "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, database_info->GetDatabaseId());
-  		        response.status = STATUS_FORMAT(NotFound,  "Cannot find base table $0 for index $1 in $2 ", base_table_id, request.tableName, database_info->GetDatabaseId());
+  		        response.status = STATUS_FORMAT(NotFound,  "Cannot find base table {} for index {} in {}", base_table_id, request.tableName, database_info->GetDatabaseId());
             return response;
         }
-        
+
         CreateIndexTableParams index_params;
         index_params.index_name = request.tableName;
         index_params.table_oid = request.tableOid;
@@ -732,7 +732,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", database_id);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", database_id);
             return response;
         }
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
@@ -759,7 +759,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseByName(databaseName);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", databaseName);
-            return STATUS_FORMAT(NotFound, "Cannot find databaseName $0", databaseName);
+            return STATUS_FORMAT(NotFound, "Cannot find databaseName {}", databaseName);
         }
 
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
@@ -771,7 +771,7 @@ namespace catalog {
         }
 
         txnHandler->CommitTransaction();
-        
+
         K2LOG_D(log::catalog, "Found {} tables in database {}", tables_result.tableInfos.size(), databaseName);
         for (auto& tableInfo : tables_result.tableInfos) {
             K2LOG_D(log::catalog, "Caching table name: {}, id: {} in {}", tableInfo->table_name(), tableInfo->table_id(), database_info->GetDatabaseId());
@@ -797,7 +797,7 @@ namespace catalog {
             std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
             if (database_info == nullptr) {
                 K2LOG_E(log::catalog, "Cannot find database {}", database_id);
-                response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
+                response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", database_id);
                 return response;
             }
 
@@ -812,7 +812,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 txnHandler->AbortTransaction();
-                response.status = STATUS_FORMAT(NotFound, "Cannot find table $0", table_id);
+                response.status = STATUS_FORMAT(NotFound, "Cannot find table {}", table_id);
                 return response;
             }
 
@@ -853,7 +853,7 @@ namespace catalog {
         std::shared_ptr<DatabaseInfo> database_info = CheckAndLoadDatabaseById(database_id);
         if (database_info == nullptr) {
             K2LOG_E(log::catalog, "Cannot find database {}", database_id);
-            response.status = STATUS_FORMAT(NotFound, "Cannot find database $0", database_id);
+            response.status = STATUS_FORMAT(NotFound, "Cannot find database {}", database_id);
             return response;
         }
 
@@ -885,7 +885,7 @@ namespace catalog {
 
             if (table_result.tableInfo == nullptr) {
                 txnHandler->AbortTransaction();
-                response.status = STATUS_FORMAT(NotFound, "Cannot find Base table $0", base_table_id);
+                response.status = STATUS_FORMAT(NotFound, "Cannot find Base table {}", base_table_id);
                 return response;
             }
 
@@ -938,7 +938,7 @@ namespace catalog {
         if (begin_oid == std::numeric_limits<uint32_t>::max()) {
             ns_txnHandler->AbortTransaction();
             K2LOG_W(log::catalog, "No more object identifier is available for Postgres database {}", request.databaseId);
-            response.status = STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for $0", request.databaseId);
+            response.status = STATUS_FORMAT(InvalidArgument, "FNo more object identifier is available for {}", request.databaseId);
             return response;
         }
 

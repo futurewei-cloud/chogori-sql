@@ -129,7 +129,7 @@ StatusCategories& status_categories() {
 class ErrorCodeIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
   explicit ErrorCodeIterator(const char* address)
-      : current_(address ? status_categories().GetSlice(pointer_cast<const uint8_t*>(address))
+      : current_(address ? status_categories().GetSlice(reinterpret_cast<const uint8_t*>(address))
                          : Slice()) {}
 
   bool is_end() const {
@@ -204,7 +204,7 @@ struct Status::State {
   template <class Errors>
   static StatePtr Create(
       Code code, const char* file_name, int line_number, const Slice& msg, const Slice& msg2,
-      const Errors& errors, DupFileName dup_file_name);
+      const Errors& errors, bool dup_file_name);
 
   ErrorCodesRange error_codes() const {
     return ErrorCodesRange(message + message_len);
@@ -255,7 +255,7 @@ struct Status::State {
 template <class Errors>
 Status::StatePtr Status::State::Create(
     Code code, const char* file_name, int line_number, const Slice& msg, const Slice& msg2,
-    const Errors& errors, DupFileName dup_file_name) {
+    const Errors& errors, bool dup_file_name) {
   static constexpr size_t kHeaderSize = offsetof(State, message);
 
   assert(code != kOk);
@@ -279,13 +279,13 @@ Status::StatePtr Status::State::Create(
     result->message[len1 + 1] = ' ';
     memcpy(result->message + 2 + len1, msg2.data(), len2);
   }
-  auto errors_start = pointer_cast<uint8_t*>(&result->message[0] + size);
+  auto errors_start = reinterpret_cast<uint8_t*>(&result->message[0] + size);
   auto out = StoreErrors(errors, errors_start);
   DCHECK_EQ(out, errors_start + errors_size);
   if (dup_file_name) {
     auto new_file_name = out;
     memcpy(new_file_name, file_name, file_name_size);
-    file_name = pointer_cast<char*>(new_file_name);
+    file_name = reinterpret_cast<char*>(new_file_name);
   }
 
   result->file_name = file_name;
@@ -299,7 +299,7 @@ Status::Status(Code code,
                const Slice& msg,
                const Slice& msg2,
                const StatusErrorCode* error,
-               DupFileName dup_file_name)
+               bool dup_file_name)
     : state_(State::Create(code, file_name, line_number, msg, msg2, error, dup_file_name)) {
 #ifndef NDEBUG
   static const bool print_stack_trace = getenv("YB_STACK_TRACE_ON_ERROR_STATUS") != nullptr;
@@ -333,7 +333,7 @@ Status::Status(Code code,
                int line_number,
                const Slice& msg,
                const Slice& errors,
-               DupFileName dup_file_name)
+               bool dup_file_name)
     : state_(State::Create(code, file_name, line_number, msg, Slice(), errors, dup_file_name)) {
 }
 
@@ -341,19 +341,19 @@ Status::Status(StatePtr state)
     : state_(std::move(state)) {
 }
 
-Status::Status(YBCStatusStruct* state, AddRef add_ref)
-    : state_(pointer_cast<State*>(state), add_ref) {
+Status::Status(YBCStatusStruct* state, bool add_ref)
+    : state_(reinterpret_cast<State*>(state), add_ref) {
 }
 
 YBCStatusStruct* Status::RetainStruct() const {
   if (state_) {
     intrusive_ptr_add_ref(state_.get());
   }
-  return pointer_cast<YBCStatusStruct*>(state_.get());
+  return reinterpret_cast<YBCStatusStruct*>(state_.get());
 }
 
 YBCStatusStruct* Status::DetachStruct() {
-  return pointer_cast<YBCStatusStruct*>(state_.detach());
+  return reinterpret_cast<YBCStatusStruct*>(state_.detach());
 }
 
 #define YB_STATUS_RETURN_MESSAGE(name, pb_name, value, message) \
@@ -445,13 +445,13 @@ Status::Code Status::code() const {
 Status Status::CloneAndPrepend(const Slice& msg) const {
   return Status(State::Create(
       code(), state_->file_name, state_->line_number, msg, message(), state_->ErrorCodesSlice(),
-      DupFileName(file_name_duplicated())));
+      file_name_duplicated()));
 }
 
 Status Status::CloneAndAppend(const Slice& msg) const {
   return Status(State::Create(
       code(), state_->file_name, state_->line_number, message(), msg, state_->ErrorCodesSlice(),
-      DupFileName(file_name_duplicated())));
+      file_name_duplicated()));
 }
 
 Status Status::CloneAndAddErrorCode(const StatusErrorCode& error_code) const {
@@ -501,7 +501,7 @@ Status Status::CloneAndAddErrorCode(const StatusErrorCode& error_code) const {
       << " bytes were encoded";
   return Status(State::Create(
       code(), state_->file_name, state_->line_number, message(), Slice(),
-      Slice(buffer, new_errors_size), DupFileName(file_name_duplicated())));
+      Slice(buffer, new_errors_size), file_name_duplicated()));
 }
 
 size_t Status::memory_footprint_excluding_this() const {

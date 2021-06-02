@@ -14,6 +14,8 @@
 
 #include <stdarg.h>
 #include <fstream>
+#include <string>
+
 #include <gflags/gflags.h>
 
 #include <fmt/format.h>
@@ -25,8 +27,8 @@
 #include "env.h"
 #include "scope_exit.h"
 #include "flag_tags.h"
+#include "common-utils.h"
 
-using std::string;
 DEFINE_string(process_info_dir, "", \
                  "Directory where all postgres process will writes their PIDs and executable name");
 
@@ -46,8 +48,8 @@ void ChangeWorkingDir(const char* dir) {
   }
 }
 
-void WriteCurrentProcessInfo(const string& destination_dir) {
-  string executable_path;
+void WriteCurrentProcessInfo(const std::string& destination_dir) {
+  std::string executable_path;
   if (Env::Default()->GetExecutablePath(&executable_path).ok()) {
     const auto destination_file = fmt::format("{}/{}" , destination_dir, getpid()); //Format("$0/$1", destination_dir, getpid());
     std::ofstream out(destination_file, std::ios_base::out);
@@ -90,22 +92,14 @@ Status InitGFlags(const char* argv0) {
   std::vector<google::CommandLineFlagInfo> flag_infos;
   google::GetAllFlags(&flag_infos);
   for (auto& flag_info : flag_infos) {
-    string env_var_name = "FLAGS_" + flag_info.name;
+    std::string env_var_name = "FLAGS_" + flag_info.name;
     const char* env_var_value = getenv(env_var_name.c_str());
     if (env_var_value) {
       google::SetCommandLineOption(flag_info.name.c_str(), env_var_value);
     }
   }
 
-  // bypass CPU flag checking
-
-  // Use InitGoogleLoggingSafeBasic() instead of InitGoogleLoggingSafe() to avoid calling
-  // google::InstallFailureSignalHandler(). This will prevent interference with PostgreSQL's
-  // own signal handling.
-
-  //  yb::InitGoogleLoggingSafeBasic(executable_path);
-  // use above google api directly to avoid bringing in too many dependencies
-  // TODO: rework the above line
+  // bypass CPU flag checking since k2 does not rely on cpu types
   google::InitGoogleLogging(executable_path);
 
   return Status::OK();
@@ -118,11 +112,9 @@ extern "C" {
 YBCStatus YBCStatus_OK = nullptr;
 
 // Wraps Status object created by YBCStatus.
-// Uses trick with AddRef::kFalse and DetachStruct, to avoid incrementing and decrementing
-// ref counter.
 class StatusWrapper {
  public:
-  explicit StatusWrapper(YBCStatus s) : status_(s, AddRef::kFalse) {}
+  explicit StatusWrapper(YBCStatus s) : status_(s, false) {}
 
   ~StatusWrapper() {
     status_.DetachStruct();
@@ -165,15 +157,15 @@ uint32_t YBCStatusPgsqlError(YBCStatus s) {
     const uint8_t* txn_err_ptr = wrapper->ErrorData(TransactionErrorTag::kCategory);
     if (txn_err_ptr != nullptr) {
       switch (TransactionErrorTag::Decode(txn_err_ptr)) {
-        case TransactionErrorCode::kAborted: FALLTHROUGH_INTENDED;
-        case TransactionErrorCode::kReadRestartRequired: FALLTHROUGH_INTENDED;
+        case TransactionErrorCode::kAborted: [[fallthrough]];
+        case TransactionErrorCode::kReadRestartRequired: [[fallthrough]];
         case TransactionErrorCode::kConflict:
           result = YBPgErrorCode::YB_PG_T_R_SERIALIZATION_FAILURE;
           break;
         case TransactionErrorCode::kSnapshotTooOld:
           result = YBPgErrorCode::YB_PG_SNAPSHOT_TOO_OLD;
           break;
-        case TransactionErrorCode::kNone: FALLTHROUGH_INTENDED;
+        case TransactionErrorCode::kNone: [[fallthrough]];
         default:
           result = YBPgErrorCode::YB_PG_INTERNAL_ERROR;
       }
@@ -232,7 +224,7 @@ YBCStatus YBCInitGFlags(const char* argv0) {
   return ToYBCStatus(yb::InitGFlags(argv0));
 }
 
- YBCStatus YBCInit(const char* argv0,
+YBCStatus YBCInit(const char* argv0,
                   YBCPAllocFn palloc_fn,
                   YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
   YBCSetPAllocFn(palloc_fn);
@@ -255,8 +247,8 @@ void YBCLogImpl(
     ...) {
   va_list argptr;
   va_start(argptr, format); \
-  string buf;
-  StringAppendV(&buf, format, argptr);
+  std::string buf;
+  StringAppend(&buf, format, argptr);
   va_end(argptr);
   google::LogMessage log_msg(file, line, severity);
   log_msg.stream() << buf;

@@ -12,6 +12,7 @@
 //
 
 #include "common/strings/stol_utils.h"
+#include "common/cast.h"
 
 using namespace std::placeholders;
 

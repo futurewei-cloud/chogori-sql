@@ -64,6 +64,7 @@
 
 #include "common/util/debug-util.h"
 #include "common/flag_tags.h"
+#include "common/format.h"
 
 DEFINE_string(log_filename, "",
     "Prefix of log filename - "

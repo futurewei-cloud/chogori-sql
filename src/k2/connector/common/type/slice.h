@@ -45,9 +45,7 @@
 
 #include <glog/logging.h>
 
-#include "common/strings/fastmem.h"
-#include "common/cast.h"
-
+#include "common/common_defs.h"
 
 namespace yb {
 
@@ -57,12 +55,12 @@ struct SliceParts;
 class Slice {
  public:
   // Create an empty slice.
-  Slice() : begin_(util::to_uchar_ptr("")), end_(begin_) { }
+  Slice() : begin_(reinterpret_cast<const uint8_t *>("")), end_(begin_) { }
 
   // Create a slice that refers to d[0,n-1].
   Slice(const uint8_t* d, size_t n) : begin_(d), end_(d + n) {}
   // Create a slice that refers to d[0,n-1].
-  Slice(const char* d, size_t n) : Slice(util::to_uchar_ptr(d), n) {}
+  Slice(const char* d, size_t n) : Slice(reinterpret_cast<const uint8_t *>(d), n) {}
 
   // Create a slice that refers to [begin, end).
   Slice(const uint8_t* begin, const uint8_t* end) : begin_(begin), end_(end) {
@@ -76,22 +74,22 @@ class Slice {
   explicit Slice(const std::array<unsigned char, N>& arr) : Slice(arr.data(), N) {}
 
   Slice(const char* begin, const char* end)
-      : Slice(util::to_uchar_ptr(begin), util::to_uchar_ptr(end)) {}
+      : Slice(reinterpret_cast<const uint8_t *>(begin), reinterpret_cast<const uint8_t *>(end)) {}
 
   // Create a slice that refers to the contents of "s"
   template <class CharTraits, class Allocator>
   Slice(const std::basic_string<char, CharTraits, Allocator>& s) // NOLINT(runtime/explicit)
-      : Slice(util::to_uchar_ptr(s.data()), s.size()) {}
+      : Slice(reinterpret_cast<const uint8_t *>(s.data()), s.size()) {}
 
   // Create a slice that refers to s[0,strlen(s)-1]
   Slice(const char* s) // NOLINT(runtime/explicit)
-      : Slice(util::to_uchar_ptr(s), strlen(s)) {}
+      : Slice(reinterpret_cast<const uint8_t *>(s), strlen(s)) {}
 
   // Create a single slice from SliceParts using buf as storage.
   // buf must exist as long as the returned Slice exists.
   Slice(const SliceParts& parts, std::string* buf);
 
-  const char* cdata() const { return util::to_char_ptr(begin_); }
+  const char* cdata() const { return reinterpret_cast<const char *>(begin_); }
 
   // Return a pointer to the beginning of the referenced data
   const uint8_t* data() const { return begin_; }
@@ -101,7 +99,7 @@ class Slice {
 
   const uint8_t* end() const { return end_; }
 
-  const char* cend() const { return util::to_char_ptr(end_); }
+  const char* cend() const { return reinterpret_cast<const char *>(end_); }
 
   // Return the length (in bytes) of the referenced data
   size_t size() const { return end_ - begin_; }
@@ -128,7 +126,7 @@ class Slice {
 
   // Change this slice to refer to an empty array
   void clear() {
-    begin_ = util::to_uchar_ptr("");
+    begin_ = reinterpret_cast<const uint8_t *>("");
     end_ = begin_;
   }
 
@@ -181,7 +179,7 @@ class Slice {
     return !empty() ? *begin_ : def;
   }
 
-  MUST_USE_RESULT Status consume_byte(char c);
+  Status consume_byte(char c);
 
   // Checks that this slice has size() = 'expected_size' and returns
   // STATUS(Corruption, ) otherwise.
@@ -284,12 +282,67 @@ class Slice {
     return Slice(begin_ + arg0_size, end_).DoLess(std::forward<Args>(args)...);
   }
 
-  static bool MemEqual(const void* a, const void* b, size_t n) {
-    return strings::memeq(a, b, n);
+  static bool MemEqual(const void* a_v, const void* b_v, size_t n) {
+    const uint8_t *a = reinterpret_cast<const uint8_t *>(a_v);
+    const uint8_t *b = reinterpret_cast<const uint8_t *>(b_v);
+
+    size_t n_rounded_down = n & ~static_cast<size_t>(7);
+    if (PREDICT_FALSE(n_rounded_down == 0)) {  // n <= 7
+      return memcmp(a, b, n) == 0;
+    }
+    // n >= 8
+    uint64_t u = (*reinterpret_cast<const uint64_t *>(a)) ^ (*reinterpret_cast<const uint64_t *>(b));
+    uint64_t v = (*reinterpret_cast<const uint64_t *>(a + n - 8)) ^ (*reinterpret_cast<const uint64_t *>(b + n - 8));
+    if ((u | v) != 0) {  // The first or last 8 bytes differ.
+      return false;
+    }
+    a += 8;
+    b += 8;
+    n = n_rounded_down - 8;
+    if (n > 128) {
+      // As of 2012, memcmp on x86-64 uses a big unrolled loop with SSE2
+      // instructions, and while we could try to do something faster, it
+      // doesn't seem worth pursuing.
+      return memcmp(a, b, n) == 0;
+    }
+    for (; n >= 16; n -= 16) {
+      uint64_t x = (*reinterpret_cast<const uint64_t *>(a)) ^ (*reinterpret_cast<const uint64_t *>(b));
+      uint64_t y = (*reinterpret_cast<const uint64_t *>(a + 8)) ^ (*reinterpret_cast<const uint64_t *>(b + 8));
+      if ((x | y) != 0) {
+        return false;
+      }
+      a += 16;
+      b += 16;
+    }
+    // n must be 0 or 8 now because it was a multiple of 8 at the top of the loop.
+    return n == 0 || (*reinterpret_cast<const uint64_t *>(a)) == (*reinterpret_cast<const uint64_t *>(b));
   }
 
-  static int MemCompare(const void* a, const void* b, size_t n) {
-    return strings::fastmemcmp_inlined(a, b, n);
+  static int MemCompare(const void* a_v, const void* b_v, size_t n) {
+    const uint8_t *a = reinterpret_cast<const uint8_t *>(a_v);
+    const uint8_t *b = reinterpret_cast<const uint8_t *>(b_v);
+
+    if (n >= 64) {
+      return memcmp(a, b, n);
+    }
+    const void* a_limit = a + n;
+    const size_t sizeof_uint64 = sizeof(uint64_t);
+    while (a + sizeof_uint64 <= a_limit &&
+          (*reinterpret_cast<const uint64_t *>(a)) == (*reinterpret_cast<const uint64_t *>(b))) {
+      a += sizeof_uint64;
+      b += sizeof_uint64;
+    }
+    const size_t sizeof_uint32 = sizeof(uint32_t);
+    if (a + sizeof_uint32 <= a_limit &&
+        (*reinterpret_cast<const uint32_t *>(a)) == (*reinterpret_cast<const uint32_t *>(b))) {
+      a += sizeof_uint32;
+      b += sizeof_uint32;
+    }
+    while (a < a_limit) {
+      int d = static_cast<uint32_t>(*a++) - static_cast<uint32_t>(*b++);
+      if (d) return d;
+    }
+    return 0;
   }
 
   const uint8_t* begin_;

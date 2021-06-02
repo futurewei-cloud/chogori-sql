@@ -86,11 +86,10 @@ CHECKED_STATUS Uuid::ToBytes(std::string* bytes) const {
 CHECKED_STATUS Uuid::FromSlice(const Slice& slice, size_t size_hint) {
   size_t expected_size = (size_hint == 0) ? slice.size() : size_hint;
   if (expected_size > slice.size()) {
-    return STATUS_SUBSTITUTE(InvalidArgument, "Size of slice: $0 is smaller than provided "
-        "size_hint: $1", slice.size(), expected_size);
+    return STATUS_FORMAT(InvalidArgument, "Size of slice: {} is smaller than provided, size_hint: {}", slice.size(), expected_size);
   }
   if (expected_size != kUuidSize) {
-    return STATUS_SUBSTITUTE(InvalidArgument, "Size of slice is invalid: $0", expected_size);
+    return STATUS_FORMAT(InvalidArgument, "Size of slice is invalid: {}", expected_size);
   }
   memcpy(boost_uuid_.data, slice.data(), kUuidSize);
   return Status::OK();
@@ -103,21 +102,21 @@ CHECKED_STATUS Uuid::FromBytes(const std::string& bytes) {
 
 CHECKED_STATUS Uuid::FromHexString(const std::string& hex_string) {
   if (hex_string.size() != kUuidSize * 2) {
-    return STATUS_SUBSTITUTE(InvalidArgument, "Size of hex_string is invalid: $0, expected: $1",
+    return STATUS_FORMAT(InvalidArgument, "Size of hex_string is invalid: {}, expected: {}",
                              hex_string.size(), kUuidSize * 2);
   }
   std::string bytes;
   for (int i = 0; i < hex_string.size(); i+=2) {
-    string byte = hex_string.substr(i, 2);
+    std::string byte = hex_string.substr(i, 2);
     int64_t byte_val = -1;
     try {
       byte_val = std::stol(byte.c_str(), NULL, 16);
       // Verify the value fits within a byte.
       if (byte_val > std::numeric_limits<uint8_t>::max() || byte_val < 0) {
-        return STATUS_SUBSTITUTE(InvalidArgument, "$0 is not a valid uuid", hex_string);
+        return STATUS_FORMAT(InvalidArgument, "{} is not a valid uuid", hex_string);
       }
     } catch (std::invalid_argument& ia) {
-      return STATUS_SUBSTITUTE(InvalidArgument, "$0 is not a valid uuid", hex_string);
+      return STATUS_FORMAT(InvalidArgument, "{} is not a valid uuid", hex_string);
     }
     bytes.insert(bytes.end(), static_cast<char>(byte_val));
   }
@@ -131,12 +130,11 @@ CHECKED_STATUS Uuid::FromHexString(const std::string& hex_string) {
 CHECKED_STATUS Uuid::DecodeFromComparableSlice(const Slice& slice, size_t size_hint) {
   size_t expected_size = (size_hint == 0) ? slice.size() : size_hint;
   if (expected_size > slice.size()) {
-    return STATUS_SUBSTITUTE(InvalidArgument, "Size of slice: $0 is smaller than provided "
-        "size_hint: $1", slice.size(), expected_size);
+    return STATUS_FORMAT(InvalidArgument, "Size of slice: {} is smaller than provided, size_hint: {}", slice.size(), expected_size);
   }
   if (expected_size != kUuidSize) {
-    return STATUS_SUBSTITUTE(InvalidArgument,
-                             "Decode error: Size of slice is invalid: $0", expected_size);
+    return STATUS_FORMAT(InvalidArgument,
+                             "Decode error: Size of slice is invalid: {}", expected_size);
   }
   const uint8_t* bytes = slice.data();
   if ((bytes[0] & 0xF0) == 0x10) {

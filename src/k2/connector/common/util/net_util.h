@@ -39,6 +39,7 @@
 #include "common/result.h"
 #include "common/strings/strip.h"
 #include "common/status.h"
+#include "common/format.h"
 
 namespace yb {
 

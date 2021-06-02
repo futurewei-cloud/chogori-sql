@@ -37,6 +37,7 @@
 #include <string>
 #include <vector>
 
+#include "common/casts.h"
 #include "common/strings/fastmem.h"
 #include "common/enums.h"
 #include "common/result.h"

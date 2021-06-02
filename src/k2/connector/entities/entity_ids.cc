@@ -78,15 +78,15 @@ std::string UuidToString(uuid* id) {
   // Set version that is stored in octet 9 which is index 6, since indexes count backwards.
   id->data[6] &= 0x0F;
   id->data[6] |= (kUuidVersion << 4);
-  return b2a_hex(yb::util::to_char_ptr(id->data), sizeof(id->data));
+  return b2a_hex(reinterpret_cast<const char *>(id->data), sizeof(id->data));
 }
 
 } // namespace
 
 std::string ObjectIdGenerator::Next(const bool binary_id) {
   boost::uuids::uuid oid = oid_generator_();
-  return binary_id ? string(yb::util::to_char_ptr(oid.data), sizeof(oid.data))
-                   : b2a_hex(yb::util::to_char_ptr(oid.data), sizeof(oid.data));
+  return binary_id ? std::string(reinterpret_cast<const char *>(oid.data), sizeof(oid.data))
+                   : b2a_hex(reinterpret_cast<const char *>(oid.data), sizeof(oid.data));
 }
 
 std::string PgObjectId::ToString() const {
@@ -123,7 +123,7 @@ std::string PgObjectId::GetTableId(const PgOid& table_oid) {
   return GetTableUuid(kPgInvalidOid, table_oid);
 }
 
-bool PgObjectId::IsPgsqlId(const string& uuid) {
+bool PgObjectId::IsPgsqlId(const std::string& uuid) {
   if (uuid.size() != 32) return false; // Ignore non-UUID string like "sys.catalog.uuid"
   try {
     size_t pos = 0;
