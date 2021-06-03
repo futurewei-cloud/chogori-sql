@@ -68,7 +68,10 @@ Status PgTxnHandler::CommitTransaction() {
   // Use synchronous call for now until PG supports additional state check after this call
   auto result = adapter_->EndTransaction(txn_, true/*commit*/).get();
   if (!result.status.is2xxOK()) {
-    K2LOG_E(log::pg, "Transaction commit failed due to: {}", result.status);    
+    K2LOG_E(log::pg, "Transaction commit failed due to: {}", result.status);
+    // status: Not allowed - transaction is also aborted (no need for abort)
+    if (result.status == k2::dto::K23SIStatus::OperationNotAllowed)
+      txn_already_aborted_ = true;
   } else {
      ResetTransaction();
      K2LOG_D(log::pg, "Transaction commit succeeded");
@@ -82,8 +85,8 @@ Status PgTxnHandler::AbortTransaction() {
     return Status::OK();
   }
   
-  if (txn_ != nullptr && read_only_) {
-    // This was a read-only transaction, nothing to commit.
+  if (txn_already_aborted_ || (txn_ != nullptr && read_only_)) {
+    // This was a already commited or read-only transaction, nothing to commit.
     ResetTransaction();
     return Status::OK();
   }
@@ -153,6 +156,7 @@ std::shared_ptr<K23SITxn> PgTxnHandler::GetTxn() {
 void PgTxnHandler::ResetTransaction() {
   read_only_ = false;
   txn_in_progress_ = false;
+  txn_already_aborted_ = false;
   txn_ = nullptr;
   can_restart_.store(true, std::memory_order_release);
 }

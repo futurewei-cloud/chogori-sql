@@ -87,6 +87,8 @@ class PgTxnHandler {
 
   bool deferrable_ = false;
 
+  bool txn_already_aborted_ = false;
+
   std::atomic<bool> can_restart_{true};
 
   std::shared_ptr<K2Adapter> adapter_;
