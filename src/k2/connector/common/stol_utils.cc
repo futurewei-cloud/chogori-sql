@@ -11,8 +11,8 @@
 // under the License.
 //
 
-#include "common/strings/stol_utils.h"
-#include "common/cast.h"
+#include "stol_utils.h"
+#include <fmt/format.h>
 
 using namespace std::placeholders;
 
@@ -21,7 +21,7 @@ namespace yb {
 namespace {
 
 CHECKED_STATUS CreateInvalid(Slice input, int err = 0) {
-  auto message = Format("$0 is not a valid number", input.ToDebugString());
+  auto message = fmt::format("{} is not a valid number", input.ToDebugString());
   if (err != 0) {
     message += ": ";
     message += std::strerror(err);
@@ -30,7 +30,7 @@ CHECKED_STATUS CreateInvalid(Slice input, int err = 0) {
 }
 
 CHECKED_STATUS CheckNotSpace(Slice slice) {
-  if (slice.empty() || isspace(*util::to_char_ptr(slice.data()))) {
+  if (slice.empty() || isspace(*reinterpret_cast<const char *>(slice.data()))) {
     // disable skip of spaces.
     return CreateInvalid(slice);
   }

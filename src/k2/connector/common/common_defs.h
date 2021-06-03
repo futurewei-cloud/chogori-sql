@@ -22,6 +22,8 @@ Copyright(c) 2020 Futurewei Cloud
 */
 #pragma once
 
+#include "port.h"
+
 //
 // GCC can be told that a certain branch is not likely to be taken (for
 // instance, a CHECK failure), and use that information in static analysis.

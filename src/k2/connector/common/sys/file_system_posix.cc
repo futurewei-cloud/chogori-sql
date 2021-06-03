@@ -32,7 +32,7 @@
 
 #include "common/errno.h"
 #include "common/common-utils.h"
-#include "common/concurrent/thread_restrictions.h"
+#include "common/thread_restrictions.h"
 #include "common/sys/malloc.h"
 
 DECLARE_bool(suicide_on_eio);

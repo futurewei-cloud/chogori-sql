@@ -29,20 +29,55 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-#ifndef YB_UTIL_HEXDUMP_H
-#define YB_UTIL_HEXDUMP_H
 
-#include <string>
+#include <thread>
+
+#include <glog/logging.h>
+
+#include "thread_restrictions.h"
+
+#ifdef ENABLE_THREAD_RESTRICTIONS
 
 namespace yb {
 
-class Slice;
+namespace {
+  thread_local bool io_allowed = true;
+  thread_local bool wait_allowed = true;
+} // anonymous namespace
 
-// Generate an 'xxd'-style hexdump of the given slice.
-// This should only be used for debugging, as the format is
-// subject to change and it has not been implemented for
-// speed.
-std::string HexDump(const Slice &slice);
+bool ThreadRestrictions::SetIOAllowed(bool allowed) {
+  bool previous_allowed = io_allowed;
+  io_allowed = allowed;
+  return previous_allowed;
+}
+
+void ThreadRestrictions::AssertIOAllowed() {
+  CHECK(io_allowed)
+    << "Function marked as IO-only was called from a thread that "
+    << "disallows IO!  If this thread really should be allowed to "
+    << "make IO calls, adjust the call to "
+    << "ThreadRestrictions::SetIOAllowed() in this thread's "
+    << "startup. "
+    << std::this_thread::get_id();
+}
+
+bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
+  bool previous_allowed = wait_allowed;
+  wait_allowed = allowed;
+  return previous_allowed;
+}
+
+bool ThreadRestrictions::IsWaitAllowed() {
+  return wait_allowed;
+}
+
+void ThreadRestrictions::AssertWaitAllowed() {
+  CHECK(wait_allowed)
+    << "Waiting is not allowed to be used on this thread to prevent "
+    << "server-wide latency aberrations and deadlocks. "
+    << std::this_thread::get_id();
+}
 
 } // namespace yb
+
 #endif

@@ -16,8 +16,7 @@
 #include <iomanip>
 #include <glog/logging.h>
 
-#include "common/strings/substitute.h"
-#include "common/strings/stol_utils.h"
+#include "common/stol_utils.h"
 #include "common/type/decimal.h"
 
 using std::string;

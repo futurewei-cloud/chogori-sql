@@ -28,11 +28,7 @@
 #include <unordered_map>
 
 #include <boost/optional.hpp>
-#include "common/strings/fastmem.h"
 #include "common/sys/malloc.h"
-
-#include "common/concurrent/locks.h"
-#include "common/util/debug-util.h"
 
 namespace yb {
 

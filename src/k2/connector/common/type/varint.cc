@@ -16,7 +16,6 @@
 #include <string>
 
 #include <openssl/bn.h>
-#include "common/casts.h"
 
 namespace yb {
 namespace util {
@@ -121,7 +120,7 @@ std::string VarInt::EncodeToComparable(size_t num_reserved_bits) const {
     // This value could be merged with ones, so should cleanup it.
     result[offset - 1] = 0;
   }
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(result.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(result.data()));
   BN_bn2bin(impl_.get(), data + offset);
   size_t idx = 0;
   // Fill header with ones. We also fill reserved bits with ones for simplicity, then it will be
@@ -212,7 +211,7 @@ std::string VarInt::EncodeToTwosComplement() const {
   size_t offset = num_bits % kBitsPerWord == 0 ? 1 : 0;
   size_t count = (num_bits + kBitsPerWord - 1) / kBitsPerWord + offset;
   std::string result(count, 0);
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(result.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(result.data()));
   if (offset) {
     *data = 0;
   }
@@ -240,11 +239,11 @@ Status VarInt::DecodeFromTwosComplement(const std::string& input) {
   bool negative = (input[0] & 0x80) != 0;
   if (!negative) {
     impl_.reset(BN_bin2bn(
-        pointer_cast<const unsigned char*>(input.data()), input.size(), nullptr /* ret */));
+        reinterpret_cast<const unsigned char*>(input.data()), input.size(), nullptr /* ret */));
     return Status::OK();
   }
   std::string copy(input);
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(copy.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(copy.data()));
   unsigned char* back = data + copy.size();
   while (--back >= data && *back == 0x00) {
     *back = 0xff;

@@ -15,7 +15,6 @@
 #define YB_UTIL_STOL_UTILS_H
 
 #include "common/result.h"
-#include "common/format.h"
 
 namespace yb {
 

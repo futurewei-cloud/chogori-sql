@@ -60,7 +60,7 @@
 #include "common/env.h"
 #include "common/errno.h"
 #include "common/flag_tags.h"
-#include "common/concurrent/thread_restrictions.h"
+#include "common/thread_restrictions.h"
 #include "common/sys/file_system_posix.h"
 #include "common/sys/malloc.h"
 #include "common/type/slice.h"
