@@ -141,7 +141,10 @@ seastar::future<> PGK2Client::_pollEndQ() {
         auto fiter = _txns->find(req.mtr);
         if (fiter == _txns->end()) {
             K2LOG_W(log::k2ss, "invalid txn id: {}", req.mtr);
-            req.prom.set_value(k2::EndResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")));
+            // PG sends Abort after a failed Commit call (in this case we don't fail the abort)
+            req.prom.set_value(req.shouldCommit ?
+               k2::EndResult(k2::dto::K23SIStatus::OperationNotAllowed("invalid txn id")) :
+               k2::EndResult(k2::dto::K23SIStatus::OK("")));
             return seastar::make_ready_future();
         }
         K2LOG_D(log::k2ss, "Ending txn: {}, with commit={}", req.mtr, req.shouldCommit);
