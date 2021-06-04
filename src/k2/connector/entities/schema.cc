@@ -62,8 +62,8 @@ namespace sql {
     using std::set;
     using std::unordered_map;
     using std::unordered_set;
-    using yb::Result;
-    using yb::Status;
+    using k2pg::Result;
+    using k2pg::Status;
 
     string ColumnSchema::ToString() const {
         return fmt::format("{}[{}]", name_, TypeToString());

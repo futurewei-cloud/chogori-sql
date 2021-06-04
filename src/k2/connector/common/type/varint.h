@@ -11,8 +11,7 @@
 // under the License.
 //
 
-#ifndef YB_UTIL_VARINT_H
-#define YB_UTIL_VARINT_H
+#pragma once
 
 #include <openssl/ossl_typ.h>
 
@@ -21,9 +20,7 @@
 #include "common/result.h"
 #include "common/type/slice.h"
 
-namespace yb {
-namespace util {
-
+namespace k2pg {
 class BigNumDeleter {
  public:
   void operator()(BIGNUM* bn) const;
@@ -208,11 +205,6 @@ class VarInt {
   friend VarInt operator-(const VarInt& lhs, const VarInt& rhs);
 };
 
-std::ostream& operator<<(ostream& os, const VarInt& v);
+std::ostream& operator<<(std::ostream& os, const VarInt& v);
 
-
-} // namespace util
-} // namespace yb
-
-
-#endif // YB_UTIL_VARINT_H
+} // namespace k2pg

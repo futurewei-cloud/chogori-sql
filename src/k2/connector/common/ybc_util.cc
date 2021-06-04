@@ -37,7 +37,7 @@ YBCStatus YBCStatusOK() {
   return nullptr;
 }
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 
@@ -221,7 +221,7 @@ bool YBCIsRestartReadError(uint16_t txn_errcode) {
 }
 
 YBCStatus YBCInitGFlags(const char* argv0) {
-  return ToYBCStatus(yb::InitGFlags(argv0));
+  return ToYBCStatus(k2pg::InitGFlags(argv0));
 }
 
 YBCStatus YBCInit(const char* argv0,
@@ -231,7 +231,7 @@ YBCStatus YBCInit(const char* argv0,
   if (cstring_to_text_with_len_fn) {
     YBCSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
   }
-  auto status = yb::InitGFlags(argv0);
+  auto status = k2pg::InitGFlags(argv0);
   if (status.ok() && !FLAGS_process_info_dir.empty()) {
     WriteCurrentProcessInfo(FLAGS_process_info_dir);
   }
@@ -260,4 +260,4 @@ const char* YBCGetStackTrace() {
 
 } // extern "C"
 
-} // namespace yb
+} // namespace k2pg

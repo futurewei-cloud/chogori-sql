@@ -25,16 +25,8 @@
 // external synchronization, but if any of the threads may call a
 // non-const method, all threads accessing the same Slice must use
 // external synchronization.
-//
-// Slices can be built around faststrings and GStringPieces using constructors
-// with implicit casts. Both GStringPieces and faststrings depend on a great
-// deal of gutil code, so these constructors are conditionalized on
-// YB_HEADERS_USE_RICH_SLICE. Likewise, YB_HEADERS_USE_RICH_SLICE controls
-// whether to use gutil-based memeq/memcmp substitutes; if it is unset, Slice
-// will fall back to standard memcmp.
 
-#ifndef YB_UTIL_SLICE_H_
-#define YB_UTIL_SLICE_H_
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -47,7 +39,7 @@
 
 #include "common/common_defs.h"
 
-namespace yb {
+namespace k2pg {
 
 class Status;
 struct SliceParts;
@@ -438,6 +430,4 @@ inline void CopyToBuffer(const Slice& source, std::string* dest) {
   source.CopyToBuffer(dest);
 }
 
-}  // namespace yb
-
-#endif // YB_UTIL_SLICE_H_
+}  // namespace k2pg

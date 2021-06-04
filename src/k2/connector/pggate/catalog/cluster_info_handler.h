@@ -34,9 +34,9 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-    
+
 using k2pg::gate::K2Adapter;
-using yb::Status;
+using k2pg::Status;
 
 struct InitClusterInfoResult {
     Status status;

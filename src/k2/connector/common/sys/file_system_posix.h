@@ -11,14 +11,13 @@
 // under the License.
 //
 
-#ifndef YB_UTIL_FILE_SYSTEM_POSIX_H
-#define YB_UTIL_FILE_SYSTEM_POSIX_H
+#pragma once
 
 #include <string>
 
 #include "common/sys/file_system.h"
 
-namespace yb {
+namespace k2pg {
 
 #if defined(__linux__)
 size_t GetUniqueIdFromFile(int fd, uint8_t* id);
@@ -72,6 +71,4 @@ class PosixRandomAccessFile : public RandomAccessFile {
   bool use_os_buffer_;
 };
 
-} // namespace yb
-
-#endif  // YB_UTIL_FILE_SYSTEM_POSIX_H
+} // namespace k2pg

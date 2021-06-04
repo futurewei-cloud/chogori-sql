@@ -46,7 +46,7 @@ using std::string;
 using std::unordered_set;
 using std::vector;
 
-namespace yb {
+namespace k2pg {
 namespace flag_tags_internal {
 
 // registry storing the set of tags for each flag.
@@ -95,4 +95,4 @@ void GetFlagTags(const std::string& flag_name,
   flag_tags_internal::flag_tag_registry.GetTags(flag_name, tags);
 }
 
-} // namespace yb
+} // namespace k2pg

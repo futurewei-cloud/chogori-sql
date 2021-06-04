@@ -33,7 +33,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace sql {
 namespace catalog {
-    using yb::Result;
+    using k2pg::Result;
     using k2pg::gate::K2Adapter;
 
     // TODO: clean up the exception throwing and handling logic in this class

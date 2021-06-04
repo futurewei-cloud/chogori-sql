@@ -62,7 +62,7 @@ namespace gate {
 
 using std::string;
 using k2pg::sql::PgExpr;
-using yb::Status;
+using k2pg::Status;
 
 // Statement types.
 enum StmtOp {

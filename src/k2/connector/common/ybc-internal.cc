@@ -12,7 +12,7 @@
 
 #include "ybc-internal.h"
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 YBCPAllocFn g_palloc_fn = nullptr;
@@ -69,4 +69,4 @@ const char* YBCPAllocStdString(const std::string& s) {
   return result;
 }
 
-} // namespace yb
+} // namespace k2pg

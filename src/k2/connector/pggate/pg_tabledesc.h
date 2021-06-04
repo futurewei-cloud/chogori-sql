@@ -57,13 +57,13 @@
 namespace k2pg {
 namespace gate {
 
-using yb::Result;
-using yb::Status;
+using k2pg::Result;
+using k2pg::Status;
 using k2pg::sql::PgOid;
 using k2pg::sql::TableInfo;
 using k2pg::sql::IndexInfo;
 
-// Desc of a table or an index. 
+// Desc of a table or an index.
 // This class can be used to describe any reference of a column.
 class PgTableDesc {
  public:

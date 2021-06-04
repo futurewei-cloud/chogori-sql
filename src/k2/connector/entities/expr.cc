@@ -55,7 +55,7 @@ namespace sql {
 
 using std::string;
 using std::make_shared;
-using yb::Status;
+using k2pg::Status;
 
 //--------------------------------------------------------------------------------------------------
 // Mapping Postgres operator names to K2 PG gate opcodes.

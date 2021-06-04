@@ -59,7 +59,7 @@
 
 namespace k2pg {
 namespace sql {
-    using yb::Result;
+    using k2pg::Result;
 
     using TableName = std::string;
     using UDTypeName = std::string;

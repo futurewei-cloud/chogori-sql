@@ -21,7 +21,7 @@
 
 #include <filesystem>
 
-namespace yb {
+namespace k2pg {
 
 namespace fs = std::filesystem;
 
@@ -114,4 +114,4 @@ Status ReadFileToString(Env* env, const std::string& fname, std::stringstream& d
 EnvWrapper::~EnvWrapper() {
 }
 
-}  // namespace yb
+}  // namespace k2pg

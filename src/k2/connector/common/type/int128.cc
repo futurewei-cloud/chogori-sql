@@ -18,8 +18,6 @@
 //
 
 #include <iostream>
-using std::cout;
-using std::endl;
 #include "int128.h"
 #include "integral_types.h"
 

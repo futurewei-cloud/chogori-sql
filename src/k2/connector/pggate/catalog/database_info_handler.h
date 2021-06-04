@@ -36,7 +36,7 @@ namespace catalog {
 
 using k2pg::gate::CreateScanReadResult;
 using k2pg::gate::K2Adapter;
-using yb::Status;
+using k2pg::Status;
 
 struct InitDatabaseTableResult {
     Status status;
@@ -60,7 +60,7 @@ struct DeleteDataseResult {
     Status status;
 };
 
-// DatabaseInfo is a cluster level system table holding info for each database, 
+// DatabaseInfo is a cluster level system table holding info for each database,
 // currently its Name/Oid, and next PgOid(for objects inside this DB).
 class DatabaseInfoHandler {
     public:

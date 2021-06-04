@@ -11,8 +11,7 @@
 // under the License.
 //
 
-#ifndef YB_UTIL_DECIMAL_H
-#define YB_UTIL_DECIMAL_H
+#pragma once
 
 #include <vector>
 #include <limits>
@@ -21,8 +20,7 @@
 #include "common/type/slice.h"
 #include "common/type/varint.h"
 
-namespace yb {
-namespace util {
+namespace k2pg {
 
 // The Decimal class can represent decimal numbers (including fractions) of arbitrary length.
 //
@@ -173,7 +171,7 @@ class Decimal {
 Decimal DecimalFromComparable(const Slice& slice);
 Decimal DecimalFromComparable(const std::string& string);
 
-std::ostream& operator<<(ostream& os, const Decimal& d);
+std::ostream& operator<<(std::ostream& os, const Decimal& d);
 
 template <typename T>
 inline T BitMask(int32_t a, int32_t b) {
@@ -232,7 +230,4 @@ inline double CanonicalizeDouble(double d) {
   return d;
 }
 
-} // namespace util
-} // namespace yb
-
-#endif // YB_UTIL_DECIMAL_H
+} // namespace k2pg

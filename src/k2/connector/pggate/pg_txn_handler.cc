@@ -26,7 +26,7 @@ Copyright(c) 2020 Futurewei Cloud
 namespace k2pg {
 namespace gate {
 
-using yb::Status;
+using k2pg::Status;
 
 PgTxnHandler::PgTxnHandler(std::shared_ptr<K2Adapter> adapter) : adapter_(adapter) {
 }
@@ -84,7 +84,7 @@ Status PgTxnHandler::AbortTransaction() {
   if (!txn_in_progress_) {
     return Status::OK();
   }
-  
+
   if (txn_already_aborted_ || (txn_ != nullptr && read_only_)) {
     // This was a already commited or read-only transaction, nothing to commit.
     ResetTransaction();
@@ -94,11 +94,11 @@ Status PgTxnHandler::AbortTransaction() {
   // Use synchronous call for now until PG supports additional state check after this call
   auto result = adapter_->EndTransaction(txn_, false/*abort*/).get();
   // always abandon current transaction and reset regardless abort success or not.
-  ResetTransaction(); 
+  ResetTransaction();
   if (!result.status.is2xxOK()) {
     K2LOG_E(log::pg, "Transaction abort failed due to: {}", result.status);
   }
-  
+
   return K2Adapter::K2StatusToYBStatus(result.status);
 }
 

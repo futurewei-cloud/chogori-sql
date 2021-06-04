@@ -30,7 +30,7 @@
 #include <boost/optional.hpp>
 #include "common/sys/malloc.h"
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 
@@ -311,12 +311,12 @@ Status::Status(Code code,
     }
     // We skip a couple of top frames like these:
     //    ~/code/yugabyte/src/yb/util/status.cc:53:
-    //        @ yb::Status::Status(yb::Status::Code, yb::Slice const&, yb::Slice const&, long,
+    //        @ k2pg::Status::Status(k2pg::Status::Code, k2pg::Slice const&, k2pg::Slice const&, long,
     //                             char const*, int)
     //    ~/code/yugabyte/src/yb/util/status.h:137:
-    //        @ yb::STATUS(Corruption, char const*, int, yb::Slice const&, yb::Slice const&, short)
+    //        @ k2pg::STATUS(Corruption, char const*, int, k2pg::Slice const&, k2pg::Slice const&, short)
     //    ~/code/yugabyte/src/yb/common/doc_hybrid_time.cc:94:
-    //        @ yb::DocHybridTime::DecodeFrom(yb::Slice*)
+    //        @ k2pg::DocHybridTime::DecodeFrom(k2pg::Slice*)
     //    LOG(WARNING) << "Non-OK status generated: " << string_rep << ", stack trace:\n"
     //                 << GetStackTrace(StackTraceLineFormat::DEFAULT, /* skip frames: */ 1);
       LOG(WARNING) << "Non-OK status generated: " << string_rep << "\n";
@@ -556,4 +556,4 @@ StatusCategoryRegisterer::StatusCategoryRegisterer(const StatusCategoryDescripti
   Status::RegisterCategory(description);
 }
 
-}  // namespace yb
+}  // namespace k2pg

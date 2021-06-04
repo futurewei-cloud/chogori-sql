@@ -18,9 +18,7 @@
 //
 // Currently this is used within DocDB where PG/YSQL is used as a library for
 // evaluating YSQL expression.
-
-#ifndef YB_YQL_PGGATE_PGGATE_THREAD_LOCAL_VARS_H
-#define YB_YQL_PGGATE_PGGATE_THREAD_LOCAL_VARS_H
+#pragma once
 
 #include "pggate/pg_gate_typedefs.h"
 
@@ -76,5 +74,3 @@ void PgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr);
 
 } // namespace gate
 } // namespace k2pg
-
-#endif // YB_YQL_PGGATE_PGGATE_THREAD_LOCAL_VARS_H

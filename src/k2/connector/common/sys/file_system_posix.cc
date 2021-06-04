@@ -57,7 +57,7 @@ DECLARE_bool(suicide_on_eio);
 #define POSIX_FADV_DONTNEED 4   /* [MC1] dont need these pages */
 #endif
 
-namespace yb {
+namespace k2pg {
 
 Status IOError(const std::string& context, int err_number, const char* file, int line);
 
@@ -263,4 +263,4 @@ Status PosixRandomAccessFile::InvalidateCache(size_t offset, size_t length) {
 #endif
 }
 
-} // namespace yb
+} // namespace k2pg

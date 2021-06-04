@@ -13,7 +13,7 @@
 
 #include "pgsql_error.h"
 
-namespace yb {
+namespace k2pg {
 namespace {
 
 const std::string kPgsqlErrorCategoryName = "pgsql error";
@@ -22,4 +22,4 @@ StatusCategoryRegisterer pgsql_error_category_registerer(
     StatusCategoryDescription::Make<PgsqlErrorTag>(&kPgsqlErrorCategoryName));
 
 } // namespace
-} // namespace yb
+} // namespace k2pg

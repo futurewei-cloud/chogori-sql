@@ -12,16 +12,14 @@
 // under the License.
 //
 //
-
-#ifndef YB_UTIL_RESULT_H
-#define YB_UTIL_RESULT_H
+#pragma once
 
 #include <string>
 #include <type_traits>
 
 #include "status.h"
 
-namespace yb {
+namespace k2pg {
 
 template<class TValue>
 struct ResultTraits {
@@ -366,6 +364,4 @@ std::reference_wrapper<T> WrapMove(const Result<T&>& result) {
 #define ASSERT_RESULT_FAST(expr) \
   RESULT_CHECKER_HELPER(expr, ASSERT_OK_FAST(__result))
 
-} // namespace yb
-
-#endif // YB_UTIL_RESULT_H
+} // namespace k2pg

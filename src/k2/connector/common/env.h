@@ -24,8 +24,7 @@
 // All Env implementations are safe for concurrent access from
 // multiple threads without any external synchronization.
 
-#ifndef YB_UTIL_ENV_H
-#define YB_UTIL_ENV_H
+#pragma once
 
 #include <stdint.h>
 #include <cstdarg>
@@ -38,7 +37,7 @@
 #include "result.h"
 #include "status.h"
 
-namespace yb {
+namespace k2pg {
 
 class FileLock;
 class RandomAccessFile;
@@ -797,6 +796,4 @@ class EnvWrapper : public Env {
   Env* target_;
 };
 
-}  // namespace yb
-
-#endif // YB_UTIL_ENV_H
+}  // namespace k2pg

@@ -17,8 +17,7 @@
 
 #include <openssl/bn.h>
 
-namespace yb {
-namespace util {
+namespace k2pg {
 
 void BigNumDeleter::operator()(BIGNUM* bn) const {
   BN_free(bn);
@@ -268,7 +267,7 @@ int VarInt::Sign() const {
   return BN_is_negative(impl_.get()) ? -1 : 1;
 }
 
-std::ostream& operator<<(ostream& os, const VarInt& v) {
+std::ostream& operator<<(std::ostream& os, const VarInt& v) {
   os << v.ToString();
   return os;
 }
@@ -285,5 +284,4 @@ VarInt operator-(const VarInt& lhs, const VarInt& rhs) {
   return VarInt(std::move(temp));
 }
 
-} // namespace util
-} // namespace yb
+} // namespace k2pg

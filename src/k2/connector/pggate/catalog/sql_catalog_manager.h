@@ -104,7 +104,7 @@ and task state checking APIs later by using thread pools.
 namespace k2pg {
 namespace sql {
 namespace catalog {
-    using yb::Status;
+    using k2pg::Status;
     using k2pg::ThreadPool;
     using k2pg::gate::K2Adapter;
     using k2pg::sql::PgObjectId;

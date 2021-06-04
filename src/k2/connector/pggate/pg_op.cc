@@ -58,7 +58,7 @@
 
 namespace k2pg {
 namespace gate {
-using yb::util::Decimal;
+using k2pg::Decimal;
 
 template <typename T>  // static checker to see if a type is numeric (i.e. we can get it out from field by value)
 constexpr bool isNumericType() { return std::is_arithmetic<T>::value || std::is_enum<T>::value; }
@@ -291,7 +291,7 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
 
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
-        pg_tuple->syscols()->ybctid = (uint8_t*)yb::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
+        pg_tuple->syscols()->ybctid = (uint8_t*)k2pg::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
     }
     K2LOG_D(log::pg, "wrote tuple ybctid={}", ybctid_strings_[nextToConsume_]);
     if (row_orders_.size()) {

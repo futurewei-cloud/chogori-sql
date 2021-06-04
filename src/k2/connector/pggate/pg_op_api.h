@@ -39,7 +39,7 @@ namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
-    using yb::Status;
+    using k2pg::Status;
 
     using k2pg::sql::PgOid;
     using k2pg::sql::PgExpr;

@@ -41,8 +41,8 @@
 //
 // Buffer routines will copy to and from buffers without causing
 // a bus error when the architecture requires differnt byte alignments
-#ifndef YB_GUTIL_ENDIAN_H
-#define YB_GUTIL_ENDIAN_H
+
+#pragma once
 
 #include <assert.h>
 
@@ -369,7 +369,7 @@ class BigEndian {
 // Network byte order is big-endian
 typedef BigEndian NetworkByteOrder;
 
-namespace yb {
+namespace k2pg {
 namespace internal {
 
 template <size_t size, class Endian>
@@ -432,6 +432,4 @@ void Store(void *p, T v) {
   internal::EndianHelper<sizeof(T), Endian>::Store(p, static_cast<UnsignedT>(v));
 }
 
-} // namespace yb
-
-#endif  // YB_GUTIL_ENDIAN_H
+} // namespace k2pg

@@ -12,23 +12,13 @@
 
 // This module contains C definitions for all YugaByte structures that are used to exhange data
 // and metadata between Postgres and YBClient libraries.
-
-#ifndef YB_YQL_PGGATE_YBC_PG_TYPEDEFS_H
-#define YB_YQL_PGGATE_YBC_PG_TYPEDEFS_H
+#pragma once
 
 #include <stddef.h>
 #include "common/ybc_util.h"
 #include "entities/data_type.h"
 
 #ifdef __cplusplus
-
-#define YB_DEFINE_HANDLE_TYPE(name) \
-    namespace yb { \
-    namespace pggate { \
-    class name; \
-    } \
-    } \
-    typedef class yb::pggate::name *YBC##name;
 
 #define K2_DEFINE_HANDLE_TYPE(name, target) \
     namespace k2pg { \
@@ -47,7 +37,6 @@
     typedef class k2pg::sql::name *YBC##target;
 
 #else
-#define YB_DEFINE_HANDLE_TYPE(name) typedef struct name *YBC##name;
 #define K2_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
 #define K2SQL_DEFINE_HANDLE_TYPE(name, target) typedef struct name *YBC##target;
 #endif  // __cplusplus
@@ -233,6 +222,5 @@ typedef struct PgTableProperties {
 }  // extern "C"
 #endif  // __cplusplus
 
-#undef YB_DEFINE_HANDLE_TYPE
-
-#endif  // YB_YQL_PGGATE_YBC_PG_TYPEDEFS_H
+#undef K2_DEFINE_HANDLE_TYPE
+#undef K2SQL_DEFINE_HANDLE_TYPE

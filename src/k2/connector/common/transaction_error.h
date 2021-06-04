@@ -10,9 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-
-#ifndef YB_COMMON_TRANSACTION_ERROR_H
-#define YB_COMMON_TRANSACTION_ERROR_H
+#pragma once
 
 #include <k2/common/Common.h>
 #include <k2/common/FormattingUtils.h>
@@ -20,7 +18,7 @@
 #include "common/errno.h"
 #include "status.h"
 
-namespace yb {
+namespace k2pg {
 
 K2_DEF_ENUM(TransactionErrorCode,
     // Special value used to indicate no error of this type
@@ -41,6 +39,4 @@ struct TransactionErrorTag : IntegralErrorTag<TransactionErrorCode> {
 
 typedef StatusErrorCodeImpl<TransactionErrorTag> TransactionError;
 
-} // namespace yb
-
-#endif // YB_COMMON_TRANSACTION_ERROR_H
+} // namespace k2pg

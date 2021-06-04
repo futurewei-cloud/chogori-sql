@@ -30,12 +30,12 @@
 // under the License.
 //
 // Macros for dealing with memory alignment.
-#ifndef YB_UTIL_ALIGNMENT_H
-#define YB_UTIL_ALIGNMENT_H
+
+#pragma once
 
 #include <cstddef>
 
-namespace yb {
+namespace k2pg {
 
 // Round down 'x' to the nearest 'align' boundary
 #define YB_ALIGN_DOWN(x, align) ((x) & (-(align)))
@@ -79,6 +79,4 @@ T align_up(T ptr, typename AlignmentTraits<T>::value_type alignment_bytes) {
   return Traits::from_int((x + alignment_bytes - 1) & -alignment_bytes);
 }
 
-} // namespace yb
-
-#endif // YB_UTIL_ALIGNMENT_H
+} // namespace k2pg

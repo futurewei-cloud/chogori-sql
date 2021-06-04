@@ -22,8 +22,7 @@
 using std::string;
 using std::vector;
 
-namespace yb {
-namespace util {
+namespace k2pg {
 
 void Decimal::clear() {
   digits_ = {};
@@ -542,10 +541,9 @@ Decimal Decimal::operator+(const Decimal& other) const {
   return decimal;
 }
 
-std::ostream& operator<<(ostream& os, const Decimal& d) {
+std::ostream& operator<<(std::ostream& os, const Decimal& d) {
   os << d.ToString();
   return os;
 }
 
-} // namespace util
-} // namespace yb
+} // namespace k2pg
