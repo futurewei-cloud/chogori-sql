@@ -71,7 +71,7 @@ CreateMetaTablesResult TableInfoHandler::CreateMetaTables(std::shared_ptr<PgTxnH
         K2LOG_D(log::catalog, "Created SKV schemas for meta tables successfully");
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -105,7 +105,7 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -140,7 +140,7 @@ GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandl
         response.tableInfo = table_info;
     }
     catch (const std::exception& e) {
-        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+        response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -164,7 +164,7 @@ ListTablesResult TableInfoHandler::ListTables(std::shared_ptr<PgTxnHandler> txnH
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
 
     return response;
@@ -228,7 +228,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> 
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -290,7 +290,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
                     // search for target index by name
                     auto found = target_index_name_map.find(secondary_index.second.table_name());
                     if (found == target_index_name_map.end()) {
-                        response.status = STATUS_FORMAT(NotFound, "Cannot find target index $0 ", secondary_index.second.table_name());
+                        response.status = STATUS_FORMAT(NotFound, "Cannot find target index {}", secondary_index.second.table_name());
                         return response;
                     }
                     IndexInfo* target_index = found->second;
@@ -309,7 +309,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
         response.tableInfo = target_table;
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+        response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -433,7 +433,7 @@ CreateSKVSchemaResult TableInfoHandler::CreateTableSKVSchema(std::shared_ptr<PgT
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
 
     return response;
@@ -454,7 +454,7 @@ CreateSKVSchemaResult TableInfoHandler::CreateIndexSKVSchema(std::shared_ptr<PgT
         response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -494,7 +494,7 @@ PersistTableMetaResult TableInfoHandler::PersistTableMeta(std::shared_ptr<PgTxnH
         response.status = Status(); //OK
     }
     catch (const std::exception& e) {
-        response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+        response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -530,7 +530,7 @@ PersistIndexMetaResult TableInfoHandler::PersistIndexMeta(std::shared_ptr<PgTxnH
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -588,7 +588,7 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHan
 
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -602,7 +602,7 @@ DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<PgTxnHandler
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -640,7 +640,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHan
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
 
     return response;
@@ -655,7 +655,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler
         response.status = Status(); // OK
     }
     catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
@@ -694,7 +694,7 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
         response.baseTableId = index_table_meta.deserializeNext<k2::String>().value();
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
 
     return response;
@@ -730,7 +730,7 @@ GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnH
         response.isIndex = record.deserializeNext<bool>().value();
         response.status = Status(); // OK
     } catch (const std::exception& e) {
-		response.status = STATUS_FORMAT(RuntimeError, "$0", e.what());
+		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
 
     return response;
@@ -743,7 +743,7 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
 
     K2LOG_D(log::catalog, "Creating index ns name: {}, index name: {}, base table oid: {}",
             database_info->GetDatabaseId(), index_params.index_name, base_table_info->table_oid());
- 
+
     if (base_table_info->has_secondary_indexes()) {
         const IndexMap& index_map = base_table_info->secondary_indexes();
         const auto itr = index_map.find(index_table_id);
@@ -757,7 +757,7 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
                 return result;
             } else {
                 // return index already present error if index already exists
-                result.status = STATUS_FORMAT(AlreadyPresent, "index $0 has already existed in ns $1",
+                result.status = STATUS_FORMAT(AlreadyPresent, "index {} has already existed in ns {}",
                         index_table_id, database_info->GetDatabaseId());
                 K2LOG_E(log::catalog,"index {} has already existed in ns {}", index_table_id, database_info->GetDatabaseId());
                 return result;
@@ -844,7 +844,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
             local_database_info = fnc_db(physical_collection);
             if (database_info == nullptr) {
                 K2LOG_E(log::catalog, "Cannot find database {} for shared table {}", physical_collection, table_id);
-                result.status = STATUS_FORMAT(NotFound, "Cannot find database $0 for shared table $1", physical_collection, table_id);
+                result.status = STATUS_FORMAT(NotFound, "Cannot find database {} for shared table {}", physical_collection, table_id);
                 return result;
             }
             // start a new transaction for the shared table collection since SKV does not support cross collection transaction yet
@@ -868,7 +868,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         if (table_result.tableInfo == nullptr) {
             localTxnHandler->CommitTransaction();
             K2LOG_E(log::catalog, "Failed to find table {} in ns {}", table_id, physical_collection);
-            result.status = STATUS_FORMAT(NotFound, "Failed to find table $0 in ns $1", table_id, physical_collection);
+            result.status = STATUS_FORMAT(NotFound, "Failed to find table {} in ns {}", table_id, physical_collection);
             result.tableInfo = nullptr;
             return result;
         }
@@ -876,7 +876,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         result.tableInfo = table_result.tableInfo;
         localTxnHandler->CommitTransaction();
         result.status = Status(); // OK;
-        
+
         K2LOG_D(log::catalog, "Returned schema for table name: {}, id: {}",
             result.tableInfo->table_name(), result.tableInfo->table_id());
         return result;
@@ -902,7 +902,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         // cannot find the id as either a table id or an index id
         localTxnHandler->AbortTransaction();
         K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
-        result.status = STATUS_FORMAT(NotFound, "Failed to find base table for index $0 in ns $1", table_id, physical_collection);
+        result.status = STATUS_FORMAT(NotFound, "Failed to find base table for index {} in ns {}", table_id, physical_collection);
         result.tableInfo = nullptr;
         return result;
     }
@@ -957,7 +957,7 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table
     }
     IndexInfo index_info(index_name, table_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
             is_unique, is_shared, columns, index_permissions);
-    return index_info;    
+    return index_info;
 }
 
 void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema) {
@@ -1424,9 +1424,9 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
      // SchemaVersion
     uint32_t version = table_meta.deserializeNext<int32_t>().value();
 
-    vector<ColumnSchema> cols;
+    std::vector<ColumnSchema> cols;
     int key_columns = 0;
-    vector<ColumnId> ids;
+    std::vector<ColumnId> ids;
     // deserialize table columns
     for (auto& column : table_columns) {
         // SchemaTableId

@@ -31,12 +31,12 @@
 #include <cstdarg>
 #include <string>
 #include <vector>
+#include <functional>
+#include <sstream>
 
-#include "common/concurrent/callback_forward.h"
 #include "common/sys/file_system.h"
 #include "result.h"
 #include "status.h"
-#include "common/type/strongly_typed_bool.h"
 
 namespace yb {
 
@@ -48,8 +48,6 @@ class WritableFile;
 
 struct RWFileOptions;
 struct WritableFileOptions;
-
-YB_STRONGLY_TYPED_BOOL(ExcludeDots);
 
 // FileFactory is the implementation of all NewxxxFile Env methods as well as any methods that
 // are used to create new files. This class is created to allow easy definition of how we create
@@ -277,17 +275,17 @@ class Env {
   // The names are relative to "dir".
   // Original contents of *results are dropped.
   CHECKED_STATUS GetChildren(const std::string& dir, std::vector<std::string>* result) {
-    return GetChildren(dir, ExcludeDots::kFalse, result);
+    return GetChildren(dir, false, result);
   }
 
   Result<std::vector<std::string>> GetChildren(
-      const std::string& dir, ExcludeDots exclude_dots = ExcludeDots::kFalse) {
+      const std::string& dir, bool exclude_dots = false) {
     std::vector<std::string> result;
     RETURN_NOT_OK(GetChildren(dir, exclude_dots, &result));
     return result;
   }
 
-  virtual CHECKED_STATUS GetChildren(const std::string& dir, ExcludeDots exclude_dots,
+  virtual CHECKED_STATUS GetChildren(const std::string& dir, bool exclude_dots,
                                      std::vector<std::string>* result) = 0;
 
   // Delete the named file.
@@ -432,7 +430,7 @@ class Env {
   //
   // Returning an error won't halt the walk, but it will cause it to return
   // with an error status when it's done.
-  typedef Callback<Status(FileType, const std::string&, const std::string&)> WalkCallback;
+  typedef std::function<Status(FileType, const std::string&, const std::string&)> WalkCallback;
 
   // Whether to walk directories in pre-order or post-order.
   enum DirectoryOrder {
@@ -650,7 +648,8 @@ class RWFile {
   virtual const std::string& filename() const = 0;
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(RWFile);
+  RWFile(const RWFile&) = delete;
+  RWFile& operator=(const RWFile&) = delete;
 };
 
 // Identifies a locked file.
@@ -672,7 +671,7 @@ extern CHECKED_STATUS WriteStringToFileSync(Env* env, const Slice& data, const s
 
 // A utility routine: read contents of named file into *data
 extern CHECKED_STATUS ReadFileToString(Env* env, const std::string& fname,
-                               faststring* data);
+                               std::stringstream& data);
 
 // An implementation of Env that forwards all calls to another Env.
 // May be useful to clients who wish to override just part of the
@@ -718,7 +717,7 @@ class EnvWrapper : public Env {
   bool FileExists(const std::string& f) override { return target_->FileExists(f); }
   bool DirExists(const std::string& d) override { return target_->DirExists(d); }
   CHECKED_STATUS GetChildren(
-      const std::string& dir, ExcludeDots exclude_dots, std::vector<std::string>* r) override {
+      const std::string& dir, bool exclude_dots, std::vector<std::string>* r) override {
     return target_->GetChildren(dir, exclude_dots, r);
   }
   CHECKED_STATUS DeleteFile(const std::string& f) override { return target_->DeleteFile(f); }

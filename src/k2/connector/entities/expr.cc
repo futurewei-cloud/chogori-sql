@@ -116,7 +116,7 @@ PgExpr::~PgExpr() {
 Status PgExpr::CheckOperatorName(const char *name) {
   auto iter = kOperatorNames.find(name);
   if (iter == kOperatorNames.end()) {
-    return STATUS_SUBSTITUTE(InvalidArgument, "Wrong operator name: $0", name);
+    return STATUS_FORMAT(InvalidArgument, "Wrong operator name: {}", name);
   }
   return Status::OK();
 }

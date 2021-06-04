@@ -411,7 +411,7 @@ class PgGateApiImpl {
       // Invalid handle.
       return STATUS(InvalidArgument, "Invalid expression handle for constant");
     }
-    down_cast<PgConstant*>(expr)->UpdateConstant(value, is_null);
+    dynamic_cast<PgConstant*>(expr)->UpdateConstant(value, is_null);
     return Status::OK();
   }
 

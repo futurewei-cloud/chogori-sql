@@ -14,6 +14,8 @@
 #ifndef YB_UTIL_FILE_SYSTEM_POSIX_H
 #define YB_UTIL_FILE_SYSTEM_POSIX_H
 
+#include <string>
+
 #include "common/sys/file_system.h"
 
 namespace yb {
@@ -31,7 +33,7 @@ class PosixSequentialFile : public SequentialFile {
   CHECKED_STATUS Skip(uint64_t n) override;
   CHECKED_STATUS InvalidateCache(size_t offset, size_t length) override;
 
-  const string& filename() const override { return filename_; }
+  const std::string& filename() const override { return filename_; }
 
  private:
   std::string filename_;
@@ -54,7 +56,7 @@ class PosixRandomAccessFile : public RandomAccessFile {
 
   Result<uint64_t> INode() const override;
 
-  const string& filename() const override { return filename_; }
+  const std::string& filename() const override { return filename_; }
 
   size_t memory_footprint() const override;
 

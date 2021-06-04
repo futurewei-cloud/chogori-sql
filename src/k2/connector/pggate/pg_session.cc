@@ -294,7 +294,7 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
     Status s = catalog_client_->OpenTable(table_object_id.GetDatabaseOid(), table_object_id.GetObjectOid(), &table);
     if (!s.ok()) {
       K2LOG_E(log::pg, "LoadTable: Server returns an error: {}", s);
-      return STATUS_FORMAT(NotFound, "Error loading table with oid $0 in database with oid $1: $2",
+      return STATUS_FORMAT(NotFound, "Error loading table with oid {} in database with oid {}: {}",
                            table_object_id.GetObjectOid(), table_object_id.GetDatabaseOid(), s.ToUserMessage());
     }
     table_cache_[t_table_uuid] = table;
@@ -314,7 +314,7 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
   const auto itr = table->secondary_indexes().find(t_table_id);
   if (itr == table->secondary_indexes().end()) {
     K2LOG_E(log::pg, "Cannot find index with id {}", t_table_id);
-    return STATUS_FORMAT(NotFound, "Cannot find index $0 in database $1",
+    return STATUS_FORMAT(NotFound, "Cannot find index {} in database {}",
                          t_table_id, table->database_id());
   }
 

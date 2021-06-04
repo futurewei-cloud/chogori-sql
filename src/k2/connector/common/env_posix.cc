@@ -34,6 +34,10 @@
 #include <sys/uio.h>
 #include <time.h>
 #include <unistd.h>
+#include <chrono>
+#include <thread>
+#include <filesystem>
+#include <mutex>
 
 #include <set>
 #include <vector>
@@ -50,24 +54,16 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 
+#include <fmt/format.h>
+
 #include "common/alignment.h"
-#include "common/bind.h"
 #include "common/env.h"
 #include "common/errno.h"
 #include "common/flag_tags.h"
-#include "common/stopwatch.h"
-#include "common/concurrent/atomicops.h"
-#include "common/concurrent/callback.h"
-#include "common/concurrent/locks.h"
-#include "common/concurrent/thread_restrictions.h"
-#include "common/log/logging.h"
-#include "common/strings/substitute.h"
+#include "common/thread_restrictions.h"
 #include "common/sys/file_system_posix.h"
 #include "common/sys/malloc.h"
-#include "common/sys/monotime.h"
 #include "common/type/slice.h"
-#include "common/util/map-util.h"
-#include "common/util/path_util.h"
 
 // Copied from falloc.h. Useful for older kernels that lack support for
 // hole punching; fallocate(2) will return EOPNOTSUPP.
@@ -127,13 +123,12 @@ DEFINE_test_flag(bool, simulate_fs_without_fallocate, false,
 DEFINE_test_flag(int64, simulate_free_space_bytes, -1,
     "If a non-negative value, GetFreeSpaceBytes will return the specified value.");
 
-using base::subtle::Atomic64;
-using base::subtle::Barrier_AtomicIncrement;
 using std::vector;
-using strings::Substitute;
 
 static __thread uint64_t thread_local_id;
-static Atomic64 cur_thread_local_id_;
+static std::atomic<int64_t> cur_thread_local_id_;
+
+namespace fs = std::filesystem;
 
 namespace yb {
 
@@ -214,7 +209,7 @@ class ScopedFdCloser {
 
 #define STATUS_IO_ERROR(context, err_number) IOError(context, err_number, __FILE__, __LINE__)
 
-static Status DoSync(int fd, const string& filename) {
+static Status DoSync(int fd, const std::string& filename) {
   ThreadRestrictions::AssertIOAllowed();
   if (FLAGS_never_fsync) return Status::OK();
   if (FLAGS_writable_file_use_fsync) {
@@ -229,7 +224,7 @@ static Status DoSync(int fd, const string& filename) {
   return Status::OK();
 }
 
-static Status DoOpen(const string& filename, Env::CreateMode mode, int* fd, int extra_flags = 0) {
+static Status DoOpen(const std::string& filename, Env::CreateMode mode, int* fd, int extra_flags = 0) {
   ThreadRestrictions::AssertIOAllowed();
   int flags = O_RDWR;
   switch (mode) {
@@ -242,7 +237,7 @@ static Status DoOpen(const string& filename, Env::CreateMode mode, int* fd, int 
     case Env::OPEN_EXISTING:
       break;
     default:
-      return STATUS(NotSupported, Substitute("Unknown create mode $0", mode));
+      return STATUS(NotSupported, fmt::format("Unknown create mode {}", mode));
   }
 
   const int f = open(filename.c_str(), flags | extra_flags, 0644);
@@ -285,12 +280,12 @@ class PosixWritableFile : public WritableFile {
   }
 
   Status Append(const Slice& data) override {
-    vector<Slice> data_vector;
+    std::vector<Slice> data_vector;
     data_vector.push_back(data);
     return AppendVector(data_vector);
   }
 
-  Status AppendVector(const vector<Slice>& data_vector) override {
+  Status AppendVector(const std::vector<Slice>& data_vector) override {
     ThreadRestrictions::AssertIOAllowed();
     static const size_t kIovMaxElements = IOV_MAX;
 
@@ -308,14 +303,14 @@ class PosixWritableFile : public WritableFile {
     ThreadRestrictions::AssertIOAllowed();
     uint64_t offset = std::max(filesize_, pre_allocated_size_);
     if (PREDICT_FALSE(FLAGS_TEST_simulate_fs_without_fallocate)) {
-      YB_LOG_FIRST_N(WARNING, 1) << "Simulating a filesystem without fallocate() support";
+      LOG_FIRST_N(WARNING, 1) << "Simulating a filesystem without fallocate() support";
       return Status::OK();
     }
     if (fallocate(fd_, 0, offset, size) < 0) {
       if (errno == EOPNOTSUPP) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
       } else if (errno == ENOSYS) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
       } else {
         return STATUS_IO_ERROR(filename_, errno);
       }
@@ -379,11 +374,9 @@ class PosixWritableFile : public WritableFile {
 
   Status Sync() override {
     ThreadRestrictions::AssertIOAllowed();
-    LOG_SLOW_EXECUTION(WARNING, 1000, Substitute("sync call for $0", filename_)) {
-      if (pending_sync_) {
-        pending_sync_ = false;
-        RETURN_NOT_OK(DoSync(fd_, filename_));
-      }
+    if (pending_sync_) {
+      pending_sync_ = false;
+      RETURN_NOT_OK(DoSync(fd_, filename_));
     }
     return Status::OK();
   }
@@ -392,7 +385,7 @@ class PosixWritableFile : public WritableFile {
     return filesize_;
   }
 
-  const string& filename() const override { return filename_; }
+  const std::string& filename() const override { return filename_; }
 
  protected:
     const std::string filename_;
@@ -404,7 +397,7 @@ class PosixWritableFile : public WritableFile {
 
  private:
 
-  Status DoWritev(const vector<Slice>& data_vector,
+  Status DoWritev(const std::vector<Slice>& data_vector,
                   size_t offset, size_t n) {
     ThreadRestrictions::AssertIOAllowed();
 #if defined(__linux__)
@@ -433,7 +426,7 @@ class PosixWritableFile : public WritableFile {
 
     if (PREDICT_FALSE(written != nbytes)) {
       return STATUS(IOError,
-          Substitute("pwritev error: expected to write $0 bytes, wrote $1 bytes instead",
+          fmt::format("pwritev error: expected to write {} bytes, wrote {} bytes instead",
                      nbytes, written));
     }
 #else
@@ -449,7 +442,7 @@ class PosixWritableFile : public WritableFile {
 
       if (PREDICT_FALSE(written != data.size())) {
         return STATUS(IOError,
-            Substitute("pwrite error: expected to write $0 bytes, wrote $1 bytes instead",
+            fmt::format("pwrite error: expected to write {} bytes, wrote {} bytes instead",
                        data.size(), written));
       }
     }
@@ -513,7 +506,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
     return Status::OK();
   }
 
-  Status AppendVector(const vector<Slice> &data_vector) override {
+  Status AppendVector(const std::vector<Slice> &data_vector) override {
     ThreadRestrictions::AssertIOAllowed();
     for (auto const &slice : data_vector) {
       RETURN_NOT_OK(Append(slice));
@@ -631,7 +624,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
 
     if (PREDICT_FALSE(written != bytes_to_write)) {
       return STATUS(IOError,
-                    Substitute("pwritev error: expected to write $0 bytes, wrote $1 bytes instead",
+                    fmt::format("pwritev error: expected to write {} bytes, wrote {} bytes instead",
                                bytes_to_write, written));
     }
 
@@ -683,7 +676,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
   }
 
   size_t next_write_offset_;
-  vector<std::shared_ptr<uint8_t>> block_ptr_vec_;
+  std::vector<std::shared_ptr<uint8_t>> block_ptr_vec_;
   size_t last_block_used_bytes_;
   size_t last_block_idx_;
   int block_size_;
@@ -695,7 +688,7 @@ class PosixDirectIOWritableFile final : public PosixWritableFile {
 class PosixRWFile final : public RWFile {
 // is not employed.
  public:
-  PosixRWFile(string fname, int fd, bool sync_on_close)
+  PosixRWFile(std::string fname, int fd, bool sync_on_close)
       : filename_(std::move(fname)),
         fd_(fd),
         sync_on_close_(sync_on_close),
@@ -723,7 +716,7 @@ class PosixRWFile final : public RWFile {
       DCHECK_LE(this_result.size(), rem);
       if (this_result.size() == 0) {
         // EOF
-        return STATUS_FORMAT(IOError, "EOF trying to read $0 bytes at offset $1", length, offset);
+        return STATUS_FORMAT(IOError, "EOF trying to read {} bytes at offset {}", length, offset);
       }
       dst += this_result.size();
       rem -= this_result.size();
@@ -745,7 +738,7 @@ class PosixRWFile final : public RWFile {
 
     if (PREDICT_FALSE(written != data.size())) {
       return STATUS(IOError,
-          Substitute("pwrite error: expected to write $0 bytes, wrote $1 bytes instead",
+          fmt::format("pwrite error: expected to write {} bytes, wrote {} bytes instead",
                      data.size(), written));
     }
 
@@ -757,9 +750,9 @@ class PosixRWFile final : public RWFile {
     ThreadRestrictions::AssertIOAllowed();
     if (fallocate(fd_, 0, offset, length) < 0) {
       if (errno == EOPNOTSUPP) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The filesystem does not support fallocate().";
       } else if (errno == ENOSYS) {
-        YB_LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
+        LOG_FIRST_N(WARNING, 1) << "The kernel does not implement fallocate().";
       } else {
         return STATUS_IO_ERROR(filename_, errno);
       }
@@ -799,11 +792,9 @@ class PosixRWFile final : public RWFile {
 
   Status Sync() override {
     ThreadRestrictions::AssertIOAllowed();
-    LOG_SLOW_EXECUTION(WARNING, 1000, Substitute("sync call for $0", filename())) {
-      if (pending_sync_) {
-        pending_sync_ = false;
-        RETURN_NOT_OK(DoSync(fd_, filename_));
-      }
+    if (pending_sync_) {
+      pending_sync_ = false;
+      RETURN_NOT_OK(DoSync(fd_, filename_));
     }
     return Status::OK();
   }
@@ -840,7 +831,7 @@ class PosixRWFile final : public RWFile {
     return Status::OK();
   }
 
-  const string& filename() const override {
+  const std::string& filename() const override {
     return filename_;
   }
 
@@ -935,13 +926,13 @@ class PosixEnv : public Env {
     return file_factory_->NewTempWritableFile(opts, name_template, created_filename, result);
   }
 
-  virtual Status NewRWFile(const string& fname,
+  virtual Status NewRWFile(const std::string& fname,
                            std::unique_ptr<RWFile>* result) override {
     return file_factory_->NewRWFile(fname, result);
   }
 
   virtual Status NewRWFile(const RWFileOptions& opts,
-                           const string& fname,
+                           const std::string& fname,
                            std::unique_ptr<RWFile>* result) override {
     return file_factory_->NewRWFile(opts, fname, result);
   }
@@ -961,7 +952,7 @@ class PosixEnv : public Env {
   }
 
   CHECKED_STATUS GetChildren(const std::string& dir,
-                             ExcludeDots exclude_dots,
+                             bool exclude_dots,
                              std::vector<std::string>* result) override {
     ThreadRestrictions::AssertIOAllowed();
     result->clear();
@@ -1023,8 +1014,10 @@ class PosixEnv : public Env {
   }
 
   Status DeleteRecursively(const std::string &name) override {
-    return Walk(name, POST_ORDER, Bind(&PosixEnv::DeleteRecursivelyCb,
-                                       Unretained(this)));
+    WalkCallback cb([this](FileType type, const std::string& dirname, const std::string& basename) {
+      return DeleteRecursivelyCb(type, dirname, basename);
+    });
+    return Walk(name, POST_ORDER, std::move(cb));
   }
 
   Result<uint64_t> GetFileSize(const std::string& fname) override {
@@ -1048,7 +1041,7 @@ class PosixEnv : public Env {
         });
   }
 
-  Result<uint64_t> GetBlockSize(const string& fname) override {
+  Result<uint64_t> GetBlockSize(const std::string& fname) override {
     return GetFileStat(
         fname, "PosixEnv::GetBlockSize", [](const struct stat& sbuf) { return sbuf.st_blksize; });
   }
@@ -1077,7 +1070,7 @@ class PosixEnv : public Env {
     ThreadRestrictions::AssertIOAllowed();
     Status result;
     if (rename(src.c_str(), target.c_str()) != 0) {
-      result = STATUS_IO_ERROR(Format("Rename $0 => $1", src, target), errno);
+      result = STATUS_IO_ERROR(fmt::format("Rename {} => {}", src, target), errno);
     }
     return result;
   }
@@ -1119,7 +1112,7 @@ class PosixEnv : public Env {
   }
 
   Status GetTestDirectory(std::string* result) override {
-    string dir;
+    std::string dir;
     const char* env = getenv("TEST_TMPDIR");
     if (env && env[0] != '\0') {
       dir = env;
@@ -1139,7 +1132,7 @@ class PosixEnv : public Env {
     // because that function returns a totally opaque ID, which can't be
     // compared via normal means.
     if (thread_local_id == 0) {
-      thread_local_id = Barrier_AtomicIncrement(&cur_thread_local_id_, 1);
+      thread_local_id = cur_thread_local_id_++; //Barrier_AtomicIncrement(&cur_thread_local_id_, 1);
     }
     return thread_local_id;
   }
@@ -1170,10 +1163,10 @@ class PosixEnv : public Env {
 
   void SleepForMicroseconds(int micros) override {
     ThreadRestrictions::AssertWaitAllowed();
-    SleepFor(MonoDelta::FromMicroseconds(micros));
+    std::this_thread::sleep_for(std::chrono::microseconds(micros));
   }
 
-  Status GetExecutablePath(string* path) override {
+  Status GetExecutablePath(std::string* path) override {
     uint32_t size = 64;
     uint32_t len = 0;
     while (true) {
@@ -1204,7 +1197,7 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status IsDirectory(const string& path, bool* is_dir) override {
+  Status IsDirectory(const std::string& path, bool* is_dir) override {
     ThreadRestrictions::AssertIOAllowed();
     Status s;
     struct stat sbuf;
@@ -1231,7 +1224,25 @@ class PosixEnv : public Env {
     return !S_ISDIR(sbuf.st_mode) && (sbuf.st_mode & S_IXUSR);
   }
 
-  Status Walk(const string& root, DirectoryOrder order, const WalkCallback& cb) override {
+  class FTS_Manager {
+    public:
+    FTS_Manager(char *paths[]) {
+      fts = fts_open(paths, FTS_PHYSICAL | FTS_XDEV | FTS_NOCHDIR, nullptr);
+    }
+
+    ~FTS_Manager() {
+      if (fts) { fts_close(fts); }
+    }
+
+    FTS	*GetFts() {
+      return fts;
+    }
+
+    private:
+    FTS	*fts;
+  };
+
+  Status Walk(const std::string& root, DirectoryOrder order, const WalkCallback& cb) override {
     ThreadRestrictions::AssertIOAllowed();
     // Some sanity checks
     CHECK_NE(root, "/");
@@ -1239,21 +1250,18 @@ class PosixEnv : public Env {
     CHECK_NE(root, ".");
     CHECK_NE(root, "");
 
-    // FTS requires a non-const copy of the name. strdup it and free() when
-    // we leave scope.
-    gscoped_ptr<char, FreeDeleter> name_dup(strdup(root.c_str()));
-    char *paths[] = { name_dup.get(), nullptr };
+    std::string name_dup = root;
 
-    // FTS_NOCHDIR is important here to make this thread-safe.
-    gscoped_ptr<FTS, FtsCloser> tree(
-        fts_open(paths, FTS_PHYSICAL | FTS_XDEV | FTS_NOCHDIR, nullptr));
-    if (!tree.get()) {
+    char *paths[] = { const_cast<char*>(name_dup.c_str()), nullptr };
+
+    std::unique_ptr<FTS_Manager> tree = std::make_unique<FTS_Manager>(paths);
+    if (!tree->GetFts()) {
       return STATUS_IO_ERROR(root, errno);
     }
 
     FTSENT *ent = nullptr;
     bool had_errors = false;
-    while ((ent = fts_read(tree.get())) != nullptr) {
+    while ((ent = fts_read(tree->GetFts())) != nullptr) {
       bool doCb = false;
       FileType type = DIRECTORY_TYPE;
       switch (ent->fts_info) {
@@ -1287,7 +1295,9 @@ class PosixEnv : public Env {
           break;
       }
       if (doCb) {
-        if (!cb.Run(type, DirName(ent->fts_path), ent->fts_name).ok()) {
+        fs::path fts_path = ent->fts_path;
+        std::string dir_name = fts_path.parent_path().string();
+        if (!cb(type, dir_name, ent->fts_name).ok()) {
           had_errors = true;
         }
       }
@@ -1299,13 +1309,14 @@ class PosixEnv : public Env {
     return Status::OK();
   }
 
-  Status Canonicalize(const string& path, string* result) override {
+  Status Canonicalize(const std::string& path, std::string* result) override {
     ThreadRestrictions::AssertIOAllowed();
-    gscoped_ptr<char[], FreeDeleter> r(realpath(path.c_str(), nullptr));
+    char *r = realpath(path.c_str(), nullptr);
     if (!r) {
       return STATUS_IO_ERROR(path, errno);
     }
-    *result = string(r.get());
+    *result = r;
+    free(r);
     return Status::OK();
   }
 
@@ -1340,38 +1351,38 @@ class PosixEnv : public Env {
     auto ret = statvfs(path.c_str(), &stat);
     if (ret != 0) {
       if (errno == EACCES) {
-        return STATUS_SUBSTITUTE(NotAuthorized,
-            "Caller doesn't have the required permission on a component of the path $0",
+        return STATUS_FORMAT(NotAuthorized,
+            "Caller doesn't have the required permission on a component of the path {}",
             path);
       } else if (errno == EIO) {
-        return STATUS_SUBSTITUTE(IOError,
-            "I/O error occurred while reading from '$0' filesystem",
+        return STATUS_FORMAT(IOError,
+            "I/O error occurred while reading from '{}' filesystem",
             path);
       } else if (errno == ELOOP) {
-        return STATUS_SUBSTITUTE(InternalError,
-            "Too many symbolic links while translating '$0' path",
+        return STATUS_FORMAT(InternalError,
+            "Too many symbolic links while translating '{}' path",
             path);
       } else if (errno == ENAMETOOLONG) {
-        return STATUS_SUBSTITUTE(NotSupported,
-            "Path '$0' is too long",
+        return STATUS_FORMAT(NotSupported,
+            "Path '{}' is too long",
             path);
       } else if (errno == ENOENT) {
-        return STATUS_SUBSTITUTE(NotFound,
-            "File specified by path '$0' doesn't exist",
+        return STATUS_FORMAT(NotFound,
+            "File specified by path '{}' doesn't exist",
             path);
       } else if (errno == ENOMEM) {
         return STATUS(InternalError, "Insufficient memory");
       } else if (errno == ENOSYS) {
-        return STATUS_SUBSTITUTE(NotSupported,
-            "Filesystem for path '$0' doesn't support statvfs",
+        return STATUS_FORMAT(NotSupported,
+            "Filesystem for path '{}' doesn't support statvfs",
             path);
       } else if (errno == ENOTDIR) {
-        return STATUS_SUBSTITUTE(InvalidArgument,
-            "A component of the path '$0' is not a directory",
+        return STATUS_FORMAT(InvalidArgument,
+            "A component of the path '{}' is not a directory",
             path);
       } else {
-        return STATUS_SUBSTITUTE(InternalError,
-            "Failed to read information about filesystem for path '%s': errno=$0: $1",
+        return STATUS_FORMAT(InternalError,
+            "Failed to read information about filesystem for path '{}': errno={}: {}",
             path,
             errno,
             ErrnoToString(errno));
@@ -1395,15 +1406,11 @@ class PosixEnv : public Env {
   }
 
  private:
-  // gscoped_ptr Deleter implementation for fts_close
-  struct FtsCloser {
-    void operator()(FTS *fts) const {
-      if (fts) { fts_close(fts); }
-    }
-  };
-
-  Status DeleteRecursivelyCb(FileType type, const string& dirname, const string& basename) {
-    string full_path = JoinPathSegments(dirname, basename);
+  Status DeleteRecursivelyCb(FileType type, const std::string& dirname, const std::string& basename) {
+    fs::path root_path = dirname;
+    fs::path base_path = basename;
+    fs::path joined_path = root_path / base_path;
+    std::string full_path = joined_path.string();
     Status s;
     switch (type) {
       case FILE_TYPE:
@@ -1489,18 +1496,18 @@ class PosixFileFactory : public FileFactory {
       fd = ::mkstemp(fname.get());
     }
     if (fd < 0) {
-      return STATUS_IO_ERROR(Format("Call to mkstemp() failed on name template $0", name_template),
+      return STATUS_IO_ERROR(fmt::format("Call to mkstemp() failed on name template {}", name_template),
                              errno);
     }
     *created_filename = fname.get();
     return InstantiateNewWritableFile(*created_filename, fd, opts, result);
   }
 
-  Status NewRWFile(const string& fname, std::unique_ptr<RWFile>* result) override {
+  Status NewRWFile(const std::string& fname, std::unique_ptr<RWFile>* result) override {
     return NewRWFile(RWFileOptions(), fname, result);
   }
 
-  Status NewRWFile(const RWFileOptions& opts, const string& fname,
+  Status NewRWFile(const RWFileOptions& opts, const std::string& fname,
                    std::unique_ptr<RWFile>* result) override {
     int fd = -1;
     RETURN_NOT_OK(DoOpen(fname, opts.mode, &fd));
@@ -1558,7 +1565,7 @@ Env* Env::Default() {
 }
 
 FileFactory* Env::DefaultFileFactory() {
-  return down_cast<PosixEnv*>(Env::Default())->GetFileFactory();
+  return static_cast<PosixEnv*>(Env::Default())->GetFileFactory();
 }
 
 std::unique_ptr<Env> Env::NewDefaultEnv(std::unique_ptr<FileFactory> file_factory) {

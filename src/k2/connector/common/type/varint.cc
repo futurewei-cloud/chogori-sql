@@ -13,6 +13,8 @@
 
 #include "common/type/varint.h"
 
+#include <string>
+
 #include <openssl/bn.h>
 
 namespace yb {
@@ -55,8 +57,7 @@ Result<int64_t> VarInt::ToInt64() const {
                            : std::numeric_limits<int64_t>::max();
 
   if (value > bound) {
-    return STATUS_FORMAT(
-        InvalidArgument, "VarInt $0 cannot be converted to int64 due to overflow", *this);
+    return STATUS(InvalidArgument, "VarInt cannot be converted to int64 due to overflow");
   }
   return negative ? -value : value;
 }
@@ -69,7 +70,7 @@ Status VarInt::FromString(const char* cstr) {
   int parsed = BN_dec2bn(&temp, cstr);
   impl_.reset(temp);
   if (parsed == 0 || parsed != strlen(cstr)) {
-    return STATUS_FORMAT(InvalidArgument, "Cannot parse varint: $0", cstr);
+    return STATUS_FORMAT(InvalidArgument, "Cannot parse varint: {}", cstr);
   }
   return Status::OK();
 }
@@ -119,7 +120,7 @@ std::string VarInt::EncodeToComparable(size_t num_reserved_bits) const {
     // This value could be merged with ones, so should cleanup it.
     result[offset - 1] = 0;
   }
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(result.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(result.data()));
   BN_bn2bin(impl_.get(), data + offset);
   size_t idx = 0;
   // Fill header with ones. We also fill reserved bits with ones for simplicity, then it will be
@@ -167,7 +168,7 @@ Status VarInt::DecodeFromComparable(const Slice &slice, size_t *num_decoded_byte
     ++idx;
     if (idx >= len) {
       return STATUS_FORMAT(
-          Corruption, "Encoded varint failure, no prefix termination: $0",
+          Corruption, "Encoded varint failure, no prefix termination: {}",
           slice.ToDebugHexString());
     }
     num_ones += 8;
@@ -181,7 +182,7 @@ Status VarInt::DecodeFromComparable(const Slice &slice, size_t *num_decoded_byte
   num_ones -= num_reserved_bits;
   if (num_ones > len) {
     return STATUS_FORMAT(
-        Corruption, "Not enough data in encoded varint: $0, $1",
+        Corruption, "Not enough data in encoded varint: {}, {}",
         slice.ToDebugHexString(), num_ones);
   }
   *num_decoded_bytes = num_ones;
@@ -198,7 +199,7 @@ Status VarInt::DecodeFromComparable(const Slice& slice) {
   return DecodeFromComparable(slice, &num_decoded_bytes);
 }
 
-Status VarInt::DecodeFromComparable(const string& str) {
+Status VarInt::DecodeFromComparable(const std::string& str) {
   return DecodeFromComparable(Slice(str));
 }
 
@@ -210,7 +211,7 @@ std::string VarInt::EncodeToTwosComplement() const {
   size_t offset = num_bits % kBitsPerWord == 0 ? 1 : 0;
   size_t count = (num_bits + kBitsPerWord - 1) / kBitsPerWord + offset;
   std::string result(count, 0);
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(result.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(result.data()));
   if (offset) {
     *data = 0;
   }
@@ -238,11 +239,11 @@ Status VarInt::DecodeFromTwosComplement(const std::string& input) {
   bool negative = (input[0] & 0x80) != 0;
   if (!negative) {
     impl_.reset(BN_bin2bn(
-        pointer_cast<const unsigned char*>(input.data()), input.size(), nullptr /* ret */));
+        reinterpret_cast<const unsigned char*>(input.data()), input.size(), nullptr /* ret */));
     return Status::OK();
   }
   std::string copy(input);
-  auto data = pointer_cast<unsigned char*>(const_cast<char*>(copy.data()));
+  auto data = reinterpret_cast<unsigned char*>(const_cast<char*>(copy.data()));
   unsigned char* back = data + copy.size();
   while (--back >= data && *back == 0x00) {
     *back = 0xff;

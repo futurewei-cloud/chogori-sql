@@ -77,8 +77,6 @@ using yb::Status;
 using yb::Slice;
 using k2pg::sql::PgObjectId;
 
-YB_STRONGLY_TYPED_BOOL(RequestSent);
-
 //--------------------------------------------------------------------------------------------------
 // PgOpResult represents a batch of rows in ONE reply from storage layer.
 class PgOpResult {
@@ -108,7 +106,7 @@ public:
 
     // Access function to ybctids value in this batch.
     // Sys columns must be processed before this function is called.
-    const vector<Slice>& ybctids() const {
+    const std::vector<Slice>& ybctids() const {
         DCHECK(syscol_processed_) << "System columns are not yet setup";
         return ybctids_;
     }
@@ -134,9 +132,9 @@ private:
     bool syscol_processed_ = false;
 
     // store computed ybctids;
-    vector<k2::String> ybctid_strings_;
+    std::vector<k2::String> ybctid_strings_;
     //... and also as slices so that we can return them to the YB API
-    vector<Slice> ybctids_;
+    std::vector<Slice> ybctids_;
 
 private :
 
@@ -160,7 +158,7 @@ public:
     virtual void ExecuteInit(const PgExecParameters *exec_params);
 
     // Execute the op. Return true if the request has been sent and is awaiting the result.
-    virtual Result<RequestSent> Execute();
+    virtual Result<bool> Execute();
 
     // Instruct this sql_op_ to abandon execution and querying data by setting end_of_data_ to 'true'.
     // - This op will not send request to storage layer.
@@ -173,7 +171,7 @@ public:
     CHECKED_STATUS GetResult(std::list<PgOpResult> *rowsets);
     Result<int32_t> GetRowsAffectedCount() const;
 
-    virtual CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) = 0;
+    virtual CHECKED_STATUS PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) = 0;
 
 protected:
     // Populate Protobuf requests using the collected informtion for this DocDB operator.
@@ -294,7 +292,7 @@ private:
     // initialize op by partitions
     CHECKED_STATUS InitializeRowIdOperators();
 
-    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) override;
+    CHECKED_STATUS PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) override;
 
     // Analyze options and pick the appropriate prefetch limit.
     void SetRequestPrefetchLimit();
@@ -347,7 +345,7 @@ private:
     // Create requests using template_op (write_op).
     CHECKED_STATUS CreateRequests() override;
 
-    CHECKED_STATUS PopulateDmlByRowIdOps(const vector<std::string>& ybctids) override;
+    CHECKED_STATUS PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) override;
 
     // Get WRITE operator for a specific operator index in pgsql_ops_.
     PgWriteOpTemplate *GetWriteOp(int op_index) {

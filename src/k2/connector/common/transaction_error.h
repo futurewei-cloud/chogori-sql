@@ -14,25 +14,28 @@
 #ifndef YB_COMMON_TRANSACTION_ERROR_H
 #define YB_COMMON_TRANSACTION_ERROR_H
 
-#include "enums.h"
+#include <k2/common/Common.h>
+#include <k2/common/FormattingUtils.h>
+
+#include "common/errno.h"
 #include "status.h"
 
 namespace yb {
 
-YB_DEFINE_ENUM(TransactionErrorCode,
+K2_DEF_ENUM(TransactionErrorCode,
     // Special value used to indicate no error of this type
-    (kNone)
-    (kAborted)
-    (kReadRestartRequired)
-    (kConflict)
-    (kSnapshotTooOld));
+    kNone,
+    kAborted,
+    kReadRestartRequired,
+    kConflict,
+    kSnapshotTooOld);
 
 struct TransactionErrorTag : IntegralErrorTag<TransactionErrorCode> {
   // It is part of the wire protocol and should not be changed once released.
   static constexpr uint8_t kCategory = 7;
 
   static std::string ToMessage(Value value) {
-    return ToString(value);
+    return fmt::format("{}", value);
   }
 };
 

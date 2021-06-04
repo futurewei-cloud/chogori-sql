@@ -205,8 +205,8 @@ Status PgDml::AssignColumn(int attr_num, PgExpr *attr_value) {
     assign_var = AllocColumnAssignVar(col);
   } else {
     if (expr_assigns_.find(assign_var) != expr_assigns_.end()) {
-      return STATUS_SUBSTITUTE(InvalidArgument,
-                               "Column $0 is already assigned to another value", attr_num);
+      return STATUS_FORMAT(InvalidArgument,
+                               "Column {} is already assigned to another value", attr_num);
     }
   }
 
@@ -283,7 +283,7 @@ Result<bool> PgDml::FetchDataFromServer() {
     }
 
     // Execute sql_op_ again for the new set of WHERE condition from the nested query.
-    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute()), RequestSent::kTrue, IllegalState,
+    SCHECK_EQ(VERIFY_RESULT(sql_op_->Execute()), true, IllegalState,
               "SQL read operation was not sent");
 
     // Get the rowsets from sql operator.
@@ -358,7 +358,7 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
     for (auto attr = attrs; attr != attrs_end; ++attr) {
       if (attr->attr_num == c.attr_num()) {
         if (!c.desc()->is_primary()) {
-          return STATUS_SUBSTITUTE(InvalidArgument, "Attribute number $0 not a primary attribute",
+          return STATUS_FORMAT(InvalidArgument, "Attribute number {} not a primary attribute",
                                    attr->attr_num);
         }
 

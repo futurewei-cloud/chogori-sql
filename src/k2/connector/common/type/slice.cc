@@ -33,7 +33,8 @@
 #include <gflags/gflags.h>
 #include "slice.h"
 
-#include "common/strings/stringprintf.h"
+#include <fmt/format.h>
+
 #include "common/status.h"
 
 DEFINE_int32(non_graph_characters_percentage_to_use_hexadecimal_rendering, 10,
@@ -43,8 +44,7 @@ namespace yb {
 
 Status Slice::check_size(size_t expected_size) const {
   if (PREDICT_FALSE(size() != expected_size)) {
-    return STATUS(Corruption, StringPrintf("Unexpected Slice size. "
-        "Expected %zu but got %zu.", expected_size, size()), ToDebugString(100));
+    return STATUS(Corruption, fmt::format("Unexpected Slice size, expected %zu but got %zu.", expected_size, size()), ToDebugString(100));
   }
   return Status::OK();
 }
@@ -92,30 +92,28 @@ std::string Slice::ToDebugString(size_t max_len) const {
       bytes_to_print * FLAGS_non_graph_characters_percentage_to_use_hexadecimal_rendering) {
     return ToDebugHexString();
   }
-  size_t size = bytes_to_print + 3 * num_not_graph + (abbreviated ? 20 : 0);
 
-  std::string ret;
-  ret.reserve(size);
+  std::ostringstream oss;
   for (int i = 0; i < bytes_to_print; i++) {
     auto ch = begin_[i];
     if (!isgraph(ch)) {
       if (ch == '\r') {
-        ret += "\\r";
+        oss << "\\r";
       } else if (ch == '\n') {
-        ret += "\\n";
+        oss << "\\n";
       } else if (ch == ' ') {
-        ret += ' ';
+        oss << ' ';
       } else {
-        StringAppendF(&ret, "\\x%02x", ch & 0xff);
+        oss << std::hex << (ch & 0xff);
       }
     } else {
-      ret.push_back(ch);
+      oss << ch;
     }
   }
   if (abbreviated) {
-    StringAppendF(&ret, "...<%zd bytes total>", this->size());
+    oss << "...<" << this->size() << " bytes total>";
   }
-  return ret;
+  return oss.str();
 }
 
 Slice::Slice(const SliceParts& parts, std::string* buf) {
@@ -134,7 +132,7 @@ Slice::Slice(const SliceParts& parts, std::string* buf) {
 Status Slice::consume_byte(char c) {
   char consumed = consume_byte();
   if (consumed != c) {
-    return STATUS_FORMAT(Corruption, "Wrong first byte, expected $0 but found $1",
+    return STATUS_FORMAT(Corruption, "Wrong first byte, expected {} but found {}",
                          static_cast<int>(c), static_cast<int>(consumed));
   }
 

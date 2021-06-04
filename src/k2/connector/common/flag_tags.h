@@ -125,8 +125,6 @@
 
 #include <boost/preprocessor/cat.hpp>
 
-#include "macros.h"
-
 namespace yb {
 
 struct FlagTags {
@@ -172,8 +170,9 @@ class FlagTagger {
   FlagTagger(const char* name, const char* tag);
   ~FlagTagger();
 
- private:
-  DISALLOW_COPY_AND_ASSIGN(FlagTagger);
+  private:
+  FlagTagger(const FlagTagger&) = delete;
+  void operator=(const FlagTagger&) = delete;
 };
 
 } // namespace flag_tags_internal

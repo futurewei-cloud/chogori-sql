@@ -30,69 +30,54 @@
 // under the License.
 //
 
-#include "flag_tags.h"
+#include <thread>
 
-#include <map>
-#include <string>
-#include <unordered_set>
-#include <utility>
-#include <vector>
+#include <glog/logging.h>
 
-#include <fmt/format.h>
+#include "thread_restrictions.h"
 
-using std::multimap;
-using std::pair;
-using std::string;
-using std::unordered_set;
-using std::vector;
+#ifdef ENABLE_THREAD_RESTRICTIONS
 
 namespace yb {
-namespace flag_tags_internal {
 
-// registry storing the set of tags for each flag.
-class FlagTagRegistry {
- public:
-  FlagTagRegistry() {};
+namespace {
+  thread_local bool io_allowed = true;
+  thread_local bool wait_allowed = true;
+} // anonymous namespace
 
-  void Tag(const std::string& name, const std::string& tag) {
-    tag_map_.insert(TagMap::value_type(name, tag));
-  }
-
-  void GetTags(const std::string& name, std::unordered_set<string>* tags) {
-    tags->clear();
-    pair<TagMap::const_iterator, TagMap::const_iterator> range =
-      tag_map_.equal_range(name);
-    for (auto it = range.first; it != range.second; ++it) {
-      if (!tags->insert(it->second).second) {
-        throw std::runtime_error(fmt::format("Flag {} was tagged more than once with the tag {}", name, it->second));
-      }
-    }
-  }
-
- private:
-  FlagTagRegistry(const FlagTagRegistry&) = delete;
-  void operator=(const FlagTagRegistry&) = delete;
-
-  typedef std::multimap<string, string> TagMap;
-  TagMap tag_map_;
-};
-
-static FlagTagRegistry flag_tag_registry;
-
-FlagTagger::FlagTagger(const char* name, const char* tag) {
-  flag_tag_registry.Tag(name, tag);
+bool ThreadRestrictions::SetIOAllowed(bool allowed) {
+  bool previous_allowed = io_allowed;
+  io_allowed = allowed;
+  return previous_allowed;
 }
 
-FlagTagger::~FlagTagger() {
+void ThreadRestrictions::AssertIOAllowed() {
+  CHECK(io_allowed)
+    << "Function marked as IO-only was called from a thread that "
+    << "disallows IO!  If this thread really should be allowed to "
+    << "make IO calls, adjust the call to "
+    << "ThreadRestrictions::SetIOAllowed() in this thread's "
+    << "startup. "
+    << std::this_thread::get_id();
 }
 
-} // namespace flag_tags_internal
+bool ThreadRestrictions::SetWaitAllowed(bool allowed) {
+  bool previous_allowed = wait_allowed;
+  wait_allowed = allowed;
+  return previous_allowed;
+}
 
-using flag_tags_internal::FlagTagRegistry;
+bool ThreadRestrictions::IsWaitAllowed() {
+  return wait_allowed;
+}
 
-void GetFlagTags(const std::string& flag_name,
-                 std::unordered_set<string>* tags) {
-  flag_tags_internal::flag_tag_registry.GetTags(flag_name, tags);
+void ThreadRestrictions::AssertWaitAllowed() {
+  CHECK(wait_allowed)
+    << "Waiting is not allowed to be used on this thread to prevent "
+    << "server-wide latency aberrations and deadlocks. "
+    << std::this_thread::get_id();
 }
 
 } // namespace yb
+
+#endif

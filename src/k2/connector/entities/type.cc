@@ -58,7 +58,7 @@ namespace sql {
     //--------------------------------------------------------------------------------------------------
     // The following functions are to construct QLType objects.
 
-    shared_ptr<SQLType> SQLType::Create(DataType data_type, const vector<shared_ptr<SQLType>>& params) {
+    shared_ptr<SQLType> SQLType::Create(DataType data_type, const std::vector<shared_ptr<SQLType>>& params) {
         switch (data_type) {
             case DataType::K2SQL_DATA_TYPE_LIST:
                 DCHECK_EQ(params.size(), 1);
@@ -146,7 +146,7 @@ namespace sql {
 
     shared_ptr<SQLType> SQLType::CreateTypeMap(std::shared_ptr<SQLType> key_type,
                                              std::shared_ptr<SQLType> value_type) {
-        vector<shared_ptr<SQLType>> params = {key_type, value_type};
+        std::vector<shared_ptr<SQLType>> params = {key_type, value_type};
         return CreateCollectionType<DataType::K2SQL_DATA_TYPE_MAP>(params);
     }
 
@@ -155,7 +155,7 @@ namespace sql {
     }
 
     shared_ptr<SQLType> SQLType::CreateTypeList(std::shared_ptr<SQLType> value_type) {
-        vector<shared_ptr<SQLType>> params(1, value_type);
+        std::vector<shared_ptr<SQLType>> params(1, value_type);
         return CreateCollectionType<DataType::K2SQL_DATA_TYPE_LIST>(params);
     }
 
@@ -164,7 +164,7 @@ namespace sql {
     }
 
     shared_ptr<SQLType> SQLType::CreateTypeSet(std::shared_ptr<SQLType> value_type) {
-        vector<shared_ptr<SQLType>> params(1, value_type);
+        std::vector<shared_ptr<SQLType>> params(1, value_type);
         return CreateCollectionType<DataType::K2SQL_DATA_TYPE_SET>(params);
     }
 

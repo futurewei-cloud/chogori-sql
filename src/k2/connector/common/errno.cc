@@ -32,10 +32,6 @@
 
 #include "errno.h"
 
-#include <errno.h>
-#include <string.h>
-
-#include "common/log/logging.h"
 #include "status.h"
 
 namespace yb {

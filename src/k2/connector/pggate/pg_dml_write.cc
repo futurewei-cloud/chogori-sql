@@ -107,7 +107,7 @@ Status PgDmlWrite::Exec() {
 
   // Execute the statement. If the request has been sent, get the result and handle any rows
   // returned.
-  if (VERIFY_RESULT(sql_op_->Execute()) == RequestSent::kTrue) {
+  if (VERIFY_RESULT(sql_op_->Execute()) == true) {
     RETURN_NOT_OK(sql_op_->GetResult(&rowsets_));
 
     // Save the number of rows affected by the op.
@@ -180,7 +180,7 @@ std::vector<PgExpr *>& PgDmlWrite::GetTargets() {
 
 Status PgDmlWrite::SetWriteTime(const uint64_t write_time) {
   SCHECK(sql_op_.get() != nullptr, RuntimeError, "expected sql_op_ to be initialized");
-  down_cast<PgWriteOp*>(sql_op_.get())->SetWriteTime(write_time);
+  dynamic_cast<PgWriteOp*>(sql_op_.get())->SetWriteTime(write_time);
   return Status::OK();
 }
 
