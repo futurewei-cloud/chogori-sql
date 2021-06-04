@@ -274,6 +274,12 @@ class Slice {
     return Slice(begin_ + arg0_size, end_).DoLess(std::forward<Args>(args)...);
   }
 
+  // Return true if the n bytes at a equal the n bytes at b.
+  // The regions are allowed to overlap.
+  //
+  // The performance is similar to the performance memcmp(), but faster for
+  // moderately-sized inputs, or inputs that share a common prefix and differ
+  // somewhere in their last 8 bytes.
   static bool MemEqual(const void* a_v, const void* b_v, size_t n) {
     const uint8_t *a = reinterpret_cast<const uint8_t *>(a_v);
     const uint8_t *b = reinterpret_cast<const uint8_t *>(b_v);

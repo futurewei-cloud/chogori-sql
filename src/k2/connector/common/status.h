@@ -440,7 +440,7 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2 = Slice(),
          const StatusErrorCode* error = nullptr,
-         bool dup_file_name = false);
+         bool is_file_name_dup = false);
 
   Status(Code code,
          const char* file_name,
@@ -449,16 +449,16 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, msg, msg2, &error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, msg, msg2, &error, is_file_name_dup) {
   }
 
   Status(Code code,
          const char* file_name,
          int line_number,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, error.Message(), Slice(), error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, error.Message(), Slice(), error, is_file_name_dup) {
   }
 
   Status(Code code,
@@ -466,8 +466,8 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, msg, error.Message(), error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, msg, error.Message(), error, is_file_name_dup) {
   }
 
 
@@ -476,7 +476,7 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const Slice& errors,
-         bool dup_file_name);
+         bool is_file_name_dup);
 
   Code code() const;
 
