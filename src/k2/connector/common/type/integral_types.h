@@ -21,8 +21,7 @@
 // any changes here, make sure that you're not breaking any platforms.
 //
 
-#ifndef BASE_INTEGRAL_TYPES_H_
-#define BASE_INTEGRAL_TYPES_H_
+#pragma once
 
 #include <inttypes.h>
 
@@ -108,11 +107,3 @@ static const  int32 kint32min  = (( int32) ~0x7FFFFFFF);
 static const  int32 kint32max  = (( int32) 0x7FFFFFFF);
 static const  int64 kint64min  = (( int64) GG_LONGLONG(~0x7FFFFFFFFFFFFFFF));
 static const  int64 kint64max  = (( int64) GG_LONGLONG(0x7FFFFFFFFFFFFFFF));
-
-// TODO(user): remove this eventually.
-// No object has kIllegalFprint as its Fingerprint.
-typedef uint64 Fprint;
-static const Fprint kIllegalFprint = 0;
-static const Fprint kMaxFprint = GG_ULONGLONG(0xFFFFFFFFFFFFFFFF);
-
-#endif  // BASE_INTEGRAL_TYPES_H_

@@ -115,9 +115,7 @@
 //  TAG_FLAG(sometimes_crash, runtime);
 //
 // To fetch the list of tags associated with a flag, use 'GetFlagTags'.
-
-#ifndef YB_UTIL_FLAG_TAGS_H
-#define YB_UTIL_FLAG_TAGS_H
+#pragma once
 
 #include <string>
 #include <unordered_set>
@@ -125,7 +123,7 @@
 
 #include <boost/preprocessor/cat.hpp>
 
-namespace yb {
+namespace k2pg {
 
 struct FlagTags {
   enum {
@@ -148,9 +146,9 @@ struct FlagTags {
 // enum above.
 #define TAG_FLAG(flag_name, tag) \
   COMPILE_ASSERT(sizeof(FLAGS_##flag_name), flag_does_not_exist); \
-  COMPILE_ASSERT(sizeof(::yb::FlagTags::tag), invalid_tag);   \
+  COMPILE_ASSERT(sizeof(::k2pg::FlagTags::tag), invalid_tag);   \
   namespace {                                                     \
-    ::yb::flag_tags_internal::FlagTagger t_##flag_name##_##tag( \
+    ::k2pg::flag_tags_internal::FlagTagger t_##flag_name##_##tag( \
         AS_STRING(flag_name), AS_STRING(tag));                    \
   }
 
@@ -177,11 +175,9 @@ class FlagTagger {
 
 } // namespace flag_tags_internal
 
-} // namespace yb
+} // namespace k2pg
 
 #define DEFINE_test_flag(type, name, default_value, description) \
     BOOST_PP_CAT(DEFINE_, type)(TEST_##name, default_value, description " (For testing only!)"); \
     TAG_FLAG(TEST_##name, unsafe); \
     TAG_FLAG(TEST_##name, hidden);
-
-#endif /* YB_UTIL_FLAG_TAGS_H */

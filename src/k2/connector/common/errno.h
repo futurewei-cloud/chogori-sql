@@ -29,14 +29,13 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-#ifndef YB_UTIL_ERRNO_H
-#define YB_UTIL_ERRNO_H
+#pragma once
 
 #include <string>
 
 #include "status.h"
 
-namespace yb {
+namespace k2pg {
 
 void ErrnoToCString(int err, char *buf, size_t buf_len);
 
@@ -58,6 +57,4 @@ struct ErrnoTag : IntegralErrorTag<int32_t> {
 
 typedef StatusErrorCodeImpl<ErrnoTag> Errno;
 
-} // namespace yb
-
-#endif // YB_UTIL_ERRNO_H
+} // namespace k2pg

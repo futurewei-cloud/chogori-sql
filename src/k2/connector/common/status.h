@@ -23,9 +23,7 @@
 // external synchronization, but if any of the threads may call a
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
-
-#ifndef YB_UTIL_STATUS_H_
-#define YB_UTIL_STATUS_H_
+#pragma once
 
 #include <atomic>
 #include <memory>
@@ -45,8 +43,6 @@
 #include "endian.h"
 #include "common/type/slice.h"
 
-// TODO: make Status K2Log compatible and indeed extended PGErrorCode at the same time
-
 // Return the given status if it is not OK.
 #define YB_RETURN_NOT_OK(s) do { \
     auto&& _s = (s); \
@@ -62,7 +58,7 @@
 // Return 'to_return' if 'to_call' returns a bad status.  The substitution for 'to_return' may
 // reference the variable 's' for the bad status.
 #define YB_RETURN_NOT_OK_RET(to_call, to_return) do { \
-    ::yb::Status s = (to_call); \
+    ::k2pg::Status s = (to_call); \
     if (PREDICT_FALSE(!s.ok())) return (to_return);  \
   } while (0);
 
@@ -81,14 +77,14 @@
 
 // Emit a warning if 'to_call' returns a bad status.
 #define YB_WARN_NOT_OK(to_call, warning_prefix) do { \
-    ::yb::Status _s = (to_call); \
+    ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
       YB_LOG(WARNING) << (warning_prefix) << ": " << _s.ToString();  \
     } \
   } while (0);
 
 #define WARN_WITH_PREFIX_NOT_OK(to_call, warning_prefix) do { \
-    ::yb::Status _s = (to_call); \
+    ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
       YB_LOG(WARNING) << LogPrefix() << (warning_prefix) << ": " << _s; \
     } \
@@ -96,7 +92,7 @@
 
 // Emit a error if 'to_call' returns a bad status.
 #define ERROR_NOT_OK(to_call, error_prefix) do { \
-    ::yb::Status _s = (to_call); \
+    ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
       YB_LOG(ERROR) << (error_prefix) << ": " << _s.ToString();  \
     } \
@@ -104,7 +100,7 @@
 
 // Log the given status and return immediately.
 #define YB_LOG_AND_RETURN(level, status) do { \
-    ::yb::Status _s = (status); \
+    ::k2pg::Status _s = (status); \
     YB_LOG(level) << _s.ToString(); \
     return _s; \
   } while (0);
@@ -140,7 +136,7 @@ struct YBCStatusStruct;
 
 }
 
-namespace yb {
+namespace k2pg {
 
 #define YB_STATUS_CODES \
     ((Ok, OK, 0, "OK")) \
@@ -435,11 +431,6 @@ class STATUS_NODISCARD_CLASS Status {
 
   enum Code : int32_t {
     BOOST_PP_SEQ_FOR_EACH(YB_STATUS_FORWARD_MACRO, YB_STATUS_CODE_DECLARE, YB_STATUS_CODES)
-
-    // NOTE: Remember to duplicate these constants into wire_protocol.proto and
-    // and to add StatusTo/FromPB ser/deser cases in wire_protocol.cc !
-    //
-    // TODO: Move error codes into an error_code.proto or something similar.
   };
 
   Status(Code code,
@@ -449,7 +440,7 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2 = Slice(),
          const StatusErrorCode* error = nullptr,
-         bool dup_file_name = false);
+         bool is_file_name_dup = false);
 
   Status(Code code,
          const char* file_name,
@@ -458,16 +449,16 @@ class STATUS_NODISCARD_CLASS Status {
          // Error message details. If present - would be combined as "msg: msg2".
          const Slice& msg2,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, msg, msg2, &error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, msg, msg2, &error, is_file_name_dup) {
   }
 
   Status(Code code,
          const char* file_name,
          int line_number,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, error.Message(), Slice(), error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, error.Message(), Slice(), error, is_file_name_dup) {
   }
 
   Status(Code code,
@@ -475,8 +466,8 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const StatusErrorCode& error,
-         bool dup_file_name = false)
-      : Status(code, file_name, line_number, msg, error.Message(), error, dup_file_name) {
+         bool is_file_name_dup = false)
+      : Status(code, file_name, line_number, msg, error.Message(), error, is_file_name_dup) {
   }
 
 
@@ -485,7 +476,7 @@ class STATUS_NODISCARD_CLASS Status {
          int line_number,
          const Slice& msg,
          const Slice& errors,
-         bool dup_file_name);
+         bool is_file_name_dup);
 
   Code code() const;
 
@@ -554,19 +545,19 @@ inline std::ostream& operator<<(std::ostream& out, const Status& status) {
   return out << status.ToString();
 }
 
-}  // namespace yb
+}  // namespace k2pg
 
 #define STATUS(status_type, ...) \
     (Status(Status::BOOST_PP_CAT(k, status_type), __FILE__, __LINE__, __VA_ARGS__))
 
 #define STATUS_FORMAT(status_type, ...) \
-    (::yb::Status(::yb::Status::BOOST_PP_CAT(k, status_type), \
+    (::k2pg::Status(::k2pg::Status::BOOST_PP_CAT(k, status_type), \
             __FILE__, \
             __LINE__, \
             fmt::format(__VA_ARGS__)))
 
 #define STATUS_EC_FORMAT(status_type, error_code, ...) \
-    (::yb::Status(::yb::Status::BOOST_PP_CAT(k, status_type), \
+    (::k2pg::Status(::k2pg::Status::BOOST_PP_CAT(k, status_type), \
             __FILE__, \
             __LINE__, \
             fmt::format(__VA_ARGS__), error_code))
@@ -615,6 +606,4 @@ inline std::ostream& operator<<(std::ostream& out, const Status& status) {
 
 #endif
 
-#define CHECKED_STATUS ::yb::Status
-
-#endif  // YB_UTIL_STATUS_H_
+#define CHECKED_STATUS ::k2pg::Status

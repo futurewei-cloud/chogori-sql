@@ -55,8 +55,8 @@
 namespace k2pg {
 namespace gate {
 
-using yb::Status;
-using yb::Slice;
+using k2pg::Status;
+using k2pg::Slice;
 
 //--------------------------------------------------------------------------------------------------
 // SELECT

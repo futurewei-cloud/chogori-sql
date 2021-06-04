@@ -30,7 +30,7 @@
 #include <boost/optional.hpp>
 #include "common/sys/malloc.h"
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 
@@ -200,7 +200,7 @@ struct Status::State {
   template <class Errors>
   static StatePtr Create(
       Code code, const char* file_name, int line_number, const Slice& msg, const Slice& msg2,
-      const Errors& errors, bool dup_file_name);
+      const Errors& errors, bool is_file_name_dup);
 
   ErrorCodesRange error_codes() const {
     return ErrorCodesRange(message + message_len);
@@ -251,7 +251,7 @@ struct Status::State {
 template <class Errors>
 Status::StatePtr Status::State::Create(
     Code code, const char* file_name, int line_number, const Slice& msg, const Slice& msg2,
-    const Errors& errors, bool dup_file_name) {
+    const Errors& errors, bool is_file_name_dup) {
   static constexpr size_t kHeaderSize = offsetof(State, message);
 
   assert(code != kOk);
@@ -260,7 +260,7 @@ Status::StatePtr Status::State::Create(
   const size_t size = len1 + (len2 ? (2 + len2) : 0);
   const size_t errors_size = ErrorsSize(errors);
   size_t file_name_size = 0;
-  if (dup_file_name) {
+  if (is_file_name_dup) {
     file_name_size = strlen(file_name) + 1;
   }
   StatePtr result(static_cast<State*>(malloc(size + kHeaderSize + errors_size + file_name_size)));
@@ -278,7 +278,7 @@ Status::StatePtr Status::State::Create(
   auto errors_start = reinterpret_cast<uint8_t*>(&result->message[0] + size);
   auto out = StoreErrors(errors, errors_start);
   DCHECK_EQ(out, errors_start + errors_size);
-  if (dup_file_name) {
+  if (is_file_name_dup) {
     auto new_file_name = out;
     memcpy(new_file_name, file_name, file_name_size);
     file_name = reinterpret_cast<char*>(new_file_name);
@@ -295,8 +295,8 @@ Status::Status(Code code,
                const Slice& msg,
                const Slice& msg2,
                const StatusErrorCode* error,
-               bool dup_file_name)
-    : state_(State::Create(code, file_name, line_number, msg, msg2, error, dup_file_name)) {
+               bool is_file_name_dup)
+    : state_(State::Create(code, file_name, line_number, msg, msg2, error, is_file_name_dup)) {
 #ifndef NDEBUG
   static const bool print_stack_trace = getenv("YB_STACK_TRACE_ON_ERROR_STATUS") != nullptr;
   static const boost::optional<std::regex> status_stack_trace_re =
@@ -311,12 +311,12 @@ Status::Status(Code code,
     }
     // We skip a couple of top frames like these:
     //    ~/code/yugabyte/src/yb/util/status.cc:53:
-    //        @ yb::Status::Status(yb::Status::Code, yb::Slice const&, yb::Slice const&, long,
+    //        @ k2pg::Status::Status(k2pg::Status::Code, k2pg::Slice const&, k2pg::Slice const&, long,
     //                             char const*, int)
     //    ~/code/yugabyte/src/yb/util/status.h:137:
-    //        @ yb::STATUS(Corruption, char const*, int, yb::Slice const&, yb::Slice const&, short)
+    //        @ k2pg::STATUS(Corruption, char const*, int, k2pg::Slice const&, k2pg::Slice const&, short)
     //    ~/code/yugabyte/src/yb/common/doc_hybrid_time.cc:94:
-    //        @ yb::DocHybridTime::DecodeFrom(yb::Slice*)
+    //        @ k2pg::DocHybridTime::DecodeFrom(k2pg::Slice*)
     //    LOG(WARNING) << "Non-OK status generated: " << string_rep << ", stack trace:\n"
     //                 << GetStackTrace(StackTraceLineFormat::DEFAULT, /* skip frames: */ 1);
       LOG(WARNING) << "Non-OK status generated: " << string_rep << "\n";
@@ -329,8 +329,8 @@ Status::Status(Code code,
                int line_number,
                const Slice& msg,
                const Slice& errors,
-               bool dup_file_name)
-    : state_(State::Create(code, file_name, line_number, msg, Slice(), errors, dup_file_name)) {
+               bool is_file_name_dup)
+    : state_(State::Create(code, file_name, line_number, msg, Slice(), errors, is_file_name_dup)) {
 }
 
 Status::Status(StatePtr state)
@@ -556,4 +556,4 @@ StatusCategoryRegisterer::StatusCategoryRegisterer(const StatusCategoryDescripti
   Status::RegisterCategory(description);
 }
 
-}  // namespace yb
+}  // namespace k2pg

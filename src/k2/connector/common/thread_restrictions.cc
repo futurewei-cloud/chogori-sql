@@ -38,7 +38,7 @@
 
 #ifdef ENABLE_THREAD_RESTRICTIONS
 
-namespace yb {
+namespace k2pg {
 
 namespace {
   thread_local bool io_allowed = true;
@@ -78,6 +78,6 @@ void ThreadRestrictions::AssertWaitAllowed() {
     << std::this_thread::get_id();
 }
 
-} // namespace yb
+} // namespace k2pg
 
 #endif

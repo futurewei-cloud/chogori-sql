@@ -40,7 +40,7 @@
 DEFINE_int32(non_graph_characters_percentage_to_use_hexadecimal_rendering, 10,
              "Non graph charaters percentage to use hexadecimal rendering");
 
-namespace yb {
+namespace k2pg {
 
 Status Slice::check_size(size_t expected_size) const {
   if (PREDICT_FALSE(size() != expected_size)) {
@@ -139,4 +139,4 @@ Status Slice::consume_byte(char c) {
   return Status::OK();
 }
 
-}  // namespace yb
+}  // namespace k2pg

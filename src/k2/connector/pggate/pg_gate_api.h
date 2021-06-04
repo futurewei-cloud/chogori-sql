@@ -17,7 +17,7 @@
 
 #include <stdint.h>
 
-#include "common/ybc_util.h"
+#include "common/k2pg_util.h"
 #include "pg_gate_typedefs.h"
 
 #ifdef __cplusplus

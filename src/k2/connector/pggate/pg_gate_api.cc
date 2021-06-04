@@ -1,7 +1,7 @@
 #include "pg_gate_api.h"
 
-#include "common/ybc-internal.h"
-#include "common/ybc_util.h"
+#include "common/k2pg-internal.h"
+#include "common/k2pg_util.h"
 #include "common/env.h"
 #include "entities/entity_ids.h"
 #include "pggate/pg_env.h"
@@ -13,7 +13,7 @@
 namespace k2pg {
 namespace gate {
 
-using yb::Status;
+using k2pg::Status;
 using k2pg::sql::kPgByteArrayOid;
 using k2pg::sql::catalog::SqlCatalogManager;
 

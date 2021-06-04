@@ -10,9 +10,9 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-#include "ybc-internal.h"
+#include "k2pg-internal.h"
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 YBCPAllocFn g_palloc_fn = nullptr;
@@ -69,4 +69,4 @@ const char* YBCPAllocStdString(const std::string& s) {
   return result;
 }
 
-} // namespace yb
+} // namespace k2pg

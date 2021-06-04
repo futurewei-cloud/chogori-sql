@@ -16,7 +16,7 @@
 
 using namespace std::placeholders;
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 
@@ -66,4 +66,4 @@ Result<long double> CheckedStold(Slice slice) {
   return CheckedSton<long double>(slice, std::strtold);
 }
 
-} // namespace yb
+} // namespace k2pg

@@ -20,7 +20,7 @@
 namespace k2pg {
 namespace sql {
 using boost::uuids::uuid;
-using yb::Status;
+using k2pg::Status;
 
 static constexpr int kUuidVersion = 3; // Repurpose old name-based UUID v3 to embed Postgres oids.
 

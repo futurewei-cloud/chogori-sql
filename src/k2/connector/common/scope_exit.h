@@ -10,11 +10,9 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
+#pragma once
 
-#ifndef YB_UTIL_SCOPE_EXIT_H
-#define YB_UTIL_SCOPE_EXIT_H
-
-namespace yb {
+namespace k2pg {
 
 template <class F>
 class ScopeExitLambda {
@@ -49,6 +47,4 @@ ScopeExitLambda<typename std::remove_reference<F>::type> ScopeExit(F&& f) {
   return ScopeExitLambda<typename std::remove_reference<F>::type>(std::forward<F>(f));
 }
 
-} // namespace yb
-
-#endif // YB_UTIL_SCOPE_EXIT_H
+} // namespace k2pg

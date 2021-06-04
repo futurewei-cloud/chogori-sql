@@ -39,7 +39,7 @@ namespace gate {
     using std::shared_ptr;
     using std::unique_ptr;
 
-    using yb::Status;
+    using k2pg::Status;
 
     using k2pg::sql::PgOid;
     using k2pg::sql::PgExpr;
@@ -187,7 +187,7 @@ namespace gate {
         // by PgSession::HandleResponse
         //
 
-        // PostgreSQL error code encoded as in errcodes.h or yb_pg_errcodes.h.
+        // PostgreSQL error code encoded as in errcodes.h or k2pg_errcodes.h.
         // See https://www.postgresql.org/docs/11/errcodes-appendix.html
         uint64_t pg_error_code;
 

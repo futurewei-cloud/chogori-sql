@@ -46,7 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "common/ybc-internal.h"
+#include "common/k2pg-internal.h"
 #include "pggate/pg_tuple.h"
 
 namespace k2pg {
@@ -69,7 +69,7 @@ void PgTuple::WriteDatum(int index, uint64_t datum) {
 void PgTuple::Write(uint8_t **pgbuf, const uint8_t *value, int64_t bytes) {
   CHECK_LE(bytes, kYBCMaxPostgresTextSizeBytes);
   CHECK_GE(bytes, 0);
-  *pgbuf = static_cast<uint8_t*>(yb::YBCCStringToTextWithLen(reinterpret_cast<const char*>(value),
+  *pgbuf = static_cast<uint8_t*>(k2pg::YBCCStringToTextWithLen(reinterpret_cast<const char*>(value),
                                                          static_cast<int>(bytes)));
 }
 

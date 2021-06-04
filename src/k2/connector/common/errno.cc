@@ -34,7 +34,7 @@
 
 #include "status.h"
 
-namespace yb {
+namespace k2pg {
 
 void ErrnoToCString(int err, char *buf, size_t buf_len) {
   CHECK_GT(buf_len, 0);
@@ -61,4 +61,4 @@ static const std::string kErrnoCategoryName = "system error";
 static StatusCategoryRegisterer errno_category_registerer(
     StatusCategoryDescription::Make<ErrnoTag>(&kErrnoCategoryName));
 
-} // namespace yb
+} // namespace k2pg

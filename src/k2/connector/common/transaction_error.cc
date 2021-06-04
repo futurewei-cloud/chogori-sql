@@ -13,7 +13,7 @@
 
 #include "transaction_error.h"
 
-namespace yb {
+namespace k2pg {
 namespace {
 
 const std::string kTransactionErrorCategoryName = "transaction error";
@@ -22,4 +22,4 @@ StatusCategoryRegisterer transaction_error_category_registerer(
     StatusCategoryDescription::Make<TransactionErrorTag>(&kTransactionErrorCategoryName));
 
 } // namespace
-} // namespace yb
+} // namespace k2pg

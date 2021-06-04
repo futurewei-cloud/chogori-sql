@@ -64,8 +64,8 @@
 
 namespace k2pg {
 namespace sql {
-    using yb::Result;
-    using yb::Status;
+    using k2pg::Result;
+    using k2pg::Status;
 
     typedef int32_t ColumnId;
     constexpr ColumnId kFirstColumnId = 0;

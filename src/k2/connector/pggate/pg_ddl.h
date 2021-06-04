@@ -63,7 +63,7 @@
 namespace k2pg {
 namespace gate {
 
-using yb::Status;
+using k2pg::Status;
 using k2pg::sql::ColumnSchema;
 using k2pg::sql::SchemaBuilder;
 using k2pg::sql::PgObjectId;

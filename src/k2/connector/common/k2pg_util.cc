@@ -10,7 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-#include "ybc_util.h"
+#include "k2pg_util.h"
 
 #include <stdarg.h>
 #include <fstream>
@@ -23,7 +23,7 @@
 #include "status.h"
 #include "pgsql_error.h"
 #include "transaction_error.h"
-#include "ybc-internal.h"
+#include "k2pg-internal.h"
 #include "env.h"
 #include "scope_exit.h"
 #include "flag_tags.h"
@@ -37,7 +37,7 @@ YBCStatus YBCStatusOK() {
   return nullptr;
 }
 
-namespace yb {
+namespace k2pg {
 
 namespace {
 
@@ -221,7 +221,7 @@ bool YBCIsRestartReadError(uint16_t txn_errcode) {
 }
 
 YBCStatus YBCInitGFlags(const char* argv0) {
-  return ToYBCStatus(yb::InitGFlags(argv0));
+  return ToYBCStatus(k2pg::InitGFlags(argv0));
 }
 
 YBCStatus YBCInit(const char* argv0,
@@ -231,7 +231,7 @@ YBCStatus YBCInit(const char* argv0,
   if (cstring_to_text_with_len_fn) {
     YBCSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
   }
-  auto status = yb::InitGFlags(argv0);
+  auto status = k2pg::InitGFlags(argv0);
   if (status.ok() && !FLAGS_process_info_dir.empty()) {
     WriteCurrentProcessInfo(FLAGS_process_info_dir);
   }
@@ -260,4 +260,4 @@ const char* YBCGetStackTrace() {
 
 } // extern "C"
 
-} // namespace yb
+} // namespace k2pg

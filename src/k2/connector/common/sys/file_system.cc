@@ -13,7 +13,7 @@
 
 #include "common/sys/file_system.h"
 
-namespace yb {
+namespace k2pg {
 
 const FileSystemOptions FileSystemOptions::kDefault;
 

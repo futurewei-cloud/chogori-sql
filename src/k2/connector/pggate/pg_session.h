@@ -76,7 +76,7 @@ using k2pg::sql::PgObjectId;
 using k2pg::sql::PgOid;
 using k2pg::sql::catalog::SqlCatalogClient;
 using k2pg::sql::ObjectIdGenerator;
-using yb::Status;
+using k2pg::Status;
 
 // a place holder for a operation that it could be buffered in PG session for batch process
 // normally, read operation is called directly, write operation could be buffered in batch

@@ -29,12 +29,12 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-#ifndef YB_UTIL_MALLOC_H
-#define YB_UTIL_MALLOC_H
+
+#pragma once
 
 #include <cstddef>
 
-namespace yb {
+namespace k2pg {
 
 // Simple wrapper for malloc_usable_size().
 //
@@ -42,6 +42,4 @@ namespace yb {
 // on const pointers (i.e. "this" in a const method).
 size_t malloc_usable_size(const void* obj);
 
-} // namespace yb
-
-#endif // YB_UTIL_MALLOC_H
+} // namespace k2pg

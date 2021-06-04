@@ -10,14 +10,12 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-
-#ifndef YB_COMMON_PGSQL_ERROR_H
-#define YB_COMMON_PGSQL_ERROR_H
+#pragma once
 
 #include "status.h"
-#include "yb_pg_errcodes.h"
+#include "k2pg_errcodes.h"
 
-namespace yb {
+namespace k2pg {
 
 struct PgsqlErrorTag : IntegralErrorTag<YBPgErrorCode> {
   // It is part of the wire protocol and should not be changed once released.
@@ -35,6 +33,4 @@ struct PgsqlErrorTag : IntegralErrorTag<YBPgErrorCode> {
 
 typedef StatusErrorCodeImpl<PgsqlErrorTag> PgsqlError;
 
-} // namespace yb
-
-#endif // YB_COMMON_PGSQL_ERROR_H
+} // namespace k2pg

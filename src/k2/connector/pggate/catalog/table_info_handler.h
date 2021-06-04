@@ -40,7 +40,7 @@ namespace catalog {
 using k2pg::gate::CreateScanReadResult;
 using k2pg::gate::K2Adapter;
 using k2pg::sql::PgObjectId;
-using yb::Status;
+using k2pg::Status;
 
 struct CreateMetaTablesResult {
     Status status;
@@ -135,17 +135,17 @@ class TableInfoHandler {
     ~TableInfoHandler();
 
     // Design Note: (tables mapping to SKV schema)
-    // 1. Any table primary index(must have) is mapped to a SKV schema, and if it have secondary index(s), each one is mapped to its own SKV schema. 
+    // 1. Any table primary index(must have) is mapped to a SKV schema, and if it have secondary index(s), each one is mapped to its own SKV schema.
     // 2. Following three SKV schemas are for three system meta tables holding all table/index definition(aka. meta), i.e. tablemeta(table identities and basic info), tablecolumnmeta(column def), indexcolumnmeta(index column def)
     // 3. The schema name for meta tables are hardcoded constant, e.g. tablemeta's is CatalogConsts::skv_schema_name_table_meta
     // 4. The schema name for user table/secondary index are the table's TableId(), which is a string presentation of UUID containing tables's pguid (for details, see std::string PgObjectId::GetTableId(const PgOid& table_oid))
     // 5. As of now, before embedded table(s) are supported, all tables are flat in relationship with each other. Thus, all tables(meta or user) have two prefix fields "TableId" and "IndexId" in their SKV schema,
     //    so that all rows in a table and index are clustered together in K2.
     //      For a primary index, the TableId is the PgOid(uint32 but saved as int64_t in K2) of this table, and IndexId is 0
-    //      For a secondary index, The TableId is the PgOid of base table(primary index), and IndexId is its own PgOid. 
-    //      For three system tables which is not defined in PostgreSQL originally, the PgOid of them are taken from unused system Pgoid range 4800-4803 (for detail, see CatalogConsts::oid_table_meta) 
+    //      For a secondary index, The TableId is the PgOid of base table(primary index), and IndexId is its own PgOid.
+    //      For three system tables which is not defined in PostgreSQL originally, the PgOid of them are taken from unused system Pgoid range 4800-4803 (for detail, see CatalogConsts::oid_table_meta)
 
-    // schema of table information 
+    // schema of table information
     k2::dto::Schema skv_schema_table_meta {
         .name = CatalogConsts::skv_schema_name_table_meta,
         .version = 1,
@@ -225,7 +225,7 @@ class TableInfoHandler {
 
     ListTableIdsResult ListTableIds(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, bool isSysTableIncluded);
 
-    // CopyTable (meta and data) fully including secondary indexes, currently only support cross different database. 
+    // CopyTable (meta and data) fully including secondary indexes, currently only support cross different database.
     CopyTableResult CopyTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
             const std::string& target_coll_name,
             const std::string& target_database_name,
@@ -305,7 +305,7 @@ class TableInfoHandler {
     std::shared_ptr<TableInfo> BuildTableInfo(const std::string& database_id, const std::string& database_name, k2::dto::SKVRecord& table_meta, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_table_meta);
-    
+
     IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 

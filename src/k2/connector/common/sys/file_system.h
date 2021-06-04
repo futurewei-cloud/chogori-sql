@@ -10,9 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 //
-
-#ifndef YB_UTIL_FILE_SYSTEM_H
-#define YB_UTIL_FILE_SYSTEM_H
+#pragma once
 
 #include <string>
 
@@ -22,7 +20,7 @@
 #include "common/result.h"
 #include "common/status.h"
 
-namespace yb {
+namespace k2pg {
 
 // The maximum length of a varint in bytes for 32 and 64 bits respectively.
 constexpr const unsigned int kMaxVarint32Length = 5;
@@ -249,7 +247,4 @@ class RandomAccessFileWrapper : public RandomAccessFile {
   std::unique_ptr<RandomAccessFile> target_;
 };
 
-
-} // namespace yb
-
-#endif  // YB_UTIL_FILE_SYSTEM_H
+} // namespace k2pg

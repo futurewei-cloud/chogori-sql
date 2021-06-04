@@ -30,14 +30,13 @@
 // under the License.
 //
 // Some portions: Copyright (c) 2012, The Chromium Authors.
-#ifndef YB_UTIL_THREAD_RESTRICTIONS_H
-#define YB_UTIL_THREAD_RESTRICTIONS_H
+#pragma once
 
 #ifndef NDEBUG
 #define ENABLE_THREAD_RESTRICTIONS 1
 #endif
 
-namespace yb {
+namespace k2pg {
 
 // Certain behavior is disallowed on certain threads.  ThreadRestrictions helps
 // enforce these rules.  Examples of such rules:
@@ -134,6 +133,4 @@ class ThreadRestrictions {
   ThreadRestrictions& operator=(const ThreadRestrictions&) = delete;
 };
 
-} // namespace yb
-
-#endif /* YB_UTIL_THREAD_RESTRICTIONS_H */
+} // namespace k2pg

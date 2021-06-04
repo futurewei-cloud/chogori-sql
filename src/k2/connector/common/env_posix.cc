@@ -130,7 +130,7 @@ static std::atomic<int64_t> cur_thread_local_id_;
 
 namespace fs = std::filesystem;
 
-namespace yb {
+namespace k2pg {
 
 Status IOError(const std::string& context, int err_number, const char* file, int line) {
   Errno err(err_number);
@@ -1448,7 +1448,7 @@ class PosixFileFactory : public FileFactory {
     if (f == nullptr) {
       return STATUS_IO_ERROR(fname, errno);
     } else {
-      result->reset(new yb::PosixSequentialFile(fname, f, yb::FileSystemOptions::kDefault));
+      result->reset(new k2pg::PosixSequentialFile(fname, f, k2pg::FileSystemOptions::kDefault));
       return Status::OK();
     }
   }
@@ -1461,7 +1461,7 @@ class PosixFileFactory : public FileFactory {
       return STATUS_IO_ERROR(fname, errno);
     }
 
-    result->reset(new yb::PosixRandomAccessFile(fname, fd, yb::FileSystemOptions::kDefault));
+    result->reset(new k2pg::PosixRandomAccessFile(fname, fd, k2pg::FileSystemOptions::kDefault));
     return Status::OK();
   }
 
@@ -1572,5 +1572,4 @@ std::unique_ptr<Env> Env::NewDefaultEnv(std::unique_ptr<FileFactory> file_factor
   return std::make_unique<PosixEnv>(std::move(file_factory));
 }
 
-
-}  // namespace yb
+}  // namespace k2pg

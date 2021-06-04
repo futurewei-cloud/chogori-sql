@@ -37,7 +37,7 @@ namespace k2pg {
 namespace sql {
 namespace catalog {
 
-using yb::Status;
+using k2pg::Status;
 using k2pg::sql::PgObjectId;
 using k2pg::sql::PgOid;
 

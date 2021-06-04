@@ -37,7 +37,7 @@
 #include <malloc/malloc.h>
 #endif // defined(__linux__)
 
-namespace yb {
+namespace k2pg {
 
 size_t malloc_usable_size(const void* obj) {
 #if defined(__linux__)
@@ -47,4 +47,4 @@ size_t malloc_usable_size(const void* obj) {
 #endif // defined(__linux__)
 }
 
-} // namespace yb
+} // namespace k2pg

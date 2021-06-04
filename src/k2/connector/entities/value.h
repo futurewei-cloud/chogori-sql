@@ -78,7 +78,7 @@ public:
       null_value_ = false;
   }
 
-  SqlValue(yb::Slice s) {
+  SqlValue(k2pg::Slice s) {
       type_ = ValueType::SLICE;
       data_.slice_val_ = std::string(s.cdata(), s.size());
       null_value_ = false;
@@ -182,7 +182,7 @@ public:
     throw std::invalid_argument("Unknown data type");
   }
 
-  static SqlValue* CopySlice(yb::Slice s);
+  static SqlValue* CopySlice(k2pg::Slice s);
 
   friend std::ostream& operator<<(std::ostream& os, const SqlValue& sql_value) {
     os << "{type: " << sql_value.type_ << ", isNull: " << sql_value.null_value_ << ", value: ";

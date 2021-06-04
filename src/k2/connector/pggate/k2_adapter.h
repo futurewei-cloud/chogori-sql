@@ -33,7 +33,7 @@
 namespace k2pg {
 namespace gate {
 
-using yb::Status;
+using k2pg::Status;
 using k2pg::sql::PgExpr;
 using k2pg::sql::PgConstant;
 using k2pg::sql::PgOperator;

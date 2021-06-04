@@ -59,7 +59,7 @@
 #include "common/type/slice.h"
 
 using std::string;
-using yb::Slice;
+using k2pg::Slice;
 
 namespace k2pg {
 namespace sql {

@@ -171,8 +171,8 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
         char* plaintext;
         // Calls YBCDatumToDecimalText in ybctype.c
         type_entity->datum_to_yb(datum, &plaintext, nullptr);
-        yb::util::Decimal yb_decimal(plaintext);
-        data_.slice_val_ = yb_decimal.EncodeToComparable();
+        k2pg::Decimal k2pg_decimal(plaintext);
+        data_.slice_val_ = k2pg_decimal.EncodeToComparable();
       }
       break;
 
@@ -186,10 +186,10 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
   }
 }
 
-SqlValue* SqlValue::CopySlice(yb::Slice s) {
+SqlValue* SqlValue::CopySlice(k2pg::Slice s) {
   auto copy = new uint8_t[s.size()];
   memcpy(copy, s.data(), s.size());
-  auto slice_val = yb::Slice(copy, s.size());
+  auto slice_val = k2pg::Slice(copy, s.size());
 
   return new SqlValue(slice_val);
 }

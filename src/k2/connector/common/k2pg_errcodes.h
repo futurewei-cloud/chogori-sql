@@ -12,9 +12,7 @@
 //
 // Portions Copyright (c) 1996-2018, PostgreSQL Global Development Group
 // Portions Copyright (c) 1994, Regents of the University of California
-
-#ifndef YB_UTIL_YB_PG_ERRCODES_H
-#define YB_UTIL_YB_PG_ERRCODES_H
+#pragma once
 
 #include <stdint.h>
 
@@ -28,7 +26,7 @@
     (YB_PGSIXBIT(ch4) << 18) + (YB_PGSIXBIT(ch5) << 24))
 
 /* The actual PostgreSQL error codes have been taken from the generated errcodes.h file. */
-namespace yb {
+namespace k2pg {
 
 enum class YBPgErrorCode : uint32_t {
   /* Class 00 - Successful Completion */
@@ -389,6 +387,4 @@ inline std::string ToString(YBPgErrorCode code) {
   return result;
 }
 
-}  // namespace yb
-
-#endif  // YB_UTIL_YB_PG_ERRCODES_H
+}  // namespace k2pg
