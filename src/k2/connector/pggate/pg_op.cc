@@ -49,7 +49,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "common/type/decimal.h"
-#include "common/ybc-internal.h"
+#include "common/k2pg-internal.h"
 #include "pggate/pg_op.h"
 #include "pggate/pg_env.h"
 #include "pggate/pg_gate_typedefs.h"

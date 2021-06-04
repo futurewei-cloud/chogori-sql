@@ -13,7 +13,7 @@
 #pragma once
 
 #include "status.h"
-#include "yb_pg_errcodes.h"
+#include "k2pg_errcodes.h"
 
 namespace k2pg {
 

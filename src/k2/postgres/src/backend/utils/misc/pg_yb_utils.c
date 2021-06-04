@@ -41,7 +41,7 @@
 #include "pg_yb_utils.h"
 #include "catalog/ybctype.h"
 
-#include "common/ybc_util.h"
+#include "common/k2pg_util.h"
 #include "pggate/pg_gate_api.h"
 #include "common/pg_yb_common.h"
 

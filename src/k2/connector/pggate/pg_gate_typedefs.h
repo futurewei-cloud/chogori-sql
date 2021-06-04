@@ -15,7 +15,7 @@
 #pragma once
 
 #include <stddef.h>
-#include "common/ybc_util.h"
+#include "common/k2pg_util.h"
 #include "entities/data_type.h"
 
 #ifdef __cplusplus

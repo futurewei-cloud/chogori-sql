@@ -10,7 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-#include "ybc_util.h"
+#include "k2pg_util.h"
 
 #include <stdarg.h>
 #include <fstream>
@@ -23,7 +23,7 @@
 #include "status.h"
 #include "pgsql_error.h"
 #include "transaction_error.h"
-#include "ybc-internal.h"
+#include "k2pg-internal.h"
 #include "env.h"
 #include "scope_exit.h"
 #include "flag_tags.h"

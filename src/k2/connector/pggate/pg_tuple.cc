@@ -46,7 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "common/ybc-internal.h"
+#include "common/k2pg-internal.h"
 #include "pggate/pg_tuple.h"
 
 namespace k2pg {

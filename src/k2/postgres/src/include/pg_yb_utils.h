@@ -29,7 +29,7 @@
 #include "utils/relcache.h"
 
 #include "common/pg_yb_common.h"
-#include "common/ybc_util.h"
+#include "common/k2pg_util.h"
 #include "pggate/pg_gate_api.h"
 #include "access/reloptions.h"
 
