@@ -153,4 +153,3 @@ class DatabaseInfo {
 } // namespace catalog
 } // namespace sql
 } // namespace k2pg
-
