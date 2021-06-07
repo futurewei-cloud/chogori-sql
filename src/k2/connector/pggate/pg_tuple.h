@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TUPLE_H
-#define CHOGORI_GATE_PG_TUPLE_H
+#pragma once
 
 #include "pggate/pg_gate_typedefs.h"
 
@@ -80,6 +79,3 @@ class PgTuple {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif  // CHOGORI_GATE_PG_TUPLE_H
-

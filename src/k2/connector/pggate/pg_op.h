@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_OP_H
-#define CHOGORI_GATE_PG_OP_H
+#pragma once
 
 #include <string>
 #include <list>
@@ -365,5 +364,3 @@ private:
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_OP_H

@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_DML_INSERT_H
-#define CHOGORI_GATE_DML_INSERT_H
+#pragma once
 
 #include "pggate/pg_dml_write.h"
 
@@ -74,5 +73,3 @@ class PgInsert : public PgDmlWrite {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_DML_INSERT_H

@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_TABLE_INFO_HANDLER_H
-#define CHOGORI_SQL_TABLE_INFO_HANDLER_H
+#pragma once
 
 #include <string>
 #include <vector>
@@ -324,5 +322,3 @@ class TableInfoHandler {
 } // namespace catalog
 } // namespace sql
 } // namespace k2pg
-
-#endif //CHOGORI_SQL_TABLE_INFO_HANDLER_H

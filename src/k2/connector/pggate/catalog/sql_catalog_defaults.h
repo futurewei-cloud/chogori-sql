@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_DEFAULTS_H
-#define CHOGORI_SQL_DEFAULTS_H
+#pragma once
 
 #include <string>
 
@@ -41,8 +39,8 @@ struct CatalogConsts {
     // two meta tables/SKVSchemas in PG primary cluster(corresponding SKV collection)
     static const std::string skv_schema_name_cluster_meta;
     static const std::string skv_schema_name_database_meta;
-    
-    // table/index and their column meta tables - exist in every 
+
+    // table/index and their column meta tables - exist in every
     static const std::string skv_schema_name_table_meta;
     static const std::string skv_schema_name_tablecolumn_meta;
     static const std::string skv_schema_name_indexcolumn_meta;
@@ -66,8 +64,6 @@ struct CatalogConsts {
     static bool is_on_physical_collection(const std::string& database_id, bool is_shared);
 };
 
-} // namespace catalog
+}  // namespace catalog
 }  // namespace sql
 }  // namespace k2pg
-
-#endif //CHOGORI_SQL_DEFAULTS_H

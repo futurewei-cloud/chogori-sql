@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_GATE_DEFAULTS_H
-#define CHOGORI_GATE_DEFAULTS_H
+#pragma once
 
 namespace k2pg {
 namespace gate {
@@ -50,5 +48,3 @@ namespace gate {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_DEFAULTS_H

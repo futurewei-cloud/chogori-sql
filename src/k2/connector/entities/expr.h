@@ -45,9 +45,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
-#ifndef CHOGORI_SQL_EXPR_H
-#define CHOGORI_SQL_EXPR_H
+#pragma once
 
 #include <memory>
 #include <vector>
@@ -290,5 +288,3 @@ class PgOperator : public PgExpr {
 
 }  // namespace sql
 }  // namespace k2pg
-
-#endif //CHOGORI_SQL_EXPR_H

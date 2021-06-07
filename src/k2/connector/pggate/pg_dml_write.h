@@ -45,9 +45,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
-#ifndef CHOGORI_GATE_PG_DML_WRITE_H
-#define CHOGORI_GATE_PG_DML_WRITE_H
+#pragma once
 
 #include "pggate/pg_dml.h"
 #include "k2_log.h"
@@ -123,5 +121,3 @@ class PgDmlWrite : public PgDml {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_DML_WRITE_H

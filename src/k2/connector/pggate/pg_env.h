@@ -17,9 +17,7 @@
 // might need to deal with some of them. This class is provided for that reason.  This class can
 // be removed if YugaByte layers, especially DocDB, do not handle any custom values for ENV.
 
-
-#ifndef CHOGORI_GATE_PG_ENV_H_
-#define CHOGORI_GATE_PG_ENV_H_
+#pragma once
 
 #include <memory>
 #include <string>
@@ -43,5 +41,3 @@ class PgEnv {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif  // CHOGORI_GATE_PG_ENV_H_

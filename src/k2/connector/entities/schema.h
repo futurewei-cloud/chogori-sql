@@ -45,9 +45,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
-#ifndef CHOGORI_SQL_SCHEMA_H
-#define CHOGORI_SQL_SCHEMA_H
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -580,5 +578,3 @@ namespace sql {
 }  // namespace k2pg
 
 typedef class k2pg::sql::Schema PgSchema;
-
-#endif //CHOGORI_SQL_SCHEMA_H

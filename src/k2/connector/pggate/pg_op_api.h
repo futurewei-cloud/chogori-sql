@@ -15,8 +15,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_OP_CALL_H
-#define CHOGORI_GATE_OP_CALL_H
+#pragma once
 
 #include <string>
 #include <list>
@@ -307,5 +306,3 @@ namespace gate {
     };
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_OP_CALL_H

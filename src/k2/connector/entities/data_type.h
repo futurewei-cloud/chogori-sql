@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_DATA_TYPE_H
-#define CHOGORI_SQL_DATA_TYPE_H
+#pragma once
 
 // this type definition is synced with the PgDataType in pg_gate_typedefs.h. We might not support all of them
 typedef enum K2SqlDataType {
@@ -50,5 +48,3 @@ typedef enum K2SqlDataType {
     K2SQL_DATA_TYPE_UINT32 = 102,
     K2SQL_DATA_TYPE_UINT64 = 103
 } DataType;
-
-#endif //CHOGORI_SQL_DATA_TYPE_H

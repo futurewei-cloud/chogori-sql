@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_CLUSTER_INFO_HANDLER_H
-#define CHOGORI_SQL_CLUSTER_INFO_HANDLER_H
+#pragma once
 
 #include <string>
 
@@ -82,8 +80,6 @@ class ClusterInfoHandler {
     std::shared_ptr<K2Adapter> k2_adapter_;
 };
 
-} // namespace sql
+} // namespace catalog
 } // namespace sql
 } // namespace k2pg
-
-#endif //CHOGORI_SQL_CLUSTER_INFO_HANDLER_H
