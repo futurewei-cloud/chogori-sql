@@ -650,8 +650,7 @@ YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
-				 errhint("Please report the issue on "
-						 "https://github.com/futurewei-cloud/chogori-sql/issues")));
+				 errhint("%s", "")));
 	}
 }
 
