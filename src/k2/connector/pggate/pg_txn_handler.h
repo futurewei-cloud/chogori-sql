@@ -21,8 +21,7 @@ Copyright(c) 2020 Futurewei Cloud
     SOFTWARE.
 */
 
-#ifndef CHOGORI_GATE_PG_TXN_HANDLER_H
-#define CHOGORI_GATE_PG_TXN_HANDLER_H
+#pragma once
 
 #include <atomic>
 
@@ -96,5 +95,3 @@ class PgTxnHandler {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_TXN_HANDLER_H

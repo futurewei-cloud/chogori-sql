@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_TABLE_DESC_H
-#define CHOGORI_GATE_PG_TABLE_DESC_H
+#pragma once
 
 #include "entities/table.h"
 #include "pggate/pg_column.h"
@@ -159,5 +158,3 @@ class PgTableDesc {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_TABLE_DESC_H

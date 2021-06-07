@@ -14,9 +14,7 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-
-#ifndef CHOGORI_SQL_TABLE_H
-#define CHOGORI_SQL_TABLE_H
+#pragma once
 
 #include <memory>
 #include <string>
@@ -154,5 +152,3 @@ namespace sql {
 
 }  // namespace sql
 }  // namespace k2pg
-
-#endif //CHOGORI_SQL_TABLE_H

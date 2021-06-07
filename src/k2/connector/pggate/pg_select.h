@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_DML_SELECT_H
-#define CHOGORI_GATE_DML_SELECT_H
+#pragma once
 
 #include "pggate/pg_dml_read.h"
 #include "k2_log.h"
@@ -124,6 +123,3 @@ class PgSelectIndex : public PgDmlRead {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_DML_SELECT_H
-

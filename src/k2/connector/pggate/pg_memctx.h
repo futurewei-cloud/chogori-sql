@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_MEMCTX_H
-#define CHOGORI_GATE_MEMCTX_H
+#pragma once
 
 #include <memory>
 #include <string>
@@ -124,5 +123,3 @@ class PgMemctx {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_MEMCTX_H

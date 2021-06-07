@@ -79,9 +79,7 @@ Please be aware that blocking APIs are used for the catalog manager for now. Wil
 and task state checking APIs later by using thread pools.
 
 */
-
-#ifndef CHOGORI_SQL_CATALOG_MANAGER_H
-#define CHOGORI_SQL_CATALOG_MANAGER_H
+#pragma once
 
 #include <boost/functional/hash.hpp>
 
@@ -402,5 +400,3 @@ namespace catalog {
 } // namespace catalog
 } // namespace sql
 } // namespace k2pg
-
-#endif //CHOGORI_SQL_CATALOG_MANAGER_H

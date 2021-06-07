@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_STATEMENT_H
-#define CHOGORI_GATE_PG_STATEMENT_H
+#pragma once
 
 #include <memory>
 #include <string>
@@ -137,5 +136,3 @@ class PgStatement {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_STATEMENT_H

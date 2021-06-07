@@ -20,9 +20,7 @@ Copyright(c) 2020 Futurewei Cloud
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 */
-
-#ifndef CHOGORI_SQL_CATALOG_PERSISTENCE_H
-#define CHOGORI_SQL_CATALOG_PERSISTENCE_H
+#pragma once
 
 #include <string>
 #include <assert.h>
@@ -155,7 +153,4 @@ class DatabaseInfo {
 } // namespace catalog
 } // namespace sql
 } // namespace k2pg
-
-#endif //CHOGORI_SQL_CATALOG_PERSISTENCE_H
-
 

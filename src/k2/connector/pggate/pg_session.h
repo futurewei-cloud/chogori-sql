@@ -46,8 +46,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef CHOGORI_GATE_PG_SESSION_H
-#define CHOGORI_GATE_PG_SESSION_H
+#pragma once
 
 #include <optional>
 #include <unordered_set>
@@ -326,5 +325,3 @@ class PgSession {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_PG_SESSION_H

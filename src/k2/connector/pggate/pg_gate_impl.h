@@ -45,8 +45,8 @@
 // WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
-#ifndef CHOGORI_GATE_API_H
-#define CHOGORI_GATE_API_H
+
+#pragma once
 
 #include <algorithm>
 #include <functional>
@@ -489,5 +489,3 @@ class PgGateApiImpl {
 
 }  // namespace gate
 }  // namespace k2pg
-
-#endif //CHOGORI_GATE_API_H
