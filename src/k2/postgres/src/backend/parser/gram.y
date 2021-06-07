@@ -143,8 +143,8 @@ typedef struct ImportQual
 #define parser_ybc_not_support(pos, feature) \
 	ybc_not_support(pos, yyscanner, feature " not supported yet", -1)
 
-#define parser_ybc_warn_ignored(pos, feature, issue) \
-	ybc_not_support_signal(pos, yyscanner, feature " not supported yet and will be ignored", issue, WARNING)
+#define parser_ybc_warn_ignored(pos, feature) \
+	ybc_not_support_signal(pos, yyscanner, feature " not supported yet and will be ignored", -1, WARNING)
 
 #define parser_ybc_signal_unsupported(pos, feature, issue) \
 	ybc_not_support(pos, yyscanner, feature " not supported yet", issue)
@@ -964,16 +964,16 @@ stmt :
 			| CreateStmt { parser_ybc_not_support_in_templates(@1, "This statement"); }
 
 			/* Not supported statements */
-			| AlterEventTrigStmt { parser_ybc_signal_unsupported(@1, "This statement", 1156); }
+			| AlterEventTrigStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterCollationStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterEnumStmt { parser_ybc_signal_unsupported(@1, "This statement", 1893); }
+			| AlterEnumStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterFdwStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterForeignServerStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterForeignTableStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterFunctionStmt { parser_ybc_signal_unsupported(@1, "This statement", 2717); }
+			| AlterFunctionStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterObjectDependsStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterSystemStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterTblSpcStmt { parser_ybc_signal_unsupported(@1, "This statement", 1153); }
+			| AlterTblSpcStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterCompositeTypeStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterPublicationStmt { parser_ybc_not_support(@1, "This statement"); }
 			| AlterSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
@@ -994,26 +994,26 @@ stmt :
 			| CreatePLangStmt { parser_ybc_not_support(@1, "This statement"); }
 			| CreateSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
 			| CreateStatsStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateTableSpaceStmt { parser_ybc_signal_unsupported(@1, "This statement", 1153); }
+			| CreateTableSpaceStmt { parser_ybc_not_support(@1, "This statement"); }
 			| CreateTransformStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateEventTrigStmt { parser_ybc_signal_unsupported(@1, "This statement", 1156); }
+			| CreateEventTrigStmt { parser_ybc_not_support(@1, "This statement"); }
 			| CreateUserMappingStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DeclareCursorStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DropAssertStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DropPLangStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DropSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropTableSpaceStmt { parser_ybc_signal_unsupported(@1, "This statement", 1153); }
+			| DropTableSpaceStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DropTransformStmt { parser_ybc_not_support(@1, "This statement"); }
 			| DropUserMappingStmt { parser_ybc_not_support(@1, "This statement"); }
 			| FetchStmt { parser_ybc_not_support(@1, "This statement"); }
 			| ImportForeignSchemaStmt { parser_ybc_not_support(@1, "This statement"); }
-			| ListenStmt { parser_ybc_warn_ignored(@1, "LISTEN", 1872); }
+			| ListenStmt { parser_ybc_warn_ignored(@1, "LISTEN"); }
 			| RefreshMatViewStmt { parser_ybc_not_support(@1, "This statement"); }
 			| LoadStmt { parser_ybc_not_support(@1, "This statement"); }
-			| NotifyStmt { parser_ybc_warn_ignored(@1, "NOTIFY", 1872); }
+			| NotifyStmt { parser_ybc_warn_ignored(@1, "NOTIFY"); }
 			| ReindexStmt { parser_ybc_not_support(@1, "This statement"); }
 			| SecLabelStmt { parser_ybc_not_support(@1, "This statement"); }
-			| UnlistenStmt { parser_ybc_warn_ignored(@1, "UNLISTEN", 1872); }
+			| UnlistenStmt { parser_ybc_warn_ignored(@1, "UNLISTEN"); }
 		;
 
 /*****************************************************************************
@@ -1934,7 +1934,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE relation_expr partition_cmd
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE WITH PARTITION COMMAND", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = list_make1($4);
@@ -1944,7 +1944,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE IF_P EXISTS relation_expr partition_cmd
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE WITH PARTITION COMMAND", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = list_make1($6);
@@ -1954,7 +1954,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALL IN TABLESPACE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -1966,7 +1966,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALL IN TABLESPACE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -1978,7 +1978,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -1988,7 +1988,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -1998,7 +1998,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX qualified_name index_partition_cmd
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = list_make1($4);
@@ -2008,7 +2008,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -2020,7 +2020,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -2032,7 +2032,7 @@ AlterTableStmt:
 				}
 		|	ALTER SEQUENCE qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -2042,7 +2042,7 @@ AlterTableStmt:
 				}
 		|	ALTER SEQUENCE IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -2052,7 +2052,7 @@ AlterTableStmt:
 				}
 		|	ALTER VIEW qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -2062,7 +2062,7 @@ AlterTableStmt:
 				}
 		|	ALTER VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -2072,7 +2072,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $4;
 					n->cmds = $5;
@@ -2082,7 +2082,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $6;
 					n->cmds = $7;
@@ -2092,7 +2092,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $7;
@@ -2104,7 +2104,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $7;
@@ -2125,7 +2125,7 @@ partition_cmd:
 			/* ALTER TABLE <name> ATTACH PARTITION <table_name> FOR VALUES */
 			ATTACH PARTITION qualified_name PartitionBoundSpec
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ATTACH PARTITION", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ATTACH PARTITION");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
@@ -2139,7 +2139,7 @@ partition_cmd:
 			/* ALTER TABLE <name> DETACH PARTITION <partition_name> */
 			| DETACH PARTITION qualified_name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE DETACH PARTITION", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE DETACH PARTITION");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
@@ -2233,7 +2233,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET STATISTICS <SignedIconst> */
 			| ALTER opt_column ColId SET STATISTICS SignedIconst
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetStatistics;
 					n->name = $3;
@@ -2259,7 +2259,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET ( column_parameter = value [, ... ] ) */
 			| ALTER opt_column ColId SET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetOptions;
 					n->name = $3;
@@ -2269,7 +2269,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> RESET ( column_parameter = value [, ... ] ) */
 			| ALTER opt_column ColId RESET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ResetOptions;
 					n->name = $3;
@@ -2279,7 +2279,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET STORAGE <storagemode> */
 			| ALTER opt_column ColId SET STORAGE ColId
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetStorage;
 					n->name = $3;
@@ -2356,7 +2356,7 @@ alter_table_cmd:
 			 */
 			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_collate_clause alter_using
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
 					n->subtype = AT_AlterColumnType;
@@ -2372,7 +2372,7 @@ alter_table_cmd:
 			/* ALTER FOREIGN TABLE <name> ALTER [COLUMN] <colname> OPTIONS */
 			| ALTER opt_column ColId alter_generic_options
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER column", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AlterColumnGenericOptions;
 					n->name = $3;
@@ -2390,7 +2390,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER CONSTRAINT ... */
 			| ALTER CONSTRAINT name ConstraintAttributeSpec
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ALTER CONSTRAINT", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ALTER CONSTRAINT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					Constraint *c = makeNode(Constraint);
 					n->subtype = AT_AlterConstraint;
@@ -2406,7 +2406,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> VALIDATE CONSTRAINT ... */
 			| VALIDATE CONSTRAINT name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE VALIDATE CONSTRAINT", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE VALIDATE CONSTRAINT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ValidateConstraint;
 					n->name = $3;
@@ -2435,7 +2435,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET WITH OIDS  */
 			| SET WITH OIDS
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET WITH OIDS", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET WITH OIDS");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddOids;
 					$$ = (Node *)n;
@@ -2450,7 +2450,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> CLUSTER ON <indexname> */
 			| CLUSTER ON name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE CLUSTER", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE CLUSTER");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ClusterOn;
 					n->name = $3;
@@ -2459,7 +2459,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET WITHOUT CLUSTER */
 			| SET WITHOUT CLUSTER
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET WITHOUT CLUSTER", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET WITHOUT CLUSTER");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropCluster;
 					n->name = NULL;
@@ -2468,7 +2468,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET LOGGED  */
 			| SET LOGGED
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET LOGGED", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET LOGGED");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetLogged;
 					$$ = (Node *)n;
@@ -2476,7 +2476,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET UNLOGGED  */
 			| SET UNLOGGED
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET UNLOGGED", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET UNLOGGED");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetUnLogged;
 					$$ = (Node *)n;
@@ -2552,7 +2552,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE RULE <rule> */
 			| ENABLE_P RULE name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ENABLE RULE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableRule;
 					n->name = $3;
@@ -2561,7 +2561,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE ALWAYS RULE <rule> */
 			| ENABLE_P ALWAYS RULE name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ENABLE RULE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableAlwaysRule;
 					n->name = $4;
@@ -2570,7 +2570,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE REPLICA RULE <rule> */
 			| ENABLE_P REPLICA RULE name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE ENABLE RULE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableReplicaRule;
 					n->name = $4;
@@ -2579,7 +2579,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE RULE <rule> */
 			| DISABLE_P RULE name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE DISABLE RULE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE DISABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableRule;
 					n->name = $3;
@@ -2588,7 +2588,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> INHERIT <parent> */
 			| INHERIT qualified_name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE INHERIT", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE INHERIT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddInherit;
 					n->def = (Node *) $2;
@@ -2597,7 +2597,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> NO INHERIT <parent> */
 			| NO INHERIT qualified_name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE NO INHERIT", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE NO INHERIT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropInherit;
 					n->def = (Node *) $3;
@@ -2606,7 +2606,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> OF <type_name> */
 			| OF any_name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE OF name", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE OF name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					TypeName *def = makeTypeNameFromNameList($2);
 					def->location = @2;
@@ -2617,7 +2617,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> NOT OF */
 			| NOT OF
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE NOT OF name", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE NOT OF name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropOf;
 					$$ = (Node *)n;
@@ -2634,7 +2634,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET TABLESPACE <tablespacename> */
 			| SET TABLESPACE name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET TABLESPACE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET TABLESPACE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetTableSpace;
 					n->name = $3;
@@ -2643,7 +2643,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET (...) */
 			| SET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE SET name", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE SET name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetRelOptions;
 					n->def = (Node *)$2;
@@ -2652,7 +2652,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> RESET (...) */
 			| RESET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE RESET name", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE RESET name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ResetRelOptions;
 					n->def = (Node *)$2;
@@ -2661,7 +2661,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> REPLICA IDENTITY  */
 			| REPLICA IDENTITY_P replica_identity
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE REPLICA IDENTITY", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE REPLICA IDENTITY");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ReplicaIdentity;
 					n->def = $3;
@@ -2701,7 +2701,7 @@ alter_table_cmd:
 				}
 			| alter_generic_options
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLE", 1124);
+					parser_ybc_not_support(@1, "ALTER TABLE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_GenericOptions;
 					n->def = (Node *)$1;
@@ -2904,7 +2904,7 @@ PartitionBoundSpec:
 			/* a LIST partition */
 			| FOR VALUES IN_P '(' partbound_datum_list ')'
 				{
-					parser_ybc_signal_unsupported(@1, "LIST PARTITION", 1126);
+					parser_ybc_not_support(@1, "LIST PARTITION");
 					PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
 
 					n->strategy = PARTITION_STRATEGY_LIST;
@@ -2918,7 +2918,7 @@ PartitionBoundSpec:
 			/* a RANGE partition */
 			| FOR VALUES FROM '(' range_datum_list ')' TO '(' range_datum_list ')'
 				{
-					parser_ybc_signal_unsupported(@1, "RANGE PARTITION", 1126);
+					parser_ybc_not_support(@1, "RANGE PARTITION");
 					PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
 
 					n->strategy = PARTITION_STRATEGY_RANGE;
@@ -3023,7 +3023,7 @@ PartitionRangeDatum:
 AlterCompositeTypeStmt:
 			ALTER TYPE_P any_name alter_type_cmds
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 
 					/* can't use qualified_name, sigh */
@@ -3043,7 +3043,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> ADD ATTRIBUTE <coldef> [RESTRICT|CASCADE] */
 			ADD_P ATTRIBUTE TableFuncElement opt_drop_behavior
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE ADD ATTRIBUTE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE ADD ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $3;
@@ -3053,7 +3053,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> DROP ATTRIBUTE IF EXISTS <attname> [RESTRICT|CASCADE] */
 			| DROP ATTRIBUTE IF_P EXISTS ColId opt_drop_behavior
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE DROP ATTRIBUTE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropColumn;
 					n->name = $5;
@@ -3064,7 +3064,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> DROP ATTRIBUTE <attname> [RESTRICT|CASCADE] */
 			| DROP ATTRIBUTE ColId opt_drop_behavior
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE DROP ATTRIBUTE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropColumn;
 					n->name = $3;
@@ -3075,7 +3075,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> ALTER ATTRIBUTE <attname> [SET DATA] TYPE <typename> [RESTRICT|CASCADE] */
 			| ALTER ATTRIBUTE ColId opt_set_data TYPE_P Typename opt_collate_clause opt_drop_behavior
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE ALTER ATTRIBUTE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE ALTER ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
 					n->subtype = AT_AlterColumnType;
@@ -3537,7 +3537,7 @@ OptTemp:	TEMPORARY					{ $$ = RELPERSISTENCE_TEMP; }
 				}
 			| UNLOGGED
 				{
-					parser_ybc_signal_unsupported(@1, "UNLOGGED database object", 1129);
+					parser_ybc_not_support(@1, "UNLOGGED database object");
 					$$ = RELPERSISTENCE_UNLOGGED;
 				}
 			| /*EMPTY*/					{ $$ = RELPERSISTENCE_PERMANENT; }
@@ -3662,7 +3662,7 @@ ColConstraint:
 			| ConstraintAttr						{ $$ = $1; }
 			| COLLATE any_name
 				{
-					parser_ybc_signal_unsupported(@1, "COLLATE", 1127);
+					parser_ybc_not_support(@1, "COLLATE");
 					/*
 					 * Note: the CollateClause is momentarily included in
 					 * the list built by ColQualList, but we split it out
@@ -3830,7 +3830,7 @@ ConstraintAttr:
 TableLikeClause:
 			LIKE qualified_name TableLikeOptionList
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE clause", 1129);
+					parser_ybc_not_support(@1, "LIKE clause");
 					TableLikeClause *n = makeNode(TableLikeClause);
 					n->relation = $2;
 					n->options = $3;
@@ -3847,37 +3847,37 @@ TableLikeOptionList:
 TableLikeOption:
 			COMMENTS
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE COMMENTS", 1129);
+					parser_ybc_not_support(@1, "LIKE COMMENTS");
 					$$ = CREATE_TABLE_LIKE_COMMENTS;
 				}
 			| CONSTRAINTS
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE CONSTRAINTS", 1129);
+					parser_ybc_not_support(@1, "LIKE CONSTRAINTS");
 					$$ = CREATE_TABLE_LIKE_CONSTRAINTS;
 				}
 			| DEFAULTS
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE DEFAULTS", 1129);
+					parser_ybc_not_support(@1, "LIKE DEFAULTS");
 					$$ = CREATE_TABLE_LIKE_DEFAULTS;
 				}
 			| IDENTITY_P
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE IDENTITY", 1129);
+					parser_ybc_not_support(@1, "LIKE IDENTITY");
 					$$ = CREATE_TABLE_LIKE_IDENTITY;
 				}
 			| INDEXES
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE INDEXES", 1129);
+					parser_ybc_not_support(@1, "LIKE INDEXES");
 					$$ = CREATE_TABLE_LIKE_INDEXES;
 				}
 			| STATISTICS
 				{
-					parser_ybc_signal_unsupported(@1, "LIKE STATISTICS", 1129);
+					parser_ybc_not_support(@1, "LIKE STATISTICS");
 					$$ = CREATE_TABLE_LIKE_STATISTICS;
 				}
 			| STORAGE
-				{ parser_ybc_signal_unsupported(@1, "LIKE STORAGE", 1129); $$ = CREATE_TABLE_LIKE_STORAGE; }
-			| ALL { parser_ybc_signal_unsupported(@1, "LIKE ALL", 1129); $$ = CREATE_TABLE_LIKE_ALL; }
+				{ parser_ybc_not_support(@1, "LIKE STORAGE"); $$ = CREATE_TABLE_LIKE_STORAGE; }
+			| ALL { parser_ybc_not_support(@1, "LIKE ALL"); $$ = CREATE_TABLE_LIKE_ALL; }
 		;
 
 
@@ -4001,7 +4001,7 @@ ConstraintElem:
 				opt_c_include opt_definition OptConsTableSpace  ExclusionWhereClause
 				ConstraintAttributeSpec
 				{
-					parser_ybc_signal_unsupported(@1, "EXCLUDE constraint", 1129);
+					parser_ybc_not_support(@1, "EXCLUDE constraint");
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_EXCLUSION;
 					n->location = @1;
@@ -4038,7 +4038,7 @@ ConstraintElem:
 				}
 		;
 
-opt_no_inherit:	NO INHERIT { parser_ybc_signal_unsupported(@1, "NO INHERIT", 1129); $$ = true; }
+opt_no_inherit:	NO INHERIT { parser_ybc_not_support(@1, "NO INHERIT"); $$ = true; }
 			| /* EMPTY */							{  $$ = false; }
 		;
 
@@ -4141,7 +4141,7 @@ key_action:
 
 OptInherit: INHERITS '(' qualified_name_list ')'
 				{
-					parser_ybc_signal_unsupported(@1, "INHERITS", 1129);
+					parser_ybc_not_support(@1, "INHERITS");
 					$$ = $3;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -4154,7 +4154,7 @@ OptPartitionSpec: PartitionSpec	{ $$ = $1; }
 
 PartitionSpec: PARTITION BY part_strategy '(' part_params ')'
 				{
-					parser_ybc_signal_unsupported(@1, "PARTITION BY", 1126);
+					parser_ybc_not_support(@1, "PARTITION BY");
  					PartitionSpec *n = makeNode(PartitionSpec);
 
 					n->strategy = $3;
@@ -4228,14 +4228,14 @@ OnCommitOption:  ON COMMIT DROP				{ $$ = ONCOMMIT_DROP; }
 		;
 
 OptTableSpace:
-			TABLESPACE name { parser_ybc_signal_unsupported(@1, "TABLESPACE", 1129); $$ = $2; }
+			TABLESPACE name { parser_ybc_not_support(@1, "TABLESPACE"); $$ = $2; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
 OptConsTableSpace:
 			USING INDEX TABLESPACE name
 				{
-					parser_ybc_signal_unsupported(@1, "USING INDEX TABLESPACE", 1129);
+					parser_ybc_not_support(@1, "USING INDEX TABLESPACE");
 					$$ = $4;
 				}
 			| /*EMPTY*/								{ $$ = NULL; }
@@ -4391,7 +4391,7 @@ opt_with_data:
 CreateMatViewStmt:
 		CREATE OptNoLog MATERIALIZED VIEW create_mv_target AS SelectStmt opt_with_data
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "CREATE MATERIALIZED VIEW");
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 					ctas->query = $7;
 					ctas->into = $5;
@@ -4405,7 +4405,7 @@ CreateMatViewStmt:
 				}
 		| CREATE OptNoLog MATERIALIZED VIEW IF_P NOT EXISTS create_mv_target AS SelectStmt opt_with_data
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "CREATE MATERIALIZED VIEW");
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 					ctas->query = $10;
 					ctas->into = $8;
@@ -4448,7 +4448,7 @@ OptNoLog:	UNLOGGED					{ $$ = RELPERSISTENCE_UNLOGGED; }
 RefreshMatViewStmt:
 			REFRESH MATERIALIZED VIEW opt_concurrently qualified_name opt_with_data
 				{
-					parser_ybc_signal_unsupported(@1, "REFRESH MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "REFRESH MATERIALIZED VIEW");
 					RefreshMatViewStmt *n = makeNode(RefreshMatViewStmt);
 					n->concurrent = $4;
 					n->relation = $5;
@@ -4704,7 +4704,7 @@ opt_procedural:
 
 CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE TABLESPACE", 1153);
+					parser_ybc_not_support(@1, "CREATE TABLESPACE");
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
 					n->owner = $4;
@@ -4730,7 +4730,7 @@ OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 
 DropTableSpaceStmt: DROP TABLESPACE name
 				{
-					parser_ybc_signal_unsupported(@1, "DROP TABLESPACE", 1153);
+					parser_ybc_not_support(@1, "DROP TABLESPACE");
 					DropTableSpaceStmt *n = makeNode(DropTableSpaceStmt);
 					n->tablespacename = $3;
 					n->missing_ok = false;
@@ -4738,7 +4738,7 @@ DropTableSpaceStmt: DROP TABLESPACE name
 				}
 				|  DROP TABLESPACE IF_P EXISTS name
 				{
-					parser_ybc_signal_unsupported(@1, "DROP TABLESPACE", 1153);
+					parser_ybc_not_support(@1, "DROP TABLESPACE");
 					DropTableSpaceStmt *n = makeNode(DropTableSpaceStmt);
 					n->tablespacename = $5;
 					n->missing_ok = true;
@@ -5719,7 +5719,7 @@ CreateTrigStmt:
 			FOR EACH ROW TriggerWhen
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' TriggerFuncArgs ')'
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE CONSTRAINT TRIGGER", 1709);
+					parser_ybc_not_support(@1, "CREATE CONSTRAINT TRIGGER");
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
 					n->trigname = $4;
 					n->relation = $8;
@@ -5786,7 +5786,7 @@ TriggerOneEvent:
 TriggerReferencing:
 			REFERENCING TriggerTransitions
 				{
-					parser_ybc_signal_unsupported(@1, "REFERENCING clause (transition tables)", 1668);
+					parser_ybc_not_support(@1, "REFERENCING clause (transition tables)");
 					$$ = $2;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -5943,7 +5943,7 @@ CreateEventTrigStmt:
 			CREATE EVENT TRIGGER name ON ColLabel
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' ')'
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE EVENT TRIGGER", 1156);
+					parser_ybc_not_support(@1, "CREATE EVENT TRIGGER");
 					CreateEventTrigStmt *n = makeNode(CreateEventTrigStmt);
 					n->trigname = $4;
 					n->eventname = $6;
@@ -5955,7 +5955,7 @@ CreateEventTrigStmt:
 			WHEN event_trigger_when_list
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' ')'
 				{
-					parser_ybc_signal_unsupported(@1, "CREATE EVENT TRIGGER", 1156);
+					parser_ybc_not_support(@1, "CREATE EVENT TRIGGER");
 					CreateEventTrigStmt *n = makeNode(CreateEventTrigStmt);
 					n->trigname = $4;
 					n->eventname = $6;
@@ -5987,7 +5987,7 @@ event_trigger_value_list:
 AlterEventTrigStmt:
 			ALTER EVENT TRIGGER name enable_trigger
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER EVENT TRIGGER", 1156);
+					parser_ybc_not_support(@1, "ALTER EVENT TRIGGER");
 					AlterEventTrigStmt *n = makeNode(AlterEventTrigStmt);
 					n->trigname = $4;
 					n->tgenabled = $5;
@@ -6278,7 +6278,7 @@ enum_val_list:	Sconst
 AlterEnumStmt:
 		ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst
 			{
-				parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+				parser_ybc_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6290,7 +6290,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst BEFORE Sconst
 			{
-				parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+				parser_ybc_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6302,7 +6302,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst AFTER Sconst
 			{
-				parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+				parser_ybc_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6314,7 +6314,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name RENAME VALUE_P Sconst TO Sconst
 			{
-				parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+				parser_ybc_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = $6;
@@ -6591,7 +6591,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = true;
 					n->objects = $5;
           if (list_length($5) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_signal_unsupported(@5, "DROP multiple objects", 880);
+            parser_ybc_not_support(@5, "DROP multiple objects");
           }
 					n->behavior = $6;
 					n->concurrent = false;
@@ -6604,7 +6604,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = false;
 					n->objects = $3;
           if (list_length($3) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_signal_unsupported(@3, "DROP multiple objects", 880);
+            parser_ybc_not_support(@3, "DROP multiple objects");
           }
 					n->behavior = $4;
 					n->concurrent = false;
@@ -6617,7 +6617,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = true;
 					n->objects = $5;
           if (list_length($5) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_signal_unsupported(@5, "DROP multiple objects", 880);
+            parser_ybc_not_support(@5, "DROP multiple objects");
           }
 					n->behavior = $6;
 					n->concurrent = false;
@@ -6630,7 +6630,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = false;
 					n->objects = $3;
           if (list_length($3) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_signal_unsupported(@3, "DROP multiple objects", 880);
+            parser_ybc_not_support(@3, "DROP multiple objects");
           }
 					n->behavior = $4;
 					n->concurrent = false;
@@ -6766,7 +6766,7 @@ drop_type_name:
 			ACCESS METHOD	{ parser_ybc_not_support(@1, "DROP ACCESS METHOD"); $$ = OBJECT_ACCESS_METHOD; }
 			| EVENT TRIGGER
 				{
-					parser_ybc_signal_unsupported(@1, "DROP EVENT TRIGGER", 1156);
+					parser_ybc_not_support(@1, "DROP EVENT TRIGGER");
 					$$ = OBJECT_EVENT_TRIGGER;
 				}
 			| EXTENSION
@@ -8632,7 +8632,7 @@ table_func_column_list:
 AlterFunctionStmt:
 			ALTER FUNCTION function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER FUNCTION", 2717);
+					parser_ybc_not_support(@1, "ALTER FUNCTION");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_FUNCTION;
 					n->func = $3;
@@ -8641,7 +8641,7 @@ AlterFunctionStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER PROCEDURE", 2717);
+					parser_ybc_not_support(@1, "ALTER PROCEDURE");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_PROCEDURE;
 					n->func = $3;
@@ -8650,7 +8650,7 @@ AlterFunctionStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER ROUTINE", 2717);
+					parser_ybc_not_support(@1, "ALTER ROUTINE");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_ROUTINE;
 					n->func = $3;
@@ -9056,7 +9056,7 @@ reindex_option_elem:
 AlterTblSpcStmt:
 			ALTER TABLESPACE name SET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLESPACE", 1153);
+					parser_ybc_not_support(@1, "ALTER TABLESPACE");
 					AlterTableSpaceOptionsStmt *n =
 						makeNode(AlterTableSpaceOptionsStmt);
 					n->tablespacename = $3;
@@ -9066,7 +9066,7 @@ AlterTblSpcStmt:
 				}
 			| ALTER TABLESPACE name RESET reloptions
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TABLESPACE", 1153);
+					parser_ybc_not_support(@1, "ALTER TABLESPACE");
 					AlterTableSpaceOptionsStmt *n =
 						makeNode(AlterTableSpaceOptionsStmt);
 					n->tablespacename = $3;
@@ -9084,7 +9084,7 @@ AlterTblSpcStmt:
 
 RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER AGGREGATE", 2717);
+					parser_ybc_not_support(@1, "ALTER AGGREGATE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
@@ -9152,7 +9152,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FUNCTION function_with_argtypes RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER FUNCTION", 2717);
+					parser_ybc_not_support(@1, "ALTER FUNCTION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9223,7 +9223,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER PROCEDURE function_with_argtypes RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER PROCEDURE", 2717);
+					parser_ybc_not_support(@1, "ALTER PROCEDURE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9243,7 +9243,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER ROUTINE function_with_argtypes RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER ROUTINE", 2717);
+					parser_ybc_not_support(@1, "ALTER ROUTINE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9303,7 +9303,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SEQUENCE qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $3;
@@ -9314,7 +9314,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SEQUENCE IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $5;
@@ -9325,7 +9325,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER VIEW qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_VIEW;
 					n->relation = $3;
@@ -9336,7 +9336,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_VIEW;
 					n->relation = $5;
@@ -9347,7 +9347,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9358,7 +9358,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $6;
@@ -9369,7 +9369,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER INDEX qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_INDEX;
 					n->relation = $3;
@@ -9380,7 +9380,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER INDEX IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_INDEX;
 					n->relation = $5;
@@ -9436,7 +9436,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW qualified_name RENAME opt_column name TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
@@ -9448,7 +9448,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME opt_column name TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
@@ -9528,7 +9528,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER EVENT TRIGGER name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER EVENT TRIGGER", 1156);
+					parser_ybc_not_support(@1, "ALTER EVENT TRIGGER");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_EVENT_TRIGGER;
 					n->object = (Node *) makeString($4);
@@ -9617,7 +9617,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TYPE_P any_name RENAME TO name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TYPE;
 					n->object = (Node *) $3;
@@ -9627,7 +9627,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TYPE_P any_name RENAME ATTRIBUTE name TO name opt_drop_behavior
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ATTRIBUTE;
 					n->relationType = OBJECT_TYPE;
@@ -9657,7 +9657,7 @@ opt_set_data: SET DATA_P							{ $$ = 1; }
 AlterObjectDependsStmt:
 			ALTER FUNCTION function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER FUNCTION DEPENDS ON EXTENSION", 2717);
+					parser_ybc_not_support(@1, "ALTER FUNCTION DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9666,7 +9666,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER PROCEDURE DEPENDS ON EXTENSION", 2717);
+					parser_ybc_not_support(@1, "ALTER PROCEDURE DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9675,7 +9675,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER ROUTINE DEPENDS ON EXTENSION", 2717);
+					parser_ybc_not_support(@1, "ALTER ROUTINE DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9684,7 +9684,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER TRIGGER name ON qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TRIGGER DEPENDS ON EXTENSION", 1156);
+					parser_ybc_not_support(@1, "ALTER TRIGGER DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_TRIGGER;
 					n->relation = $5;
@@ -9694,7 +9694,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER MATERIALIZED VIEW qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW DEPENDS ON EXTENSION", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9703,7 +9703,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER INDEX qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER INDEX DEPENDS ON EXTENSION", 1130);
+					parser_ybc_not_support(@1, "ALTER INDEX DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_INDEX;
 					n->relation = $3;
@@ -9721,7 +9721,7 @@ AlterObjectDependsStmt:
 AlterObjectSchemaStmt:
 			ALTER AGGREGATE aggregate_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER AGGREGATE SET SCHEMA", 2717);
+					parser_ybc_not_support(@1, "ALTER AGGREGATE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
@@ -9770,7 +9770,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER FUNCTION function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER FUNCTION SET SCHEMA", 2717);
+					parser_ybc_not_support(@1, "ALTER FUNCTION SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9808,7 +9808,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER PROCEDURE SET SCHEMA", 2717);
+					parser_ybc_not_support(@1, "ALTER PROCEDURE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9818,7 +9818,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER ROUTINE SET SCHEMA", 2717);
+					parser_ybc_not_support(@1, "ALTER ROUTINE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9898,7 +9898,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER SEQUENCE qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE SET SCHEMA", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $3;
@@ -9908,7 +9908,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER SEQUENCE IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER SEQUENCE SET SCHEMA", 1002);
+					parser_ybc_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $5;
@@ -9918,7 +9918,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER VIEW qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW SET SCHEMA", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_VIEW;
 					n->relation = $3;
@@ -9928,7 +9928,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER VIEW SET SCHEMA", 1131);
+					parser_ybc_not_support(@1, "ALTER VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_VIEW;
 					n->relation = $5;
@@ -9938,7 +9938,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER MATERIALIZED VIEW qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW SET SCHEMA", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9948,7 +9948,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER MATERIALIZED VIEW SET SCHEMA", 1131);
+					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $6;
@@ -9978,7 +9978,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TYPE_P any_name SET SCHEMA name
 				{
-					parser_ybc_signal_unsupported(@1, "ALTER TYPE SET SCHEMA", 1893);
+					parser_ybc_not_support(@1, "ALTER TYPE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
@@ -10642,7 +10642,7 @@ TransactionStmt:
 				}
 			| SAVEPOINT ColId
 				{
-					parser_ybc_signal_unsupported(@1, "SAVEPOINT <transaction>", 1125);
+					parser_ybc_not_support(@1, "SAVEPOINT <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_SAVEPOINT;
 					n->savepoint_name = $2;
@@ -10650,7 +10650,7 @@ TransactionStmt:
 				}
 			| RELEASE SAVEPOINT ColId
 				{
-					parser_ybc_signal_unsupported(@1, "RELEASE SAVEPOINT <transaction>", 1125);
+					parser_ybc_not_support(@1, "RELEASE SAVEPOINT <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_RELEASE;
 					n->savepoint_name = $3;
@@ -10658,7 +10658,7 @@ TransactionStmt:
 				}
 			| RELEASE ColId
 				{
-					parser_ybc_signal_unsupported(@1, "RELEASE <transaction>", 1125);
+					parser_ybc_not_support(@1, "RELEASE <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_RELEASE;
 					n->savepoint_name = $2;
@@ -10666,7 +10666,7 @@ TransactionStmt:
 				}
 			| ROLLBACK opt_transaction TO SAVEPOINT ColId
 				{
-					parser_ybc_signal_unsupported(@1, "ROLLBACK <transaction>", 1125);
+					parser_ybc_not_support(@1, "ROLLBACK <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_TO;
 					n->savepoint_name = $5;
@@ -10674,7 +10674,7 @@ TransactionStmt:
 				}
 			| ROLLBACK opt_transaction TO ColId
 				{
-					parser_ybc_signal_unsupported(@1, "ROLLBACK <transaction>", 1125);
+					parser_ybc_not_support(@1, "ROLLBACK <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_TO;
 					n->savepoint_name = $4;
@@ -10682,7 +10682,7 @@ TransactionStmt:
 				}
 			| PREPARE TRANSACTION Sconst
 				{
-					parser_ybc_signal_unsupported(@1, "PREPARE TRANSACTION", 1125);
+					parser_ybc_not_support(@1, "PREPARE TRANSACTION");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_PREPARE;
 					n->gid = $3;
@@ -10690,7 +10690,7 @@ TransactionStmt:
 				}
 			| COMMIT PREPARED Sconst
 				{
-					parser_ybc_signal_unsupported(@1, "COMMIT PREPARED", 1125);
+					parser_ybc_not_support(@1, "COMMIT PREPARED");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_COMMIT_PREPARED;
 					n->gid = $3;
@@ -10698,7 +10698,7 @@ TransactionStmt:
 				}
 			| ROLLBACK PREPARED Sconst
 				{
-					parser_ybc_signal_unsupported(@1, "ROLLBACK PREPARED", 1125);
+					parser_ybc_not_support(@1, "ROLLBACK PREPARED");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_PREPARED;
 					n->gid = $3;
@@ -11792,7 +11792,7 @@ DeleteStmt: opt_with_clause DELETE_P FROM relation_expr_opt_alias
 using_clause:
 			USING from_list
 				{
-					parser_ybc_signal_unsupported(@1, "USING clause in DELETE", 738);
+					parser_ybc_not_support(@1, "USING clause in DELETE");
 					$$ = $2;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -11891,7 +11891,7 @@ UpdateStmt: opt_with_clause UPDATE relation_expr_opt_alias
 					n->targetList = $5;
 					n->fromClause = $6;
 					if (n->fromClause != NULL) {
-						parser_ybc_signal_unsupported(@1, "FROM clause in UPDATE", 738);
+						parser_ybc_not_support(@1, "FROM clause in UPDATE");
 					}
 					n->whereClause = $7;
 					n->returningList = $8;
@@ -13079,7 +13079,7 @@ where_or_current_clause:
 			WHERE a_expr							{ $$ = $2; }
 			| WHERE CURRENT_P OF cursor_name
 				{
-					parser_ybc_signal_unsupported(@1, "WHERE CURRENT OF", 737);
+					parser_ybc_not_support(@1, "WHERE CURRENT OF");
 					CurrentOfExpr *n = makeNode(CurrentOfExpr);
 					/* cvarno is filled in by parse analysis */
 					n->cursor_name = $4;
@@ -17200,8 +17200,7 @@ raise_feature_not_supported_signal(int pos, core_yyscan_t yyscanner, const char 
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("%s", msg),
-				 errhint("Please report the issue on "
-						 "https://github.com/futurewei-cloud/chogori-sql/issues"),
+				 errhint("%s", ""),
 				 parser_errposition(pos)));
 	}
 }

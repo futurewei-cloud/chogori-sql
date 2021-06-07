@@ -2381,7 +2381,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 
 			if (is_hash || is_primary)
 			{
-				YBRaiseNotSupported("Update PRIMARY KEY columns are not yet supported", 659);
+				YBRaiseNotSupported("Update PRIMARY KEY columns are not yet supported", -1);
 			}
 		}
 
