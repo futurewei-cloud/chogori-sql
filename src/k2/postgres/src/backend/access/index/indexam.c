@@ -81,7 +81,7 @@
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "access/ybcin.h"
 
 /* ----------------------------------------------------------------
@@ -223,8 +223,8 @@ index_insert(Relation indexRelation,
 	 */
 	if (IsYugaByteEnabled() && IsYBRelation(indexRelation))
 	{
-		CHECK_REL_PROCEDURE(yb_aminsert);
-		return indexRelation->rd_amroutine->yb_aminsert(indexRelation, values, isnull,
+		CHECK_REL_PROCEDURE(k2pg_aminsert);
+		return indexRelation->rd_amroutine->k2pg_aminsert(indexRelation, values, isnull,
 														heapTuple->t_ybctid, heapRelation,
 														checkUnique, indexInfo);
 	}
@@ -256,9 +256,9 @@ index_delete(Relation indexRelation,
 			 IndexInfo *indexInfo)
 {
 	RELATION_CHECKS;
-	CHECK_REL_PROCEDURE(yb_amdelete);
+	CHECK_REL_PROCEDURE(k2pg_amdelete);
 
-	indexRelation->rd_amroutine->yb_amdelete(indexRelation, values, isnull,
+	indexRelation->rd_amroutine->k2pg_amdelete(indexRelation, values, isnull,
 											 ybctid, heapRelation,
 											 indexInfo);
 }

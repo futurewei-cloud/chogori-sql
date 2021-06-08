@@ -38,7 +38,7 @@
 #include "utils/lsyscache.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Theoretically, any expression that evaluates to a constant before YB

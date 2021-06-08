@@ -972,7 +972,7 @@ const YBCPgTypeEntity *YBCPgFindTypeEntity(int type_oid) {
 YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
   K2LOG_V(log::pg, "PgGateAPI: YBCPgGetType");
   if (type_entity) {
-    return type_entity->yb_type;
+    return type_entity->k2pg_type;
   }
   return K2SQL_DATA_TYPE_UNKNOWN_DATA;
 }

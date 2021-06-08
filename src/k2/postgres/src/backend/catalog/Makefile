@@ -21,7 +21,7 @@ OBJS = catalog.o dependency.o heap.o index.o indexing.o namespace.o aclchk.o \
        pg_db_role_setting.o pg_shdepend.o pg_subscription.o pg_type.o ybctype.o \
        storage.o toasting.o
 
-BKIFILES = postgres.bki yb_postgres.bki postgres.description postgres.shdescription
+BKIFILES = postgres.bki k2pg_postgres.bki postgres.description postgres.shdescription
 
 include $(top_srcdir)/src/backend/common.mk
 
@@ -73,7 +73,7 @@ catalogdir = $(top_srcdir)/src/backend/catalog
 
 all: distprep generated-header-symlinks
 
-distprep: bki-stamp yb_bki-stamp
+distprep: bki-stamp k2pg_bki-stamp
 
 .PHONY: generated-header-symlinks
 
@@ -91,7 +91,7 @@ bki-stamp: genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_
 	$(PERL) -I $(catalogdir) $< --set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
 	touch $@
 
-yb_bki-stamp: yb_genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_srcdir)/configure.in
+k2pg_bki-stamp: k2pg_genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) $(top_srcdir)/configure.in
 	$(PERL) -I $(catalogdir) $< --set-version=$(MAJORVERSION) $(POSTGRES_BKI_SRCS)
 	touch $@
 
@@ -99,7 +99,7 @@ yb_bki-stamp: yb_genbki.pl Catalog.pm $(POSTGRES_BKI_SRCS) $(POSTGRES_BKI_DATA) 
 # using absolute links for the reasons explained in src/backend/Makefile.
 # We use header-stamp to record that we've done this because the symlinks
 # themselves may appear older than bki-stamp.
-$(top_builddir)/src/include/catalog/header-stamp: bki-stamp yb_bki-stamp
+$(top_builddir)/src/include/catalog/header-stamp: bki-stamp k2pg_bki-stamp
 	prereqdir=`cd '$(dir $<)' >/dev/null && pwd` && \
 	cd '$(dir $@)' && for file in $(GENERATED_HEADERS); do \
 	  rm -f $$file && $(LN_S) "$$prereqdir/$$file" . ; \
@@ -108,13 +108,13 @@ $(top_builddir)/src/include/catalog/header-stamp: bki-stamp yb_bki-stamp
 
 # Note: installation of generated headers is handled elsewhere
 .PHONY: install-data
-install-data: bki-stamp yb_bki-stamp installdirs
+install-data: bki-stamp k2pg_bki-stamp installdirs
 	$(INSTALL_DATA) $(call vpathsearch,postgres.bki) '$(DESTDIR)$(datadir)/postgres.bki'
-	$(INSTALL_DATA) $(call vpathsearch,yb_postgres.bki) '$(DESTDIR)$(datadir)/yb_postgres.bki'
+	$(INSTALL_DATA) $(call vpathsearch,k2pg_postgres.bki) '$(DESTDIR)$(datadir)/k2pg_postgres.bki'
 	$(INSTALL_DATA) $(call vpathsearch,postgres.description) '$(DESTDIR)$(datadir)/postgres.description'
 	$(INSTALL_DATA) $(call vpathsearch,postgres.shdescription) '$(DESTDIR)$(datadir)/postgres.shdescription'
 	$(INSTALL_DATA) $(srcdir)/system_views.sql '$(DESTDIR)$(datadir)/system_views.sql'
-	$(INSTALL_DATA) $(srcdir)/yb_system_views.sql '$(DESTDIR)$(datadir)/yb_system_views.sql'
+	$(INSTALL_DATA) $(srcdir)/k2pg_system_views.sql '$(DESTDIR)$(datadir)/k2pg_system_views.sql'
 	$(INSTALL_DATA) $(srcdir)/information_schema.sql '$(DESTDIR)$(datadir)/information_schema.sql'
 	$(INSTALL_DATA) $(srcdir)/sql_features.txt '$(DESTDIR)$(datadir)/sql_features.txt'
 
@@ -131,4 +131,4 @@ uninstall-data:
 clean:
 
 maintainer-clean: clean
-	rm -f bki-stamp yb_bki-stamp $(BKIFILES) $(GENERATED_HEADERS)
+	rm -f bki-stamp k2pg_bki-stamp $(BKIFILES) $(GENERATED_HEADERS)

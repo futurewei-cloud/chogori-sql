@@ -1,5 +1,5 @@
 /* ----------
- * pg_yb_utils.h
+ * pg_k2pg_utils.h
  *
  * Utilities for YugaByte/PostgreSQL integration that have to be defined on the
  * PostgreSQL side.
@@ -18,7 +18,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *
- * src/include/pg_yb_utils.h
+ * src/include/pg_k2pg_utils.h
  * ----------
  */
 
@@ -28,7 +28,7 @@
 #include "postgres.h"
 #include "utils/relcache.h"
 
-#include "common/pg_yb_common.h"
+#include "common/pg_k2pg_common.h"
 #include "common/k2pg_util.h"
 #include "pggate/pg_gate_api.h"
 #include "access/reloptions.h"
@@ -44,7 +44,7 @@
  * version, otherwise all bets are off and we need to refresh.)
  *
  * So we should handle cases like:
- * 1. yb_catalog_cache_version being behind the actual data in the caches.
+ * 1. k2pg_catalog_cache_version being behind the actual data in the caches.
  * 2. Data in the caches spanning multiple version (because catalog was updated
  *    during a cache refresh).
  * As long as the invariant above is not violated we should (at most) end up
@@ -53,7 +53,7 @@
  * TODO: Improve cache versioning and refresh logic to be more fine-grained to
  * reduce frequency and/or duration of cache refreshes.
  */
-extern uint64_t yb_catalog_cache_version;
+extern uint64_t k2pg_catalog_cache_version;
 
 #define K2PG_CATCACHE_VERSION_UNINITIALIZED (0)
 
@@ -191,7 +191,7 @@ extern const char* YBPgTypeOidToStr(Oid type_id);
  * Return a string representation of the given PgDataType, or say it is unknown.
  * What is returned is always a static C string constant.
  */
-extern const char* YBCPgDataTypeToStr(YBCPgDataType yb_type);
+extern const char* YBCPgDataTypeToStr(YBCPgDataType k2pg_type);
 
 /*
  * Report an error saying the given type as not supported by YugaByte.
@@ -275,9 +275,9 @@ void YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level);
 
 /**
  * YSQL variable that can be used to enable/disable yugabyte debug mode.
- * e.g. 'SET yb_debug_mode=true'.
+ * e.g. 'SET k2pg_debug_mode=true'.
  */
-extern bool yb_debug_mode;
+extern bool k2pg_debug_mode;
 
 /*
  * Get a string representation of a datum (given its type).

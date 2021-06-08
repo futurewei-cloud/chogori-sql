@@ -41,11 +41,11 @@
 #include "executor/ybcExpr.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 #include "parser/parser.h"
 
-static void YBCAddSysCatalogColumn(YBCPgStatement yb_stmt,
+static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 								   IndexStmt *pkey_idx,
 								   const char *attname,
 								   int attnum,
@@ -76,7 +76,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement yb_stmt,
 	 */
 	if (key == is_key)
 	{
-		HandleYBStatus(YBCPgCreateTableAddColumn(yb_stmt,
+		HandleYBStatus(YBCPgCreateTableAddColumn(k2pg_stmt,
 																						 attname,
 																						 attnum,
 																						 col_type,
@@ -87,7 +87,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement yb_stmt,
 	}
 }
 
-static void YBCAddSysCatalogColumns(YBCPgStatement yb_stmt,
+static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
 									TupleDesc tupdesc,
 									IndexStmt *pkey_idx,
 									const bool key)
@@ -95,7 +95,7 @@ static void YBCAddSysCatalogColumns(YBCPgStatement yb_stmt,
 	if (tupdesc->tdhasoid)
 	{
 		/* Add the OID column if the table was declared with OIDs. */
-		YBCAddSysCatalogColumn(yb_stmt,
+		YBCAddSysCatalogColumn(k2pg_stmt,
 							   pkey_idx,
 							   "oid",
 							   ObjectIdAttributeNumber,
@@ -108,7 +108,7 @@ static void YBCAddSysCatalogColumns(YBCPgStatement yb_stmt,
 	for (int attno = 0; attno < tupdesc->natts; attno++)
 	{
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, attno);
-		YBCAddSysCatalogColumn(yb_stmt,
+		YBCAddSysCatalogColumn(k2pg_stmt,
 							   pkey_idx,
 							   attr->attname.data,
 							   attr->attnum,
@@ -128,7 +128,7 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	Assert(IsBootstrapProcessingMode());
 	char           *db_name     = "template1";
 	char           *schema_name = "pg_catalog";
-	YBCPgStatement yb_stmt      = NULL;
+	YBCPgStatement k2pg_stmt      = NULL;
 
 	HandleYBStatus(YBCPgNewCreateTable(db_name,
 	                                   schema_name,
@@ -139,14 +139,14 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	                                   false, /* if_not_exists */
 									   pkey_idx == NULL, /* add_primary_key */
 									   true, /* colocated */
-	                                   &yb_stmt));
+	                                   &k2pg_stmt));
 
 	/* Add all key columns first, then the regular columns */
 	if (pkey_idx != NULL)
 	{
-		YBCAddSysCatalogColumns(yb_stmt, tupdesc, pkey_idx, /* key */ true);
+		YBCAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ true);
 	}
-	YBCAddSysCatalogColumns(yb_stmt, tupdesc, pkey_idx, /* key */ false);
+	YBCAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ false);
 
-	HandleYBStatus(YBCPgExecCreateTable(yb_stmt));
+	HandleYBStatus(YBCPgExecCreateTable(k2pg_stmt));
 }

@@ -393,7 +393,7 @@ main(int argc, char **argv)
 		{"no-unlogged-table-data", no_argument, &dopt.no_unlogged_table_data, 1},
 		{"no-subscriptions", no_argument, &dopt.no_subscriptions, 1},
 		{"no-sync", no_argument, NULL, 7},
-		{"include-yb-metadata", no_argument, &dopt.include_yb_metadata, 1},
+		{"include-yb-metadata", no_argument, &dopt.include_k2pg_metadata, 1},
 
 		{NULL, 0, NULL, 0}
 	};
@@ -713,7 +713,7 @@ main(int argc, char **argv)
 		dopt.pghost = DefaultHost;
 
 #ifndef DISABLE_K2PG_EXTENTIONS
-	if (dopt.include_yb_metadata)
+	if (dopt.include_k2pg_metadata)
 	{
 		if (dopt.master_hosts)
 			YBCSetMasterAddresses(dopt.master_hosts);
@@ -899,7 +899,7 @@ main(int argc, char **argv)
 	/* The database items are always next, unless we don't want them at all */
 	if (dopt.outputCreateDB)
 		dumpDatabase(fout);
-	else if (dopt.include_yb_metadata)
+	else if (dopt.include_k2pg_metadata)
 		dopt.db_oid = getDatabaseOid(fout);
 
 	/* Now the rearrangeable objects. */
@@ -971,7 +971,7 @@ main(int argc, char **argv)
 	CloseArchive(fout);
 
 #ifndef DISABLE_K2PG_EXTENTIONS
-	if (dopt.include_yb_metadata)
+	if (dopt.include_k2pg_metadata)
 		YBCShutdownPgGateBackend();
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
@@ -15868,7 +15868,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 
 #ifndef DISABLE_K2PG_EXTENTIONS
 		/* Additional properties for YB table or index. */
-		if (dopt->include_yb_metadata &&
+		if (dopt->include_k2pg_metadata &&
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
 			/* Get the table properties from YugaByte. */

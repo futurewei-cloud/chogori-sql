@@ -28,7 +28,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static TupleTableSlot *ForeignNext(ForeignScanState *node);
 static bool ForeignRecheck(ForeignScanState *node, TupleTableSlot *slot);

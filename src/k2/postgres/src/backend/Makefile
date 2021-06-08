@@ -62,7 +62,7 @@ CCLD = $(CXX)
 
 # Shared library configuration (see Makefile_ybpostgres.shlib -- included below)
 PGFILEDESC = "Postgres shared library"
-NAME = yb_pgbackend
+NAME = k2pg_pgbackend
 SO_MAJOR_VERSION= 1
 SO_MINOR_VERSION= $(MAJORVERSION)
 

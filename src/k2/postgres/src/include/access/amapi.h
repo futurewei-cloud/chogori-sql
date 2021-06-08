@@ -80,7 +80,7 @@ typedef bool (*aminsert_function) (Relation indexRelation,
 								   struct IndexInfo *indexInfo);
 
 /* alternate insert callback for YugaByte-based index that passs ybctid instead of ctid */
-typedef bool (*yb_aminsert_function) (Relation indexRelation,
+typedef bool (*k2pg_aminsert_function) (Relation indexRelation,
 									  Datum *values,
 									  bool *isnull,
 									  Datum ybctid,
@@ -89,7 +89,7 @@ typedef bool (*yb_aminsert_function) (Relation indexRelation,
 									  struct IndexInfo *indexInfo);
 
 /* delete this tuple for YugaByte-based index */
-typedef void (*yb_amdelete_function) (Relation indexRelation,
+typedef void (*k2pg_amdelete_function) (Relation indexRelation,
 									  Datum *values,
 									  bool *isnull,
 									  Datum ybctid,
@@ -97,7 +97,7 @@ typedef void (*yb_amdelete_function) (Relation indexRelation,
 									  struct IndexInfo *indexInfo);
 
 /* backfill this Yugabyte-based index */
-typedef IndexBuildResult *(*yb_ambackfill_function) (Relation heapRelation,
+typedef IndexBuildResult *(*k2pg_ambackfill_function) (Relation heapRelation,
 													 Relation indexRelation,
 													 struct IndexInfo *indexInfo,
 													 uint64_t *read_time,
@@ -255,9 +255,9 @@ typedef struct IndexAmRoutine
 	amparallelrescan_function amparallelrescan; /* can be NULL */
 
 	/* interface functions to support Yugabyte indexes */
-	yb_aminsert_function yb_aminsert;
-	yb_amdelete_function yb_amdelete;
-	yb_ambackfill_function yb_ambackfill;
+	k2pg_aminsert_function k2pg_aminsert;
+	k2pg_amdelete_function k2pg_amdelete;
+	k2pg_ambackfill_function k2pg_ambackfill;
 
 } IndexAmRoutine;
 

@@ -1,5 +1,5 @@
 /* ----------
- * pg_yb_utils.h
+ * pg_k2pg_utils.h
  *
  * Common utilities for YugaByte/PostgreSQL integration that are reused between
  * PostgreSQL server code and other PostgreSQL programs such as initdb.
@@ -18,7 +18,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *
- * src/common/pg_yb_common.h
+ * src/common/pg_k2pg_common.h
  * ----------
  */
 

@@ -63,7 +63,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* non-export function prototypes */
 static void CheckPredicate(Expr *predicate);
@@ -1356,7 +1356,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 	ListCell   *lc;
 	int			attn;
 	int			nkeycols = indexInfo->ii_NumIndexKeyAttrs;
-	bool		use_yb_ordering = false;
+	bool		use_k2pg_ordering = false;
 	bool		colocated;
 
 	/* Allocate space for exclusion operator info, if needed */
@@ -1382,7 +1382,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		!YBIsPreparingTemplates())
 	{
 		Relation rel = RelationIdGetRelation(relId);
-		use_yb_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
+		use_k2pg_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
 		if (IsYBRelation(rel))
 			HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
 												 relId,
@@ -1404,7 +1404,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 
 		if (IsYugaByteEnabled())
 		{
-			if (use_yb_ordering)
+			if (use_k2pg_ordering)
 			{
 				switch (attribute->ordering)
 				{
@@ -1690,7 +1690,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 			 * In Yugabyte, use HASH as the default for the first column of
 			 * non-colocated tables
 			 */
-			if (use_yb_ordering &&
+			if (use_k2pg_ordering &&
 				attn == 0 &&
 				attribute->ordering == SORTBY_DEFAULT &&
 				!colocated)

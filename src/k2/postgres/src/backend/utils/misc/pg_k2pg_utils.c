@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_yb_utils.c
+ * pg_k2pg_utils.c
  *	  Utilities for YugaByte/PostgreSQL integration that have to be defined on
  *	  the PostgreSQL side.
  *
@@ -19,7 +19,7 @@
  * under the License.
  *
  * IDENTIFICATION
- *	  src/backend/utils/misc/pg_yb_utils.c
+ *	  src/backend/utils/misc/pg_k2pg_utils.c
  *
  *-------------------------------------------------------------------------
  */
@@ -38,12 +38,12 @@
 #include "catalog/catalog.h"
 #include "commands/dbcommands.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "catalog/ybctype.h"
 
 #include "common/k2pg_util.h"
 #include "pggate/pg_gate_api.h"
-#include "common/pg_yb_common.h"
+#include "common/pg_k2pg_common.h"
 
 #include "utils/resowner_private.h"
 
@@ -54,7 +54,7 @@
 
 #include "tcop/utility.h"
 
-uint64_t yb_catalog_cache_version = K2PG_CATCACHE_VERSION_UNINITIALIZED;
+uint64_t k2pg_catalog_cache_version = K2PG_CATCACHE_VERSION_UNINITIALIZED;
 
 /** These values are lazily initialized based on corresponding environment variables. */
 int ybc_pg_double_write = -1;
@@ -238,7 +238,7 @@ HandleYBStatus(YBCStatus status)
 	ereport(ERROR,
 			(errmsg("%s", msg_buf),
 			 errcode(pg_err_code),
-			 yb_txn_errcode(txn_err_code),
+			 k2pg_txn_errcode(txn_err_code),
 			 errhidecontext(true)));
 }
 
@@ -386,15 +386,15 @@ YBIsPgLockingEnabled()
 	return !YBTransactionsEnabled();
 }
 
-static bool yb_preparing_templates = false;
+static bool k2pg_preparing_templates = false;
 void
 YBSetPreparingTemplates() {
-	yb_preparing_templates = true;
+	k2pg_preparing_templates = true;
 }
 
 bool
 YBIsPreparingTemplates() {
-	return yb_preparing_templates;
+	return k2pg_preparing_templates;
 }
 
 const char*
@@ -498,8 +498,8 @@ YBPgTypeOidToStr(Oid type_id) {
 }
 
 const char*
-YBCPgDataTypeToStr(YBCPgDataType yb_type) {
-	switch (yb_type) {
+YBCPgDataTypeToStr(YBCPgDataType k2pg_type) {
+	switch (k2pg_type) {
 		case K2SQL_DATA_TYPE_NOT_SUPPORTED: return "NOT_SUPPORTED";
 		case K2SQL_DATA_TYPE_UNKNOWN_DATA: return "UNKNOWN_DATA";
 		case K2SQL_DATA_TYPE_NULL_VALUE_TYPE: return "NULL_VALUE_TYPE";
@@ -657,7 +657,7 @@ YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 //------------------------------------------------------------------------------
 // YB Debug utils.
 
-bool yb_debug_mode = false;
+bool k2pg_debug_mode = false;
 
 const char*
 YBDatumToString(Datum datum, Oid typid)

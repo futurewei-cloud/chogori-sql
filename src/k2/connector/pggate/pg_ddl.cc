@@ -250,7 +250,7 @@ Status PgAlterTable::AddColumn(const std::string& name,
                                const YBCPgTypeEntity *attr_type,
                                int order,
                                bool is_not_null) {
-  ColumnSchema colSchema(name, static_cast<DataType>(attr_type->yb_type), is_not_null, false, false, order, ColumnSchema::SortingType::kNotSpecified);
+  ColumnSchema colSchema(name, static_cast<DataType>(attr_type->k2pg_type), is_not_null, false, false, order, ColumnSchema::SortingType::kNotSpecified);
   // TODO: add implementation
   return STATUS(NotSupported, "AddColumn not supported");
 }

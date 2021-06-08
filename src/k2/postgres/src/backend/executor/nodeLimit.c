@@ -27,7 +27,7 @@
 #include "nodes/nodeFuncs.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static void recompute_limits(LimitState *node);
 static int64 compute_tuples_needed(LimitState *node);
@@ -60,8 +60,8 @@ ExecLimit(PlanState *pstate)
 	 * Initialize LIMIT count and offset.
 	 */
 	if (IsYugaByteEnabled()) {
-		pstate->state->yb_exec_params.limit_count = node->count;
-		pstate->state->yb_exec_params.limit_offset = node->offset;
+		pstate->state->k2pg_exec_params.limit_count = node->count;
+		pstate->state->k2pg_exec_params.limit_offset = node->offset;
 	}
 
 	/*
@@ -82,14 +82,14 @@ ExecLimit(PlanState *pstate)
 			 * Update LIMIT count and offset after recomputing.
 			 */
 			if (IsYugaByteEnabled()) {
-				pstate->state->yb_exec_params.limit_count = node->count;
-				pstate->state->yb_exec_params.limit_offset = node->offset;
+				pstate->state->k2pg_exec_params.limit_count = node->count;
+				pstate->state->k2pg_exec_params.limit_offset = node->offset;
 			}
 
 			/* FALL THRU */
 
 		case LIMIT_RESCAN:
-			pstate->state->yb_exec_params.limit_use_default = false;
+			pstate->state->k2pg_exec_params.limit_use_default = false;
 
 			/*
 			 * If backwards scan, just return NULL without changing state.

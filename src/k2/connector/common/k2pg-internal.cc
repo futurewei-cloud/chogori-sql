@@ -49,8 +49,8 @@ YBCStatus ToYBCStatus(Status&& status) {
 
 void FreeYBCStatus(YBCStatus status) {
   // Create Status object that receives control over provided status, so it will be destoyed with
-  // yb_status.
-  Status yb_status(status, false);
+  // k2pg_status.
+  Status k2pg_status(status, false);
 }
 
 YBCStatus YBCStatusNotSupport(const std::string& feature_name) {

@@ -89,7 +89,7 @@ typedef struct MemoryContextData
 	const char *ident;			/* context ID if any (just for debugging) */
 	MemoryContextCallback *reset_cbs;	/* list of reset/delete callbacks */
 
-	YBCPgMemctx yb_memctx;      /* Memory context for objects in k2 connector */
+	YBCPgMemctx k2pg_memctx;      /* Memory context for objects in k2 connector */
 } MemoryContextData;
 
 /* utils/palloc.h contains typedef struct MemoryContextData *MemoryContext */

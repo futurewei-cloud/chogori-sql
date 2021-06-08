@@ -2940,7 +2940,7 @@ _outIndexElem(StringInfo str, const IndexElem *node)
 	WRITE_NODE_FIELD(opclass);
 	WRITE_ENUM_FIELD(ordering, SortByDir);
 	WRITE_ENUM_FIELD(nulls_ordering, SortByNulls);
-	WRITE_NODE_FIELD(yb_name_list);
+	WRITE_NODE_FIELD(k2pg_name_list);
 }
 
 static void
@@ -3571,7 +3571,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 			WRITE_NODE_FIELD(options);
 			WRITE_STRING_FIELD(indexname);
 			WRITE_STRING_FIELD(indexspace);
-			WRITE_NODE_FIELD(yb_index_params);
+			WRITE_NODE_FIELD(k2pg_index_params);
 			/* access_method and where_clause not currently used */
 			break;
 

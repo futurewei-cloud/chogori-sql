@@ -49,7 +49,7 @@
 #include "utils/syscache.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "optimizer/ybcplan.h"
 
 /*
@@ -116,7 +116,7 @@ static SetOp *create_setop_plan(PlannerInfo *root, SetOpPath *best_path,
 static RecursiveUnion *create_recursiveunion_plan(PlannerInfo *root, RecursiveUnionPath *best_path);
 static LockRows *create_lockrows_plan(PlannerInfo *root, LockRowsPath *best_path,
 					 int flags);
-static bool yb_single_row_update_or_delete_path(PlannerInfo *root, ModifyTablePath *path,
+static bool k2pg_single_row_update_or_delete_path(PlannerInfo *root, ModifyTablePath *path,
 												List **result_tlist, List **modify_tlist,
 												bool *no_index_update,
 												bool *no_row_trigger);
@@ -2511,7 +2511,7 @@ static bool has_applicable_triggers(Relation rel, CmdType operation, Bitmapset *
  * in the UPDATE clause.
  */
 static bool
-yb_single_row_update_or_delete_path(PlannerInfo *root,
+k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 									ModifyTablePath *path,
 									List **result_tlist,
 									List **modify_tlist,
@@ -2906,7 +2906,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	 * running outside of a transaction and thus cannot rely on the results from a
 	 * separately executed operation.
 	 */
-	if (yb_single_row_update_or_delete_path(root, best_path, &result_tlist,
+	if (k2pg_single_row_update_or_delete_path(root, best_path, &result_tlist,
 	                                        &modify_tlist, &no_index_update,
 	                                        &no_row_trigger))
 	{

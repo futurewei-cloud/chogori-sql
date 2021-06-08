@@ -91,7 +91,7 @@ typedef struct PgTypeEntity {
   int type_oid;
 
   // YugaByte storgate (DocDB) type.
-  YBCPgDataType yb_type;
+  YBCPgDataType k2pg_type;
 
   // Allow to be used for primary key.
   bool allow_for_primary_key;
@@ -107,7 +107,7 @@ typedef struct PgTypeEntity {
   YBCPgDatumToData datum_to_yb;
 
   // Converting YugaByte values to Postgres in-memory-formatted datum.
-  YBCPgDatumFromData yb_to_datum;
+  YBCPgDatumFromData k2pg_to_datum;
 } YBCPgTypeEntity;
 
 // API to read type information.

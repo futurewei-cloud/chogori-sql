@@ -66,7 +66,7 @@
 #include "utils/numeric.h"
 #include "utils/xml.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -219,7 +219,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 					 errmsg("only column list is allowed"), \
 					 parser_errposition(parserloc))); \
 		char *colname = strVal(linitial(col->fields)); \
-		idxelem->yb_name_list = lappend(idxelem->yb_name_list, makeString(colname)); \
+		idxelem->k2pg_name_list = lappend(idxelem->k2pg_name_list, makeString(colname)); \
 	} while(0)
 
 %}
@@ -324,7 +324,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				simple_select values_clause
 
 %type <node>	alter_column_default opclass_item opclass_drop alter_using
-%type <ival>	add_drop opt_asc_desc opt_yb_index_sort_order opt_nulls_order
+%type <ival>	add_drop opt_asc_desc opt_k2pg_index_sort_order opt_nulls_order
 
 %type <node>	alter_table_cmd alter_type_cmd opt_collate_clause
 	   replica_identity partition_cmd index_partition_cmd
@@ -416,7 +416,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				old_aggr_definition old_aggr_list
 				oper_argtypes RuleActionList RuleActionMulti
 				opt_column_list columnList opt_name_list
-				sort_clause opt_sort_clause sortby_list yb_index_params
+				sort_clause opt_sort_clause sortby_list k2pg_index_params
 				opt_include opt_c_include index_including_params
 				name_list role_list from_clause from_list opt_array_bounds
 				qualified_name_list any_name any_name_list type_name_list
@@ -437,7 +437,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 				TriggerTransitions TriggerReferencing
 				publication_name_list
 				vacuum_relation_list opt_vacuum_relation_list
-				yb_split_points yb_split_point
+				k2pg_split_points k2pg_split_point
 
 %type <list>	group_by_list
 %type <node>	group_by_item empty_grouping_set rollup_clause cube_clause
@@ -523,7 +523,7 @@ static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 %type <alias>	alias_clause opt_alias_clause
 %type <list>	func_alias_clause
 %type <sortby>	sortby
-%type <ielem>	index_elem yb_index_elem
+%type <ielem>	index_elem k2pg_index_elem
 %type <node>	table_ref
 %type <jexpr>	joined_table
 %type <range>	relation_expr
@@ -3937,7 +3937,7 @@ ConstraintElem:
 						index_elem->opclass = NIL;
 						index_elem->ordering = SORTBY_DEFAULT;
 						index_elem->nulls_ordering = SORTBY_NULLS_DEFAULT;
-						n->yb_index_params = lappend(n->yb_index_params, index_elem);
+						n->k2pg_index_params = lappend(n->k2pg_index_params, index_elem);
 					}
 
 					$$ = (Node *)n;
@@ -3957,7 +3957,7 @@ ConstraintElem:
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
-			| PRIMARY KEY '(' yb_index_params ')' opt_c_include opt_definition OptConsTableSpace
+			| PRIMARY KEY '(' k2pg_index_params ')' opt_c_include opt_definition OptConsTableSpace
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -3978,7 +3978,7 @@ ConstraintElem:
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 
-					n->yb_index_params = $4;
+					n->k2pg_index_params = $4;
 
 					$$ = (Node *)n;
 				}
@@ -4260,7 +4260,7 @@ OptSplit:
 		;
 
 SplitClause:
-        AT VALUES '(' yb_split_points ')'
+        AT VALUES '(' k2pg_split_points ')'
         {
           parser_ybc_beta_feature(@1, "split_at");
       	  $$ = makeNode(OptSplit);
@@ -4269,12 +4269,12 @@ SplitClause:
         }
       ;
 
-yb_split_points:
-			yb_split_point							{ $$ = list_make1($1); }
-			| yb_split_points ',' yb_split_point	{ $$ = lappend($1, $3); }
+k2pg_split_points:
+			k2pg_split_point							{ $$ = list_make1($1); }
+			| k2pg_split_points ',' k2pg_split_point	{ $$ = lappend($1, $3); }
 		;
 
-yb_split_point:
+k2pg_split_point:
 			'(' range_datum_list ')'				{ $$ = $2; }
 		;
 
@@ -7825,7 +7825,7 @@ defacl_privilege_target:
  *****************************************************************************/
 
 IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
-			ON relation_expr access_method_clause '(' yb_index_params ')'
+			ON relation_expr access_method_clause '(' k2pg_index_params ')'
 			opt_include opt_reloptions OptTableSpace OptSplit where_clause
 				{
 					IndexStmt *n = makeNode(IndexStmt);
@@ -7854,7 +7854,7 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					$$ = (Node *)n;
 				}
 			| CREATE opt_unique INDEX opt_concurrently IF_P NOT EXISTS index_name
-			ON relation_expr access_method_clause '(' yb_index_params ')'
+			ON relation_expr access_method_clause '(' k2pg_index_params ')'
 			opt_include opt_reloptions OptTableSpace OptSplit where_clause
 				{
 					IndexStmt *n = makeNode(IndexStmt);
@@ -7907,9 +7907,9 @@ access_method_clause:
 															 NULL : DEFAULT_INDEX_TYPE;	}
 		;
 
-yb_index_params: yb_index_elem
+k2pg_index_params: k2pg_index_elem
 				{
-					if ($1->yb_name_list == NULL)
+					if ($1->k2pg_name_list == NULL)
 					{
 						$$ = list_make1($1);
 					}
@@ -7924,7 +7924,7 @@ yb_index_params: yb_index_elem
 						/* Flatten the hash column group */
 						$$ = NULL;
 						ListCell *lc;
-						foreach (lc, $1->yb_name_list)
+						foreach (lc, $1->k2pg_name_list)
 						{
 							IndexElem *index_elem = makeNode(IndexElem);
 							index_elem->name = strVal(lfirst(lc));
@@ -7937,7 +7937,7 @@ yb_index_params: yb_index_elem
 						}
 					}
 				}
-			| yb_index_params ',' index_elem
+			| k2pg_index_params ',' index_elem
 				{
 					if ($3->ordering == SORTBY_HASH)
 					{
@@ -7963,7 +7963,7 @@ yb_index_params: yb_index_elem
  * expressions in parens.  For backwards-compatibility reasons, we allow
  * an expression that's just a function call to be written without parens.
  */
-index_elem:	ColId opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
+index_elem:	ColId opt_collate opt_class opt_k2pg_index_sort_order opt_nulls_order
 				{
 					$$ = makeNode(IndexElem);
 					$$->name = $1;
@@ -7974,7 +7974,7 @@ index_elem:	ColId opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
 					$$->ordering = $4;
 					$$->nulls_ordering = $5;
 				}
-			| func_expr_windowless opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
+			| func_expr_windowless opt_collate opt_class opt_k2pg_index_sort_order opt_nulls_order
 				{
 					$$ = makeNode(IndexElem);
 					$$->name = NULL;
@@ -7985,7 +7985,7 @@ index_elem:	ColId opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
 					$$->ordering = $4;
 					$$->nulls_ordering = $5;
 				}
-			| '(' a_expr ')' opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
+			| '(' a_expr ')' opt_collate opt_class opt_k2pg_index_sort_order opt_nulls_order
 				{
 					$$ = makeNode(IndexElem);
 					$$->name = NULL;
@@ -8002,7 +8002,7 @@ index_elem:	ColId opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
  * For YugabyteDB, index column can be grouped and hashed together. Unfortunately, we cannot
  * use "columnList" below due to reduce/reduce conflict.
  */
-yb_index_elem: index_elem
+k2pg_index_elem: index_elem
 				{
 					$$ = $1;
 					if ($$->expr && $$->expr->type == T_ColumnRef)
@@ -8010,7 +8010,7 @@ yb_index_elem: index_elem
 						YBINDEXELEM_EXPR_TO_COLREF($$, $$->expr, @1);
 					}
 				}
-			| '(' expr_list ')' opt_collate opt_class opt_yb_index_sort_order opt_nulls_order
+			| '(' expr_list ')' opt_collate opt_class opt_k2pg_index_sort_order opt_nulls_order
 				{
 					$$ = makeNode(IndexElem);
 					$$->name = NULL;
@@ -8053,7 +8053,7 @@ opt_asc_desc: ASC							{ $$ = SORTBY_ASC; }
 /*
  * For YugabyteDB, index column can be hash-distributed also.
  */
-opt_yb_index_sort_order: opt_asc_desc			{ $$ = $1; }
+opt_k2pg_index_sort_order: opt_asc_desc			{ $$ = $1; }
 			| HASH							{ $$ = SORTBY_HASH; }
 		;
 
@@ -11737,7 +11737,7 @@ opt_on_conflict:
 		;
 
 opt_conf_expr:
-			'(' yb_index_params ')' where_clause
+			'(' k2pg_index_params ')' where_clause
 				{
 					$$ = makeNode(InferClause);
 					$$->indexElems = $2;
@@ -17214,13 +17214,13 @@ raise_feature_not_supported(int pos, core_yyscan_t yyscanner, const char *msg, i
 static void
 ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int issue, int signal_level)
 {
-	static int use_yb_parser = -1;
-	if (use_yb_parser == -1)
+	static int use_k2pg_parser = -1;
+	if (use_k2pg_parser == -1)
 	{
-		use_yb_parser = YBIsUsingYBParser();
+		use_k2pg_parser = YBIsUsingYBParser();
 	}
 
-	if (use_yb_parser)
+	if (use_k2pg_parser)
 	{
 		raise_feature_not_supported_signal(pos, yyscanner, msg, issue, signal_level);
 	}

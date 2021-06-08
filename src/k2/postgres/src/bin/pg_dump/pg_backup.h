@@ -161,7 +161,7 @@ typedef struct _dumpOptions
 	int			use_setsessauth;
 	int			enable_row_security;
 	int			load_via_partition_root;
-	int			include_yb_metadata;	/* In this mode DDL statements include YB specific
+	int			include_k2pg_metadata;	/* In this mode DDL statements include YB specific
 										 * metadata such as tablet partitions. */
 
 	/* default, if no "inclusion" switches appear, is to dump everything */

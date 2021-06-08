@@ -79,7 +79,7 @@
 #include "utils/ps_status.h"
 
 // YB includes.
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* In this module, access gettext() via err_gettext() */
 #undef _
@@ -620,7 +620,7 @@ errcode(int sqlerrcode)
 }
 
 int
-yb_txn_errcode(uint16_t txn_errcode)
+k2pg_txn_errcode(uint16_t txn_errcode)
 {
 	RETURN_IF_MULTITHREADED_MODE();
 
@@ -629,7 +629,7 @@ yb_txn_errcode(uint16_t txn_errcode)
 	/* we don't bother incrementing recursion_depth */
 	CHECK_STACK_DEPTH();
 
-	edata->yb_txn_errcode = txn_errcode;
+	edata->k2pg_txn_errcode = txn_errcode;
 
 	return 0;					/* return value does not matter */
 }
@@ -788,7 +788,7 @@ errcode_for_socket_access(void)
 		/* Done with expanded fmt */ \
 		pfree(fmtbuf); \
 		/* In YB debug mode, add stack trace info (to first msg only) */ \
-		if (IsYugaByteEnabled() && yb_debug_mode && !appendval) { \
+		if (IsYugaByteEnabled() && k2pg_debug_mode && !appendval) { \
 			appendStringInfoString(&buf, YBCGetStackTrace()); \
 		} \
 		/* Save the completed message into the stack item */ \
@@ -1366,7 +1366,7 @@ getinternalerrposition(void)
  * framework to get better error messages/reporting (considering globals,
  * error stack, signal masks, etc.).
  */
-void yb_pgbackend_ereport(int elevel, const char *fmt,...) {
+void k2pg_pgbackend_ereport(int elevel, const char *fmt,...) {
 	if (fmt != NULL)
 	{
 		YBCPgSetThreadLocalErrMsg(fmt);
@@ -1376,7 +1376,7 @@ void yb_pgbackend_ereport(int elevel, const char *fmt,...) {
 }
 
 /* Dummy function to cause errmsg call to be evaluated. */
-void yb_pgbackend_ereport_dummy(int dummy,...) {
+void k2pg_pgbackend_ereport_dummy(int dummy,...) {
 	/* Nothing to do. */
 	return;
 }

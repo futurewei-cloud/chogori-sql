@@ -25,7 +25,7 @@
 #include "utils/builtins.h"
 
 #include "plpgsql.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static void ybc_not_support(int pos, const char *feature, int issue);
 

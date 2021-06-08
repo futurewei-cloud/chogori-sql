@@ -30,7 +30,7 @@
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Hooks for function calls
@@ -49,7 +49,7 @@ typedef struct
 	ItemPointerData fn_tid;
 	PGFunction	user_fn;		/* the function's address */
 	const Pg_finfo_record *inforec; /* address of its info record */
-	uint64 yb_catalog_version; /* catalog version at function load time */
+	uint64 k2pg_catalog_version; /* catalog version at function load time */
 } CFuncHashTabEntry;
 
 static HTAB *CFuncHash = NULL;
@@ -551,7 +551,7 @@ lookup_C_func(HeapTuple procedureTuple)
 	if (entry == NULL)
 		return NULL;			/* no such entry */
 
-	if (IsYugaByteEnabled() ? entry->yb_catalog_version == yb_catalog_cache_version :
+	if (IsYugaByteEnabled() ? entry->k2pg_catalog_version == k2pg_catalog_cache_version :
 		entry->fn_xmin == HeapTupleHeaderGetRawXmin(procedureTuple->t_data) &&
 		ItemPointerEquals(&entry->fn_tid, &procedureTuple->t_self))
 		return entry;			/* OK */
@@ -593,7 +593,7 @@ record_C_func(HeapTuple procedureTuple,
 	entry->fn_tid = procedureTuple->t_self;
 	entry->user_fn = user_fn;
 	entry->inforec = inforec;
-	entry->yb_catalog_version = yb_catalog_cache_version;
+	entry->k2pg_catalog_version = k2pg_catalog_cache_version;
 }
 
 /*

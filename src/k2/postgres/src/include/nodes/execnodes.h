@@ -31,7 +31,7 @@
 #include "nodes/tidbitmap.h"
 #include "storage/condition_variable.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 struct PlanState;				/* forward references in this file */
 struct ParallelHashJoinState;
@@ -584,12 +584,12 @@ typedef struct EState
 	 * YugaByte-specific fields
 	 */
 
-	bool es_yb_is_single_row_modify_txn; /* Is this query a single-row modify
+	bool es_k2pg_is_single_row_modify_txn; /* Is this query a single-row modify
 																				* and the only stmt in this txn. */
-	TupleTableSlot *yb_conflict_slot; /* If a conflict is to be resolved when inserting data,
+	TupleTableSlot *k2pg_conflict_slot; /* If a conflict is to be resolved when inserting data,
 																		 * we cache the conflict tuple here when processing and
 																		 * then free the slot after the conflict is resolved. */
-	YBCPgExecParameters yb_exec_params;
+	YBCPgExecParameters k2pg_exec_params;
 } EState;
 
 
@@ -1085,7 +1085,7 @@ typedef struct ModifyTableState
 	TupleConversionMap **mt_per_subplan_tupconv_maps;
 
 	/* YB specific attributes. */
-	bool yb_mt_is_single_row_update_or_delete;
+	bool k2pg_mt_is_single_row_update_or_delete;
 } ModifyTableState;
 
 /* ----------------
@@ -1671,7 +1671,7 @@ typedef struct ForeignScanState
 	void	   *fdw_state;		/* foreign-data wrapper can keep state here */
 
 	/* YB specific attributes. */
-	List	   *yb_fdw_aggs;	/* aggregate pushdown information */
+	List	   *k2pg_fdw_aggs;	/* aggregate pushdown information */
 } ForeignScanState;
 
 /* ----------------

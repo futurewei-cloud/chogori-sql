@@ -35,7 +35,7 @@
 
 #include "plpgsql.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* ----------
  * Our own local and global variables
@@ -172,7 +172,7 @@ recheck:
 	if (function)
 	{
 		/* We have a compiled function, but is it still valid? */
-		if (IsYugaByteEnabled() ? function->yb_catalog_version == yb_catalog_cache_version :
+		if (IsYugaByteEnabled() ? function->k2pg_catalog_version == k2pg_catalog_cache_version :
 				(function->fn_xmin == HeapTupleHeaderGetRawXmin(procTup->t_data) &&
 				ItemPointerEquals(&function->fn_tid, &procTup->t_self)))
 			function_valid = true;
@@ -370,7 +370,7 @@ do_compile(FunctionCallInfo fcinfo,
 
 	function->fn_prokind = procStruct->prokind;
 
-	function->yb_catalog_version = yb_catalog_cache_version;
+	function->k2pg_catalog_version = k2pg_catalog_cache_version;
 
 	/*
 	 * Initialize the compiler, particularly the namespace stack.  The

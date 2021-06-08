@@ -51,7 +51,7 @@
 #include "catalog/pg_database.h"
 #include "commands/ybccmds.h"
 #include "executor/ybcModifyTable.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 uint32		bootstrap_data_checksum_version = 0;	/* No checksum */
 

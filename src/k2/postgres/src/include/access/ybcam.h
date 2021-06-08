@@ -34,7 +34,7 @@
 #include "utils/snapshot.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcExpr.h"
 
 /*
@@ -82,7 +82,7 @@ typedef struct YbScanDescData
 	/*
 	 * Kept execution control to pass it to PgGate.
 	 * - When YBC-index-scan layer is called by Postgres IndexScan functions, it will read the
-	 *   "yb_exec_params" from Postgres IndexScan and kept the info in this attribute.
+	 *   "k2pg_exec_params" from Postgres IndexScan and kept the info in this attribute.
 	 *
 	 * - YBC-index-scan in-turn will passes this attribute to PgGate to control the index-scan
 	 *   execution in YB tablet server.

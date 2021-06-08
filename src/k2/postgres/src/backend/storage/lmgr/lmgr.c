@@ -24,7 +24,7 @@
 #include "storage/procarray.h"
 #include "utils/inval.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Per-backend counter for generating speculative insertion tokens.

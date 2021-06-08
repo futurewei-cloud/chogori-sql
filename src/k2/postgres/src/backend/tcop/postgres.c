@@ -83,8 +83,8 @@
 #include "utils/timeout.h"
 #include "utils/timestamp.h"
 #include "mb/pg_wchar.h"
-#include "pg_yb_utils.h"
-#include "libpq/yb_pqcomm_extensions.h"
+#include "pg_k2pg_utils.h"
+#include "libpq/k2pg_pqcomm_extensions.h"
 #include "utils/rel.h"
 
 /* ----------------
@@ -177,7 +177,7 @@ static MemoryContext row_description_context = NULL;
 static StringInfoData row_description_buf;
 
 /* Flag to mark cache as invalid if discovered within a txn block. */
-static bool yb_need_cache_refresh = false;
+static bool k2pg_need_cache_refresh = false;
 
 /* ----------------------------------------------------------------
  *		decls for routines only used in this file
@@ -3671,7 +3671,7 @@ process_postgres_switches(int argc, char *argv[], GucContext ctx,
  * version it is unfortunate but ok. The master version will have
  * changed too (making our version number obsolete) so we will just end
  * up needing to do another cache refresh later.
- * See the comment for yb_catalog_cache_version in 'pg_yb_utils.c' for
+ * See the comment for k2pg_catalog_cache_version in 'pg_k2pg_utils.c' for
  * more details.
  */
 static void YBRefreshCache()
@@ -3707,8 +3707,8 @@ static void YBRefreshCache()
 	YBCPgInvalidateCache();
 
 	/* Set the new ysql cache version. */
-	yb_catalog_cache_version = catalog_master_version;
-	yb_need_cache_refresh = false;
+	k2pg_catalog_cache_version = catalog_master_version;
+	k2pg_need_cache_refresh = false;
 
 	finish_xact_command();
 }
@@ -3764,7 +3764,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	uint64_t catalog_master_version = 0;
 	YBCPgGetCatalogMasterVersion(&catalog_master_version);
 	need_global_cache_refresh =
-		yb_catalog_cache_version != catalog_master_version;
+		k2pg_catalog_cache_version != catalog_master_version;
 	if (!(need_global_cache_refresh || need_table_cache_refresh))
 		return;
 
@@ -3773,7 +3773,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	 * will be refreshed after the txn ends.
 	 */
 	if (need_global_cache_refresh)
-		yb_need_cache_refresh = true;
+		k2pg_need_cache_refresh = true;
 
 	/*
 	 * Prepare to retry the query if possible.
@@ -3854,7 +3854,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
  * Parse query tree via pg_parse_query, suppressing log messages below ERROR level.
  * This is useful e.g. for avoiding "not supported yet and will be ignored" warnings.
  */
-static List* yb_parse_query_silently(const char *query_string)
+static List* k2pg_parse_query_silently(const char *query_string)
 {
 	List* parsetree_list;
 
@@ -3879,9 +3879,9 @@ static List* yb_parse_query_silently(const char *query_string)
 	return parsetree_list;
 }
 
-static const char* yb_parse_command_tag(const char *query_string)
+static const char* k2pg_parse_command_tag(const char *query_string)
 {
-	List* parsetree_list = yb_parse_query_silently(query_string);
+	List* parsetree_list = k2pg_parse_query_silently(query_string);
 
 	if (list_length(parsetree_list) > 0) {
 		RawStmt* raw_parse_tree = linitial_node(RawStmt, parsetree_list);
@@ -3891,7 +3891,7 @@ static const char* yb_parse_command_tag(const char *query_string)
 	}
 }
 
-static bool yb_is_begin_transaction(const char *command_tag)
+static bool k2pg_is_begin_transaction(const char *command_tag)
 {
 	if (!command_tag)
 		return false;
@@ -3904,12 +3904,12 @@ static bool yb_is_begin_transaction(const char *command_tag)
  * Only retry SELECT, INSERT, UPDATE and DELETE commands.
  * Do the minimum parsing to find out what the command is
  */
-static bool yb_check_retry_allowed(const char *query_string)
+static bool k2pg_check_retry_allowed(const char *query_string)
 {
 	if (!query_string)
 		return false;
 
-	const char* command_tag = yb_parse_command_tag(query_string);
+	const char* command_tag = k2pg_parse_command_tag(query_string);
 	if (!command_tag)
 		return false;
 
@@ -3937,19 +3937,19 @@ static void YBCheckSharedCatalogCacheVersion() {
 	uint64_t shared_catalog_version;
 	HandleYBStatus(YBCGetSharedCatalogVersion(&shared_catalog_version));
 
-	if (yb_catalog_cache_version < shared_catalog_version) {
+	if (k2pg_catalog_cache_version < shared_catalog_version) {
 		YBRefreshCache();
 	}
 }
 
 /* Whether an error we've got is a "restart read" error. */
 static bool
-yb_is_read_restart_nedeed(const ErrorData* edata)
+k2pg_is_read_restart_nedeed(const ErrorData* edata)
 {
 	if (!IsYugaByteEnabled())
 		return false;
 
-	return YBCIsRestartReadError(edata->yb_txn_errcode);
+	return YBCIsRestartReadError(edata->k2pg_txn_errcode);
 }
 
 /*
@@ -3967,7 +3967,7 @@ typedef struct YBQueryRestartData
 
 /* Whether we are allowed to restart current query/txn in case of "read restart" error. */
 static bool
-yb_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_data)
+k2pg_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_data)
 {
 	if (!IsYugaByteEnabled())
 		return false;
@@ -3993,7 +3993,7 @@ yb_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_data)
 	 */
 	if (strncmp(command_tag, "EXECUTE", 7) == 0)
 	{
-		List* parsetree_list = yb_parse_query_silently(restart_data->query_string);
+		List* parsetree_list = k2pg_parse_query_silently(restart_data->query_string);
 		if (list_length(parsetree_list) == 0)
 			return false;
 		ExecuteStmt* execute_stmt = (ExecuteStmt*) linitial_node(RawStmt, parsetree_list)->stmt;
@@ -4010,7 +4010,7 @@ yb_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_data)
  * Make a deep copy of ParamListInfo, allocating it in the current memory context.
  */
 static ParamListInfo
-yb_copy_param_list(ParamListInfo source)
+k2pg_copy_param_list(ParamListInfo source)
 {
 	if (source == NULL)
 		return NULL;
@@ -4024,10 +4024,10 @@ yb_copy_param_list(ParamListInfo source)
 }
 
 /*
- * Collect data necessary for yb_restart_portal invocation.
+ * Collect data necessary for k2pg_restart_portal invocation.
  */
 static YBQueryRestartData*
-yb_collect_portal_restart_data(const char* portal_name)
+k2pg_collect_portal_restart_data(const char* portal_name)
 {
 	Portal portal = GetPortalByName(portal_name);
 	Assert(portal);
@@ -4048,7 +4048,7 @@ yb_collect_portal_restart_data(const char* portal_name)
  * so it's important to preserve the context as-is instead of e.g. copying it into a fresh portal.
  */
 static void
-yb_restart_portal(const char* portal_name)
+k2pg_restart_portal(const char* portal_name)
 {
 	Portal portal = GetPortalByName(portal_name);
 	Assert(portal);
@@ -4194,7 +4194,7 @@ yb_restart_portal(const char* portal_name)
  * Prepares the re-execution if an error is restartable, otherwise - rethrows an error.
  */
 static void
-yb_attempt_to_restart_on_error(int attempt,
+k2pg_attempt_to_restart_on_error(int attempt,
                                YBQueryRestartData* restart_data,
                                MemoryContext exec_context)
 {
@@ -4202,13 +4202,13 @@ yb_attempt_to_restart_on_error(int attempt,
 	MemoryContext error_context = MemoryContextSwitchTo(exec_context);
 	ErrorData*    edata         = CopyErrorData();
 
-	if (yb_is_read_restart_nedeed(edata) &&
-	    yb_is_read_restart_possible(attempt, restart_data)) {
+	if (k2pg_is_read_restart_nedeed(edata) &&
+	    k2pg_is_read_restart_possible(attempt, restart_data)) {
 		/* cleanup the error, restart portal, restart txn and let the control flow continue */
 		FlushErrorState();
 		PopActiveSnapshot(); /* restart read error occurrs after portal snapshot is pushed */
 		if (restart_data->portal_name) {
-			yb_restart_portal(restart_data->portal_name);
+			k2pg_restart_portal(restart_data->portal_name);
 		}
 		YBRestoreOutputBufferPosition();
 		YBCRestartTransaction();
@@ -4224,24 +4224,24 @@ yb_attempt_to_restart_on_error(int attempt,
  * Accepts execution memory context to revert to in case of an error.
  */
 static void
-yb_exec_simple_query_attempting_to_restart_read(const char* query_string,
+k2pg_exec_simple_query_attempting_to_restart_read(const char* query_string,
                                                 MemoryContext exec_context)
 {
 	YBQueryRestartData restart_data  = {
 	    .portal_name  = NULL,
 	    .query_string = query_string,
-	    .command_tag  = yb_parse_command_tag(query_string)
+	    .command_tag  = k2pg_parse_command_tag(query_string)
 	};
 	for (int attempt = 0;; ++attempt) {
 		PG_TRY();
 		{
-			YBSaveOutputBufferPosition(!yb_is_begin_transaction(restart_data.command_tag));
+			YBSaveOutputBufferPosition(!k2pg_is_begin_transaction(restart_data.command_tag));
 			exec_simple_query(query_string);
 			return;
 		}
 		PG_CATCH();
 		{
-			yb_attempt_to_restart_on_error(attempt, &restart_data, exec_context);
+			k2pg_attempt_to_restart_on_error(attempt, &restart_data, exec_context);
 		}
 		PG_END_TRY();
 	}
@@ -4252,7 +4252,7 @@ yb_exec_simple_query_attempting_to_restart_read(const char* query_string,
  * Accepts execution memory context to revert to in case of an error.
  */
 static void
-yb_exec_execute_message_attempting_to_restart_read(const char* portal_name,
+k2pg_exec_execute_message_attempting_to_restart_read(const char* portal_name,
                                                    long max_rows,
                                                    YBQueryRestartData* restart_data,
                                                    MemoryContext exec_context)
@@ -4260,13 +4260,13 @@ yb_exec_execute_message_attempting_to_restart_read(const char* portal_name,
 	for (int attempt = 0;; ++attempt) {
 		PG_TRY();
 		{
-			YBSaveOutputBufferPosition(!yb_is_begin_transaction(restart_data->command_tag));
+			YBSaveOutputBufferPosition(!k2pg_is_begin_transaction(restart_data->command_tag));
 			exec_execute_message(portal_name, max_rows);
 			return;
 		}
 		PG_CATCH();
 		{
-			yb_attempt_to_restart_on_error(attempt, restart_data, exec_context);
+			k2pg_attempt_to_restart_on_error(attempt, restart_data, exec_context);
 		}
 		PG_END_TRY();
 	}
@@ -4750,7 +4750,7 @@ PostgresMain(int argc, char *argv[],
 			}
 			else
 			{
-				if (IsYugaByteEnabled() && yb_need_cache_refresh)
+				if (IsYugaByteEnabled() && k2pg_need_cache_refresh)
 				{
 					YBRefreshCache();
 				}
@@ -4837,19 +4837,19 @@ PostgresMain(int argc, char *argv[],
 				PG_TRY();
 				{
 					if (!am_walsender || !exec_replication_command(query_string))
-                      yb_exec_simple_query_attempting_to_restart_read(query_string, oldcontext);
+                      k2pg_exec_simple_query_attempting_to_restart_read(query_string, oldcontext);
 				}
 				PG_CATCH();
 				{
 					bool need_retry = false;
 					YBPrepareCacheRefreshIfNeeded(oldcontext,
-                                                  yb_check_retry_allowed(query_string),
+                                                  k2pg_check_retry_allowed(query_string),
                                                   &need_retry);
 
 					if (need_retry)
 					{
 						if (!am_walsender || !exec_replication_command(query_string))
-                          yb_exec_simple_query_attempting_to_restart_read(query_string, oldcontext);
+                          k2pg_exec_simple_query_attempting_to_restart_read(query_string, oldcontext);
 					} else
 					{
 						PG_RE_THROW();
@@ -4942,11 +4942,11 @@ PostgresMain(int argc, char *argv[],
 					pq_getmsgend(&input_message);
 
 					MemoryContext oldcontext = GetCurrentMemoryContext();
-					YBQueryRestartData* restart_data = yb_collect_portal_restart_data(portal_name);
+					YBQueryRestartData* restart_data = k2pg_collect_portal_restart_data(portal_name);
 
 					PG_TRY();
 					{
-						yb_exec_execute_message_attempting_to_restart_read(portal_name,
+						k2pg_exec_execute_message_attempting_to_restart_read(portal_name,
 						                                                   max_rows,
 						                                                   restart_data,
 						                                                   oldcontext);
@@ -4956,7 +4956,7 @@ PostgresMain(int argc, char *argv[],
 						bool can_retry =
 						    IsYugaByteEnabled() &&
 						    unnamed_stmt_psrc &&
-						    yb_check_retry_allowed(unnamed_stmt_psrc->query_string);
+						    k2pg_check_retry_allowed(unnamed_stmt_psrc->query_string);
 
 						bool need_retry = false;
 						/*
@@ -4969,10 +4969,10 @@ PostgresMain(int argc, char *argv[],
 
 						if (need_retry && can_retry)
 						{
-							yb_restart_portal(portal_name);
+							k2pg_restart_portal(portal_name);
 
 							/* Now ready to retry the execute step. */
-							yb_exec_execute_message_attempting_to_restart_read(portal_name,
+							k2pg_exec_execute_message_attempting_to_restart_read(portal_name,
 							                                                   max_rows,
 							                                                   restart_data,
 							                                                   GetCurrentMemoryContext());

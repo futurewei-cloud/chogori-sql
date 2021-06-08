@@ -175,7 +175,7 @@ class PgExpr {
     static Opcode NameToOpcode(const char *name);
 
     friend std::ostream& operator<<(std::ostream& os, const PgExpr& expr) {
-      os << "(PgExpr: Opcode: " << expr.opcode_ << ", type: " << expr.type_entity_->yb_type << ")";
+      os << "(PgExpr: Opcode: " << expr.opcode_ << ", type: " << expr.type_entity_->k2pg_type << ")";
       return os;
     }
 

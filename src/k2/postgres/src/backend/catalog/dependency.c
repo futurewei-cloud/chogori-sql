@@ -82,7 +82,7 @@
 #include "utils/tqual.h"
 
 #include "commands/ybccmds.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Deletion processing requires additional state for each ObjectAddress that

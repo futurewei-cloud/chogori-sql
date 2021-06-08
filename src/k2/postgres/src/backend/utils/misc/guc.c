@@ -91,7 +91,7 @@
 #include "utils/varlena.h"
 #include "utils/xml.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
@@ -128,8 +128,8 @@ extern bool trace_syncscan;
 extern bool optimize_bounded_sort;
 #endif
 
-static double yb_transaction_priority_lower_bound = 0.0;
-static double yb_transaction_priority_upper_bound = 1.0;
+static double k2pg_transaction_priority_lower_bound = 0.0;
+static double k2pg_transaction_priority_upper_bound = 1.0;
 
 static int	GUC_check_errcode_value;
 
@@ -1835,12 +1835,12 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 
 	{
-		{"yb_debug_mode", PGC_USERSET, DEVELOPER_OPTIONS,
+		{"k2pg_debug_mode", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Enable yb debugging."),
 			NULL,
 			GUC_NOT_IN_SAMPLE
 		},
-		&yb_debug_mode,
+		&k2pg_debug_mode,
 		false,
 		NULL, NULL, NULL
 	},
@@ -3288,20 +3288,20 @@ static struct config_real ConfigureNamesReal[] =
 		NULL, NULL, NULL
 	},
 	{
-		{"yb_transaction_priority_lower_bound", PGC_USERSET, CLIENT_CONN_STATEMENT,
+		{"k2pg_transaction_priority_lower_bound", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Sets lower bound for priority used by transactions of this session"),
 			NULL
 		},
-		&yb_transaction_priority_lower_bound,
+		&k2pg_transaction_priority_lower_bound,
 		0.0, 0.0, 1.0,
 		check_transaction_priority_lower_bound, YBCAssignTransactionPriorityLowerBound, NULL
 	},
 	{
-		{"yb_transaction_priority_upper_bound", PGC_USERSET, CLIENT_CONN_STATEMENT,
+		{"k2pg_transaction_priority_upper_bound", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("Sets upper bound for priority used by transactions of this session"),
 			NULL
 		},
-		&yb_transaction_priority_upper_bound,
+		&k2pg_transaction_priority_upper_bound,
 		1.0, 0.0, 1.0,
 		check_transaction_priority_upper_bound, YBCAssignTransactionPriorityUpperBound, NULL
 	},
@@ -10857,9 +10857,9 @@ show_data_directory_mode(void)
 static bool
 check_transaction_priority_lower_bound(double *newval, void **extra, GucSource source)
 {
-	if (*newval > yb_transaction_priority_upper_bound) {
-		GUC_check_errdetail("must be less than or equal to yb_transaction_priority_upper_bound (%f)",
-		                    yb_transaction_priority_upper_bound);
+	if (*newval > k2pg_transaction_priority_upper_bound) {
+		GUC_check_errdetail("must be less than or equal to k2pg_transaction_priority_upper_bound (%f)",
+		                    k2pg_transaction_priority_upper_bound);
 		return false;
 	}
 
@@ -10869,9 +10869,9 @@ check_transaction_priority_lower_bound(double *newval, void **extra, GucSource s
 static bool
 check_transaction_priority_upper_bound(double *newval, void **extra, GucSource source)
 {
-	if (*newval < yb_transaction_priority_lower_bound) {
-		GUC_check_errdetail("must be greater than or equal to yb_transaction_priority_lower_bound (%f)",
-		                    yb_transaction_priority_lower_bound);
+	if (*newval < k2pg_transaction_priority_lower_bound) {
+		GUC_check_errdetail("must be greater than or equal to k2pg_transaction_priority_lower_bound (%f)",
+		                    k2pg_transaction_priority_lower_bound);
 		return false;
 	}
 

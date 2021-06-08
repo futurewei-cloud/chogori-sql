@@ -68,7 +68,7 @@
 
 /*  YB includes. */
 #include "executor/ybc_fdw.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* results of subquery_is_pushdown_safe */
 typedef struct pushdown_safety_info

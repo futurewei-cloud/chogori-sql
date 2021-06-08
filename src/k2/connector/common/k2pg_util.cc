@@ -79,9 +79,9 @@ Status InitGFlags(const char* argv0) {
     throw std::runtime_error("pg_working_dir is not set");
   }
 
-  const char* yb_working_dir = getenv("K2PG_WORKING_DIR");
-  if (yb_working_dir) {
-    ChangeWorkingDir(yb_working_dir);
+  const char* k2pg_working_dir = getenv("K2PG_WORKING_DIR");
+  if (k2pg_working_dir) {
+    ChangeWorkingDir(k2pg_working_dir);
   }
   auto se = ScopeExit([&pg_working_dir] {
     // Restore PG data dir as current directory.

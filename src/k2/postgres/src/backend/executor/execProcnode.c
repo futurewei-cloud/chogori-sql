@@ -116,7 +116,7 @@
 #include "nodes/nodeFuncs.h"
 #include "miscadmin.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static TupleTableSlot *ExecProcNodeFirst(PlanState *node);
 static TupleTableSlot *ExecProcNodeInstr(PlanState *node);

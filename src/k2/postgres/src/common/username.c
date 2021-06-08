@@ -76,10 +76,10 @@ get_user_name(char **errstr)
 	    return username;
 	  }
 
-		const char* yb_fallback_user_name =
+		const char* k2pg_fallback_user_name =
 			getenv("K2PG_FALLBACK_SYSTEM_USER_NAME");
-		if (yb_fallback_user_name) {
-			return yb_fallback_user_name;
+		if (k2pg_fallback_user_name) {
+			return k2pg_fallback_user_name;
 		}
 		*errstr = psprintf(_("could not look up effective user ID %ld: %s"),
 						   (long) user_id,

@@ -52,7 +52,7 @@
 #include "rewrite/rewriteHandler.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static List *expand_targetlist(List *tlist, int command_type,
 				  Index result_relation, Relation rel);
@@ -143,13 +143,13 @@ preprocess_targetlist(PlannerInfo *root)
 
 		if (rc->allMarkTypes & ~(1 << ROW_MARK_COPY))
 		{
-			bool is_yb_relation = false;
+			bool is_k2pg_relation = false;
 			if (!target_relation)
-				is_yb_relation = IsYBRelationById(getrelid(rc->rti, range_table));
+				is_k2pg_relation = IsYBRelationById(getrelid(rc->rti, range_table));
 			else
-				is_yb_relation = IsYBBackedRelation(target_relation);
+				is_k2pg_relation = IsYBBackedRelation(target_relation);
 
-			if (is_yb_relation)
+			if (is_k2pg_relation)
 			{
 				/* Need to fetch YB TID */
 				var = makeVar(rc->rti,

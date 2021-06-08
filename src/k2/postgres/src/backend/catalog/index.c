@@ -79,7 +79,7 @@
 
 /*  YB includes. */
 #include "commands/ybccmds.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_index_pg_class_oid = InvalidOid;
@@ -2492,7 +2492,7 @@ index_backfill(Relation heapRelation,
 	 */
 	Assert(RelationIsValid(indexRelation));
 	Assert(PointerIsValid(indexRelation->rd_amroutine));
-	Assert(PointerIsValid(indexRelation->rd_amroutine->yb_ambackfill));
+	Assert(PointerIsValid(indexRelation->rd_amroutine->k2pg_ambackfill));
 
 	ereport(DEBUG1,
 			(errmsg("backfilling index \"%s\" on table \"%s\"",
@@ -2512,7 +2512,7 @@ index_backfill(Relation heapRelation,
 	/*
 	 * Call the access method's build procedure
 	 */
-	stats = indexRelation->rd_amroutine->yb_ambackfill(heapRelation,
+	stats = indexRelation->rd_amroutine->k2pg_ambackfill(heapRelation,
 													   indexRelation,
 													   indexInfo,
 													   read_time,
@@ -2707,7 +2707,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 	/*
 	 * Set some exec params.
 	 */
-	YBCPgExecParameters *exec_params = &estate->yb_exec_params;
+	YBCPgExecParameters *exec_params = &estate->k2pg_exec_params;
 	if (read_time)
 		exec_params->read_time = *read_time;
 	if (row_bounds)
@@ -2774,7 +2774,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 	/*
 	 * Must call GetOldestXmin() with SnapshotAny.  Should never call
 	 * GetOldestXmin() with MVCC snapshot. (It's especially worth checking
-	 * this for parallel builds, since yb_ambackfill routines that support
+	 * this for parallel builds, since k2pg_ambackfill routines that support
 	 * parallel builds must work these details out for themselves.)
 	 */
 	Assert(snapshot == SnapshotAny || IsMVCCSnapshot(snapshot));

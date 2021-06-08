@@ -38,7 +38,7 @@
 #include "utils/syscache.h"
 #include "server/pgsql_webserver_wrapper.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 #define YSQL_METRIC_PREFIX "handler_latency_yb_ysqlserver_SQLProcessor_"
 #define NumBackendStatSlots (MaxBackends + NUM_AUXPROCTYPES)
@@ -471,7 +471,7 @@ ybpgm_ExecutorEnd(QueryDesc *queryDesc)
 
 	ybpgm_Store(type, time);
 
-	if (!queryDesc->estate->es_yb_is_single_row_modify_txn)
+	if (!queryDesc->estate->es_k2pg_is_single_row_modify_txn)
 	  ybpgm_Store(Transaction, time);
 
 	if (IsA(queryDesc->planstate, AggState) &&

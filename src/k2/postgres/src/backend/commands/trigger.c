@@ -61,7 +61,7 @@
 #include "utils/tqual.h"
 #include "utils/tuplestore.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* GUC variables */
 int			SessionReplicationRole = SESSION_REPLICATION_ROLE_ORIGIN;

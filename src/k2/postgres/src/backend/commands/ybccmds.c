@@ -46,7 +46,7 @@
 #include "executor/ybcExpr.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 #include "access/nbtree.h"
 #include "commands/defrem.h"
@@ -165,7 +165,7 @@ static void CreateTableAddColumns(YBCPgStatement handle,
 	ListCell *cell;
 	if (primary_key != NULL)
 	{
-		foreach(cell, primary_key->yb_index_params)
+		foreach(cell, primary_key->k2pg_index_params)
 		{
 			IndexElem *index_elem = (IndexElem *)lfirst(cell);
 			bool column_found = false;
@@ -184,7 +184,7 @@ static void CreateTableAddColumns(YBCPgStatement handle,
 					/* In YB mode, the first column defaults to HASH if it is
 					 * not set and its table is not colocated */
 					const bool is_first_key =
-						cell == list_head(primary_key->yb_index_params);
+						cell == list_head(primary_key->k2pg_index_params);
 					bool is_hash = (order == SORTBY_HASH ||
 									(is_first_key &&
 									 order == SORTBY_DEFAULT &&
@@ -219,7 +219,7 @@ static void CreateTableAddColumns(YBCPgStatement handle,
 		Form_pg_attribute att = TupleDescAttr(desc, i);
 		bool is_key = false;
 		if (primary_key)
-			foreach(cell, primary_key->yb_index_params)
+			foreach(cell, primary_key->k2pg_index_params)
 			{
 				IndexElem *index_elem = (IndexElem *) lfirst(cell);
 				if (strcmp(NameStr(att->attname), index_elem->name) == 0)

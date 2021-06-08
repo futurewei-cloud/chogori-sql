@@ -79,9 +79,9 @@ class ClusterInfo {
     std::string cluster_id_;
 
     // Right now, the YB logic in PG uses a single global catalog caching version defined in
-    //  src/include/pg_yb_utils.h
+    //  src/include/pg_k2pg_utils.h
     //
-    //  extern uint64_t yb_catalog_cache_version;
+    //  extern uint64_t k2pg_catalog_cache_version;
     //
     // to check if the catalog needs to be refreshed or not. To not break the above caching
     // logic, we need to store the catalog_version as a global variable here.

@@ -83,7 +83,7 @@ ExecSort(PlanState *pstate)
 		 * Postgres engine sort and limit the rows.
 		 */
 		if (IsYugaByteEnabled()) {
-			estate->yb_exec_params.limit_use_default = true;
+			estate->k2pg_exec_params.limit_use_default = true;
 		}
 
 		/*

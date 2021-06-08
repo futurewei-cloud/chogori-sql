@@ -36,7 +36,7 @@
 #include "utils/syscache.h"
 #include "utils/builtins.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcExpr.h"
 #include "catalog/ybctype.h"
 

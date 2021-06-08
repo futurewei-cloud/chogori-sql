@@ -27,7 +27,7 @@
 #include "utils/syscache.h"
 
 #include "commands/ybccmds.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Number of OIDs to prefetch (preallocate) per XLOG write */
 #define VAR_OID_PREFETCH		8192

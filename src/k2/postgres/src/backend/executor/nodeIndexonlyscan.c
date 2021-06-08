@@ -41,7 +41,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static TupleTableSlot *IndexOnlyNext(IndexOnlyScanState *node);
 static void StoreIndexTuple(TupleTableSlot *slot, IndexTuple itup,
@@ -117,10 +117,10 @@ IndexOnlyNext(IndexOnlyScanState *node)
 	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
 	 */
 	if (IsYugaByteEnabled()) {
-		scandesc->yb_exec_params = &estate->yb_exec_params;
+		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;
 
 		// TODO(hector) Add row marks for INDEX_ONLY_SCAN
-		scandesc->yb_exec_params->rowmark = -1;
+		scandesc->k2pg_exec_params->rowmark = -1;
 	}
 
 	/*

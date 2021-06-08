@@ -93,7 +93,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "access/ybcam.h"
 
 #define RELCACHE_INIT_FILEMAGIC		0x573266	/* version ID value */
@@ -6137,7 +6137,7 @@ load_relcache_init_file(bool shared)
 		 * If we already have a newer cache version (e.g. from reading the
 		 * shared init file) then this file is too old.
 		 */
-		if (yb_catalog_cache_version > ybc_stored_cache_version)
+		if (k2pg_catalog_cache_version > ybc_stored_cache_version)
 		{
 			unlink_initfile(initfilename, ERROR);
 			goto read_failed;
@@ -6500,11 +6500,11 @@ load_relcache_init_file(bool shared)
 		/*
 		 * Set the catalog version if needed.
 		 * The checks above will ensure that if it is already initialized then
-		 * we should leave it unchanged (see also comment in pg_yb_utils.h).
+		 * we should leave it unchanged (see also comment in pg_k2pg_utils.h).
 		 */
-		if (yb_catalog_cache_version == K2PG_CATCACHE_VERSION_UNINITIALIZED)
+		if (k2pg_catalog_cache_version == K2PG_CATCACHE_VERSION_UNINITIALIZED)
 		{
-			yb_catalog_cache_version = ybc_stored_cache_version;
+			k2pg_catalog_cache_version = ybc_stored_cache_version;
 		}
 	}
 
@@ -6584,10 +6584,10 @@ write_relcache_init_file(bool shared)
 	if (IsYugaByteEnabled())
 	{
 		/* Write the ysql_catalog_version */
-		if (fwrite(&yb_catalog_cache_version,
+		if (fwrite(&k2pg_catalog_cache_version,
 		           1,
-		           sizeof(yb_catalog_cache_version),
-		           fp) != sizeof(yb_catalog_cache_version))
+		           sizeof(k2pg_catalog_cache_version),
+		           fp) != sizeof(k2pg_catalog_cache_version))
 		{
 			elog(FATAL, "could not write init file");
 		}

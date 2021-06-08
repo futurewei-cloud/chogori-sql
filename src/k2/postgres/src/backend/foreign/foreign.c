@@ -44,7 +44,7 @@
 #include "utils/syscache.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybc_fdw.h"
 
 /*

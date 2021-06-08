@@ -51,7 +51,7 @@
 #include "utils/syscache.h"
 #include "utils/snapmgr.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* GUC parameter */
 int			constraint_exclusion = CONSTRAINT_EXCLUSION_PARTITION;

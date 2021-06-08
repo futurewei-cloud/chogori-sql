@@ -22,7 +22,7 @@
 #include "nodes/nodeFuncs.h"
 #include "utils/lsyscache.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "access/sysattr.h"
 
 /*

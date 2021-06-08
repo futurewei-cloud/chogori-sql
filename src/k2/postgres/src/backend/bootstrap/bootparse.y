@@ -53,7 +53,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcModifyTable.h"
 #include "bootstrap/ybcbootstrap.h"
 

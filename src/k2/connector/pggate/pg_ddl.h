@@ -180,7 +180,7 @@ class PgCreateTable : public PgDdl {
                            bool is_range,
                            ColumnSchema::SortingType sorting_type =
                                ColumnSchema::SortingType::kNotSpecified) {
-    return AddColumnImpl(attr_name, attr_num, attr_type->yb_type, is_hash, is_range, sorting_type);
+    return AddColumnImpl(attr_name, attr_num, attr_type->k2pg_type, is_hash, is_range, sorting_type);
   }
 
   // Execute.

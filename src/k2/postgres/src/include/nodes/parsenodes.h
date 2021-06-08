@@ -697,7 +697,7 @@ typedef enum TableLikeOption
  * When a YugaByte LSM primary key or index declaration contains an attribute
  * group like "create table (... primary key ((h1, h2, ...) hash, ...))",
  * the attribute group is first represented as an IndexElem with 'h1', 'h2',
- * ... in 'yb_yname_list'. The attribute group is then flattened as a list of
+ * ... in 'k2pg_yname_list'. The attribute group is then flattened as a list of
  * IndexElem's the relevant the grammar rules.
  */
 typedef struct IndexElem
@@ -711,7 +711,7 @@ typedef struct IndexElem
 	SortByDir	ordering;		/* ASC/DESC/default */
 	SortByNulls nulls_ordering; /* FIRST/LAST/default */
 
-	List	   *yb_name_list;	/* List of attribute names in parenthesis */
+	List	   *k2pg_name_list;	/* List of attribute names in parenthesis */
 } IndexElem;
 
 /*
@@ -2163,10 +2163,10 @@ typedef struct Constraint
 	/* For YugaByte LSM primary or unique key defined inline with the table
 	 * definition, we allow the key definition to include the sorting info
 	 * like "create table (... primary key (h hash, r1 asc, r2 desc))".
-	 * We save the IndexElem of the attributes in 'yb_index_params' to access
+	 * We save the IndexElem of the attributes in 'k2pg_index_params' to access
 	 * the full definition of the key attributes.
 	 */
-	List	   *yb_index_params;	/* IndexElem nodes of UNIQUE or PRIMARY KEY
+	List	   *k2pg_index_params;	/* IndexElem nodes of UNIQUE or PRIMARY KEY
 									 * constraint */
 } Constraint;
 
@@ -2184,13 +2184,13 @@ typedef struct Constraint
 typedef enum
 {
 	SPLIT_POINTS = 1
-} yb_split_type;
+} k2pg_split_type;
 
 typedef struct OptSplit
 {
 	NodeTag type;
 
-	yb_split_type split_type;
+	k2pg_split_type split_type;
 	List *split_points;
 } OptSplit;
 

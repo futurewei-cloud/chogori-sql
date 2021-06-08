@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * pg_yb_common.c
+ * pg_k2pg_common.c
  *	  Common utilities for YugaByte/PostgreSQL integration that are reused
  *	  between PostgreSQL server code and other PostgreSQL programs such as
  *    initdb.
@@ -20,7 +20,7 @@
  * under the License.
  *
  * IDENTIFICATION
- *	  src/common/pg_yb_common.cc
+ *	  src/common/pg_k2pg_common.c
  *
  *-------------------------------------------------------------------------
  */
@@ -31,7 +31,7 @@
 
 #include "postgres_fe.h"
 
-#include "common/pg_yb_common.h"
+#include "common/pg_k2pg_common.h"
 
 #include "utils/elog.h"
 

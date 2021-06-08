@@ -64,7 +64,7 @@
 #include "utils/syscache.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "access/ybcam.h"
 #include "executor/ybcExpr.h"
 
@@ -1137,7 +1137,7 @@ YBCPgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
         case CSTRINGOID:
             break;
         default:
-            if (ref_type->yb_type == K2SQL_DATA_TYPE_BINARY || ref_type->yb_type == K2SQL_DATA_TYPE_STRING) {
+            if (ref_type->k2pg_type == K2SQL_DATA_TYPE_BINARY || ref_type->k2pg_type == K2SQL_DATA_TYPE_STRING) {
                 return opr_expr;
             }
             break;
@@ -1492,7 +1492,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ResourceOwnerEnlargeYugaByteStmts(CurrentResourceOwner);
 	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, ybc_state->handle);
 	ybc_state->stmt_owner = CurrentResourceOwner;
-	ybc_state->exec_params = &estate->yb_exec_params;
+	ybc_state->exec_params = &estate->k2pg_exec_params;
 	ybc_state->remote_exprs = foreignScan->fdw_exprs;
 	elog(DEBUG4, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
 
@@ -1511,7 +1511,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 
 	/* Set the current syscatalog version (will check that we are up to date) */
 	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
-														yb_catalog_cache_version),
+														k2pg_catalog_cache_version),
 														ybc_state->handle,
 														ybc_state->stmt_owner);
 }
@@ -1536,7 +1536,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 		MemoryContextSwitchTo(node->ss.ps.ps_ExprContext->ecxt_per_query_memory);
 
 	/* Set scan targets. */
-	if (node->yb_fdw_aggs == NIL)
+	if (node->k2pg_fdw_aggs == NIL)
 	{
 		/* Set non-aggregate column targets. */
 		bool has_targets = false;
@@ -1603,7 +1603,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 	else
 	{
 		/* Set aggregate scan targets. */
-		foreach(lc, node->yb_fdw_aggs)
+		foreach(lc, node->k2pg_fdw_aggs)
 		{
 			Aggref *aggref = lfirst_node(Aggref, lc);
 			char *func_name = get_func_name(aggref->aggfnoid);
@@ -1699,7 +1699,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 		 * tupledesc that only includes the number of attributes. Switch to per-query memory from
 		 * per-tuple memory so the slot persists across iterations.
 		 */
-		TupleDesc target_tupdesc = CreateTemplateTupleDesc(list_length(node->yb_fdw_aggs),
+		TupleDesc target_tupdesc = CreateTemplateTupleDesc(list_length(node->k2pg_fdw_aggs),
 														   false /* hasoid */);
 		ExecInitScanTupleSlot(estate, &node->ss, target_tupdesc);
 	}
@@ -1764,7 +1764,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 	/* If we have result(s) update the tuple slot. */
 	if (has_data)
 	{
-		if (node->yb_fdw_aggs == NIL)
+		if (node->k2pg_fdw_aggs == NIL)
 		{
 			HeapTuple tuple = heap_form_tuple(tupdesc, values, isnull);
 			if (syscols.oid != InvalidOid)
@@ -1792,17 +1792,17 @@ ybcIterateForeignScan(ForeignScanState *node)
 }
 
 static void
-ybcFreeStatementObject(YbFdwExecState* yb_fdw_exec_state)
+ybcFreeStatementObject(YbFdwExecState* k2pg_fdw_exec_state)
 {
-	/* If yb_fdw_exec_state is NULL, we are in EXPLAIN; nothing to do */
-	if (yb_fdw_exec_state != NULL && yb_fdw_exec_state->handle != NULL)
+	/* If k2pg_fdw_exec_state is NULL, we are in EXPLAIN; nothing to do */
+	if (k2pg_fdw_exec_state != NULL && k2pg_fdw_exec_state->handle != NULL)
 	{
-		ResourceOwnerForgetYugaByteStmt(yb_fdw_exec_state->stmt_owner,
-										yb_fdw_exec_state->handle);
-		yb_fdw_exec_state->handle = NULL;
-		yb_fdw_exec_state->stmt_owner = NULL;
-		yb_fdw_exec_state->exec_params = NULL;
-		yb_fdw_exec_state->is_exec_done = false;
+		ResourceOwnerForgetYugaByteStmt(k2pg_fdw_exec_state->stmt_owner,
+										k2pg_fdw_exec_state->handle);
+		k2pg_fdw_exec_state->handle = NULL;
+		k2pg_fdw_exec_state->stmt_owner = NULL;
+		k2pg_fdw_exec_state->exec_params = NULL;
+		k2pg_fdw_exec_state->is_exec_done = false;
 	}
 }
 

@@ -61,7 +61,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "pggate/pg_gate_typedefs.h"
 
 

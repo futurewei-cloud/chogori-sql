@@ -46,7 +46,7 @@
 #include "utils/varlena.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * We don't want to log each fetching of a value from a sequence,
@@ -224,7 +224,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	{
 		HandleYBStatus(YBCInsertSequenceTuple(MyDatabaseId,
 											  seqoid,
-											  yb_catalog_cache_version,
+											  k2pg_catalog_cache_version,
 											  seqdataform.last_value,
 											  false /* is_called */));
 	}
@@ -473,7 +473,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 	{
 		HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
 											relid,
-											yb_catalog_cache_version,
+											k2pg_catalog_cache_version,
 											&last_val,
 											&is_called));
 
@@ -513,7 +513,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 				bool skipped = false;
 				HandleYBStatus(YBCUpdateSequenceTuple(MyDatabaseId,
 													  ObjectIdGetDatum(relid),
-													  yb_catalog_cache_version,
+													  k2pg_catalog_cache_version,
 													  newdataform->last_value /* last_val */,
 													  newdataform->is_called /* is_called */,
 													  &skipped));
@@ -607,7 +607,7 @@ YBReadSequenceTuple(Relation seqrel)
     bool is_called;
     HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
                                         relid,
-                                        yb_catalog_cache_version,
+                                        k2pg_catalog_cache_version,
                                         &last_val,
                                         &is_called));
     seqdataform.last_value = last_val;
@@ -758,7 +758,7 @@ retry:
 		bool is_called;
 		HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
 											relid,
-											yb_catalog_cache_version,
+											k2pg_catalog_cache_version,
 											&last_val,
 											&is_called));
 		seq_data.last_value = last_val;
@@ -910,7 +910,7 @@ check_bounds:
 		 */
 		HandleYBStatus(YBCUpdateSequenceTupleConditionally(MyDatabaseId,
 														   relid,
-														   yb_catalog_cache_version,
+														   k2pg_catalog_cache_version,
 														   last /* last_val */,
 														   true /* is_called */,
 														   seq->last_value /* expected_last_val */,
@@ -1156,7 +1156,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	{
     HandleYBStatus(YBCUpdateSequenceTuple(MyDatabaseId,
                                           relid,
-                                          yb_catalog_cache_version,
+                                          k2pg_catalog_cache_version,
                                           next,
                                           iscalled,
                                           NULL));
