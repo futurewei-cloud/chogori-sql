@@ -1,8 +1,8 @@
 --
--- YB_FEATURE Testsuite: UPDATE
+-- K2PG_FEATURE Testsuite: UPDATE
 --   An introduction on whether or not a feature is supported in YugaByte.
 --   This test suite does not go in depth for each command.
--- 
+--
 -- Prepare two identical tables of all supported primitive types.
 --
 -- INSERT values to be updated

@@ -79,7 +79,7 @@ Status InitGFlags(const char* argv0) {
     throw std::runtime_error("pg_working_dir is not set");
   }
 
-  const char* yb_working_dir = getenv("YB_WORKING_DIR");
+  const char* yb_working_dir = getenv("K2PG_WORKING_DIR");
   if (yb_working_dir) {
     ChangeWorkingDir(yb_working_dir);
   }
@@ -149,25 +149,25 @@ uint32_t YBCStatusPgsqlError(YBCStatus s) {
   const uint8_t* pg_err_ptr = wrapper->ErrorData(PgsqlErrorTag::kCategory);
   // If we have PgsqlError explicitly set, we decode it
   YBPgErrorCode result = pg_err_ptr != nullptr ? PgsqlErrorTag::Decode(pg_err_ptr)
-                                               : YBPgErrorCode::YB_PG_INTERNAL_ERROR;
+                                               : YBPgErrorCode::K2PG_INTERNAL_ERROR;
 
-  // If the error is the default generic YB_PG_INTERNAL_ERROR (as we also set in AsyncRpc::Failed)
+  // If the error is the default generic K2PG_INTERNAL_ERROR (as we also set in AsyncRpc::Failed)
   // then we try to deduce it from a transaction error.
-  if (result == YBPgErrorCode::YB_PG_INTERNAL_ERROR) {
+  if (result == YBPgErrorCode::K2PG_INTERNAL_ERROR) {
     const uint8_t* txn_err_ptr = wrapper->ErrorData(TransactionErrorTag::kCategory);
     if (txn_err_ptr != nullptr) {
       switch (TransactionErrorTag::Decode(txn_err_ptr)) {
         case TransactionErrorCode::kAborted: [[fallthrough]];
         case TransactionErrorCode::kReadRestartRequired: [[fallthrough]];
         case TransactionErrorCode::kConflict:
-          result = YBPgErrorCode::YB_PG_T_R_SERIALIZATION_FAILURE;
+          result = YBPgErrorCode::K2PG_T_R_SERIALIZATION_FAILURE;
           break;
         case TransactionErrorCode::kSnapshotTooOld:
-          result = YBPgErrorCode::YB_PG_SNAPSHOT_TOO_OLD;
+          result = YBPgErrorCode::K2PG_SNAPSHOT_TOO_OLD;
           break;
         case TransactionErrorCode::kNone: [[fallthrough]];
         default:
-          result = YBPgErrorCode::YB_PG_INTERNAL_ERROR;
+          result = YBPgErrorCode::K2PG_INTERNAL_ERROR;
       }
     }
   }

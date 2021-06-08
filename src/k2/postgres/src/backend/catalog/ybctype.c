@@ -186,7 +186,7 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 				basetp_oid = ANYRANGEOID;
 				break;
 			default:
-				YB_REPORT_TYPE_NOT_SUPPORTED(type_id);
+				K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id);
 				break;
 		}
 		return YBCDataTypeFromOidMod(InvalidAttrNumber, basetp_oid);
@@ -194,7 +194,7 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 
 	/* Report error if type is not supported */
 	if (yb_type == K2SQL_DATA_TYPE_NOT_SUPPORTED) {
-		YB_REPORT_TYPE_NOT_SUPPORTED(type_id);
+		K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id);
 	}
 
 	/* Return the type-mapping entry */

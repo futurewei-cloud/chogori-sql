@@ -22,8 +22,8 @@
  * ----------
  */
 
-#ifndef YB_OVERFLOW_UTILS_H
-#define YB_OVERFLOW_UTILS_H
+#ifndef K2PG_OVERFLOW_UTILS_H
+#define K2PG_OVERFLOW_UTILS_H
 
 #include <boost/preprocessor/cat.hpp>
 #include <boost/preprocessor/stringize.hpp>
@@ -42,32 +42,32 @@
  */
 
 #ifdef __linux__
-#define YB_INT64_UNDERLYING_TYPE long
-#define YB_INT64_OVERFLOW_CHECKING_FRAGMENT l
+#define K2PG_INT64_UNDERLYING_TYPE long
+#define K2PG_INT64_OVERFLOW_CHECKING_FRAGMENT l
 #else
-#define YB_INT64_UNDERLYING_TYPE long long
-#define YB_INT64_OVERFLOW_CHECKING_FRAGMENT ll
+#define K2PG_INT64_UNDERLYING_TYPE long long
+#define K2PG_INT64_OVERFLOW_CHECKING_FRAGMENT ll
 #endif
 
 _Static_assert(
-	sizeof(int64) == sizeof(YB_INT64_UNDERLYING_TYPE),
-	"Expecting int64 and " BOOST_PP_STRINGIZE(YB_INT64_UNDERLYING_TYPE)
+	sizeof(int64) == sizeof(K2PG_INT64_UNDERLYING_TYPE),
+	"Expecting int64 and " BOOST_PP_STRINGIZE(K2PG_INT64_UNDERLYING_TYPE)
 	" to be the same type");
 
 _Static_assert(
 	sizeof(int32) == sizeof(int),
 	"Expecting int32 and int to be the same type");
 
-#define YB_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg, arg_description, expected_type) \
+#define K2PG_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg, arg_description, expected_type) \
     _Static_assert( \
         sizeof(arg) == sizeof(expected_type), \
         arg_description " is supposed to be of type " BOOST_PP_STRINGIZE(expected_type))
 
-#define YB_GENERIC_CHECK_OVERFLOW( \
+#define K2PG_GENERIC_CHECK_OVERFLOW( \
         op, arg1, arg2, int_type, builtin_suffix, out_of_range_msg) \
 	do { \
-        YB_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg1, "First argument", int_type); \
-        YB_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg2, "Second argument", int_type); \
+        K2PG_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg1, "First argument", int_type); \
+        K2PG_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg2, "Second argument", int_type); \
 		int_type result = 0; \
 		if (BOOST_PP_CAT(BOOST_PP_CAT(__builtin_s, op), builtin_suffix)( \
 				(arg1), (arg2), &result)) \
@@ -78,20 +78,20 @@ _Static_assert(
 		} \
 	} while(0)
 
-#define YB_CHECK_INT32_OVERFLOW(op, arg1, arg2) \
-    YB_GENERIC_CHECK_OVERFLOW(op, arg1, arg2, int32_t, _overflow, \
+#define K2PG_CHECK_INT32_OVERFLOW(op, arg1, arg2) \
+    K2PG_GENERIC_CHECK_OVERFLOW(op, arg1, arg2, int32_t, _overflow, \
         "integer out of range")
 
-#define YB_CHECK_INT64_OVERFLOW(op, arg1, arg2) \
-    YB_GENERIC_CHECK_OVERFLOW(op, arg1, arg2, int64_t, \
-		BOOST_PP_CAT(YB_INT64_OVERFLOW_CHECKING_FRAGMENT, _overflow), \
+#define K2PG_CHECK_INT64_OVERFLOW(op, arg1, arg2) \
+    K2PG_GENERIC_CHECK_OVERFLOW(op, arg1, arg2, int64_t, \
+		BOOST_PP_CAT(K2PG_INT64_OVERFLOW_CHECKING_FRAGMENT, _overflow), \
         "bigint out of range")
 
-#define YB_GENERIC_DISALLOW_VALUE( \
+#define K2PG_GENERIC_DISALLOW_VALUE( \
         arg, disallowed_value, int_type, out_of_range_msg) \
 	do { \
-        YB_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg, "First argument", int_type); \
-        YB_CHECK_OVERFLOW_MACRO_ARG_TYPE(disallowed_value, "Second argument", int_type); \
+        K2PG_CHECK_OVERFLOW_MACRO_ARG_TYPE(arg, "First argument", int_type); \
+        K2PG_CHECK_OVERFLOW_MACRO_ARG_TYPE(disallowed_value, "Second argument", int_type); \
 		if ((arg) == (disallowed_value)) \
 		{ \
 			ereport(ERROR, \
@@ -100,12 +100,12 @@ _Static_assert(
 		} \
 	} while (0)
 
-#define YB_DISALLOW_INT32_VALUE(arg, disallowed_value) \
-    YB_GENERIC_DISALLOW_VALUE(arg, disallowed_value, int32_t, \
+#define K2PG_DISALLOW_INT32_VALUE(arg, disallowed_value) \
+    K2PG_GENERIC_DISALLOW_VALUE(arg, disallowed_value, int32_t, \
         "integer out of range")
 
-#define YB_DISALLOW_INT64_VALUE(arg, disallowed_value) \
-    YB_GENERIC_DISALLOW_VALUE(arg, disallowed_value, int64_t, \
+#define K2PG_DISALLOW_INT64_VALUE(arg, disallowed_value) \
+    K2PG_GENERIC_DISALLOW_VALUE(arg, disallowed_value, int64_t, \
         "bigint out of range")
 
 #endif

@@ -23,11 +23,11 @@ OBJS=	pg_backup_archiver.o pg_backup_db.o pg_backup_custom.o \
 	pg_backup_null.o pg_backup_tar.o pg_backup_directory.o \
 	pg_backup_utils.o parallel.o compress_io.o dumputils.o $(WIN32RES)
 
-ifndef YB_BUILD_ROOT
-YB_BUILD_ROOT := $(top_builddir)
+ifndef K2PG_BUILD_ROOT
+K2PG_BUILD_ROOT := $(top_builddir)
 endif
 
-LIBS += -L$(YB_BUILD_ROOT)/lib
+LIBS += -L$(K2PG_BUILD_ROOT)/lib
 
 all: ysql_dump pg_restore ysql_dumpall
 

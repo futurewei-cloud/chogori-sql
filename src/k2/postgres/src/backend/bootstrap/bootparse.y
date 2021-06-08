@@ -584,7 +584,7 @@ Boot_CheckInitDbDone:
       YBCHECKINITDBDONE
       {
 				if (YBIsInitDbAlreadyDone())
-					exit(YB_INITDB_ALREADY_DONE_EXIT_CODE);
+					exit(K2PG_INITDB_ALREADY_DONE_EXIT_CODE);
 			}
 
 boot_ident:

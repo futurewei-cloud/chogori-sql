@@ -60,7 +60,7 @@ YBIsEnabledInPostgresEnvVar()
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrue("YB_ENABLED_IN_POSTGRES");
+		cached_value = YBCIsEnvVarTrue("K2PG_ENABLED_IN_POSTGRES");
 	}
 	return cached_value;
 }
@@ -75,7 +75,7 @@ YBShouldAllowRunningAsAnyUser()
 	static int cached_value = -1;
 	if (cached_value == -1)
     {
-		cached_value = YBCIsEnvVarTrue("YB_PG_ALLOW_RUNNING_AS_ANY_USER");
+		cached_value = YBCIsEnvVarTrue("K2PG_ALLOW_RUNNING_AS_ANY_USER");
 	}
 	return cached_value;
 }
@@ -86,17 +86,17 @@ bool YBIsInitDbModeEnvVarSet()
 	static int cached_value = -1;
 	if (cached_value == -1)
     {
-		cached_value = YBCIsEnvVarTrue("YB_PG_INITDB_MODE");
+		cached_value = YBCIsEnvVarTrue("K2PG_INITDB_MODE");
 	}
 	return cached_value;
 }
 
 void YBSetInitDbModeEnvVar()
 {
-	int setenv_retval = setenv("YB_PG_INITDB_MODE", "1", /* overwrite */ true);
+	int setenv_retval = setenv("K2PG_INITDB_MODE", "1", /* overwrite */ true);
 	if (setenv_retval != 0)
 	{
-		perror("Could not set environment variable YB_PG_INITDB_MODE");
+		perror("Could not set environment variable K2PG_INITDB_MODE");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -116,8 +116,8 @@ YBUnsupportedFeatureSignalLevel()
 {
 	static int cached_value = -1;
 	if (cached_value == -1) {
-		// TODO(dmitry): Remove 'YB_SUPPRESS_UNSUPPORTED_ERROR'
-		cached_value = YBCIsEnvVarTrue("YB_SUPPRESS_UNSUPPORTED_ERROR") ||
+		// TODO(dmitry): Remove 'K2PG_SUPPRESS_UNSUPPORTED_ERROR'
+		cached_value = YBCIsEnvVarTrue("K2PG_SUPPRESS_UNSUPPORTED_ERROR") ||
 									 YBCIsEnvVarTrue("FLAGS_ysql_suppress_unsupported_error") ? WARNING : ERROR;
 	}
 	return cached_value;

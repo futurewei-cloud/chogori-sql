@@ -22,8 +22,8 @@
  * ----------
  */
 
-#ifndef PG_YB_UTILS_H
-#define PG_YB_UTILS_H
+#ifndef PG_K2PG_UTILS_H
+#define PG_K2PG_UTILS_H
 
 #include "postgres.h"
 #include "utils/relcache.h"
@@ -55,7 +55,7 @@
  */
 extern uint64_t yb_catalog_cache_version;
 
-#define YB_CATCACHE_VERSION_UNINITIALIZED (0)
+#define K2PG_CATCACHE_VERSION_UNINITIALIZED (0)
 
 /*
  * Checks whether YugaByte functionality is enabled within PostgreSQL.
@@ -203,7 +203,7 @@ extern void YBReportTypeNotSupported(Oid type_id);
  */
 extern void YBReportIfYugaByteEnabled();
 
-#define YB_REPORT_TYPE_NOT_SUPPORTED(type_id) do { \
+#define K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id) do { \
 		Oid computed_type_id = type_id; \
 		ereport(ERROR, \
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
@@ -223,7 +223,7 @@ extern void YBReportIfYugaByteEnabled();
  * However, we want to avoid this behavior in some cases, e.g. when our test
  * framework is trying to intentionally cause core dumps of stuck backend
  * processes and analyze them. Disabling this behavior is controlled by setting
- * the YB_PG_NO_RESTART_ALL_CHILDREN_ON_CRASH_FLAG_PATH variable to a file path,
+ * the K2PG_NO_RESTART_ALL_CHILDREN_ON_CRASH_FLAG_PATH variable to a file path,
  * which could be created or deleted at run time, and its existence is always
  * checked.
  */
@@ -298,4 +298,4 @@ int YBGetDdlNestingLevel();
 void YBIncrementDdlNestingLevel();
 void YBDecrementDdlNestingLevel(bool success);
 
-#endif /* PG_YB_UTILS_H */
+#endif /* PG_K2PG_UTILS_H */

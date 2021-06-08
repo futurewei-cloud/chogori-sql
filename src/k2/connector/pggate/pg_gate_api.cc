@@ -870,7 +870,7 @@ bool YBCIsInitDbModeEnvVarSet() {
   static bool cached = false;
 
   if (!cached) {
-    const char* initdb_mode_env_var_value = getenv("YB_PG_INITDB_MODE");
+    const char* initdb_mode_env_var_value = getenv("K2PG_INITDB_MODE");
     cached_value = initdb_mode_env_var_value && strcmp(initdb_mode_env_var_value, "1") == 0;
     cached = true;
   }

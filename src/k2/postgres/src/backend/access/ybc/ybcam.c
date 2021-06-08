@@ -65,7 +65,7 @@ typedef struct YbScanPlanData
 
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
-	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber bind_key_attnums[K2PG_MAX_SCAN_KEYS];
 } YbScanPlanData;
 
 typedef YbScanPlanData *YbScanPlan;
@@ -1073,11 +1073,11 @@ static void ybcSetupTargets(Relation relation,
 YbScanDesc
 ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
 {
-	if (nkeys > YB_MAX_SCAN_KEYS)
+	if (nkeys > K2PG_MAX_SCAN_KEYS)
 		ereport(ERROR,
 				(errcode(ERRCODE_TOO_MANY_COLUMNS),
 				 errmsg("cannot use more than %d predicates in a table or index scan",
-						YB_MAX_SCAN_KEYS)));
+						K2PG_MAX_SCAN_KEYS)));
 
 	/* Set up YugaByte scan description */
 	YbScanDesc ybScan = (YbScanDesc) palloc0(sizeof(YbScanDescData));

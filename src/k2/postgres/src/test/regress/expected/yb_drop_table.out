@@ -1,5 +1,5 @@
 --
--- YB_TABLE Testsuite: Testing DDL Statments for TABLE DROP.
+-- K2PG_TABLE Testsuite: Testing DDL Statments for TABLE DROP.
 --
 -- Test: Drop Multiple Tables
 CREATE TABLE table_drop_test1(a int, b int);

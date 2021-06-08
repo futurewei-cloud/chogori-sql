@@ -194,8 +194,8 @@ typedef struct PgFdwScanPlanData
 
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
-	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
-	AttrNumber bind_nonkey_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber bind_key_attnums[K2PG_MAX_SCAN_KEYS];
+	AttrNumber bind_nonkey_attnums[K2PG_MAX_SCAN_KEYS];
 } PgFdwScanPlanData;
 
 typedef PgFdwScanPlanData *PgFdwScanPlan;

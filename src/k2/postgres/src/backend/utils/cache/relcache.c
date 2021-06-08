@@ -6502,7 +6502,7 @@ load_relcache_init_file(bool shared)
 		 * The checks above will ensure that if it is already initialized then
 		 * we should leave it unchanged (see also comment in pg_yb_utils.h).
 		 */
-		if (yb_catalog_cache_version == YB_CATCACHE_VERSION_UNINITIALIZED)
+		if (yb_catalog_cache_version == K2PG_CATCACHE_VERSION_UNINITIALIZED)
 		{
 			yb_catalog_cache_version = ybc_stored_cache_version;
 		}

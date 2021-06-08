@@ -301,7 +301,7 @@ do { \
   int exit_code = yb_pclose_check(cmdfd); \
 	/* message already printed by yb_pclose_check */ \
 	if (exit_code) \
-		exit_nicely_with_code(exit_code == YB_INITDB_ALREADY_DONE_EXIT_CODE ? 0 : 1); \
+		exit_nicely_with_code(exit_code == K2PG_INITDB_ALREADY_DONE_EXIT_CODE ? 0 : 1); \
 } while (0)
 
 #define PG_CMD_PUTS(line) \
@@ -336,12 +336,12 @@ static bool IsEnvSet(const char* name)
 
 static bool IsYugaByteGlobalClusterInitdb()
 {
-	return IsEnvSet("YB_ENABLED_IN_POSTGRES");
+	return IsEnvSet("K2PG_ENABLED_IN_POSTGRES");
 }
 
 static bool IsYugaByteLocalNodeInitdb()
 {
-	return IsEnvSet("YB_PG_LOCAL_NODE_INITDB");
+	return IsEnvSet("K2PG_LOCAL_NODE_INITDB");
 }
 
 /*
@@ -370,7 +370,7 @@ yb_pclose_check(FILE *stream)
 	}
 	else
 	{
-		if (WEXITSTATUS(exitstatus) == YB_INITDB_ALREADY_DONE_EXIT_CODE) {
+		if (WEXITSTATUS(exitstatus) == K2PG_INITDB_ALREADY_DONE_EXIT_CODE) {
 			fprintf(stderr, "initdb has already been run previously, nothing to do\n");
 		} else {
 			reason = wait_result_to_str(exitstatus);

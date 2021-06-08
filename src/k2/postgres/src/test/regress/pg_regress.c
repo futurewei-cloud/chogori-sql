@@ -1375,7 +1375,7 @@ results_differ(const char *testname, const char *resultsfile, const char *defaul
 	char extra_cmd_and_semicolon[4096];
 	{
 		const char* resultsfile_postprocess_cmd =
-			getenv("YB_PG_REGRESS_RESULTSFILE_POSTPROCESS_CMD");
+			getenv("K2PG_REGRESS_RESULTSFILE_POSTPROCESS_CMD");
 		extra_cmd_and_semicolon[0] = 0;
 		if (resultsfile_postprocess_cmd != NULL)
 		{

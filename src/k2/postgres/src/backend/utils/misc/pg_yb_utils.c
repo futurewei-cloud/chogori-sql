@@ -54,7 +54,7 @@
 
 #include "tcop/utility.h"
 
-uint64_t yb_catalog_cache_version = YB_CATCACHE_VERSION_UNINITIALIZED;
+uint64_t yb_catalog_cache_version = K2PG_CATCACHE_VERSION_UNINITIALIZED;
 
 /** These values are lazily initialized based on corresponding environment variables. */
 int ybc_pg_double_write = -1;
@@ -194,7 +194,7 @@ YBTransactionsEnabled()
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrueWithDefault("YB_PG_TRANSACTIONS_ENABLED", true);
+		cached_value = YBCIsEnvVarTrueWithDefault("K2PG_TRANSACTIONS_ENABLED", true);
 	}
 	return IsYugaByteEnabled() && cached_value;
 }
@@ -214,7 +214,7 @@ YBShouldReportErrorStatus()
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrue("YB_PG_REPORT_ERROR_STATUS");
+		cached_value = YBCIsEnvVarTrue("K2PG_REPORT_ERROR_STATUS");
 	}
 
 	return cached_value;
@@ -533,7 +533,7 @@ YBReportIfYugaByteEnabled()
 	if (YBIsEnabledInPostgresEnvVar()) {
 		ereport(LOG, (errmsg(
 			"YugaByte is ENABLED in PostgreSQL. Transactions are %s.",
-			YBCIsEnvVarTrue("YB_PG_TRANSACTIONS_ENABLED") ?
+			YBCIsEnvVarTrue("K2PG_TRANSACTIONS_ENABLED") ?
 			"enabled" : "disabled")));
 	} else {
 		ereport(LOG, (errmsg("YugaByte is NOT ENABLED -- "
@@ -563,7 +563,7 @@ YBShouldLogStackTraceOnError()
 		return cached_value;
 	}
 
-	cached_value = YBCIsEnvVarTrue("YB_PG_STACK_TRACE_ON_ERROR");
+	cached_value = YBCIsEnvVarTrue("K2PG_STACK_TRACE_ON_ERROR");
 	return cached_value;
 }
 

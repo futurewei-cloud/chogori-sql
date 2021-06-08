@@ -37,7 +37,7 @@ namespace {
 #ifndef NDEBUG
 // This allows to dump stack traces whenever an error status matching a certain regex is generated.
 boost::optional<std::regex> StatusStackTraceRegEx() {
-  const char* regex_str = getenv("YB_STACK_TRACE_ON_ERROR_STATUS_RE");
+  const char* regex_str = getenv("K2PG_STACK_TRACE_ON_ERROR_STATUS_RE");
   if (!regex_str) {
     return boost::none;
   }
@@ -298,7 +298,7 @@ Status::Status(Code code,
                bool is_file_name_dup)
     : state_(State::Create(code, file_name, line_number, msg, msg2, error, is_file_name_dup)) {
 #ifndef NDEBUG
-  static const bool print_stack_trace = getenv("YB_STACK_TRACE_ON_ERROR_STATUS") != nullptr;
+  static const bool print_stack_trace = getenv("K2PG_STACK_TRACE_ON_ERROR_STATUS") != nullptr;
   static const boost::optional<std::regex> status_stack_trace_re =
       StatusStackTraceRegEx();
 
@@ -352,13 +352,13 @@ YBCStatusStruct* Status::DetachStruct() {
   return reinterpret_cast<YBCStatusStruct*>(state_.detach());
 }
 
-#define YB_STATUS_RETURN_MESSAGE(name, pb_name, value, message) \
+#define K2PG_STATUS_RETURN_MESSAGE(name, pb_name, value, message) \
     case Status::BOOST_PP_CAT(k, name): \
       return message;
 
 const char* Status::CodeAsCString() const {
   switch (code()) {
-    BOOST_PP_SEQ_FOR_EACH(YB_STATUS_FORWARD_MACRO, YB_STATUS_RETURN_MESSAGE, YB_STATUS_CODES)
+    BOOST_PP_SEQ_FOR_EACH(K2PG_STATUS_FORWARD_MACRO, K2PG_STATUS_RETURN_MESSAGE, K2PG_STATUS_CODES)
   }
   return nullptr;
 }
@@ -383,7 +383,7 @@ std::string Status::ToString(bool include_file_and_line, bool include_code) cons
     result.append(result.empty() ? "(" : " (");
 
     // Try to only include file path starting from source root directory. We are assuming that all
-    // C++ code is located in $YB_SRC_ROOT/src, where $YB_SRC_ROOT is the repository root. Note that
+    // C++ code is located in $K2PG_SRC_ROOT/src, where $K2PG_SRC_ROOT is the repository root. Note that
     // this will break if the repository itself is located in a parent directory named "src".
     // However, neither Jenkins, nor our standard code location on a developer workstation
     // (~/code/yugabyte) should have that problem.

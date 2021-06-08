@@ -58,7 +58,7 @@
  */
 typedef struct YbScanDescData
 {
-#define YB_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
+#define K2PG_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
 
 	/* The handle for the internal YB Select statement. */
 	YBCPgStatement handle;
@@ -71,7 +71,7 @@ typedef struct YbScanDescData
 	ScanKey key;
 
 	TupleDesc target_desc;
-	AttrNumber target_key_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber target_key_attnums[K2PG_MAX_SCAN_KEYS];
 
 	/* Oid of the table being scanned */
 	Oid tableOid;

@@ -68,7 +68,7 @@
 
 /* Temporary disable YB calls in ASAN build due to linking issues. */
 #ifdef ADDRESS_SANITIZER
-#define DISABLE_YB_EXTENTIONS
+#define DISABLE_K2PG_EXTENTIONS
 #endif
 
 typedef struct
@@ -712,7 +712,7 @@ main(int argc, char **argv)
 	if (dopt.pghost == NULL || dopt.pghost[0] == '\0')
 		dopt.pghost = DefaultHost;
 
-#ifndef DISABLE_YB_EXTENTIONS
+#ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_yb_metadata)
 	{
 		if (dopt.master_hosts)
@@ -723,7 +723,7 @@ main(int argc, char **argv)
 		HandleYBStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
 		HandleYBStatus(YBCInitPgGateBackend());
 	}
-#endif  /* DISABLE_YB_EXTENTIONS */
+#endif  /* DISABLE_K2PG_EXTENTIONS */
 
 	/*
 	 * Open the database using the Archiver, so it knows about it. Errors mean
@@ -970,10 +970,10 @@ main(int argc, char **argv)
 
 	CloseArchive(fout);
 
-#ifndef DISABLE_YB_EXTENTIONS
+#ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_yb_metadata)
 		YBCShutdownPgGateBackend();
-#endif  /* DISABLE_YB_EXTENTIONS */
+#endif  /* DISABLE_K2PG_EXTENTIONS */
 
 	exit_nicely(0);
 }
@@ -15866,7 +15866,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			appendPQExpBufferChar(q, ')');
 		}
 
-#ifndef DISABLE_YB_EXTENTIONS
+#ifndef DISABLE_K2PG_EXTENTIONS
 		/* Additional properties for YB table or index. */
 		if (dopt->include_yb_metadata &&
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
@@ -15885,7 +15885,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			}
 			/* else - single shard table - supported, no need to add anything */
 		}
-#endif  /* DISABLE_YB_EXTENTIONS */
+#endif  /* DISABLE_K2PG_EXTENTIONS */
 
 		/* Dump generic options if any */
 		if (ftoptions && ftoptions[0])

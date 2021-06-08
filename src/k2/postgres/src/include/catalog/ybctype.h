@@ -33,9 +33,9 @@
  * Constants for OIDs of supported Postgres native types (that do not have an
  * already declared constant in Postgres).
  */
-#define YB_CHARARRAYOID 1002 /* char[] */
-#define YB_TEXTARRAYOID 1009 /* text[] */
-#define YB_ACLITEMARRAYOID 1034 /* aclitem[] */
+#define K2PG_CHARARRAYOID 1002 /* char[] */
+#define K2PG_TEXTARRAYOID 1009 /* text[] */
+#define K2PG_ACLITEMARRAYOID 1034 /* aclitem[] */
 
 extern const YBCPgTypeEntity *YBCDataTypeFromName(TypeName *typeName);
 extern const YBCPgTypeEntity *YBCDataTypeFromOidMod(int attnum, Oid type_id);
