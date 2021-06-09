@@ -870,7 +870,7 @@ bool YBCIsInitDbModeEnvVarSet() {
   static bool cached = false;
 
   if (!cached) {
-    const char* initdb_mode_env_var_value = getenv("YB_PG_INITDB_MODE");
+    const char* initdb_mode_env_var_value = getenv("K2PG_INITDB_MODE");
     cached_value = initdb_mode_env_var_value && strcmp(initdb_mode_env_var_value, "1") == 0;
     cached = true;
   }
@@ -972,7 +972,7 @@ const YBCPgTypeEntity *YBCPgFindTypeEntity(int type_oid) {
 YBCPgDataType YBCPgGetType(const YBCPgTypeEntity *type_entity) {
   K2LOG_V(log::pg, "PgGateAPI: YBCPgGetType");
   if (type_entity) {
-    return type_entity->yb_type;
+    return type_entity->k2pg_type;
   }
   return K2SQL_DATA_TYPE_UNKNOWN_DATA;
 }

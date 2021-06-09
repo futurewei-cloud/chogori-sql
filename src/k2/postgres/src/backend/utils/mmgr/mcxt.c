@@ -26,7 +26,7 @@
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*****************************************************************************
  *	  GLOBAL MEMORY															 *
@@ -173,11 +173,11 @@ MemoryContextReset(MemoryContext context)
 
 	/*
 	 * Save a function call if no pallocs since startup or last reset.
-	 * NOTE: When "yb_memctx" is not null, ResetOnly() must be called to inform YugaByte code layer
+	 * NOTE: When "k2pg_memctx" is not null, ResetOnly() must be called to inform YugaByte code layer
 	 * that resetting is happening. While the state variable "isReset" controls the objects in
-	 * Postgres, and the opaque object "yb_memctx" controls YugaByte objects.
+	 * Postgres, and the opaque object "k2pg_memctx" controls YugaByte objects.
 	 */
-  if (context->yb_memctx || !context->isReset)
+  if (context->k2pg_memctx || !context->isReset)
 		MemoryContextResetOnly(context);
 }
 
@@ -195,8 +195,8 @@ MemoryContextResetOnly(MemoryContext context)
 	 * Reset YugaByte context also.
 	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
 	 */
-	if (context->yb_memctx) {
-		HandleYBStatus(YBCPgResetMemctx(context->yb_memctx));
+	if (context->k2pg_memctx) {
+		HandleYBStatus(YBCPgResetMemctx(context->k2pg_memctx));
 	}
 
 	/* Nothing to do if no pallocs since startup or last reset */
@@ -291,8 +291,8 @@ MemoryContextDelete(MemoryContext context)
 	/*
 	 * Destroy YugaByte memory context.
 	 */
-	HandleYBStatus(YBCPgDestroyMemctx(context->yb_memctx));
-	context->yb_memctx = NULL;
+	HandleYBStatus(YBCPgDestroyMemctx(context->k2pg_memctx));
+	context->k2pg_memctx = NULL;
 
 	VALGRIND_DESTROY_MEMPOOL(context);
 }
@@ -792,7 +792,7 @@ MemoryContextCreate(MemoryContext node,
 	node->reset_cbs = NULL;
 
 	/* YugaByte memory context handler */
-	node->yb_memctx = NULL;
+	node->k2pg_memctx = NULL;
 
 	/* OK to link node into context tree */
 	if (parent)
@@ -1257,10 +1257,10 @@ YBCPgMemctx GetCurrentYbMemctx() {
 	AssertArg(MemoryContextIsValid(context));
 	AssertNotInCriticalSection(context);
 
-	if (context->yb_memctx == NULL) {
+	if (context->k2pg_memctx == NULL) {
 		// Create the yugabyte context if this is the first time it is used.
-		context->yb_memctx = YBCPgCreateMemctx();
+		context->k2pg_memctx = YBCPgCreateMemctx();
 	}
 
-	return context->yb_memctx;
+	return context->k2pg_memctx;
 }

@@ -5,9 +5,9 @@ echo docker run --privileged --network=host -v "/dev/:/dev" -v "/sys/:/sys/" -v 
 echo ">>>>>>>>>>>>>>>>>>>>"
 
 export LD_LIBRARY_PATH=/build/build/src/k2/connector/common/:/build/build/src/k2/connector/entities/
-export YB_ENABLED_IN_POSTGRES=1
-export YB_PG_TRANSACTIONS_ENABLED=1
-export YB_PG_ALLOW_RUNNING_AS_ANY_USER=1
+export K2PG_ENABLED_IN_POSTGRES=1
+export K2PG_TRANSACTIONS_ENABLED=1
+export K2PG_ALLOW_RUNNING_AS_ANY_USER=1
 
 export K2_CONFIG_FILE=/build/pgtest/k2config_initdb_rdma.json
 

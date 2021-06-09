@@ -29,7 +29,7 @@
 #include "utils/rel.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static bool isObjectPinned(const ObjectAddress *object, Relation rel);
 

@@ -54,7 +54,7 @@
 #include "utils/rel.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Convenience macro for the most common makeNamespaceItem() case */
 #define makeDefaultNSItem(rte)	makeNamespaceItem(rte, true, true, false, true)

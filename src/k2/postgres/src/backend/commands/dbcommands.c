@@ -81,7 +81,7 @@
 
 /*  YB includes. */
 #include "commands/ybccmds.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 typedef struct
 {

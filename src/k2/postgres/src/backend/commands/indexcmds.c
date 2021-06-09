@@ -63,7 +63,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* non-export function prototypes */
 static void CheckPredicate(Expr *predicate);
@@ -605,7 +605,7 @@ DefineIndex(Oid relationId,
 	{
 		if (accessMethodName == NULL)
 		{
-			accessMethodName = IsYBRelation(rel) ? DEFAULT_YB_INDEX_TYPE : DEFAULT_INDEX_TYPE;
+			accessMethodName = IsYBRelation(rel) ? DEFAULT_K2PG_INDEX_TYPE : DEFAULT_INDEX_TYPE;
 		}
 		else if (IsYBRelation(rel))
 		{
@@ -613,8 +613,8 @@ DefineIndex(Oid relationId,
 			{
 				ereport(NOTICE,
 						(errmsg("index method \"%s\" was replaced with \"%s\" in YugabyteDB",
-								accessMethodName, DEFAULT_YB_INDEX_TYPE)));
-				accessMethodName = DEFAULT_YB_INDEX_TYPE;
+								accessMethodName, DEFAULT_K2PG_INDEX_TYPE)));
+				accessMethodName = DEFAULT_K2PG_INDEX_TYPE;
 			}
 		}
 	}
@@ -1184,11 +1184,11 @@ DefineIndex(Oid relationId,
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
 	 * through HandleYBStatus.
 	 */
-	elog(LOG, "waiting for YB_INDEX_PERM_DELETE_ONLY");
+	elog(LOG, "waiting for K2PG_INDEX_PERM_DELETE_ONLY");
 	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
-														 YB_INDEX_PERM_DELETE_ONLY,
+														 K2PG_INDEX_PERM_DELETE_ONLY,
 														 &actual_index_permissions));
 	/*
 	 * TODO(jason): handle bad actual_index_permissions.
@@ -1207,11 +1207,11 @@ DefineIndex(Oid relationId,
 	 * through HandleYBStatus.
 	 */
 	HandleYBStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
-	elog(LOG, "waiting for YB_INDEX_PERM_WRITE_AND_DELETE");
+	elog(LOG, "waiting for K2PG_INDEX_PERM_WRITE_AND_DELETE");
 	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
-														 YB_INDEX_PERM_WRITE_AND_DELETE,
+														 K2PG_INDEX_PERM_WRITE_AND_DELETE,
 														 &actual_index_permissions));
 	/*
 	 * TODO(jason): handle bad actual_index_permissions.
@@ -1246,11 +1246,11 @@ DefineIndex(Oid relationId,
 	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
-														 YB_INDEX_PERM_READ_WRITE_AND_DELETE,
+														 K2PG_INDEX_PERM_READ_WRITE_AND_DELETE,
 														 &actual_index_permissions));
 	/*
 	 * TODO(jason): handle bad actual_index_permissions, like
-	 * YB_INDEX_PERM_WRITE_AND_DELETE_WHILE_REMOVING.
+	 * K2PG_INDEX_PERM_WRITE_AND_DELETE_WHILE_REMOVING.
 	 */
 
 	/*
@@ -1356,7 +1356,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 	ListCell   *lc;
 	int			attn;
 	int			nkeycols = indexInfo->ii_NumIndexKeyAttrs;
-	bool		use_yb_ordering = false;
+	bool		use_k2pg_ordering = false;
 	bool		colocated;
 
 	/* Allocate space for exclusion operator info, if needed */
@@ -1382,7 +1382,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		!YBIsPreparingTemplates())
 	{
 		Relation rel = RelationIdGetRelation(relId);
-		use_yb_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
+		use_k2pg_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
 		if (IsYBRelation(rel))
 			HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
 												 relId,
@@ -1404,7 +1404,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 
 		if (IsYugaByteEnabled())
 		{
-			if (use_yb_ordering)
+			if (use_k2pg_ordering)
 			{
 				switch (attribute->ordering)
 				{
@@ -1690,7 +1690,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 			 * In Yugabyte, use HASH as the default for the first column of
 			 * non-colocated tables
 			 */
-			if (use_yb_ordering &&
+			if (use_k2pg_ordering &&
 				attn == 0 &&
 				attribute->ordering == SORTBY_DEFAULT &&
 				!colocated)

@@ -44,30 +44,30 @@
 #include "common/type/slice.h"
 
 // Return the given status if it is not OK.
-#define YB_RETURN_NOT_OK(s) do { \
+#define K2PG_RETURN_NOT_OK(s) do { \
     auto&& _s = (s); \
     if (PREDICT_FALSE(!_s.ok())) return MoveStatus(std::move(_s)); \
   } while (false)
 
 // Return the given status if it is not OK, but first clone it and prepend the given message.
-#define YB_RETURN_NOT_OK_PREPEND(s, msg) do { \
+#define K2PG_RETURN_NOT_OK_PREPEND(s, msg) do { \
     auto&& _s = (s); \
     if (PREDICT_FALSE(!_s.ok())) return MoveStatus(_s).CloneAndPrepend(msg); \
   } while (0);
 
 // Return 'to_return' if 'to_call' returns a bad status.  The substitution for 'to_return' may
 // reference the variable 's' for the bad status.
-#define YB_RETURN_NOT_OK_RET(to_call, to_return) do { \
+#define K2PG_RETURN_NOT_OK_RET(to_call, to_return) do { \
     ::k2pg::Status s = (to_call); \
     if (PREDICT_FALSE(!s.ok())) return (to_return);  \
   } while (0);
 
-#define YB_DFATAL_OR_RETURN_NOT_OK(s) do { \
+#define K2PG_DFATAL_OR_RETURN_NOT_OK(s) do { \
     LOG_IF(DFATAL, !s.ok()) << s; \
-    YB_RETURN_NOT_OK(s); \
+    K2PG_RETURN_NOT_OK(s); \
   } while (0);
 
-#define YB_DFATAL_OR_RETURN_ERROR_IF(condition, s) do { \
+#define K2PG_DFATAL_OR_RETURN_ERROR_IF(condition, s) do { \
     if (PREDICT_FALSE(condition)) { \
       DCHECK(!s.ok()) << "Invalid OK status"; \
       LOG(DFATAL) << s; \
@@ -76,17 +76,17 @@
   } while (0);
 
 // Emit a warning if 'to_call' returns a bad status.
-#define YB_WARN_NOT_OK(to_call, warning_prefix) do { \
+#define K2PG_WARN_NOT_OK(to_call, warning_prefix) do { \
     ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
-      YB_LOG(WARNING) << (warning_prefix) << ": " << _s.ToString();  \
+      K2PG_LOG(WARNING) << (warning_prefix) << ": " << _s.ToString();  \
     } \
   } while (0);
 
 #define WARN_WITH_PREFIX_NOT_OK(to_call, warning_prefix) do { \
     ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
-      YB_LOG(WARNING) << LogPrefix() << (warning_prefix) << ": " << _s; \
+      K2PG_LOG(WARNING) << LogPrefix() << (warning_prefix) << ": " << _s; \
     } \
   } while (0);
 
@@ -94,41 +94,41 @@
 #define ERROR_NOT_OK(to_call, error_prefix) do { \
     ::k2pg::Status _s = (to_call); \
     if (PREDICT_FALSE(!_s.ok())) { \
-      YB_LOG(ERROR) << (error_prefix) << ": " << _s.ToString();  \
+      K2PG_LOG(ERROR) << (error_prefix) << ": " << _s.ToString();  \
     } \
   } while (0);
 
 // Log the given status and return immediately.
-#define YB_LOG_AND_RETURN(level, status) do { \
+#define K2PG_LOG_AND_RETURN(level, status) do { \
     ::k2pg::Status _s = (status); \
-    YB_LOG(level) << _s.ToString(); \
+    K2PG_LOG(level) << _s.ToString(); \
     return _s; \
   } while (0);
 
 // If 'to_call' returns a bad status, CHECK immediately with a logged message of 'msg' followed by
 // the status.
-#define YB_CHECK_OK_PREPEND(to_call, msg) do { \
+#define K2PG_CHECK_OK_PREPEND(to_call, msg) do { \
   auto&& _s = (to_call); \
-  YB_CHECK(_s.ok()) << (msg) << ": " << StatusToString(_s); \
+  K2PG_CHECK(_s.ok()) << (msg) << ": " << StatusToString(_s); \
   } while (0);
 
 // If the status is bad, CHECK immediately, appending the status to the logged message.
-#define YB_CHECK_OK(s) YB_CHECK_OK_PREPEND(s, "Bad status")
+#define K2PG_CHECK_OK(s) K2PG_CHECK_OK_PREPEND(s, "Bad status")
 
-#define RETURN_NOT_OK           YB_RETURN_NOT_OK
-#define RETURN_NOT_OK_PREPEND   YB_RETURN_NOT_OK_PREPEND
-#define RETURN_NOT_OK_RET       YB_RETURN_NOT_OK_RET
+#define RETURN_NOT_OK           K2PG_RETURN_NOT_OK
+#define RETURN_NOT_OK_PREPEND   K2PG_RETURN_NOT_OK_PREPEND
+#define RETURN_NOT_OK_RET       K2PG_RETURN_NOT_OK_RET
 // If status is not OK, this will FATAL in debug mode, or return the error otherwise.
-#define DFATAL_OR_RETURN_NOT_OK YB_DFATAL_OR_RETURN_NOT_OK
-#define DFATAL_OR_RETURN_ERROR_IF  YB_DFATAL_OR_RETURN_ERROR_IF
-#define WARN_NOT_OK             YB_WARN_NOT_OK
-#define LOG_AND_RETURN          YB_LOG_AND_RETURN
-#define CHECK_OK_PREPEND        YB_CHECK_OK_PREPEND
-#define CHECK_OK                YB_CHECK_OK
+#define DFATAL_OR_RETURN_NOT_OK K2PG_DFATAL_OR_RETURN_NOT_OK
+#define DFATAL_OR_RETURN_ERROR_IF  K2PG_DFATAL_OR_RETURN_ERROR_IF
+#define WARN_NOT_OK             K2PG_WARN_NOT_OK
+#define LOG_AND_RETURN          K2PG_LOG_AND_RETURN
+#define CHECK_OK_PREPEND        K2PG_CHECK_OK_PREPEND
+#define CHECK_OK                K2PG_CHECK_OK
 
 // These are standard glog macros.
-#define YB_LOG              LOG
-#define YB_CHECK            CHECK
+#define K2PG_LOG              LOG
+#define K2PG_CHECK            CHECK
 
 extern "C" {
 
@@ -138,7 +138,7 @@ struct YBCStatusStruct;
 
 namespace k2pg {
 
-#define YB_STATUS_CODES \
+#define K2PG_STATUS_CODES \
     ((Ok, OK, 0, "OK")) \
     ((NotFound, NOT_FOUND, 1, "Not found")) \
     ((Corruption, CORRUPTION, 2, "Corruption")) \
@@ -173,16 +173,16 @@ namespace k2pg {
     ((SnapshotTooOld, SNAPSHOT_TOO_OLD, 30, "Snapshot too old")) \
     /**/
 
-#define YB_STATUS_CODE_DECLARE(name, pb_name, value, message) \
+#define K2PG_STATUS_CODE_DECLARE(name, pb_name, value, message) \
     BOOST_PP_CAT(k, name) = value,
 
-#define YB_STATUS_CODE_IS_FUNC(name, pb_name, value, message) \
+#define K2PG_STATUS_CODE_IS_FUNC(name, pb_name, value, message) \
     bool BOOST_PP_CAT(Is, name)() const { \
       return code() == BOOST_PP_CAT(k, name); \
     } \
     /**/
 
-#define YB_STATUS_FORWARD_MACRO(r, data, tuple) data tuple
+#define K2PG_STATUS_FORWARD_MACRO(r, data, tuple) data tuple
 
 // Extra error code assigned to status.
 class StatusErrorCode {
@@ -377,7 +377,7 @@ class STATUS_NODISCARD_CLASS Status {
   bool ok() const { return state_ == nullptr; }
 
   // Declares set of Is* functions
-  BOOST_PP_SEQ_FOR_EACH(YB_STATUS_FORWARD_MACRO, YB_STATUS_CODE_IS_FUNC, YB_STATUS_CODES)
+  BOOST_PP_SEQ_FOR_EACH(K2PG_STATUS_FORWARD_MACRO, K2PG_STATUS_CODE_IS_FUNC, K2PG_STATUS_CODES)
 
   // Returns a text message of this status to be reported to users.
   // Returns empty string for success.
@@ -430,7 +430,7 @@ class STATUS_NODISCARD_CLASS Status {
   size_t memory_footprint_including_this() const;
 
   enum Code : int32_t {
-    BOOST_PP_SEQ_FOR_EACH(YB_STATUS_FORWARD_MACRO, YB_STATUS_CODE_DECLARE, YB_STATUS_CODES)
+    BOOST_PP_SEQ_FOR_EACH(K2PG_STATUS_FORWARD_MACRO, K2PG_STATUS_CODE_DECLARE, K2PG_STATUS_CODES)
   };
 
   Status(Code code,

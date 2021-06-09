@@ -70,7 +70,7 @@
 #include "utils/typcache.h"
 
 // YB includes
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* State shared by transformCreateStmt and its subroutines */
 typedef struct
@@ -778,7 +778,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 					constraint->keys = list_make1(makeString(column->colname));
 				if (IsYugaByteEnabled())
 				{
-					if (constraint->yb_index_params == NIL)
+					if (constraint->k2pg_index_params == NIL)
 					{
 						IndexElem *index_elem = makeNode(IndexElem);
 						index_elem->name = pstrdup(column->colname);
@@ -788,7 +788,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 						index_elem->opclass = NIL;
 						index_elem->ordering = SORTBY_DEFAULT;
 						index_elem->nulls_ordering = SORTBY_NULLS_DEFAULT;
-						constraint->yb_index_params = list_make1(index_elem);
+						constraint->k2pg_index_params = list_make1(index_elem);
 					}
 				}
 				cxt->ixconstraints = lappend(cxt->ixconstraints, constraint);
@@ -2040,7 +2040,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	index->relation = cxt->relation;
 	index->accessMethod = constraint->access_method ? constraint->access_method :
 			(IsYugaByteEnabled() && index->relation->relpersistence != RELPERSISTENCE_TEMP
-					? DEFAULT_YB_INDEX_TYPE
+					? DEFAULT_K2PG_INDEX_TYPE
 					: DEFAULT_INDEX_TYPE);
 	index->options = constraint->options;
 	index->tableSpace = constraint->indexspace;
@@ -2226,7 +2226,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 					index_elem->opclass = NIL;
 					index_elem->ordering = SORTBY_DEFAULT;
 					index_elem->nulls_ordering = SORTBY_NULLS_DEFAULT;
-					constraint->yb_index_params = lappend(constraint->yb_index_params, index_elem);
+					constraint->k2pg_index_params = lappend(constraint->k2pg_index_params, index_elem);
 				}
 				constraint->keys = lappend(constraint->keys, makeString(attname));
 			}
@@ -2272,7 +2272,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	 */
 	else
 	{
-		foreach(lc, constraint->yb_index_params)
+		foreach(lc, constraint->k2pg_index_params)
 		{
 			IndexElem  *index_elem = (IndexElem *)lfirst(lc);
 			char	   *key = index_elem->name;

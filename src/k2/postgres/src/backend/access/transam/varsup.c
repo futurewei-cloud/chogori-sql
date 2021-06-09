@@ -27,7 +27,7 @@
 #include "utils/syscache.h"
 
 #include "commands/ybccmds.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Number of OIDs to prefetch (preallocate) per XLOG write */
 #define VAR_OID_PREFETCH		8192
@@ -37,7 +37,7 @@
  * Given there are multiple Postgres nodes, each node should prefetch
  * in smaller chunks.
  */
-#define YB_OID_PREFETCH	        256
+#define K2PG_OID_PREFETCH	        256
 
 /* pointer to "variable cache" in shared memory (set up by shmem.c) */
 VariableCache ShmemVariableCache = NULL;
@@ -529,7 +529,7 @@ GetNewObjectId(void)
 
 			YBCReserveOids(MyDatabaseId,
 			               ShmemVariableCache->nextOid,
-			               YB_OID_PREFETCH,
+			               K2PG_OID_PREFETCH,
 			               &begin_oid,
 			               &end_oid);
 			ShmemVariableCache->nextOid  = begin_oid;

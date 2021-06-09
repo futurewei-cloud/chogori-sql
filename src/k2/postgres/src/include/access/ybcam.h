@@ -34,7 +34,7 @@
 #include "utils/snapshot.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcExpr.h"
 
 /*
@@ -58,7 +58,7 @@
  */
 typedef struct YbScanDescData
 {
-#define YB_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
+#define K2PG_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
 
 	/* The handle for the internal YB Select statement. */
 	YBCPgStatement handle;
@@ -71,7 +71,7 @@ typedef struct YbScanDescData
 	ScanKey key;
 
 	TupleDesc target_desc;
-	AttrNumber target_key_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber target_key_attnums[K2PG_MAX_SCAN_KEYS];
 
 	/* Oid of the table being scanned */
 	Oid tableOid;
@@ -82,7 +82,7 @@ typedef struct YbScanDescData
 	/*
 	 * Kept execution control to pass it to PgGate.
 	 * - When YBC-index-scan layer is called by Postgres IndexScan functions, it will read the
-	 *   "yb_exec_params" from Postgres IndexScan and kept the info in this attribute.
+	 *   "k2pg_exec_params" from Postgres IndexScan and kept the info in this attribute.
 	 *
 	 * - YBC-index-scan in-turn will passes this attribute to PgGate to control the index-scan
 	 *   execution in YB tablet server.

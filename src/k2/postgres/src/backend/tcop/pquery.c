@@ -27,7 +27,7 @@
 #include "utils/memutils.h"
 #include "utils/snapmgr.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcModifyTable.h"
 #include "optimizer/ybcplan.h"
 
@@ -161,7 +161,7 @@ ProcessQuery(PlannedStmt *plan,
 	ExecutorStart(queryDesc, 0);
 
 	/* Set whether this is a single-row, single-stmt modify, used in YB mode. */
-	queryDesc->estate->es_yb_is_single_row_modify_txn =
+	queryDesc->estate->es_k2pg_is_single_row_modify_txn =
 		isSingleRowModifyTxn && queryDesc->estate->es_num_result_relations == 1 &&
 		YBCIsSingleRowTxnCapableRel(&queryDesc->estate->es_result_relations[0]);
 

@@ -45,7 +45,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
  /* #define CACHEDEBUG */	/* turns DEBUG elogs on */
 

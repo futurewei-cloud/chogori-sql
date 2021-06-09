@@ -48,7 +48,7 @@
 #include "utils/snapmgr.h"
 
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "access/nbtree.h"
 
 typedef struct YbScanPlanData
@@ -65,7 +65,7 @@ typedef struct YbScanPlanData
 
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
-	AttrNumber bind_key_attnums[YB_MAX_SCAN_KEYS];
+	AttrNumber bind_key_attnums[K2PG_MAX_SCAN_KEYS];
 } YbScanPlanData;
 
 typedef YbScanPlanData *YbScanPlan;
@@ -1073,11 +1073,11 @@ static void ybcSetupTargets(Relation relation,
 YbScanDesc
 ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
 {
-	if (nkeys > YB_MAX_SCAN_KEYS)
+	if (nkeys > K2PG_MAX_SCAN_KEYS)
 		ereport(ERROR,
 				(errcode(ERRCODE_TOO_MANY_COLUMNS),
 				 errmsg("cannot use more than %d predicates in a table or index scan",
-						YB_MAX_SCAN_KEYS)));
+						K2PG_MAX_SCAN_KEYS)));
 
 	/* Set up YugaByte scan description */
 	YbScanDesc ybScan = (YbScanDesc) palloc0(sizeof(YbScanDescData));
@@ -1110,7 +1110,7 @@ ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, Sc
 	if (!IsSystemRelation(relation))
 	{
 		HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybScan->handle,
-		                                                        yb_catalog_cache_version),
+		                                                        k2pg_catalog_cache_version),
 		                            ybScan->handle,
 		                            ybScan->stmt_owner);
 	}
@@ -1434,17 +1434,17 @@ void ybcCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 	 *   - uncovered index scan is more costly than index-only or seq scan because
 	 *     it requires extra request to the main table.
 	 */
-	Cost yb_per_tuple_cost_factor = 10;
+	Cost k2pg_per_tuple_cost_factor = 10;
 	if (is_backwards_scan)
 	{
-		yb_per_tuple_cost_factor *= YBC_BACKWARDS_SCAN_COST_FACTOR;
+		k2pg_per_tuple_cost_factor *= YBC_BACKWARDS_SCAN_COST_FACTOR;
 	}
 	if (is_uncovered_idx_scan)
 	{
-		yb_per_tuple_cost_factor *= YBC_UNCOVERED_INDEX_COST_FACTOR;
+		k2pg_per_tuple_cost_factor *= YBC_UNCOVERED_INDEX_COST_FACTOR;
 	}
 
-	Cost cost_per_tuple = cpu_tuple_cost * yb_per_tuple_cost_factor +
+	Cost cost_per_tuple = cpu_tuple_cost * k2pg_per_tuple_cost_factor +
 	                      baserel->baserestrictcost.per_tuple;
 
 	*startup_cost = baserel->baserestrictcost.startup;

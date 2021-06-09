@@ -67,7 +67,7 @@
 #include "common/file_utils.h"
 #include "common/restricted_token.h"
 #include "common/username.h"
-#include "common/pg_yb_common.h"
+#include "common/pg_k2pg_common.h"
 #include "fe_utils/string_utils.h"
 #include "getaddrinfo.h"
 #include "getopt_long.h"
@@ -272,7 +272,7 @@ static void check_locale_name(int category, const char *locale,
 static bool check_locale_encoding(const char *locale, int encoding);
 static void setlocales(void);
 static void usage(const char *progname);
-static int yb_pclose_check(FILE *stream);
+static int k2pg_pclose_check(FILE *stream);
 void		setup_pgdata(void);
 void		setup_bin_paths(const char *argv0);
 void		setup_data_file_paths(void);
@@ -298,10 +298,10 @@ do { \
 
 #define PG_CMD_CLOSE \
 do { \
-  int exit_code = yb_pclose_check(cmdfd); \
-	/* message already printed by yb_pclose_check */ \
+  int exit_code = k2pg_pclose_check(cmdfd); \
+	/* message already printed by k2pg_pclose_check */ \
 	if (exit_code) \
-		exit_nicely_with_code(exit_code == YB_INITDB_ALREADY_DONE_EXIT_CODE ? 0 : 1); \
+		exit_nicely_with_code(exit_code == K2PG_INITDB_ALREADY_DONE_EXIT_CODE ? 0 : 1); \
 } while (0)
 
 #define PG_CMD_PUTS(line) \
@@ -336,12 +336,12 @@ static bool IsEnvSet(const char* name)
 
 static bool IsYugaByteGlobalClusterInitdb()
 {
-	return IsEnvSet("YB_ENABLED_IN_POSTGRES");
+	return IsEnvSet("K2PG_ENABLED_IN_POSTGRES");
 }
 
 static bool IsYugaByteLocalNodeInitdb()
 {
-	return IsEnvSet("YB_PG_LOCAL_NODE_INITDB");
+	return IsEnvSet("K2PG_LOCAL_NODE_INITDB");
 }
 
 /*
@@ -352,7 +352,7 @@ static bool IsYugaByteLocalNodeInitdb()
  * snapshot.
  */
 static int
-yb_pclose_check(FILE *stream)
+k2pg_pclose_check(FILE *stream)
 {
 	int			exitstatus;
 	char	   *reason;
@@ -370,7 +370,7 @@ yb_pclose_check(FILE *stream)
 	}
 	else
 	{
-		if (WEXITSTATUS(exitstatus) == YB_INITDB_ALREADY_DONE_EXIT_CODE) {
+		if (WEXITSTATUS(exitstatus) == K2PG_INITDB_ALREADY_DONE_EXIT_CODE) {
 			fprintf(stderr, "initdb has already been run previously, nothing to do\n");
 		} else {
 			reason = wait_result_to_str(exitstatus);
@@ -2760,7 +2760,7 @@ void
 setup_data_file_paths(void)
 {
   if (IsYugaByteGlobalClusterInitdb())
-    set_input(&bki_file, "yb_postgres.bki");
+    set_input(&bki_file, "k2pg_postgres.bki");
   else
     set_input(&bki_file, "postgres.bki");
 	set_input(&desc_file, "postgres.description");
@@ -2773,7 +2773,7 @@ setup_data_file_paths(void)
 	set_input(&info_schema_file, "information_schema.sql");
 	set_input(&features_file, "sql_features.txt");
 	if (IsYugaByteGlobalClusterInitdb())
-		set_input(&system_views_file, "yb_system_views.sql");
+		set_input(&system_views_file, "k2pg_system_views.sql");
 	else
 		set_input(&system_views_file, "system_views.sql");
 	if (show_setting || debug)

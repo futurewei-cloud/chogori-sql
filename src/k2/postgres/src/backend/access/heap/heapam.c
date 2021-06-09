@@ -80,7 +80,7 @@
 #include "executor/executor.h"
 
 #include "executor/ybcModifyTable.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* GUC variable */
 bool		synchronize_seqscans = true;

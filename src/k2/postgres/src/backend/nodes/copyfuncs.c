@@ -2862,7 +2862,7 @@ _copyIndexElem(const IndexElem *from)
 	COPY_NODE_FIELD(opclass);
 	COPY_SCALAR_FIELD(ordering);
 	COPY_SCALAR_FIELD(nulls_ordering);
-	COPY_NODE_FIELD(yb_name_list);
+	COPY_NODE_FIELD(k2pg_name_list);
 
 	return newnode;
 }
@@ -2925,7 +2925,7 @@ _copyConstraint(const Constraint *from)
 	COPY_SCALAR_FIELD(old_pktable_oid);
 	COPY_SCALAR_FIELD(skip_validation);
 	COPY_SCALAR_FIELD(initially_valid);
-	COPY_NODE_FIELD(yb_index_params);
+	COPY_NODE_FIELD(k2pg_index_params);
 
 	return newnode;
 }

@@ -1,5 +1,5 @@
 --
--- YB_TABLE Testsuite: Testing DDL Statments for TABLE.
+-- K2PG_TABLE Testsuite: Testing DDL Statments for TABLE.
 --
 --
 -- CREATE TABLE AS SELECT

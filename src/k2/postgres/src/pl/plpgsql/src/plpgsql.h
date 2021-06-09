@@ -976,7 +976,7 @@ typedef struct PLpgSQL_function
 	struct PLpgSQL_execstate *cur_estate;
 	unsigned long use_count;
 
-	uint64 yb_catalog_version; /* Catalog version when this function was compiled */
+	uint64 k2pg_catalog_version; /* Catalog version when this function was compiled */
 } PLpgSQL_function;
 
 /*

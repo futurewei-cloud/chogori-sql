@@ -77,7 +77,7 @@
 #include "utils/timeout.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static HeapTuple GetDatabaseTuple(const char *dbname);
 static HeapTuple GetDatabaseTupleByOid(Oid dboid);
@@ -1026,7 +1026,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
 	{
-		YBCPgGetCatalogMasterVersion(&yb_catalog_cache_version);
+		YBCPgGetCatalogMasterVersion(&k2pg_catalog_cache_version);
 	}
 	RelationCacheInitializePhase3();
 

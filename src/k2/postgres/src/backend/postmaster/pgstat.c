@@ -70,7 +70,7 @@
 #include "utils/tqual.h"
 
 #include "catalog/pg_database.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "utils/syscache.h"
 
 /* ----------

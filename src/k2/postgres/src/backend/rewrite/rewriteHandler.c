@@ -39,7 +39,7 @@
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "executor/ybcModifyTable.h"
 
 /* We use a list of these to detect recursion in RewriteQuery */
@@ -1323,10 +1323,10 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 	if (IsYBRelation(target_relation))
 	{
 		/*
-		 * If there are secondary indices on the target table, or if we have a 
-		 * row-level trigger corresponding to the operations, then also return 
+		 * If there are secondary indices on the target table, or if we have a
+		 * row-level trigger corresponding to the operations, then also return
 		 * the whole row.
-		 */	
+		 */
 		if (YBRelHasOldRowTriggers(target_relation, parsetree->commandType) ||
 		    YBRelHasSecondaryIndices(target_relation))
 		{

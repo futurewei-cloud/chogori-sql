@@ -51,7 +51,7 @@
 
 #include "utils/syscache.h"
 #include "pggate/pg_gate_api.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * Hack to ensure that the next CommandCounterIncrement() will call
@@ -294,7 +294,7 @@ static void YBCExecWriteStmt(YBCPgStatement ybc_stmt, Relation rel, int *rows_af
 		HandleYBStatus(YBCPgSetIsSysCatalogVersionChange(ybc_stmt));
 	}
 
-	HandleYBStatus(YBCPgSetCatalogCacheVersion(ybc_stmt, yb_catalog_cache_version));
+	HandleYBStatus(YBCPgSetCatalogCacheVersion(ybc_stmt, k2pg_catalog_cache_version));
 
 	/* Execute the insert. */
 	HandleYBStatus(YBCPgDmlExecWriteOp(ybc_stmt, rows_affected_count));
@@ -312,7 +312,7 @@ static void YBCExecWriteStmt(YBCPgStatement ybc_stmt, Relation rel, int *rows_af
 	if (is_syscatalog_version_change)
 	{
 		// TODO(shane) also update the shared memory catalog version here.
-		yb_catalog_cache_version += 1;
+		k2pg_catalog_cache_version += 1;
 	}
 }
 
@@ -489,7 +489,7 @@ Oid YBCHeapInsert(TupleTableSlot *slot,
 	ResultRelInfo *resultRelInfo = estate->es_result_relation_info;
 	Relation resultRelationDesc = resultRelInfo->ri_RelationDesc;
 
-	if (estate->es_yb_is_single_row_modify_txn)
+	if (estate->es_k2pg_is_single_row_modify_txn)
 	{
 		/*
 		 * Try to execute the statement as a single row transaction (rather
@@ -557,13 +557,13 @@ bool YBCExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modify
 	Oid            dboid          = YBCGetDatabaseOid(rel);
 	Oid            relid          = RelationGetRelid(rel);
 	YBCPgStatement delete_stmt    = NULL;
-	bool           isSingleRow    = mtstate->yb_mt_is_single_row_update_or_delete;
+	bool           isSingleRow    = mtstate->k2pg_mt_is_single_row_update_or_delete;
 	Datum          ybctid         = 0;
 
 	/* Create DELETE request. */
 	HandleYBStatus(YBCPgNewDelete(dboid,
 								  relid,
-								  estate->es_yb_is_single_row_modify_txn,
+								  estate->es_k2pg_is_single_row_modify_txn,
 								  &delete_stmt));
 
 	/*
@@ -645,13 +645,13 @@ bool YBCExecuteUpdate(Relation rel,
 	Oid            dboid          = YBCGetDatabaseOid(rel);
 	Oid            relid          = RelationGetRelid(rel);
 	YBCPgStatement update_stmt    = NULL;
-	bool           isSingleRow    = mtstate->yb_mt_is_single_row_update_or_delete;
+	bool           isSingleRow    = mtstate->k2pg_mt_is_single_row_update_or_delete;
 	Datum          ybctid         = 0;
 
 	/* Create update statement. */
 	HandleYBStatus(YBCPgNewUpdate(dboid,
 								  relid,
-								  estate->es_yb_is_single_row_modify_txn,
+								  estate->es_k2pg_is_single_row_modify_txn,
 								  &update_stmt));
 
 	/*

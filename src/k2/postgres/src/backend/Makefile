@@ -51,18 +51,18 @@ ifeq ($(with_systemd),yes)
 LIBS += -lsystemd
 endif
 
-ifndef YB_BUILD_ROOT
-YB_BUILD_ROOT := $(top_builddir)
+ifndef K2PG_BUILD_ROOT
+K2PG_BUILD_ROOT := $(top_builddir)
 endif
-ifneq ($(YB_BUILD_TYPE),compilecmds)
-LIBS += -L$(YB_BUILD_ROOT)/lib
+ifneq ($(K2PG_BUILD_TYPE),compilecmds)
+LIBS += -L$(K2PG_BUILD_ROOT)/lib
 endif
 
 CCLD = $(CXX)
 
 # Shared library configuration (see Makefile_ybpostgres.shlib -- included below)
 PGFILEDESC = "Postgres shared library"
-NAME = yb_pgbackend
+NAME = k2pg_pgbackend
 SO_MAJOR_VERSION= 1
 SO_MINOR_VERSION= $(MAJORVERSION)
 

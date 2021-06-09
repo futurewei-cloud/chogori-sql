@@ -168,15 +168,14 @@ CreateExecutorState(void)
 	MemoryContextSwitchTo(oldcontext);
 
 	/*
-	 * YugaByte-specific fields
-	 * TODO(neil) Rename "es_yb" to "yb_es".  Not sure why they are named this way in the past.
+	 * K2PG-specific fields
 	 */
-	estate->es_yb_is_single_row_modify_txn = false;
-	estate->yb_conflict_slot = NULL;
-	estate->yb_exec_params.limit_count = -1;
-	estate->yb_exec_params.limit_offset = 0;
-	estate->yb_exec_params.limit_use_default = true;
-	estate->yb_exec_params.rowmark = -1;
+	estate->es_k2pg_is_single_row_modify_txn = false;
+	estate->k2pg_conflict_slot = NULL;
+	estate->k2pg_exec_params.limit_count = -1;
+	estate->k2pg_exec_params.limit_offset = 0;
+	estate->k2pg_exec_params.limit_use_default = true;
+	estate->k2pg_exec_params.rowmark = -1;
 
 	return estate;
 }

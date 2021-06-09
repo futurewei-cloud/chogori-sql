@@ -52,7 +52,7 @@
 #include "utils/syscache.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 static void AlterSchemaOwner_internal(HeapTuple tup, Relation rel, Oid newOwnerId);
 

@@ -157,7 +157,7 @@ ExecScan(ScanState *node,
 	 */
 	if (qual)
 	{
-		node->ps.state->yb_exec_params.limit_use_default = true;
+		node->ps.state->k2pg_exec_params.limit_use_default = true;
 	}
 
 	/*

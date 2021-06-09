@@ -74,7 +74,7 @@ ybcinhandler(PG_FUNCTION_ARGS)
 
 	amroutine->ambuild = ybcinbuild;
 	amroutine->ambuildempty = ybcinbuildempty;
-	amroutine->aminsert = NULL; /* use yb_aminsert below instead */
+	amroutine->aminsert = NULL; /* use k2pg_aminsert below instead */
 	amroutine->ambulkdelete = ybcinbulkdelete;
 	amroutine->amvacuumcleanup = ybcinvacuumcleanup;
 	amroutine->amcanreturn = ybcincanreturn;
@@ -92,9 +92,9 @@ ybcinhandler(PG_FUNCTION_ARGS)
 	amroutine->amestimateparallelscan = NULL; /* TODO: support parallel scan */
 	amroutine->aminitparallelscan = NULL;
 	amroutine->amparallelrescan = NULL;
-	amroutine->yb_aminsert = ybcininsert;
-	amroutine->yb_amdelete = ybcindelete;
-	amroutine->yb_ambackfill = ybcinbackfill;
+	amroutine->k2pg_aminsert = ybcininsert;
+	amroutine->k2pg_amdelete = ybcindelete;
+	amroutine->k2pg_ambackfill = ybcinbackfill;
 
 	PG_RETURN_POINTER(amroutine);
 }
@@ -244,7 +244,7 @@ bool
 ybcinproperty(Oid index_oid, int attno, IndexAMProperty prop, const char *propname,
 			  bool *res, bool *isnull)
 {
-	return false;	
+	return false;
 }
 
 bool
@@ -270,7 +270,7 @@ ybcinbeginscan(Relation rel, int nkeys, int norderbys)
 	return scan;
 }
 
-void 
+void
 ybcinrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,	ScanKey orderbys, int norderbys)
 {
 	if (scan->opaque)
@@ -302,7 +302,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	const bool is_forward_scan = (dir == ForwardScanDirection);
 
 	YbScanDesc ybscan = (YbScanDesc) scan->opaque;
-	ybscan->exec_params = scan->yb_exec_params;
+	ybscan->exec_params = scan->k2pg_exec_params;
 	Assert(PointerIsValid(ybscan));
 
 	/*
@@ -333,7 +333,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	return scan->xs_ctup.t_ybctid != 0;
 }
 
-void 
+void
 ybcinendscan(IndexScanDesc scan)
 {
 	YbScanDesc ybscan = (YbScanDesc)scan->opaque;

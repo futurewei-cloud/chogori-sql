@@ -80,7 +80,7 @@
 
 #include "pggate/pg_gate_api.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 Datum YBCDocdbToDatum(const uint8 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs);
 static const YBCPgTypeEntity YBCFixedLenByValTypeEntity;
@@ -129,10 +129,10 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 
 	/* Find the type mapping entry */
 	const YBCPgTypeEntity *type_entity = YBCPgFindTypeEntity(type_id);
-	YBCPgDataType yb_type = YBCPgGetType(type_entity);
+	YBCPgDataType k2pg_type = YBCPgGetType(type_entity);
 
 	/* For non-primitive types, we need to look up the definition */
-	if (yb_type == K2SQL_DATA_TYPE_UNKNOWN_DATA) {
+	if (k2pg_type == K2SQL_DATA_TYPE_UNKNOWN_DATA) {
 		HeapTuple type = typeidType(type_id);
 		Form_pg_type tp = (Form_pg_type) GETSTRUCT(type);
 		Oid basetp_oid = tp->typbasetype;
@@ -158,11 +158,11 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 							YBCPgTypeEntity *fixed_ref_type_entity = (YBCPgTypeEntity *)palloc(
 									sizeof(YBCPgTypeEntity));
 							fixed_ref_type_entity->type_oid = InvalidOid;
-							fixed_ref_type_entity->yb_type = K2SQL_DATA_TYPE_BINARY;
+							fixed_ref_type_entity->k2pg_type = K2SQL_DATA_TYPE_BINARY;
 							fixed_ref_type_entity->allow_for_primary_key = false;
 							fixed_ref_type_entity->datum_fixed_size = tp->typlen;
 							fixed_ref_type_entity->datum_to_yb = (YBCPgDatumToData)YBCDatumToDocdb;
-							fixed_ref_type_entity->yb_to_datum =
+							fixed_ref_type_entity->k2pg_to_datum =
 								(YBCPgDatumFromData)YBCDocdbToDatum;
 							return fixed_ref_type_entity;
 							break;
@@ -186,15 +186,15 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 				basetp_oid = ANYRANGEOID;
 				break;
 			default:
-				YB_REPORT_TYPE_NOT_SUPPORTED(type_id);
+				K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id);
 				break;
 		}
 		return YBCDataTypeFromOidMod(InvalidAttrNumber, basetp_oid);
 	}
 
 	/* Report error if type is not supported */
-	if (yb_type == K2SQL_DATA_TYPE_NOT_SUPPORTED) {
-		YB_REPORT_TYPE_NOT_SUPPORTED(type_id);
+	if (k2pg_type == K2SQL_DATA_TYPE_NOT_SUPPORTED) {
+		K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id);
 	}
 
 	/* Return the type-mapping entry */

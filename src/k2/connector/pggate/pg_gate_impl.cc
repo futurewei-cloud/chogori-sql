@@ -682,7 +682,7 @@ Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDe
                                     int32_t nattrs, uint64_t *ybctid) {
   const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
   const YBCPgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
-  *ybctid = type_entity->yb_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
+  *ybctid = type_entity->k2pg_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();
 }
 

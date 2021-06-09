@@ -1,5 +1,5 @@
 --
--- YB_FEATURE Testsuite: COPY
+-- K2PG_FEATURE Testsuite: COPY
 --
 CREATE TABLE x (
 	a int,

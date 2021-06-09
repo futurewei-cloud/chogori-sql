@@ -1,5 +1,5 @@
 // compile with
-// export YB_COMPILER_TYPE=gcc
+// export K2PG_COMPILER_TYPE=gcc
 // export LD_LIBRARY_PATH=/build/build/src/k2/connector/common/:/build/build/src/k2/connector/entities/:/build/src/k2/postgres/lib
 // g++ -O3 -std=c++17 -I../src/k2/postgres/include/ -L../src/k2/postgres/lib/ pg_test.cpp Logging.cpp -o pg_test -lpq
 #include <libpq-fe.h>

@@ -81,7 +81,7 @@
 #include "utils/syscache.h"
 
 #include "catalog/pg_attrdef.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*---------------------------------------------------------------------------
 
@@ -1027,7 +1027,7 @@ YBSysTablePrimaryKey(Oid relid)
 		case PublicationRelationId:
 		case RelationRelationId:
 		case RewriteRelationId:
-		case StatisticExtRelationId:				
+		case StatisticExtRelationId:
 		case SubscriptionRelationId:
 		case TSConfigRelationId:
 		case TSDictionaryRelationId:

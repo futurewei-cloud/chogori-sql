@@ -34,7 +34,7 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 #define MAX_FUZZY_DISTANCE				3
 

@@ -1553,7 +1553,7 @@ k2_agg_pushdown(AggState *aggstate)
 
 		pushdown_aggs = lappend(pushdown_aggs, aggref);
 	}
-	scan_state->yb_fdw_aggs = pushdown_aggs;
+	scan_state->k2pg_fdw_aggs = pushdown_aggs;
 	/* Disable projection for tuples produced by pushed down aggregate operators. */
 	scan_state->ss.ps.ps_ProjInfo = NULL;
 }
@@ -1590,7 +1590,7 @@ ExecAgg(PlanState *pstate)
 		 */
 		if (IsYugaByteEnabled())
 		{
-			pstate->state->yb_exec_params.limit_use_default = true;
+			pstate->state->k2pg_exec_params.limit_use_default = true;
 			if (node->k2_pushdown_supported)
 				k2_agg_pushdown(node);
 		}

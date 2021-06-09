@@ -114,7 +114,7 @@
 #include "utils/sortsupport.h"
 #include "utils/tuplesort.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* sort-type codes for sort__start probes */
 #define HEAP_SORT		0

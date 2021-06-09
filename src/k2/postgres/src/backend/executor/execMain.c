@@ -66,7 +66,7 @@
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Hooks for plugins to get control in ExecutorStart/Run/Finish/End */
 ExecutorStart_hook_type ExecutorStart_hook = NULL;
@@ -2002,7 +2002,7 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 		{
 			Form_pg_attribute att = TupleDescAttr(tupdesc, attrChk - 1);
 
-			if (mtstate && mtstate->yb_mt_is_single_row_update_or_delete &&
+			if (mtstate && mtstate->k2pg_mt_is_single_row_update_or_delete &&
 			    !bms_is_member(att->attnum - YBGetFirstLowInvalidAttributeNumber(rel), modifiedCols))
 			{
 				/*

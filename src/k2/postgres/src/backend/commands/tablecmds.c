@@ -123,7 +123,7 @@
 
 #include "commands/ybccmds.h"
 #include "executor/ybcModifyTable.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * ON COMMIT action list

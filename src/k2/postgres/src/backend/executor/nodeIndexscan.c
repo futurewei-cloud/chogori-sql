@@ -132,16 +132,16 @@ IndexNext(IndexScanState *node)
 	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
 	 */
 	if (IsYugaByteEnabled()) {
-		scandesc->yb_exec_params = &estate->yb_exec_params;
+		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;
 		// Add row marks.
-		scandesc->yb_exec_params->rowmark = -1;
+		scandesc->k2pg_exec_params->rowmark = -1;
 		ListCell   *l;
 		foreach(l, estate->es_rowMarks) {
 			ExecRowMark *erm = (ExecRowMark *) lfirst(l);
 			// Do not propogate non-row-locking row marks.
 			if (erm->markType != ROW_MARK_REFERENCE &&
 				erm->markType != ROW_MARK_COPY)
-				scandesc->yb_exec_params->rowmark = erm->markType;
+				scandesc->k2pg_exec_params->rowmark = erm->markType;
 			break;
 		}
 	}

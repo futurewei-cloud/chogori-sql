@@ -29,7 +29,7 @@
 #include "utils/resowner_private.h"
 #include "utils/snapmgr.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * All resource IDs managed by this code are required to fit into a Datum,
@@ -178,7 +178,7 @@ static void PrintDSMLeakWarning(dsm_segment *seg);
 /**
  * YugaByte-specific
  */
-static void PrintYugaByteStmtLeakWarning(YBCPgStatement yb_stmt);
+static void PrintYugaByteStmtLeakWarning(YBCPgStatement k2pg_stmt);
 
 /*****************************************************************************
  *	  INTERNAL ROUTINES														 *
@@ -1347,28 +1347,28 @@ ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner)
  * Caller must have previously done ResourceOwnerEnlargeYugaByteStmts()
  */
 void
-ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, YBCPgStatement yb_stmt)
+ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
 {
-	ResourceArrayAdd(&(owner->ybstmtarr), PointerGetDatum(yb_stmt));
+	ResourceArrayAdd(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt));
 }
 
 /*
  * Forget that a YugaByte statement is owned by a ResourceOwner
  */
 void
-ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, YBCPgStatement yb_stmt)
+ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
 {
-	if (!ResourceArrayRemove(&(owner->ybstmtarr), PointerGetDatum(yb_stmt)))
+	if (!ResourceArrayRemove(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt)))
 		elog(ERROR, "YugaByte statement %p is not owned by resource owner %s",
-			 yb_stmt, owner->name);
+			 k2pg_stmt, owner->name);
 }
 
 /*
  * Debugging subroutine
  */
 static void
-PrintYugaByteStmtLeakWarning(YBCPgStatement yb_stmt)
+PrintYugaByteStmtLeakWarning(YBCPgStatement k2pg_stmt)
 {
 	elog(WARNING, "YugaByte statement leak: statement %p still referenced",
-		 yb_stmt);
+		 k2pg_stmt);
 }

@@ -97,7 +97,7 @@
 #include "utils/memutils.h"
 
 #include "access/xact.h"
-#include "libpq/yb_pqcomm_extensions.h"
+#include "libpq/k2pg_pqcomm_extensions.h"
 #include "pggate/pg_gate_api.h"
 
 /*
@@ -315,7 +315,7 @@ socket_close(int code, Datum arg)
 
 
 /*
- * yb_pqcomm_extensions.h
+ * k2pg_pqcomm_extensions.h
  */
 
 /*

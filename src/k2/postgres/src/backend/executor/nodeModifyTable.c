@@ -74,7 +74,7 @@
 #include "catalog/pg_database.h"
 #include "executor/ybcModifyTable.h"
 #include "parser/parsetree.h"
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "optimizer/ybcplan.h"
 
 static bool ExecOnConflictUpdate(ModifyTableState *mtstate,
@@ -300,10 +300,10 @@ ExecInsert(ModifyTableState *mtstate,
 	OnConflictAction onconflict = node->onConflictAction;
 
 	/*
-	 * The attribute "yb_conflict_slot" is only used within ExecInsert.
+	 * The attribute "k2pg_conflict_slot" is only used within ExecInsert.
 	 * Initialize its value to NULL.
 	 */
-	estate->yb_conflict_slot = NULL;
+	estate->k2pg_conflict_slot = NULL;
 
 	/*
 	 * get the heap tuple out of the tuple table slot, making sure we have a
@@ -662,9 +662,9 @@ ExecInsert(ModifyTableState *mtstate,
 		result = ExecProcessReturning(resultRelInfo, slot, planSlot);
 
 conflict_resolved:
-	if (estate->yb_conflict_slot != NULL) {
-		ExecDropSingleTupleTableSlot(estate->yb_conflict_slot);
-		estate->yb_conflict_slot = NULL;
+	if (estate->k2pg_conflict_slot != NULL) {
+		ExecDropSingleTupleTableSlot(estate->k2pg_conflict_slot);
+		estate->k2pg_conflict_slot = NULL;
 	}
 	return result;
 }
@@ -965,7 +965,7 @@ ldelete:;
 		}
 		else if (IsYBRelation(resultRelationDesc))
 		{
-			if (mtstate->yb_mt_is_single_row_update_or_delete)
+			if (mtstate->k2pg_mt_is_single_row_update_or_delete)
 			{
 				slot = planSlot;
 			}
@@ -1553,7 +1553,7 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 		ItemPointerSetInvalid(&(tuple.t_self));
 		tuple.t_ybctid = (Datum) 0;
 
-		goto yb_skip_transaction_control_check;
+		goto k2pg_skip_transaction_control_check;
 	}
 
 	/* Determine lock mode to use */
@@ -1641,7 +1641,7 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 			elog(ERROR, "unrecognized heap_lock_tuple status: %u", test);
 	}
 
-yb_skip_transaction_control_check:
+k2pg_skip_transaction_control_check:
 	/*
 	 * Success, the tuple is locked.
 	 *
@@ -1652,7 +1652,7 @@ yb_skip_transaction_control_check:
 
 	if (IsYugaByteEnabled())
 	{
-		oldtuple = ExecMaterializeSlot(estate->yb_conflict_slot);
+		oldtuple = ExecMaterializeSlot(estate->k2pg_conflict_slot);
 		ExecStoreTuple(oldtuple, mtstate->mt_existing, buffer, false);
 		planSlot->tts_tuple->t_ybctid = oldtuple->t_ybctid;
 	}
@@ -2477,7 +2477,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 	mtstate->mt_plans = (PlanState **) palloc0(sizeof(PlanState *) * nplans);
 	mtstate->resultRelInfo = estate->es_result_relations + node->resultRelIndex;
-	mtstate->yb_mt_is_single_row_update_or_delete = YBCIsSingleRowUpdateOrDelete(node);
+	mtstate->k2pg_mt_is_single_row_update_or_delete = YBCIsSingleRowUpdateOrDelete(node);
 
 	/* If modifying a partitioned table, initialize the root table info */
 	if (node->rootResultRelIndex >= 0)
@@ -2836,7 +2836,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 				 * initial scan to populate the ybctid, so there is no junk
 				 * attribute to extract.
 				 */
-				junk_filter_needed = !mtstate->yb_mt_is_single_row_update_or_delete;
+				junk_filter_needed = !mtstate->k2pg_mt_is_single_row_update_or_delete;
 				break;
 			default:
 				elog(ERROR, "unknown operation");

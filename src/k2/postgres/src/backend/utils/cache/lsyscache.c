@@ -14,7 +14,7 @@
  *-------------------------------------------------------------------------
  */
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 #include "postgres.h"
 
 #include "access/hash.h"
@@ -380,7 +380,7 @@ get_mergejoin_opfamilies(Oid opno)
 		Form_pg_amop aform = (Form_pg_amop) GETSTRUCT(tuple);
 
 		/* must be btree equality */
-		if ((aform->amopmethod == BTREE_AM_OID || aform->amopmethod == LSM_AM_OID) && 
+		if ((aform->amopmethod == BTREE_AM_OID || aform->amopmethod == LSM_AM_OID) &&
 			aform->amopstrategy == BTEqualStrategyNumber)
 			result = lappend_oid(result, aform->amopfamily);
 	}

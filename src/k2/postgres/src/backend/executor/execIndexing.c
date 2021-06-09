@@ -849,9 +849,9 @@ check_exclusion_or_unique_constraint(Relation heap, Relation index,
 	econtext = GetPerTupleExprContext(estate);
 	save_scantuple = econtext->ecxt_scantuple;
 	econtext->ecxt_scantuple = existing_slot;
-	if (estate->yb_conflict_slot != NULL) {
-		ExecDropSingleTupleTableSlot(estate->yb_conflict_slot);
-		estate->yb_conflict_slot = NULL;
+	if (estate->k2pg_conflict_slot != NULL) {
+		ExecDropSingleTupleTableSlot(estate->k2pg_conflict_slot);
+		estate->k2pg_conflict_slot = NULL;
 	}
 
 	/*
@@ -954,7 +954,7 @@ retry:
 		{
 			conflict = true;
 			if (IsYugaByteEnabled()) {
-				estate->yb_conflict_slot = existing_slot;
+				estate->k2pg_conflict_slot = existing_slot;
 			}
 			if (conflictTid)
 				*conflictTid = tup->t_self;
@@ -999,7 +999,7 @@ retry:
 	 */
 
 	econtext->ecxt_scantuple = save_scantuple;
-	if (estate->yb_conflict_slot == NULL) {
+	if (estate->k2pg_conflict_slot == NULL) {
 		ExecDropSingleTupleTableSlot(existing_slot);
 	}
 	return !conflict;

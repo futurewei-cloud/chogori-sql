@@ -96,7 +96,7 @@ installdirs-tests: installdirs
 
 
 # Get some extra C modules from contrib/spi
-ifneq ($(YB_BUILD_TYPE), compilecmds)
+ifneq ($(K2PG_BUILD_TYPE), compilecmds)
 all: refint$(DLSUFFIX) autoinc$(DLSUFFIX)
 
 refint$(DLSUFFIX): $(top_builddir)/contrib/spi/refint$(DLSUFFIX)

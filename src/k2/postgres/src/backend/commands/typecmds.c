@@ -70,7 +70,7 @@
 #include "utils/syscache.h"
 
 /*  YB includes. */
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* result structure for get_rels_with_domain() */
 typedef struct

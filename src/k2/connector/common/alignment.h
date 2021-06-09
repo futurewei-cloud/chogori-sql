@@ -38,7 +38,7 @@
 namespace k2pg {
 
 // Round down 'x' to the nearest 'align' boundary
-#define YB_ALIGN_DOWN(x, align) ((x) & (-(align)))
+#define K2PG_ALIGN_DOWN(x, align) ((x) & (-(align)))
 
 template<class T>
 class AlignmentTraits {

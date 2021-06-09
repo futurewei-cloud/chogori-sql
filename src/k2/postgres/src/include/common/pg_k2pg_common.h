@@ -1,5 +1,5 @@
 /* ----------
- * pg_yb_utils.h
+ * pg_k2pg_utils.h
  *
  * Common utilities for YugaByte/PostgreSQL integration that are reused between
  * PostgreSQL server code and other PostgreSQL programs such as initdb.
@@ -18,14 +18,14 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  *
- * src/common/pg_yb_common.h
+ * src/common/pg_k2pg_common.h
  * ----------
  */
 
-#ifndef PG_YB_COMMON_H
-#define PG_YB_COMMON_H
+#ifndef PG_K2PG_COMMON_H
+#define PG_K2PG_COMMON_H
 
-#define YB_INITDB_ALREADY_DONE_EXIT_CODE 125
+#define K2PG_INITDB_ALREADY_DONE_EXIT_CODE 125
 
 /**
  * Checks if the given environment variable is set to a "true" value (e.g. "1").
@@ -42,7 +42,7 @@ extern bool YBCIsEnvVarTrueWithDefault(
     bool default_value);
 
 /**
- * Checks if the YB_ENABLED_IN_POSTGRES is set. This is different from
+ * Checks if the K2PG_ENABLED_IN_POSTGRES is set. This is different from
  * IsYugaByteEnabled(), because the IsYugaByteEnabled() also checks that we are
  * in the "normal processing mode" and we have a YB client session.
  */
@@ -83,4 +83,4 @@ extern int YBUnsupportedFeatureSignalLevel();
  */
 extern bool YBIsNonTxnCopyEnabled();
 
-#endif /* PG_YB_COMMON_H */
+#endif /* PG_K2PG_COMMON_H */

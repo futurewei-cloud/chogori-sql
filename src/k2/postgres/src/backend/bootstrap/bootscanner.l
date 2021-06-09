@@ -109,7 +109,7 @@ _null_			{ return NULLVAL; }
 ^\#[^\n]* 		;		/* drop everything after "#" for comments */
 
 declare			{ yylval.kw = "declare"; return XDECLARE; }
-yb_declare		{ yylval.kw = "yb_declare"; return YBDECLARE; } /* For YugaByte pkeys */
+k2pg_declare		{ yylval.kw = "k2pg_declare"; return YBDECLARE; } /* For YugaByte pkeys */
 build			{ yylval.kw = "build"; return XBUILD; }
 indices			{ yylval.kw = "indices"; return INDICES; }
 unique			{ yylval.kw = "unique"; return UNIQUE; }
@@ -121,7 +121,7 @@ toast			{ yylval.kw = "toast"; return XTOAST; }
 FORCE			{ yylval.kw = "FORCE"; return XFORCE; }
 NOT				{ yylval.kw = "NOT"; return XNOT; }
 NULL			{ yylval.kw = "NULL"; return XNULL; }
-yb_check_if_initdb_is_already_done { yylval.kw = "yb_check_if_initdb_is_already_done"; return YBCHECKINITDBDONE; }
+k2pg_check_if_initdb_is_already_done { yylval.kw = "k2pg_check_if_initdb_is_already_done"; return YBCHECKINITDBDONE; }
 {id}			{
 					yylval.str = scanstr(yytext);
 					return ID;

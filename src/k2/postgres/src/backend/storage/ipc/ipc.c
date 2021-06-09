@@ -31,7 +31,7 @@
 #include "storage/ipc.h"
 #include "tcop/tcopprot.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /*
  * This flag is set during proc_exit() to change ereport()'s behavior,

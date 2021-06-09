@@ -36,7 +36,7 @@ void SqlValue::Clear() {
 SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null) {
   null_value_ = is_null;
 
- switch (type_entity->yb_type) {
+ switch (type_entity->k2pg_type) {
     case K2SQL_DATA_TYPE_INT8:
       type_ = ValueType::INT;
       if (!is_null) {
@@ -182,7 +182,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
     case K2SQL_DATA_TYPE_DATE: // Not used for PG storage
     case K2SQL_DATA_TYPE_TIME: // Not used for PG storage
     default:
-      LOG(DFATAL) << "Internal error: unsupported type " << type_entity->yb_type;
+      LOG(DFATAL) << "Internal error: unsupported type " << type_entity->k2pg_type;
   }
 }
 

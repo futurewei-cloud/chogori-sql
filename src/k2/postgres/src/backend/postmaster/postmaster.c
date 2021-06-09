@@ -132,8 +132,8 @@
 #include "utils/timeout.h"
 #include "utils/varlena.h"
 
-#include "common/pg_yb_common.h"
-#include "pg_yb_utils.h"
+#include "common/pg_k2pg_common.h"
+#include "pg_k2pg_utils.h"
 
 #ifdef EXEC_BACKEND
 #include "storage/spin.h"
@@ -1653,7 +1653,7 @@ ServerLoop(void)
 
 	nSockets = initMasks(&readmask);
 #ifdef __APPLE__
-	bool yb_enabled = YBIsEnabledInPostgresEnvVar();
+	bool k2pg_enabled = YBIsEnabledInPostgresEnvVar();
 #endif
 
 	for (;;)
@@ -1720,7 +1720,7 @@ ServerLoop(void)
 
 #ifdef __APPLE__
 			// If STDIN is closed, it means that parent did exit
-			if (yb_enabled && FD_ISSET(STDIN_FILENO, &rmask)) {
+			if (k2pg_enabled && FD_ISSET(STDIN_FILENO, &rmask)) {
 				return STATUS_OK;
 			}
 #endif

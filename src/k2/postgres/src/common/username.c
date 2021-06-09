@@ -69,17 +69,17 @@ get_user_name(char **errstr)
      * an LDAP environment. This is probably caused by our Linuxbrew
      * installation issues.
      * (1) Read username using `id` system command.
-     * (2) If (1) fails, then read YB_PG_FALLBACK_SYSTEM_USER_NAME environment variable
+     * (2) If (1) fails, then read K2PG_FALLBACK_SYSTEM_USER_NAME environment variable
      */
 	  const char* username = read_user_id();
 	  if (username) {
 	    return username;
 	  }
 
-		const char* yb_fallback_user_name =
-			getenv("YB_PG_FALLBACK_SYSTEM_USER_NAME");
-		if (yb_fallback_user_name) {
-			return yb_fallback_user_name;
+		const char* k2pg_fallback_user_name =
+			getenv("K2PG_FALLBACK_SYSTEM_USER_NAME");
+		if (k2pg_fallback_user_name) {
+			return k2pg_fallback_user_name;
 		}
 		*errstr = psprintf(_("could not look up effective user ID %ld: %s"),
 						   (long) user_id,

@@ -26,11 +26,11 @@ ifneq (,$(with_system_tzdata))
 override CPPFLAGS += '-DSYSTEMTZDIR="$(with_system_tzdata)"'
 endif
 
-ifndef YB_BUILD_ROOT
-YB_BUILD_ROOT := $(top_builddir)
+ifndef K2PG_BUILD_ROOT
+K2PG_BUILD_ROOT := $(top_builddir)
 endif
 
-LIBS += -L$(YB_BUILD_ROOT)/lib
+LIBS += -L$(K2PG_BUILD_ROOT)/lib
 
 OBJS=	initdb.o findtimezone.o localtime.o encnames.o $(WIN32RES)
 

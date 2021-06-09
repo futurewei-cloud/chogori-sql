@@ -1,8 +1,8 @@
 #!/usr/bin/perl -w
 #----------------------------------------------------------------------
 #
-# yb_genbki.pl
-#    Perl script that generates yb_postgres.bki, postgres.description,
+# k2pg_genbki.pl
+#    Perl script that generates k2pg_postgres.bki, postgres.description,
 #    postgres.shdescription, and symbol definition headers from specially
 #    formatted header files and data files.  The BKI files are used to
 #    initialize the postgres template database.
@@ -256,7 +256,7 @@ my %lookup_kind = (
 
 # Open temp files
 my $tmpext  = ".tmp$$";
-my $bkifile = $output_path . 'yb_postgres.bki';
+my $bkifile = $output_path . 'k2pg_postgres.bki';
 open my $bki, '>', $bkifile . $tmpext
   or die "can't open $bkifile$tmpext: $!";
 
@@ -266,7 +266,7 @@ open my $bki, '>', $bkifile . $tmpext
 # version marker for .bki file
 print $bki "# PostgreSQL $major_version\n";
 
-print $bki "yb_check_if_initdb_is_already_done\n";
+print $bki "k2pg_check_if_initdb_is_already_done\n";
 
 # vars to hold data needed for schemapg.h
 my %schemapg_entries;
@@ -351,7 +351,7 @@ foreach my $catname (@catnames)
     if ($pkidx)
     {
 		$pkidx =~ s/unique index/primary index/;
-        print $bki " yb_" . $pkidx;
+        print $bki " k2pg_" . $pkidx;
         $pkidxs{$pkidxname} = 1;
 	}
 
@@ -449,7 +449,7 @@ foreach my $catname (@catnames)
 			  if defined $symbol;
 		}
 
-		# Write to yb_postgres.bki
+		# Write to k2pg_postgres.bki
 		print_bki_insert(\%bki_values, $schema);
 	}
 
@@ -710,13 +710,13 @@ sub form_pg_type_symbol
 sub usage
 {
 	die <<EOM;
-Usage: yb_genbki.pl [options] header...
+Usage: k2pg_genbki.pl [options] header...
 
 Options:
     -o               output path
     --set-version    PostgreSQL version number for initdb cross-check
 
-yb_genbki.pl generates BKI files and symbol definition
+k2pg_genbki.pl generates BKI files and symbol definition
 headers from specially formatted header files and .dat
 files.  The BKI files are used to initialize the
 postgres template database.

@@ -61,7 +61,7 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 
-#include "pg_yb_utils.h"
+#include "pg_k2pg_utils.h"
 
 /* Our shared memory area */
 typedef struct ProcArrayStruct
