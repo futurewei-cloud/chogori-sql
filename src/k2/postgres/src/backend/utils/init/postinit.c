@@ -1026,7 +1026,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
 	{
-		YBCPgGetCatalogMasterVersion(&k2pg_catalog_cache_version);
+		K2PgGetCatalogMasterVersion(&k2pg_catalog_cache_version);
 	}
 	RelationCacheInitializePhase3();
 
@@ -1035,7 +1035,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
 	{
-		HandleK2PgStatus(YBCPgIsDatabaseColocated(MyDatabaseId,
+		HandleK2PgStatus(K2PgIsDatabaseColocated(MyDatabaseId,
 												&MyDatabaseColocated));
 	}
 

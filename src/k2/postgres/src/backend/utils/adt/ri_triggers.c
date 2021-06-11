@@ -421,7 +421,7 @@ RI_FKey_check(TriggerData *trigdata)
 			riinfo, new_row, (void **)&tuple_id, &tuple_id_size);
 		RelationClose(idx_rel);
 
-		if (tuple_id != NULL && YBCForeignKeyReferenceExists(ref_table_id, tuple_id, tuple_id_size))
+		if (tuple_id != NULL && K2PgForeignKeyReferenceExists(ref_table_id, tuple_id, tuple_id_size))
 		{
 			elog(DEBUG1, "Skipping FK check for table %d, ybctid %s", ref_table_id, tuple_id);
 			heap_close(pk_rel, RowShareLock);
@@ -496,7 +496,7 @@ RI_FKey_check(TriggerData *trigdata)
 	}
 	else if (IsYBRelation(pk_rel) && tuple_id != NULL)
 	{
-		YBCCacheForeignKeyReference(ref_table_id, tuple_id, tuple_id_size);
+		K2PgCacheForeignKeyReference(ref_table_id, tuple_id, tuple_id_size);
 		elog(DEBUG1, "Cached foreign key reference: table ID %u, tuple ID %s",
 			 ref_table_id, tuple_id);
 	}
@@ -2703,7 +2703,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 	prepare_params.use_secondary_index = (RelationGetRelid(idx_rel) == RelationGetRelid(pk_rel)) ?
 			false : true;
 
-	HandleK2PgStatus(YBCPgNewSelect(
+	HandleK2PgStatus(K2PgNewSelect(
 		YBCGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
@@ -2748,7 +2748,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		next_attr->is_null = true;
 	}
 
-	HandleK2PgStatus(YBCPgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(K2PgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
 
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
 	type_entity->datum_to_k2pg(tuple_id, value, bytes);

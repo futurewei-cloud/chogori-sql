@@ -41,29 +41,29 @@ MemoryContext CurrentMemoryContext = NULL;
 
 MemoryContext GetThreadLocalCurrentMemoryContext()
 {
-	return (MemoryContext) YBCPgGetThreadLocalCurrentMemoryContext();
+	return (MemoryContext) K2PgGetThreadLocalCurrentMemoryContext();
 }
 
 MemoryContext SetThreadLocalCurrentMemoryContext(MemoryContext memctx)
 {
-	return (MemoryContext) YBCPgSetThreadLocalCurrentMemoryContext(memctx);
+	return (MemoryContext) K2PgSetThreadLocalCurrentMemoryContext(memctx);
 }
 
 void PrepareThreadLocalCurrentMemoryContext()
 {
-	if (YBCPgGetThreadLocalCurrentMemoryContext() == NULL)
+	if (K2PgGetThreadLocalCurrentMemoryContext() == NULL)
 	{
 		MemoryContext memctx = AllocSetContextCreate((MemoryContext) NULL,
 		                                             "DocDBExprMemoryContext",
 		                                             ALLOCSET_SMALL_SIZES);
-		YBCPgSetThreadLocalCurrentMemoryContext(memctx);
+		K2PgSetThreadLocalCurrentMemoryContext(memctx);
 	}
 }
 
 void ResetThreadLocalCurrentMemoryContext()
 {
-	MemoryContext memctx = (MemoryContext) YBCPgGetThreadLocalCurrentMemoryContext();
-	YBCPgResetCurrentMemCtxThreadLocalVars();
+	MemoryContext memctx = (MemoryContext) K2PgGetThreadLocalCurrentMemoryContext();
+	K2PgResetCurrentMemCtxThreadLocalVars();
 	MemoryContextReset(memctx);
 }
 
@@ -196,7 +196,7 @@ MemoryContextResetOnly(MemoryContext context)
 	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
 	 */
 	if (context->k2pg_memctx) {
-		HandleK2PgStatus(YBCPgResetMemctx(context->k2pg_memctx));
+		HandleK2PgStatus(K2PgResetMemctx(context->k2pg_memctx));
 	}
 
 	/* Nothing to do if no pallocs since startup or last reset */
@@ -291,7 +291,7 @@ MemoryContextDelete(MemoryContext context)
 	/*
 	 * Destroy YugaByte memory context.
 	 */
-	HandleK2PgStatus(YBCPgDestroyMemctx(context->k2pg_memctx));
+	HandleK2PgStatus(K2PgDestroyMemctx(context->k2pg_memctx));
 	context->k2pg_memctx = NULL;
 
 	VALGRIND_DESTROY_MEMPOOL(context);
@@ -1259,7 +1259,7 @@ K2PgMemctx GetCurrentYbMemctx() {
 
 	if (context->k2pg_memctx == NULL) {
 		// Create the yugabyte context if this is the first time it is used.
-		context->k2pg_memctx = YBCPgCreateMemctx();
+		context->k2pg_memctx = K2PgCreateMemctx();
 	}
 
 	return context->k2pg_memctx;

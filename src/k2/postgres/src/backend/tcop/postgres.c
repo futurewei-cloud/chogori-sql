@@ -3693,7 +3693,7 @@ static void YBRefreshCache()
 
 	/* Get the latest syscatalog version from the master */
 	uint64_t catalog_master_version = 0;
-	YBCPgGetCatalogMasterVersion(&catalog_master_version);
+	K2PgGetCatalogMasterVersion(&catalog_master_version);
 
 	/* Need to execute some (read) queries internally so start a local txn. */
 	start_xact_command();
@@ -3704,7 +3704,7 @@ static void YBRefreshCache()
 	YBPreloadRelCache();
 
 	/* Also invalidate the pggate cache. */
-	YBCPgInvalidateCache();
+	K2PgInvalidateCache();
 
 	/* Set the new ysql cache version. */
 	k2pg_catalog_cache_version = catalog_master_version;
@@ -3762,7 +3762,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	 * to refresh the cache.
 	 */
 	uint64_t catalog_master_version = 0;
-	YBCPgGetCatalogMasterVersion(&catalog_master_version);
+	K2PgGetCatalogMasterVersion(&catalog_master_version);
 	need_global_cache_refresh =
 		k2pg_catalog_cache_version != catalog_master_version;
 	if (!(need_global_cache_refresh || need_table_cache_refresh))
@@ -3821,7 +3821,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 				ereport(LOG,
 						(errmsg("invalidating table cache entry %s",
 								table_to_refresh)));
-				HandleK2PgStatus(YBCPgInvalidateTableCacheByTableId(table_to_refresh));
+				HandleK2PgStatus(K2PgInvalidateTableCacheByTableId(table_to_refresh));
 			}
 
 			*need_retry = true;
@@ -3931,11 +3931,11 @@ static void YBCheckSharedCatalogCacheVersion() {
 	 * Don't check shared memory if we are in initdb. E.g. during initial system
 	 * catalog snapshot creation, tablet servers may not be running.
 	 */
-	if (YBCIsInitDbModeEnvVarSet())
+	if (K2PgIsInitDbModeEnvVarSet())
 		return;
 
 	uint64_t shared_catalog_version;
-	HandleK2PgStatus(YBCGetSharedCatalogVersion(&shared_catalog_version));
+	HandleK2PgStatus(K2PgGetSharedCatalogVersion(&shared_catalog_version));
 
 	if (k2pg_catalog_cache_version < shared_catalog_version) {
 		YBRefreshCache();
@@ -3975,7 +3975,7 @@ k2pg_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_dat
 	if (YBIsDataSent())
 		return false;
 
-	if (attempt >= YBCGetMaxReadRestartAttempts())
+	if (attempt >= K2PgGetMaxReadRestartAttempts())
 		return false;
 
 	if (!restart_data)

@@ -34,7 +34,7 @@ static char *GetPgStrTokPtr()
 {
 	if (IsMultiThreadedMode())
 	{
-		return (char *) YBCPgGetThreadLocalStrTokPtr();
+		return (char *) K2PgGetThreadLocalStrTokPtr();
 	}
 	else
 	{
@@ -46,7 +46,7 @@ static void SetPgStrTokPtr(char *new_pg_strtok_ptr)
 {
 	if (IsMultiThreadedMode())
 	{
-		YBCPgSetThreadLocalStrTokPtr(new_pg_strtok_ptr);
+		K2PgSetThreadLocalStrTokPtr(new_pg_strtok_ptr);
 	}
 	else
 	{

@@ -718,7 +718,7 @@ Status PgGateApiImpl::DeleteForeignKeyReference(K2PgOid table_oid, std::string&&
   return pg_session_->DeleteForeignKeyReference(table_oid, std::move(ybctid));
 }
 
-void PgGateApiImpl::ClearForeignKeyReferenceCache() {
+void PgGateApiImpl::K2PgClearForeignKeyReferenceCache() {
   pg_session_->InvalidateForeignKeyReferenceCache();
 }
 

@@ -1854,10 +1854,10 @@ YBStartTransaction(TransactionState s)
 
 	if (YBTransactionsEnabled())
 	{
-		YBCPgBeginTransaction();
-		YBCPgSetTransactionIsolationLevel(XactIsoLevel);
-		YBCPgSetTransactionReadOnly(XactReadOnly);
-		YBCPgSetTransactionDeferrable(XactDeferrable);
+		K2PgBeginTransaction();
+		K2PgSetTransactionIsolationLevel(XactIsoLevel);
+		K2PgSetTransactionReadOnly(XactReadOnly);
+		K2PgSetTransactionDeferrable(XactDeferrable);
 	}
 }
 

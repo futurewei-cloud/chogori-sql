@@ -202,7 +202,7 @@ void
 pq_init(void)
 {
 	/* initialize state variables */
-	PqSendBufferSize = YBCGetOutputBufferSize();
+	PqSendBufferSize = K2PgGetOutputBufferSize();
 	PqSendBuffer = MemoryContextAlloc(TopMemoryContext, PqSendBufferSize);
 	PqSendPointer = PqSendStart = PqRecvPointer = PqRecvLength = 0;
 	PqSendYbSavedBufPos = 0;

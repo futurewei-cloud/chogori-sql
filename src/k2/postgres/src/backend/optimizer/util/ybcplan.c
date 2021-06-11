@@ -502,12 +502,12 @@ bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	Bitmapset      *primary_key_attrs  = NULL;
 
 	/* Get primary key columns from YB table desc. */
-	HandleK2PgStatus(YBCPgGetTableDesc(dboid, relid, &ybc_tabledesc));
+	HandleK2PgStatus(K2PgGetTableDesc(dboid, relid, &ybc_tabledesc));
 	for (AttrNumber attnum = 1; attnum <= natts; attnum++)
 	{
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_tabledesc,
+		HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
 		                                           &is_hash), ybc_tabledesc);

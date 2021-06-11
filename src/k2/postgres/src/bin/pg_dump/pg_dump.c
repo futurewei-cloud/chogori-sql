@@ -362,7 +362,6 @@ main(int argc, char **argv)
 		{"encoding", required_argument, NULL, 'E'},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
-		{"masters", required_argument, NULL, 'm'},
 
 		/*
 		 * the following options don't have an equivalent short option letter
@@ -473,10 +472,6 @@ main(int argc, char **argv)
 
 			case 'h':			/* server host */
 				dopt.pghost = pg_strdup(optarg);
-				break;
-
-			case 'm':			/* YB master hosts */
-				dopt.master_hosts = pg_strdup(optarg);
 				break;
 
 			case 'j':			/* number of dump jobs */
@@ -715,13 +710,8 @@ main(int argc, char **argv)
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
 	{
-		if (dopt.master_hosts)
-			YBCSetMasterAddresses(dopt.master_hosts);
-		else
-			YBCSetMasterAddresses(dopt.pghost);
-
 		HandleK2PgStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
-		HandleK2PgStatus(YBCInitPgGateBackend());
+		HandleK2PgStatus(K2PgInitPgGateBackend());
 	}
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
@@ -972,7 +962,7 @@ main(int argc, char **argv)
 
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
-		YBCShutdownPgGateBackend();
+		K2PgShutdownPgGateBackend();
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
 	exit_nicely(0);
@@ -15874,8 +15864,8 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			/* Get the table properties from YugaByte. */
 			K2PgTableDesc ybc_tabledesc = NULL;
 			K2PgTableProperties properties;
-			HandleK2PgStatus(YBCPgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
-			HandleK2PgStatus(YBCPgGetTableProperties(ybc_tabledesc, &properties));
+			HandleK2PgStatus(K2PgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
+			HandleK2PgStatus(K2PgGetTableProperties(ybc_tabledesc, &properties));
 
 			if(properties.is_colocated)
 			{

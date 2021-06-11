@@ -1173,9 +1173,9 @@ RenameDatabase(const char *oldname, const char *newname)
 
 	if (IsYugaByteEnabled()) {
 		K2PgStatement handle = NULL;
-		HandleK2PgStatus(YBCPgNewAlterDatabase(oldname, db_id, &handle));
-		HandleK2PgStatus(YBCPgAlterDatabaseRenameDatabase(handle, newname));
-		HandleK2PgStatus(YBCPgExecAlterDatabase(handle));
+		HandleK2PgStatus(K2PgNewAlterDatabase(oldname, db_id, &handle));
+		HandleK2PgStatus(K2PgAlterDatabaseRenameDatabase(handle, newname));
+		HandleK2PgStatus(K2PgExecAlterDatabase(handle));
 	}
 
 	InvokeObjectPostAlterHook(DatabaseRelationId, db_id, 0);

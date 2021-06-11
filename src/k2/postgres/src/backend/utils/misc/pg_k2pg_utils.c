@@ -67,7 +67,7 @@ bool
 IsYugaByteEnabled()
 {
 	/* We do not support Init/Bootstrap processing modes yet. */
-	return YBCPgIsYugaByteEnabled();
+	return K2PgIsYugaByteEnabled();
 }
 
 void
@@ -334,7 +334,7 @@ YBInitPostgresBackend(
 		K2PgCallbacks callbacks;
 		callbacks.FetchUniqueConstraintName = &FetchUniqueConstraintName;
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
-		YBCInitPgGate(type_table, count, callbacks);
+		K2PgInitPgGate(type_table, count, callbacks);
 		YBCInstallTxnDdlHook();
 
 		/*
@@ -343,14 +343,14 @@ YBInitPostgresBackend(
 		 *
 		 * TODO: do we really need to DB name / username here?
 		 */
-    HandleK2PgStatus(YBCPgInitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
+    HandleK2PgStatus(K2PgInitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
 	}
 }
 
 void
 YBOnPostgresBackendShutdown()
 {
-	YBCDestroyPgGate();
+	K2PgDestroyPgGate();
 }
 
 void
@@ -358,7 +358,7 @@ YBCRestartTransaction()
 {
 	if (!IsYugaByteEnabled())
 		return;
-	HandleK2PgStatus(YBCPgRestartTransaction());
+	HandleK2PgStatus(K2PgRestartTransaction());
 }
 
 void
@@ -367,7 +367,7 @@ YBCCommitTransaction()
 	if (!IsYugaByteEnabled())
 		return;
 
-	HandleK2PgStatus(YBCPgCommitTransaction());
+	HandleK2PgStatus(K2PgCommitTransaction());
 }
 
 void
@@ -377,7 +377,7 @@ YBCAbortTransaction()
 		return;
 
 	if (YBTransactionsEnabled())
-		HandleK2PgStatus(YBCPgAbortTransaction());
+		HandleK2PgStatus(K2PgAbortTransaction());
 }
 
 bool
@@ -702,7 +702,7 @@ bool
 YBIsInitDbAlreadyDone()
 {
 	bool done = false;
-	HandleK2PgStatus(YBCPgIsInitDbDone(&done));
+	HandleK2PgStatus(K2PgIsInitDbDone(&done));
 	return done;
 }
 
@@ -723,7 +723,7 @@ void
 YBIncrementDdlNestingLevel()
 {
 	if (ddl_nesting_level == 0)
-		YBCPgEnterSeparateDdlTxnMode();
+		K2PgEnterSeparateDdlTxnMode();
 	ddl_nesting_level++;
 }
 
@@ -732,7 +732,7 @@ YBDecrementDdlNestingLevel(bool success)
 {
 	ddl_nesting_level--;
 	if (ddl_nesting_level == 0)
-		YBCPgExitSeparateDdlTxnMode(success);
+		K2PgExitSeparateDdlTxnMode(success);
 }
 
 static bool IsTransactionalDdlStatement(NodeTag node_tag) {
@@ -868,7 +868,7 @@ static void YBTxnDdlProcessUtility(
 
 
 static void YBCInstallTxnDdlHook() {
-	if (!YBCIsInitDbModeEnvVarSet()) {
+	if (!K2PgIsInitDbModeEnvVarSet()) {
 		prev_ProcessUtility = ProcessUtility_hook;
 		ProcessUtility_hook = YBTxnDdlProcessUtility;
 	}
