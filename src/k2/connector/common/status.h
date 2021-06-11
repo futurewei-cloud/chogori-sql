@@ -132,7 +132,7 @@
 
 extern "C" {
 
-struct YBCStatusStruct;
+struct K2PgStatusStruct;
 
 }
 
@@ -485,13 +485,13 @@ class STATUS_NODISCARD_CLASS Status {
   static const std::string& CategoryName(uint8_t category);
 
   // Adopt status that was previously exported to C interface.
-  explicit Status(YBCStatusStruct* state, bool add_ref);
+  explicit Status(K2PgStatusStruct* state, bool add_ref);
 
   // Increments state ref count and returns pointer that could be used in C interface.
-  YBCStatusStruct* RetainStruct() const;
+  K2PgStatusStruct* RetainStruct() const;
 
   // Reset state w/o touching ref count. Return detached pointer that could be used in C interface.
-  YBCStatusStruct* DetachStruct();
+  K2PgStatusStruct* DetachStruct();
 
  private:
   struct State;

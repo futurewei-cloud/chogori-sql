@@ -1182,10 +1182,10 @@ DefineIndex(Oid relationId,
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
 	elog(LOG, "waiting for K2PG_INDEX_PERM_DELETE_ONLY");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_DELETE_ONLY,
@@ -1204,11 +1204,11 @@ DefineIndex(Oid relationId,
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
-	HandleYBStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for K2PG_INDEX_PERM_WRITE_AND_DELETE");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_WRITE_AND_DELETE,
@@ -1239,11 +1239,11 @@ DefineIndex(Oid relationId,
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
-	HandleYBStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for Yugabyte index read permission");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_READ_WRITE_AND_DELETE,
@@ -1384,7 +1384,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		Relation rel = RelationIdGetRelation(relId);
 		use_k2pg_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
 		if (IsYBRelation(rel))
-			HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
+			HandleK2PgStatus(YBCPgIsTableColocated(MyDatabaseId,
 												 relId,
 												 &colocated));
 		RelationClose(rel);

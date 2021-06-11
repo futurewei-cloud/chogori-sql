@@ -295,10 +295,10 @@ static char *get_synchronized_snapshot(Archive *fout);
 static void setupDumpWorker(Archive *AHX);
 static TableInfo *getRootTableInfo(TableInfo *tbinfo);
 
-static void HandleYBStatus(YBCStatus status) {
+static void HandleK2PgStatus(K2PgStatus status) {
 	if (status) {
-		/* Copy the message to the current memory context and free the YBCStatus. */
-		const char* msg_buf = DupYBStatusMessage(status, false);
+		/* Copy the message to the current memory context and free the K2PgStatus. */
+		const char* msg_buf = DupK2PgStatusMessage(status, false);
 		YBCFreeStatus(status);
 		exit_horribly(NULL, "%s\n", msg_buf);
 	}
@@ -720,8 +720,8 @@ main(int argc, char **argv)
 		else
 			YBCSetMasterAddresses(dopt.pghost);
 
-		HandleYBStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
-		HandleYBStatus(YBCInitPgGateBackend());
+		HandleK2PgStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
+		HandleK2PgStatus(YBCInitPgGateBackend());
 	}
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
@@ -15874,8 +15874,8 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			/* Get the table properties from YugaByte. */
 			K2PgTableDesc ybc_tabledesc = NULL;
 			K2PgTableProperties properties;
-			HandleYBStatus(YBCPgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
-			HandleYBStatus(YBCPgGetTableProperties(ybc_tabledesc, &properties));
+			HandleK2PgStatus(YBCPgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
+			HandleK2PgStatus(YBCPgGetTableProperties(ybc_tabledesc, &properties));
 
 			if(properties.is_colocated)
 			{

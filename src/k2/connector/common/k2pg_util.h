@@ -24,25 +24,25 @@ struct varlena;
 
 #endif
 
-typedef struct YBCStatusStruct* YBCStatus;
-extern YBCStatus YBCStatusOK();
-bool YBCStatusIsOK(YBCStatus s);
-bool YBCStatusIsNotFound(YBCStatus s);
-bool YBCStatusIsDuplicateKey(YBCStatus s);
-uint32_t YBCStatusPgsqlError(YBCStatus s);
-uint16_t YBCStatusTransactionError(YBCStatus s);
-void YBCFreeStatus(YBCStatus s);
+typedef struct K2PgStatusStruct* K2PgStatus;
+extern K2PgStatus K2PgStatusOK();
+bool K2PgStatusIsOK(K2PgStatus s);
+bool K2PgStatusIsNotFound(K2PgStatus s);
+bool K2PgStatusIsDuplicateKey(K2PgStatus s);
+uint32_t K2PgStatusPgsqlError(K2PgStatus s);
+uint16_t K2PgStatusTransactionError(K2PgStatus s);
+void YBCFreeStatus(K2PgStatus s);
 
-size_t YBCStatusMessageLen(YBCStatus s);
-const char* YBCStatusMessageBegin(YBCStatus s);
-const char* YBCStatusCodeAsCString(YBCStatus s);
-char* DupYBStatusMessage(YBCStatus status, bool message_only);
+size_t K2PgStatusMessageLen(K2PgStatus s);
+const char* K2PgStatusMessageBegin(K2PgStatus s);
+const char* K2PgStatusCodeAsCString(K2PgStatus s);
+char* DupK2PgStatusMessage(K2PgStatus status, bool message_only);
 
 bool YBCIsRestartReadError(uint16_t txn_errcode);
 
 void YBCResolveHostname();
 
-#define CHECKED_YBCSTATUS __attribute__ ((warn_unused_result)) YBCStatus
+#define CHECKED_YBCSTATUS __attribute__ ((warn_unused_result)) K2PgStatus
 
 typedef void* (*YBCPAllocFn)(size_t size);
 

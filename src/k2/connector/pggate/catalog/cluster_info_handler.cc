@@ -45,7 +45,7 @@ InitClusterInfoResult ClusterInfoHandler::InitClusterInfo(std::shared_ptr<PgTxnH
     auto result = k2_adapter_->CreateSchema(collection_name_, schema_ptr_).get();
     if (!result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create schema for {} in {}, due to {}", schema_ptr_->name, collection_name_, result.status);
-        response.status = K2Adapter::K2StatusToYBStatus(result.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(result.status);
         return response;
     }
 
@@ -65,7 +65,7 @@ UpdateClusterInfoResult ClusterInfoHandler::UpdateClusterInfo(std::shared_ptr<Pg
     if (!upsertRes.status.is2xxOK())
     {
         K2LOG_E(log::catalog, "Failed to upsert cluster info record due to {}", upsertRes.status);
-        response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(upsertRes.status);
         return response;
     }
 
@@ -80,7 +80,7 @@ GetClusterInfoResult ClusterInfoHandler::GetClusterInfo(std::shared_ptr<PgTxnHan
     auto read_result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
     if (!read_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to read SKV record due to {}", read_result.status);
-        response.status = K2Adapter::K2StatusToYBStatus(read_result.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(read_result.status);
         return response;
     }
 

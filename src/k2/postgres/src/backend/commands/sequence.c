@@ -222,7 +222,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 
 	if (IsYugaByteEnabled())
 	{
-		HandleYBStatus(YBCInsertSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(YBCInsertSequenceTuple(MyDatabaseId,
 											  seqoid,
 											  k2pg_catalog_cache_version,
 											  seqdataform.last_value,
@@ -471,7 +471,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 
 	if (IsYugaByteEnabled())
 	{
-		HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(YBCReadSequenceTuple(MyDatabaseId,
 											relid,
 											k2pg_catalog_cache_version,
 											&last_val,
@@ -511,7 +511,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 			if (last_val != newdataform->last_value || is_called != newdataform->is_called)
 			{
 				bool skipped = false;
-				HandleYBStatus(YBCUpdateSequenceTuple(MyDatabaseId,
+				HandleK2PgStatus(YBCUpdateSequenceTuple(MyDatabaseId,
 													  ObjectIdGetDatum(relid),
 													  k2pg_catalog_cache_version,
 													  newdataform->last_value /* last_val */,
@@ -584,7 +584,7 @@ DeleteSequenceTuple(Oid relid)
 
 	if (IsYugaByteEnabled())
 	{
-		HandleYBStatus(YBCDeleteSequenceTuple(MyDatabaseId, relid));
+		HandleK2PgStatus(YBCDeleteSequenceTuple(MyDatabaseId, relid));
 	}
 
 	CatalogTupleDelete(rel, tuple);
@@ -605,7 +605,7 @@ YBReadSequenceTuple(Relation seqrel)
   {
     int64_t last_val;
     bool is_called;
-    HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
+    HandleK2PgStatus(YBCReadSequenceTuple(MyDatabaseId,
                                         relid,
                                         k2pg_catalog_cache_version,
                                         &last_val,
@@ -756,7 +756,7 @@ retry:
 	{
 		int64_t last_val;
 		bool is_called;
-		HandleYBStatus(YBCReadSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(YBCReadSequenceTuple(MyDatabaseId,
 											relid,
 											k2pg_catalog_cache_version,
 											&last_val,
@@ -908,7 +908,7 @@ check_bounds:
 		 * update fails, we retry again by reading the last_val and is_called values and going
 		 * through the whole process again.
 		 */
-		HandleYBStatus(YBCUpdateSequenceTupleConditionally(MyDatabaseId,
+		HandleK2PgStatus(YBCUpdateSequenceTupleConditionally(MyDatabaseId,
 														   relid,
 														   k2pg_catalog_cache_version,
 														   last /* last_val */,
@@ -1154,7 +1154,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	 */
 	if (IsYugaByteEnabled())
 	{
-    HandleYBStatus(YBCUpdateSequenceTuple(MyDatabaseId,
+    HandleK2PgStatus(YBCUpdateSequenceTuple(MyDatabaseId,
                                           relid,
                                           k2pg_catalog_cache_version,
                                           next,

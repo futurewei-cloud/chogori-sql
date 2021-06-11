@@ -120,7 +120,7 @@ extern bool YBTransactionsEnabled();
  * Given a status returned by YB C++ code, reports that status using ereport if
  * it is not OK.
  */
-extern void	HandleYBStatus(YBCStatus status);
+extern void	HandleK2PgStatus(K2PgStatus status);
 
 /*
  * Since DDL metadata in master DocDB and postgres system tables is not modified
@@ -130,21 +130,21 @@ extern void	HandleYBStatus(YBCStatus status);
  * the same name. So in this case we just ignore the DocDB 'NotFound' error and
  * delete our metadata.
  */
-extern void HandleYBStatusIgnoreNotFound(YBCStatus status, bool *not_found);
+extern void HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found);
 
 /*
- * Same as HandleYBStatus but also ask the given resource owner to forget
+ * Same as HandleK2PgStatus but also ask the given resource owner to forget
  * the given YugaByte statement.
  */
-extern void HandleYBStatusWithOwner(YBCStatus status,
+extern void HandleK2PgStatusWithOwner(K2PgStatus status,
 																		K2PgStatement ybc_stmt,
 																		ResourceOwner owner);
 
 /*
- * Same as HandleYBStatus but delete the table description first if the
+ * Same as HandleK2PgStatus but delete the table description first if the
  * status is not ok.
  */
-extern void HandleYBTableDescStatus(YBCStatus status, K2PgTableDesc table);
+extern void HandleYBTableDescStatus(K2PgStatus status, K2PgTableDesc table);
 /*
  * YB initialization that needs to happen when a PostgreSQL backend process
  * is started. Reports errors using ereport.

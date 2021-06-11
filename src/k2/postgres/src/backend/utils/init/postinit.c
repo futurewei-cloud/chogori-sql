@@ -1035,7 +1035,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
 	{
-		HandleYBStatus(YBCPgIsDatabaseColocated(MyDatabaseId,
+		HandleK2PgStatus(YBCPgIsDatabaseColocated(MyDatabaseId,
 												&MyDatabaseColocated));
 	}
 

@@ -2703,7 +2703,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 	prepare_params.use_secondary_index = (RelationGetRelid(idx_rel) == RelationGetRelid(pk_rel)) ?
 			false : true;
 
-	HandleYBStatus(YBCPgNewSelect(
+	HandleK2PgStatus(YBCPgNewSelect(
 		YBCGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
@@ -2748,7 +2748,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		next_attr->is_null = true;
 	}
 
-	HandleYBStatus(YBCPgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(YBCPgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
 
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
 	type_entity->datum_to_k2pg(tuple_id, value, bytes);

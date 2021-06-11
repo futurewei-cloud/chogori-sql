@@ -76,7 +76,7 @@ static void YBCAddSysCatalogColumn(K2PgStatement k2pg_stmt,
 	 */
 	if (key == is_key)
 	{
-		HandleYBStatus(YBCPgCreateTableAddColumn(k2pg_stmt,
+		HandleK2PgStatus(YBCPgCreateTableAddColumn(k2pg_stmt,
 																						 attname,
 																						 attnum,
 																						 col_type,
@@ -130,7 +130,7 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	char           *schema_name = "pg_catalog";
 	K2PgStatement k2pg_stmt      = NULL;
 
-	HandleYBStatus(YBCPgNewCreateTable(db_name,
+	HandleK2PgStatus(YBCPgNewCreateTable(db_name,
 	                                   schema_name,
 	                                   table_name,
 	                                   TemplateDbOid,
@@ -148,5 +148,5 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	}
 	YBCAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ false);
 
-	HandleYBStatus(YBCPgExecCreateTable(k2pg_stmt));
+	HandleK2PgStatus(YBCPgExecCreateTable(k2pg_stmt));
 }

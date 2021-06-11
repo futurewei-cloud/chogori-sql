@@ -44,14 +44,14 @@ K2PgExpr YBCNewColumnRef(K2PgStatement ybc_stmt, int16_t attr_num, int attr_typi
 						  const K2PgTypeAttrs *type_attrs) {
 	K2PgExpr expr = NULL;
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(attr_num, attr_typid);
-	HandleYBStatus(YBCPgNewColumnRef(ybc_stmt, attr_num, type_entity, type_attrs, &expr));
+	HandleK2PgStatus(YBCPgNewColumnRef(ybc_stmt, attr_num, type_entity, type_attrs, &expr));
 	return expr;
 }
 
 K2PgExpr YBCNewConstant(K2PgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null) {
 	K2PgExpr expr = NULL;
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
-	HandleYBStatus(YBCPgNewConstant(ybc_stmt, type_entity, datum, is_null, &expr));
+	HandleK2PgStatus(YBCPgNewConstant(ybc_stmt, type_entity, datum, is_null, &expr));
 	return expr;
 }
 

@@ -39,25 +39,25 @@ void* YBCCStringToTextWithLen(const char* c, int size) {
   return g_cstring_to_text_with_len_fn(c, size);
 }
 
-YBCStatus ToYBCStatus(const Status& status) {
+K2PgStatus ToK2PgStatus(const Status& status) {
   return status.RetainStruct();
 }
 
-YBCStatus ToYBCStatus(Status&& status) {
+K2PgStatus ToK2PgStatus(Status&& status) {
   return status.DetachStruct();
 }
 
-void FreeYBCStatus(YBCStatus status) {
+void FreeK2PgStatus(K2PgStatus status) {
   // Create Status object that receives control over provided status, so it will be destoyed with
   // k2pg_status.
   Status k2pg_status(status, false);
 }
 
-YBCStatus YBCStatusNotSupport(const std::string& feature_name) {
+K2PgStatus K2PgStatusNotSupport(const std::string& feature_name) {
   if (feature_name.empty()) {
-    return ToYBCStatus(STATUS(NotSupported, "Feature is not supported"));
+    return ToK2PgStatus(STATUS(NotSupported, "Feature is not supported"));
   } else {
-    return ToYBCStatus(STATUS_FORMAT(NotSupported, "Feature '{}' not supported", feature_name));
+    return ToK2PgStatus(STATUS_FORMAT(NotSupported, "Feature '{}' not supported", feature_name));
   }
 }
 

@@ -138,7 +138,7 @@ namespace catalog {
         auto ccResult = k2_adapter_->CreateCollection(CatalogConsts::skv_collection_name_primary_cluster, CatalogConsts::primary_cluster_id).get();
         if (!ccResult.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to create SKV collection during initialization primary PG cluster due to {}", ccResult);
-            return K2Adapter::K2StatusToYBStatus(ccResult);
+            return K2Adapter::K2StatusToK2PgStatus(ccResult);
         }
 
         std::shared_ptr<PgTxnHandler> init_txnHandler = NewTransaction();
@@ -343,7 +343,7 @@ namespace catalog {
         if (!ccResult.is2xxOK())
         {
             K2LOG_E(log::catalog, "Failed to create SKV collection {} due to {}", request.databaseId, ccResult);
-            response.status = K2Adapter::K2StatusToYBStatus(ccResult);
+            response.status = K2Adapter::K2StatusToK2PgStatus(ccResult);
             return response;
         }
 
@@ -521,7 +521,7 @@ namespace catalog {
         // It is non-transactional with no rollback ability, but that matches PG's drop database semantics.
         auto drop_result = k2_adapter_->DropCollection(database_info->GetDatabaseId()).get();
 
-        response.status = k2pg::gate::K2Adapter::K2StatusToYBStatus(drop_result);
+        response.status = k2pg::gate::K2Adapter::K2StatusToK2PgStatus(drop_result);
         return response;
     }
 

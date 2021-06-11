@@ -82,13 +82,13 @@ ColumnSortingOptions(SortByDir dir, SortByNulls nulls, bool* is_desc, bool* is_n
 void
 K2InitPGCluster()
 {
-	HandleYBStatus(K2PGInitPrimaryCluster());
+	HandleK2PgStatus(K2PGInitPrimaryCluster());
 }
 
 void
 K2FinishInitDB()
 {
-	HandleYBStatus(K2PGFinishInitDB());
+	HandleK2PgStatus(K2PGFinishInitDB());
 }
 
 /* -------------------------------------------------------------------------- */
@@ -99,13 +99,13 @@ YBCCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bo
 {
 	K2PgStatement handle;
 
-	HandleYBStatus(YBCPgNewCreateDatabase(dbname,
+	HandleK2PgStatus(YBCPgNewCreateDatabase(dbname,
 										  dboid,
 										  src_dboid,
 										  next_oid,
 										  colocated,
 										  &handle));
-	HandleYBStatus(YBCPgExecCreateDatabase(handle));
+	HandleK2PgStatus(YBCPgExecCreateDatabase(handle));
 }
 
 void
@@ -113,16 +113,16 @@ YBCDropDatabase(Oid dboid, const char *dbname)
 {
 	K2PgStatement handle;
 
-	HandleYBStatus(YBCPgNewDropDatabase(dbname,
+	HandleK2PgStatus(YBCPgNewDropDatabase(dbname,
 										dboid,
 										&handle));
-	HandleYBStatus(YBCPgExecDropDatabase(handle));
+	HandleK2PgStatus(YBCPgExecDropDatabase(handle));
 }
 
 void
 YBCReserveOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_oid)
 {
-	HandleYBStatus(YBCPgReserveOids(dboid,
+	HandleK2PgStatus(YBCPgReserveOids(dboid,
 									next_oid,
 									count,
 									begin_oid,
@@ -142,7 +142,7 @@ static void CreateTableAddColumn(K2PgStatement handle,
 	const AttrNumber attnum = att->attnum;
 	const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(attnum,
 															att->atttypid);
-	HandleYBStatus(YBCPgCreateTableAddColumn(handle,
+	HandleK2PgStatus(YBCPgCreateTableAddColumn(handle,
 																					 NameStr(att->attname),
 																					 attnum,
 																					 col_type,
@@ -351,7 +351,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 		}
 	}
 
-	HandleYBStatus(YBCPgNewCreateTable(db_name,
+	HandleK2PgStatus(YBCPgNewCreateTable(db_name,
 									   schema_name,
 									   stmt->relation->relname,
 									   MyDatabaseId,
@@ -365,7 +365,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 	CreateTableAddColumns(handle, desc, primary_key, colocated);
 
 	/* Create the table. */
-	HandleYBStatus(YBCPgExecCreateTable(handle));
+	HandleK2PgStatus(YBCPgExecCreateTable(handle));
 }
 
 void
@@ -378,7 +378,7 @@ YBCDropTable(Oid relationId)
 	if (MyDatabaseColocated)
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgIsTableColocated(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgIsTableColocated(MyDatabaseId,
 																											 relationId,
 																											 &colocated),
 																 &not_found);
@@ -388,7 +388,7 @@ YBCDropTable(Oid relationId)
 	if (colocated)
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgNewTruncateColocated(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgNewTruncateColocated(MyDatabaseId,
 																													 relationId,
 																													 false,
 																													 &handle),
@@ -399,16 +399,16 @@ YBCDropTable(Oid relationId)
 		const bool valid_handle = !not_found;
 		if (valid_handle)
 		{
-			HandleYBStatusIgnoreNotFound(YBCPgDmlBindTable(handle), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgDmlBindTable(handle), &not_found);
 			int rows_affected_count = 0;
-			HandleYBStatusIgnoreNotFound(YBCPgDmlExecWriteOp(handle, &rows_affected_count), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgDmlExecWriteOp(handle, &rows_affected_count), &not_found);
 		}
 	}
 
 	/* Drop the table */
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgNewDropTable(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgNewDropTable(MyDatabaseId,
 																									 relationId,
 																									 false, /* if_exists */
 																									 &handle),
@@ -416,7 +416,7 @@ YBCDropTable(Oid relationId)
 		const bool valid_handle = !not_found;
 		if (valid_handle)
 		{
-			HandleYBStatusIgnoreNotFound(YBCPgExecDropTable(handle), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgExecDropTable(handle), &not_found);
 		}
 	}
 }
@@ -429,28 +429,28 @@ YBCTruncateTable(Relation rel) {
 
 	/* Determine if table is colocated */
 	if (MyDatabaseColocated)
-		HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
+		HandleK2PgStatus(YBCPgIsTableColocated(MyDatabaseId,
 											 relationId,
 											 &colocated));
 
 	if (colocated)
 	{
 		/* Create table-level tombstone for colocated tables */
-		HandleYBStatus(YBCPgNewTruncateColocated(MyDatabaseId,
+		HandleK2PgStatus(YBCPgNewTruncateColocated(MyDatabaseId,
 												 relationId,
 												 false,
 												 &handle));
-		HandleYBStatus(YBCPgDmlBindTable(handle));
+		HandleK2PgStatus(YBCPgDmlBindTable(handle));
 		int rows_affected_count = 0;
-		HandleYBStatus(YBCPgDmlExecWriteOp(handle, &rows_affected_count));
+		HandleK2PgStatus(YBCPgDmlExecWriteOp(handle, &rows_affected_count));
 	}
 	else
 	{
 		/* Send truncate table RPC to master for non-colocated tables */
-		HandleYBStatus(YBCPgNewTruncateTable(MyDatabaseId,
+		HandleK2PgStatus(YBCPgNewTruncateTable(MyDatabaseId,
 											 relationId,
 											 &handle));
-		HandleYBStatus(YBCPgExecTruncateTable(handle));
+		HandleK2PgStatus(YBCPgExecTruncateTable(handle));
 	}
 
 	if (!rel->rd_rel->relhasindex)
@@ -469,27 +469,27 @@ YBCTruncateTable(Relation rel) {
 
 		/* Determine if table is colocated */
 		if (MyDatabaseColocated)
-			HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
+			HandleK2PgStatus(YBCPgIsTableColocated(MyDatabaseId,
 												 relationId,
 												 &colocated));
 		if (colocated)
 		{
 			/* Create table-level tombstone for colocated tables */
-			HandleYBStatus(YBCPgNewTruncateColocated(MyDatabaseId,
+			HandleK2PgStatus(YBCPgNewTruncateColocated(MyDatabaseId,
 													 relationId,
 													 false,
 													 &handle));
-			HandleYBStatus(YBCPgDmlBindTable(handle));
+			HandleK2PgStatus(YBCPgDmlBindTable(handle));
 			int rows_affected_count = 0;
-			HandleYBStatus(YBCPgDmlExecWriteOp(handle, &rows_affected_count));
+			HandleK2PgStatus(YBCPgDmlExecWriteOp(handle, &rows_affected_count));
 		}
 		else
 		{
 			/* Send truncate table RPC to master for non-colocated tables */
-			HandleYBStatus(YBCPgNewTruncateTable(MyDatabaseId,
+			HandleK2PgStatus(YBCPgNewTruncateTable(MyDatabaseId,
 												 indexId,
 												 &handle));
-			HandleYBStatus(YBCPgExecTruncateTable(handle));
+			HandleK2PgStatus(YBCPgExecTruncateTable(handle));
 		}
 	}
 
@@ -533,7 +533,7 @@ YBCCreateIndex(const char *indexName,
 
 	K2PgStatement handle = NULL;
 
-	HandleYBStatus(YBCPgNewCreateIndex(db_name,
+	HandleK2PgStatus(YBCPgNewCreateIndex(db_name,
 									   schema_name,
 									   indexName,
 									   MyDatabaseId,
@@ -567,7 +567,7 @@ YBCCreateIndex(const char *indexName,
 		const bool  is_desc        = options & INDOPTION_DESC;
 		const bool  is_nulls_first = options & INDOPTION_NULLS_FIRST;
 
-		HandleYBStatus(YBCPgCreateIndexAddColumn(handle,
+		HandleK2PgStatus(YBCPgCreateIndexAddColumn(handle,
 																						 attname,
 																						 attnum,
 																						 col_type,
@@ -578,14 +578,14 @@ YBCCreateIndex(const char *indexName,
 	}
 
 	/* Create the index. */
-	HandleYBStatus(YBCPgExecCreateIndex(handle));
+	HandleK2PgStatus(YBCPgExecCreateIndex(handle));
 }
 
 K2PgStatement
 YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 {
 	K2PgStatement handle = NULL;
-	HandleYBStatus(YBCPgNewAlterTable(MyDatabaseId,
+	HandleK2PgStatus(YBCPgNewAlterTable(MyDatabaseId,
 									  relationId,
 									  &handle));
 
@@ -621,7 +621,7 @@ YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 				order = RelationGetNumberOfAttributes(rel) + col;
 				const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(order, typeOid);
 
-				HandleYBStatus(YBCPgAlterTableAddColumn(handle, colDef->colname,
+				HandleK2PgStatus(YBCPgAlterTableAddColumn(handle, colDef->colname,
 																										order, col_type,
 																										colDef->is_not_null));
 				++col;
@@ -641,7 +641,7 @@ YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 					ReleaseSysCache(tuple);
 				}
 
-				HandleYBStatus(YBCPgAlterTableDropColumn(handle, cmd->name));
+				HandleK2PgStatus(YBCPgAlterTableDropColumn(handle, cmd->name));
 				needsYBAlter = true;
 
 				break;
@@ -707,7 +707,7 @@ YBCExecAlterTable(K2PgStatement handle, Oid relationId)
 	if (handle)
 	{
 		if (IsYBRelationById(relationId)) {
-			HandleYBStatus(YBCPgExecAlterTable(handle));
+			HandleK2PgStatus(YBCPgExecAlterTable(handle));
 		}
 	}
 }
@@ -721,20 +721,20 @@ YBCRename(RenameStmt *stmt, Oid relationId)
 	switch (stmt->renameType)
 	{
 		case OBJECT_TABLE:
-			HandleYBStatus(YBCPgNewAlterTable(MyDatabaseId,
+			HandleK2PgStatus(YBCPgNewAlterTable(MyDatabaseId,
 											  relationId,
 											  &handle));
-			HandleYBStatus(YBCPgAlterTableRenameTable(handle, db_name, stmt->newname));
+			HandleK2PgStatus(YBCPgAlterTableRenameTable(handle, db_name, stmt->newname));
 			break;
 
 		case OBJECT_COLUMN:
 		case OBJECT_ATTRIBUTE:
 
-			HandleYBStatus(YBCPgNewAlterTable(MyDatabaseId,
+			HandleK2PgStatus(YBCPgNewAlterTable(MyDatabaseId,
 											  relationId,
 											  &handle));
 
-			HandleYBStatus(YBCPgAlterTableRenameColumn(handle, stmt->subname, stmt->newname));
+			HandleK2PgStatus(YBCPgAlterTableRenameColumn(handle, stmt->subname, stmt->newname));
 			break;
 
 		default:
@@ -756,7 +756,7 @@ YBCDropIndex(Oid relationId)
 	if (MyDatabaseColocated)
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgIsTableColocated(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgIsTableColocated(MyDatabaseId,
 																											 relationId,
 																											 &colocated),
 																 &not_found);
@@ -766,30 +766,30 @@ YBCDropIndex(Oid relationId)
 	if (colocated)
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgNewTruncateColocated(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgNewTruncateColocated(MyDatabaseId,
 																													 relationId,
 																													 false,
 																													 &handle),
 																 &not_found);
 		const bool valid_handle = !not_found;
 		if (valid_handle) {
-			HandleYBStatusIgnoreNotFound(YBCPgDmlBindTable(handle), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgDmlBindTable(handle), &not_found);
 			int rows_affected_count = 0;
-			HandleYBStatusIgnoreNotFound(YBCPgDmlExecWriteOp(handle, &rows_affected_count), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgDmlExecWriteOp(handle, &rows_affected_count), &not_found);
 		}
 	}
 
 	/* Drop the index table */
 	{
 		bool not_found = false;
-		HandleYBStatusIgnoreNotFound(YBCPgNewDropIndex(MyDatabaseId,
+		HandleK2PgStatusIgnoreNotFound(YBCPgNewDropIndex(MyDatabaseId,
 																									 relationId,
 																									 false, /* if_exists */
 																									 &handle),
 																 &not_found);
 		const bool valid_handle = !not_found;
 		if (valid_handle) {
-			HandleYBStatusIgnoreNotFound(YBCPgExecDropIndex(handle), &not_found);
+			HandleK2PgStatusIgnoreNotFound(YBCPgExecDropIndex(handle), &not_found);
 		}
 	}
 }

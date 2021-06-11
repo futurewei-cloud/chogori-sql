@@ -221,19 +221,19 @@ YBShouldReportErrorStatus()
 }
 
 void
-HandleYBStatus(YBCStatus status)
+HandleK2PgStatus(K2PgStatus status)
 {
 	if (!status) {
 		return;
 	}
-	/* Copy the message to the current memory context and free the YBCStatus. */
-	const uint32_t pg_err_code = YBCStatusPgsqlError(status);
-	char* msg_buf = DupYBStatusMessage(status, pg_err_code == ERRCODE_UNIQUE_VIOLATION);
+	/* Copy the message to the current memory context and free the K2PgStatus. */
+	const uint32_t pg_err_code = K2PgStatusPgsqlError(status);
+	char* msg_buf = DupK2PgStatusMessage(status, pg_err_code == ERRCODE_UNIQUE_VIOLATION);
 
 	if (YBShouldReportErrorStatus()) {
-		YBC_LOG_ERROR("HandleYBStatus: %s", msg_buf);
+		YBC_LOG_ERROR("HandleK2PgStatus: %s", msg_buf);
 	}
-	const uint16_t txn_err_code = YBCStatusTransactionError(status);
+	const uint16_t txn_err_code = K2PgStatusTransactionError(status);
 	YBCFreeStatus(status);
 	ereport(ERROR,
 			(errmsg("%s", msg_buf),
@@ -243,22 +243,22 @@ HandleYBStatus(YBCStatus status)
 }
 
 void
-HandleYBStatusIgnoreNotFound(YBCStatus status, bool *not_found)
+HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found)
 {
 	if (!status) {
 		return;
 	}
-	if (YBCStatusIsNotFound(status)) {
+	if (K2PgStatusIsNotFound(status)) {
 		*not_found = true;
 		YBCFreeStatus(status);
 		return;
 	}
 	*not_found = false;
-	HandleYBStatus(status);
+	HandleK2PgStatus(status);
 }
 
 void
-HandleYBStatusWithOwner(YBCStatus status,
+HandleK2PgStatusWithOwner(K2PgStatus status,
 												K2PgStatement ybc_stmt,
 												ResourceOwner owner)
 {
@@ -272,16 +272,16 @@ HandleYBStatusWithOwner(YBCStatus status,
 			ResourceOwnerForgetYugaByteStmt(owner, ybc_stmt);
 		}
 	}
-	HandleYBStatus(status);
+	HandleK2PgStatus(status);
 }
 
 void
-HandleYBTableDescStatus(YBCStatus status, K2PgTableDesc table)
+HandleYBTableDescStatus(K2PgStatus status, K2PgTableDesc table)
 {
 	if (!status)
 		return;
 
-	HandleYBStatus(status);
+	HandleK2PgStatus(status);
 }
 
 /*
@@ -317,7 +317,7 @@ YBInitPostgresBackend(
 	const char *db_name,
 	const char *user_name)
 {
-	HandleYBStatus(YBCInit(program_name, palloc, cstring_to_text_with_len));
+	HandleK2PgStatus(YBCInit(program_name, palloc, cstring_to_text_with_len));
 
 	/*
 	 * Enable "YB mode" for PostgreSQL so that we will initiate a connection
@@ -343,7 +343,7 @@ YBInitPostgresBackend(
 		 *
 		 * TODO: do we really need to DB name / username here?
 		 */
-    HandleYBStatus(YBCPgInitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
+    HandleK2PgStatus(YBCPgInitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
 	}
 }
 
@@ -358,7 +358,7 @@ YBCRestartTransaction()
 {
 	if (!IsYugaByteEnabled())
 		return;
-	HandleYBStatus(YBCPgRestartTransaction());
+	HandleK2PgStatus(YBCPgRestartTransaction());
 }
 
 void
@@ -367,7 +367,7 @@ YBCCommitTransaction()
 	if (!IsYugaByteEnabled())
 		return;
 
-	HandleYBStatus(YBCPgCommitTransaction());
+	HandleK2PgStatus(YBCPgCommitTransaction());
 }
 
 void
@@ -377,7 +377,7 @@ YBCAbortTransaction()
 		return;
 
 	if (YBTransactionsEnabled())
-		HandleYBStatus(YBCPgAbortTransaction());
+		HandleK2PgStatus(YBCPgAbortTransaction());
 }
 
 bool
@@ -702,7 +702,7 @@ bool
 YBIsInitDbAlreadyDone()
 {
 	bool done = false;
-	HandleYBStatus(YBCPgIsInitDbDone(&done));
+	HandleK2PgStatus(YBCPgIsInitDbDone(&done));
 	return done;
 }
 

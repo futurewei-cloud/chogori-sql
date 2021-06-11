@@ -287,7 +287,7 @@ webserver_worker_main(Datum unused)
 
   RegisterRpczEntries(&callbacks, &num_backends, &rpcz);
 
-  HandleYBStatus(StartWebserver(webserver));
+  HandleK2PgStatus(StartWebserver(webserver));
 
   WaitLatch(&MyProc->procLatch, WL_POSTMASTER_DEATH, -1, PG_WAIT_EXTENSION);
 

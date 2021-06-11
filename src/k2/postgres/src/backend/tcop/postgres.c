@@ -3821,7 +3821,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 				ereport(LOG,
 						(errmsg("invalidating table cache entry %s",
 								table_to_refresh)));
-				HandleYBStatus(YBCPgInvalidateTableCacheByTableId(table_to_refresh));
+				HandleK2PgStatus(YBCPgInvalidateTableCacheByTableId(table_to_refresh));
 			}
 
 			*need_retry = true;
@@ -3935,7 +3935,7 @@ static void YBCheckSharedCatalogCacheVersion() {
 		return;
 
 	uint64_t shared_catalog_version;
-	HandleYBStatus(YBCGetSharedCatalogVersion(&shared_catalog_version));
+	HandleK2PgStatus(YBCGetSharedCatalogVersion(&shared_catalog_version));
 
 	if (k2pg_catalog_cache_version < shared_catalog_version) {
 		YBRefreshCache();

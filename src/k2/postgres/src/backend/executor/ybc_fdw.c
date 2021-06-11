@@ -1048,7 +1048,7 @@ static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
 	Oid            relid          = RelationGetRelid(relation);
 	K2PgTableDesc ybc_table_desc = NULL;
 
-	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
+	HandleK2PgStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
 
 	scan_plan->nkeys = 0;
 	scan_plan->nNonKeys = 0;
@@ -1198,7 +1198,7 @@ static void pgBindScanKeys(Relation relation,
 		}
 	}
 
-	HandleYBStatusWithOwner(PgDmlBindRangeConds(fdw_state->handle, range_conds),
+	HandleK2PgStatusWithOwner(PgDmlBindRangeConds(fdw_state->handle, range_conds),
 														fdw_state->handle,
 														fdw_state->stmt_owner);
 
@@ -1223,7 +1223,7 @@ static void pgBindScanKeys(Relation relation,
 		}
 	}
 
-	HandleYBStatusWithOwner(PgDmlBindWhereConds(fdw_state->handle, where_conds),
+	HandleK2PgStatusWithOwner(PgDmlBindWhereConds(fdw_state->handle, where_conds),
 														fdw_state->handle,
 														fdw_state->stmt_owner);
 }
@@ -1485,7 +1485,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ybc_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
 
 	node->fdw_state = (void *) ybc_state;
-	HandleYBStatus(YBCPgNewSelect(YBCGetDatabaseOid(relation),
+	HandleK2PgStatus(YBCPgNewSelect(YBCGetDatabaseOid(relation),
 				   RelationGetRelid(relation),
 				   NULL /* prepare_params */,
 				   &ybc_state->handle));
@@ -1510,7 +1510,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ybc_state->is_exec_done = false;
 
 	/* Set the current syscatalog version (will check that we are up to date) */
-	HandleYBStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
+	HandleK2PgStatusWithOwner(YBCPgSetCatalogCacheVersion(ybc_state->handle,
 														k2pg_catalog_cache_version),
 														ybc_state->handle,
 														ybc_state->stmt_owner);
@@ -1565,7 +1565,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 														target->resno,
 														attr_typid,
 														&type_attrs);
-			HandleYBStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
+			HandleK2PgStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
 																									 expr),
 															ybc_state->handle,
 															ybc_state->stmt_owner);
@@ -1592,7 +1592,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 															i + 1,
 															TupleDescAttr(tupdesc, i)->atttypid,
 															&type_attrs);
-				HandleYBStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
+				HandleK2PgStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
 																 expr),
 											ybc_state->handle,
 											ybc_state->stmt_owner);
@@ -1615,7 +1615,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 			type_entity = K2PgFindTypeEntity(aggref->aggtranstype);
 
 			/* Create operator. */
-			HandleYBStatusWithOwner(YBCPgNewOperator(ybc_state->handle,
+			HandleK2PgStatusWithOwner(YBCPgNewOperator(ybc_state->handle,
 													 func_name,
 													 type_entity,
 													 &op_handle),
@@ -1635,7 +1635,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 								 0 /* datum */,
 								 false /* is_null */,
 								 &const_handle);
-				HandleYBStatusWithOwner(YBCPgOperatorAppendArg(op_handle, const_handle),
+				HandleK2PgStatusWithOwner(YBCPgOperatorAppendArg(op_handle, const_handle),
 										ybc_state->handle,
 										ybc_state->stmt_owner);
 			} else {
@@ -1655,7 +1655,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 										 const_node->constvalue,
 										 const_node->constisnull,
 										 &const_handle);
-						HandleYBStatusWithOwner(YBCPgOperatorAppendArg(op_handle, const_handle),
+						HandleK2PgStatusWithOwner(YBCPgOperatorAppendArg(op_handle, const_handle),
 												ybc_state->handle,
 												ybc_state->stmt_owner);
 					}
@@ -1673,7 +1673,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 														attno,
 														attr->atttypid,
 														&type_attrs);
-						HandleYBStatusWithOwner(YBCPgOperatorAppendArg(op_handle, arg),
+						HandleK2PgStatusWithOwner(YBCPgOperatorAppendArg(op_handle, arg),
 												ybc_state->handle,
 												ybc_state->stmt_owner);
 					}
@@ -1688,7 +1688,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 			}
 
 			/* Add aggregate operator as scan target. */
-			HandleYBStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
+			HandleK2PgStatusWithOwner(YBCPgDmlAppendTarget(ybc_state->handle,
 														 op_handle),
 														 ybc_state->handle,
 														 ybc_state->stmt_owner);
@@ -1736,7 +1736,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 		pgBindScanKeys(relation, ybc_state, &scan_plan);
 
 		ybcSetupScanTargets(node);
-		HandleYBStatusWithOwner(YBCPgExecSelect(ybc_state->handle, ybc_state->exec_params),
+		HandleK2PgStatusWithOwner(YBCPgExecSelect(ybc_state->handle, ybc_state->exec_params),
 								ybc_state->handle,
 								ybc_state->stmt_owner);
 		ybc_state->is_exec_done = true;
@@ -1752,7 +1752,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 	K2PgSysColumns syscols;
 
 	/* Fetch one row. */
-	HandleYBStatusWithOwner(YBCPgDmlFetch(ybc_state->handle,
+	HandleK2PgStatusWithOwner(YBCPgDmlFetch(ybc_state->handle,
 	                                      tupdesc->natts,
 	                                      (uint64_t *) values,
 	                                      isnull,

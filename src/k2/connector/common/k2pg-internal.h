@@ -26,10 +26,10 @@
 
 namespace k2pg {
 
-// Convert our C++ status to YBCStatus, which can be returned to PostgreSQL C code.
-YBCStatus ToYBCStatus(const Status& status);
-YBCStatus ToYBCStatus(Status&& status);
-void FreeYBCStatus(YBCStatus status);
+// Convert our C++ status to K2PgStatus, which can be returned to PostgreSQL C code.
+K2PgStatus ToK2PgStatus(const Status& status);
+K2PgStatus ToK2PgStatus(Status&& status);
+void FreeK2PgStatus(K2PgStatus status);
 
 void YBCSetPAllocFn(YBCPAllocFn pg_palloc_fn);
 void* YBCPAlloc(size_t size);
@@ -37,9 +37,9 @@ void* YBCPAlloc(size_t size);
 void YBCSetCStringToTextWithLenFn(YBCCStringToTextWithLenFn fn);
 void* YBCCStringToTextWithLen(const char* c, int size);
 
-// YBCStatus definition for Some common Status.
+// K2PgStatus definition for Some common Status.
 
-YBCStatus YBCStatusNotSupport(const std::string& feature_name);
+K2PgStatus K2PgStatusNotSupport(const std::string& feature_name);
 
 // Duplicate the given string in memory allocated using PostgreSQL's palloc.
 const char* YBCPAllocStdString(const std::string& s);

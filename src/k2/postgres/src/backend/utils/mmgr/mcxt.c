@@ -196,7 +196,7 @@ MemoryContextResetOnly(MemoryContext context)
 	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
 	 */
 	if (context->k2pg_memctx) {
-		HandleYBStatus(YBCPgResetMemctx(context->k2pg_memctx));
+		HandleK2PgStatus(YBCPgResetMemctx(context->k2pg_memctx));
 	}
 
 	/* Nothing to do if no pallocs since startup or last reset */
@@ -291,7 +291,7 @@ MemoryContextDelete(MemoryContext context)
 	/*
 	 * Destroy YugaByte memory context.
 	 */
-	HandleYBStatus(YBCPgDestroyMemctx(context->k2pg_memctx));
+	HandleK2PgStatus(YBCPgDestroyMemctx(context->k2pg_memctx));
 	context->k2pg_memctx = NULL;
 
 	VALGRIND_DESTROY_MEMPOOL(context);
