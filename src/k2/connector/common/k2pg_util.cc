@@ -148,26 +148,26 @@ uint32_t K2PgStatusPgsqlError(K2PgStatus s) {
   StatusWrapper wrapper(s);
   const uint8_t* pg_err_ptr = wrapper->ErrorData(PgsqlErrorTag::kCategory);
   // If we have PgsqlError explicitly set, we decode it
-  YBPgErrorCode result = pg_err_ptr != nullptr ? PgsqlErrorTag::Decode(pg_err_ptr)
-                                               : YBPgErrorCode::K2PG_INTERNAL_ERROR;
+  K2PgErrorCode result = pg_err_ptr != nullptr ? PgsqlErrorTag::Decode(pg_err_ptr)
+                                               : K2PgErrorCode::K2PG_INTERNAL_ERROR;
 
   // If the error is the default generic K2PG_INTERNAL_ERROR (as we also set in AsyncRpc::Failed)
   // then we try to deduce it from a transaction error.
-  if (result == YBPgErrorCode::K2PG_INTERNAL_ERROR) {
+  if (result == K2PgErrorCode::K2PG_INTERNAL_ERROR) {
     const uint8_t* txn_err_ptr = wrapper->ErrorData(TransactionErrorTag::kCategory);
     if (txn_err_ptr != nullptr) {
       switch (TransactionErrorTag::Decode(txn_err_ptr)) {
         case TransactionErrorCode::kAborted: [[fallthrough]];
         case TransactionErrorCode::kReadRestartRequired: [[fallthrough]];
         case TransactionErrorCode::kConflict:
-          result = YBPgErrorCode::K2PG_T_R_SERIALIZATION_FAILURE;
+          result = K2PgErrorCode::K2PG_T_R_SERIALIZATION_FAILURE;
           break;
         case TransactionErrorCode::kSnapshotTooOld:
-          result = YBPgErrorCode::K2PG_SNAPSHOT_TOO_OLD;
+          result = K2PgErrorCode::K2PG_SNAPSHOT_TOO_OLD;
           break;
         case TransactionErrorCode::kNone: [[fallthrough]];
         default:
-          result = YBPgErrorCode::K2PG_INTERNAL_ERROR;
+          result = K2PgErrorCode::K2PG_INTERNAL_ERROR;
       }
     }
   }

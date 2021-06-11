@@ -17,7 +17,7 @@
 
 namespace k2pg {
 
-struct PgsqlErrorTag : IntegralErrorTag<YBPgErrorCode> {
+struct PgsqlErrorTag : IntegralErrorTag<K2PgErrorCode> {
   // It is part of the wire protocol and should not be changed once released.
   static constexpr uint8_t kCategory = 6;
 
