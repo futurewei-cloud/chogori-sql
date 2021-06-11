@@ -1172,7 +1172,7 @@ RenameDatabase(const char *oldname, const char *newname)
 	CatalogTupleUpdate(rel, &newtup->t_self, newtup);
 
 	if (IsYugaByteEnabled()) {
-		YBCPgStatement handle = NULL;
+		K2PgStatement handle = NULL;
 		HandleYBStatus(YBCPgNewAlterDatabase(oldname, db_id, &handle));
 		HandleYBStatus(YBCPgAlterDatabaseRenameDatabase(handle, newname));
 		HandleYBStatus(YBCPgExecAlterDatabase(handle));

@@ -37,8 +37,8 @@
 #define K2PG_TEXTARRAYOID 1009 /* text[] */
 #define K2PG_ACLITEMARRAYOID 1034 /* aclitem[] */
 
-extern const YBCPgTypeEntity *YBCDataTypeFromName(TypeName *typeName);
-extern const YBCPgTypeEntity *YBCDataTypeFromOidMod(int attnum, Oid type_id);
+extern const K2PgTypeEntity *YBCDataTypeFromName(TypeName *typeName);
+extern const K2PgTypeEntity *YBCDataTypeFromOidMod(int attnum, Oid type_id);
 
 /*
  * Returns true if we are allow the given type to be used for key columns such as primary key or
@@ -49,6 +49,6 @@ bool YBCDataTypeIsValidForKey(Oid type_id);
 /*
  * Array of all type entities.
  */
-void YBCGetTypeTable(const YBCPgTypeEntity **type_table, int *count);
+void YBCGetTypeTable(const K2PgTypeEntity **type_table, int *count);
 
 #endif

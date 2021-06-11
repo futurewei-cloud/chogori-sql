@@ -33,7 +33,7 @@ void SqlValue::Clear() {
     null_value_ = true;
 }
 
-SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null) {
+SqlValue::SqlValue(const K2PgTypeEntity* type_entity, uint64_t datum, bool is_null) {
   null_value_ = is_null;
 
  switch (type_entity->k2pg_type) {
@@ -41,7 +41,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         int8_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -50,7 +50,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         int16_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -59,7 +59,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         int32_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -68,7 +68,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -77,7 +77,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         uint32_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -86,7 +86,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         uint8_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -95,7 +95,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         uint16_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -104,7 +104,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         uint64_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -114,7 +114,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       if (!is_null) {
         char *value;
         int64_t bytes = type_entity->datum_fixed_size;
-        type_entity->datum_to_yb(datum, &value, &bytes);
+        type_entity->datum_to_k2pg(datum, &value, &bytes);
         data_.slice_val_ = std::string(value, bytes);
       }
       break;
@@ -123,7 +123,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::BOOL;
       if (!is_null) {
         bool value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.bool_val_ = value;
       }
       break;
@@ -132,7 +132,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::FLOAT;
       if (!is_null) {
         float value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.float_val_ = value;
       }
       break;
@@ -141,7 +141,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::DOUBLE;
       if (!is_null) {
         double value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.double_val_ = value;
       }
       break;
@@ -151,7 +151,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       if (!is_null) {
         uint8_t *value;
         int64_t bytes = type_entity->datum_fixed_size;
-        type_entity->datum_to_yb(datum, &value, &bytes);
+        type_entity->datum_to_k2pg(datum, &value, &bytes);
         data_.slice_val_ = std::string((char*)value, bytes);
       }
       break;
@@ -160,7 +160,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       type_ = ValueType::INT;
       if (!is_null) {
         int64_t value;
-        type_entity->datum_to_yb(datum, &value, nullptr);
+        type_entity->datum_to_k2pg(datum, &value, nullptr);
         data_.int_val_ = value;
       }
       break;
@@ -170,7 +170,7 @@ SqlValue::SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_n
       if (!is_null) {
         char* plaintext;
         // Calls YBCDatumToDecimalText in ybctype.c
-        type_entity->datum_to_yb(datum, &plaintext, nullptr);
+        type_entity->datum_to_k2pg(datum, &plaintext, nullptr);
         k2pg::Decimal k2pg_decimal(plaintext);
         data_.slice_val_ = k2pg_decimal.EncodeToComparable();
       }

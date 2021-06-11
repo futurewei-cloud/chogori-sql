@@ -2367,7 +2367,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 
 			// Currently, YugaByte does not allow updating primary key columns that were specified
 			// when creating table.
-			YBCPgTableDesc ybc_tabledesc = NULL;
+			K2PgTableDesc ybc_tabledesc = NULL;
 			bool is_primary = false;
 			bool is_hash = false;
 			HandleYBStatus(YBCPgGetTableDesc(YBCGetDatabaseOid(pstate->p_target_relation),

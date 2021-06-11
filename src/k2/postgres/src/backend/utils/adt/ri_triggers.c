@@ -2695,8 +2695,8 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 				const RI_ConstraintInfo *riinfo, HeapTuple tup,
 				void **value, int64_t *bytes)
 {
-	YBCPgStatement ybc_stmt;
-	YBCPgPrepareParameters prepare_params;
+	K2PgStatement ybc_stmt;
+	K2PgPrepareParameters prepare_params;
 
 	prepare_params.index_oid = RelationGetRelid(idx_rel);
 	prepare_params.index_only_scan = true;
@@ -2712,9 +2712,9 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 
 	Bitmapset *pkey = GetFullYBTablePrimaryKey(idx_rel);
 	const int nattrs = bms_num_members(pkey);
-	YBCPgAttrValueDescriptor *attrs =
-			(YBCPgAttrValueDescriptor*)palloc(nattrs * sizeof(YBCPgAttrValueDescriptor));
-	YBCPgAttrValueDescriptor *next_attr = attrs;
+	K2PgAttrValueDescriptor *attrs =
+			(K2PgAttrValueDescriptor*)palloc(nattrs * sizeof(K2PgAttrValueDescriptor));
+	K2PgAttrValueDescriptor *next_attr = attrs;
 	uint64_t tuple_id;
 
 	int i;
@@ -2750,8 +2750,8 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 
 	HandleYBStatus(YBCPgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
 
-	const YBCPgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
-	type_entity->datum_to_yb(tuple_id, value, bytes);
+	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
+	type_entity->datum_to_k2pg(tuple_id, value, bytes);
 
 	pfree(attrs);
 }

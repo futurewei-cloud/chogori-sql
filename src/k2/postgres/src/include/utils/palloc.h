@@ -92,7 +92,7 @@ extern void PrepareThreadLocalCurrentMemoryContext();
 
 extern void ResetThreadLocalCurrentMemoryContext();
 
-YBCPgMemctx GetCurrentYbMemctx();
+K2PgMemctx GetCurrentYbMemctx();
 
 /*
  * Flags for MemoryContextAllocExtended.

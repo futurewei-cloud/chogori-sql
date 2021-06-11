@@ -1252,7 +1252,7 @@ pchomp(const char *in)
 /*
  * Get the YugaByte current memory context.
  */
-YBCPgMemctx GetCurrentYbMemctx() {
+K2PgMemctx GetCurrentYbMemctx() {
 	MemoryContext context = GetCurrentMemoryContext();
 	AssertArg(MemoryContextIsValid(context));
 	AssertNotInCriticalSection(context);

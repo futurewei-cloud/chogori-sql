@@ -81,7 +81,7 @@ using k2pg::sql::catalog::SqlCatalogManager;
 // Implements support for CAPI.
 class PgGateApiImpl {
   public:
-  PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeTable, int count, YBCPgCallbacks pg_callbacks);
+  PgGateApiImpl(const K2PgTypeEntity *YBCDataTypeTable, int count, K2PgCallbacks pg_callbacks);
   virtual ~PgGateApiImpl();
 
  // Initialize ENV within which PGSQL calls will be executed.
@@ -125,7 +125,7 @@ class PgGateApiImpl {
   CHECKED_STATUS ClearBinds(PgStatement *handle);
 
   // Search for type_entity.
-  const YBCPgTypeEntity *FindTypeEntity(int type_oid);
+  const K2PgTypeEntity *FindTypeEntity(int type_oid);
 
   //------------------------------------------------------------------------------------------------
   CHECKED_STATUS PGInitPrimaryCluster();
@@ -186,7 +186,7 @@ class PgGateApiImpl {
                                 PgStatement **handle);
 
   CHECKED_STATUS CreateTableAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
-                                      const YBCPgTypeEntity *attr_type, bool is_hash,
+                                      const K2PgTypeEntity *attr_type, bool is_hash,
                                       bool is_range, bool is_desc, bool is_nulls_first);
 
   CHECKED_STATUS ExecCreateTable(PgStatement *handle);
@@ -195,7 +195,7 @@ class PgGateApiImpl {
                                PgStatement **handle);
 
   CHECKED_STATUS AlterTableAddColumn(PgStatement *handle, const char *name,
-                                     int order, const YBCPgTypeEntity *attr_type, bool is_not_null);
+                                     int order, const K2PgTypeEntity *attr_type, bool is_not_null);
 
   CHECKED_STATUS AlterTableRenameColumn(PgStatement *handle, const char *oldname,
                                         const char *newname);
@@ -242,7 +242,7 @@ class PgGateApiImpl {
                                 PgStatement **handle);
 
   CHECKED_STATUS CreateIndexAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
-                                      const YBCPgTypeEntity *attr_type, bool is_hash,
+                                      const K2PgTypeEntity *attr_type, bool is_hash,
                                       bool is_range, bool is_desc, bool is_nulls_first);
 
   CHECKED_STATUS ExecCreateIndex(PgStatement *handle);
@@ -343,7 +343,7 @@ class PgGateApiImpl {
 
   // This function adds a primary column to be used in the construction of the tuple id (ybctid).
   CHECKED_STATUS DmlAddYBTupleIdColumn(PgStatement *handle, int attr_num, uint64_t datum,
-                                       bool is_null, const YBCPgTypeEntity *type_entity);
+                                       bool is_null, const K2PgTypeEntity *type_entity);
 
 
   // This function returns the tuple id (ybctid) of a Postgres tuple.
@@ -398,9 +398,9 @@ class PgGateApiImpl {
                               const PgTypeAttrs *type_attrs, PgExpr **expr_handle);
 
   // Constant expressions.
-  CHECKED_STATUS NewConstant(PgStatement *stmt, const YBCPgTypeEntity *type_entity,
+  CHECKED_STATUS NewConstant(PgStatement *stmt, const K2PgTypeEntity *type_entity,
                              uint64_t datum, bool is_null, PgExpr **expr_handle);
-  CHECKED_STATUS NewConstantOp(PgStatement *stmt, const YBCPgTypeEntity *type_entity,
+  CHECKED_STATUS NewConstantOp(PgStatement *stmt, const K2PgTypeEntity *type_entity,
                              uint64_t datum, bool is_null, PgExpr **expr_handle, bool is_gt);
 
   // TODO(neil) UpdateConstant should be merged into one.
@@ -421,16 +421,16 @@ class PgGateApiImpl {
 
   // Operators.
   CHECKED_STATUS NewOperator(PgStatement *stmt, const char *opname,
-                             const YBCPgTypeEntity *type_entity,
+                             const K2PgTypeEntity *type_entity,
                              PgExpr **op_handle);
   CHECKED_STATUS OperatorAppendArg(PgExpr *op_handle, PgExpr *arg);
 
   // Foreign key reference caching.
-  bool ForeignKeyReferenceExists(YBCPgOid table_oid, std::string&& ybctid);
+  bool ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& ybctid);
 
-  CHECKED_STATUS CacheForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid);
+  CHECKED_STATUS CacheForeignKeyReference(K2PgOid table_oid, std::string&& ybctid);
 
-  CHECKED_STATUS DeleteForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid);
+  CHECKED_STATUS DeleteForeignKeyReference(K2PgOid table_oid, std::string&& ybctid);
 
   void ClearForeignKeyReferenceCache();
 
@@ -470,7 +470,7 @@ class PgGateApiImpl {
   std::shared_ptr<PgEnv> pg_env_;
 
   // Mapping table of YugaByte and PostgreSQL datatypes.
-  std::unordered_map<int, const YBCPgTypeEntity *> type_map_;
+  std::unordered_map<int, const K2PgTypeEntity *> type_map_;
 
   std::shared_ptr<K2Adapter> k2_adapter_;
 
@@ -480,7 +480,7 @@ class PgGateApiImpl {
 
   std::shared_ptr<PgSession> pg_session_;
 
-  YBCPgCallbacks pg_callbacks_;
+  K2PgCallbacks pg_callbacks_;
 
   // TODO: investigate that if the pg_gate_impl need to hold(and share with its session) the txnHandler
   //       or this handler should only be owned by it session.

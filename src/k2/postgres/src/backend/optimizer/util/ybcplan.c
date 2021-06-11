@@ -498,7 +498,7 @@ bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	Relation        rel                = RelationIdGetRelation(relid);
 	Oid             dboid              = YBCGetDatabaseOid(rel);
 	AttrNumber      natts              = RelationGetNumberOfAttributes(rel);
-	YBCPgTableDesc  ybc_tabledesc      = NULL;
+	K2PgTableDesc  ybc_tabledesc      = NULL;
 	Bitmapset      *primary_key_attrs  = NULL;
 
 	/* Get primary key columns from YB table desc. */

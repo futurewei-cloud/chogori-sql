@@ -83,7 +83,7 @@ PgSession::PgSession(
     std::shared_ptr<K2Adapter> k2_adapter,
     const string& database_name,
     std::shared_ptr<PgTxnHandler> pg_txn_handler,
-    const YBCPgCallbacks& pg_callbacks)
+    const K2PgCallbacks& pg_callbacks)
     : catalog_client_(catalog_client),
       k2_adapter_(k2_adapter),
       pg_txn_handler_(pg_txn_handler),

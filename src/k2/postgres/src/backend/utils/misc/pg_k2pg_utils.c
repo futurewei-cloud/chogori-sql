@@ -259,7 +259,7 @@ HandleYBStatusIgnoreNotFound(YBCStatus status, bool *not_found)
 
 void
 HandleYBStatusWithOwner(YBCStatus status,
-												YBCPgStatement ybc_stmt,
+												K2PgStatement ybc_stmt,
 												ResourceOwner owner)
 {
 	if (!status)
@@ -276,7 +276,7 @@ HandleYBStatusWithOwner(YBCStatus status,
 }
 
 void
-HandleYBTableDescStatus(YBCStatus status, YBCPgTableDesc table)
+HandleYBTableDescStatus(YBCStatus status, K2PgTableDesc table)
 {
 	if (!status)
 		return;
@@ -328,10 +328,10 @@ YBInitPostgresBackend(
 	 */
 	if (YBIsEnabledInPostgresEnvVar())
 	{
-		const YBCPgTypeEntity *type_table;
+		const K2PgTypeEntity *type_table;
 		int count;
 		YBCGetTypeTable(&type_table, &count);
-		YBCPgCallbacks callbacks;
+		K2PgCallbacks callbacks;
 		callbacks.FetchUniqueConstraintName = &FetchUniqueConstraintName;
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
 		YBCInitPgGate(type_table, count, callbacks);
@@ -498,7 +498,7 @@ YBPgTypeOidToStr(Oid type_id) {
 }
 
 const char*
-YBCPgDataTypeToStr(YBCPgDataType k2pg_type) {
+K2PgDataTypeToStr(K2PgDataType k2pg_type) {
 	switch (k2pg_type) {
 		case K2SQL_DATA_TYPE_NOT_SUPPORTED: return "NOT_SUPPORTED";
 		case K2SQL_DATA_TYPE_UNKNOWN_DATA: return "UNKNOWN_DATA";

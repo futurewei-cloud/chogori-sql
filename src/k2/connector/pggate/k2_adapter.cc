@@ -634,7 +634,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->endScanRecord = std::move(endRecord);
 
             if (request->where_conds != nullptr || !leftover_exprs.empty()) {
-                const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
+                const K2PgTypeEntity *bool_type = K2PgFindTypeEntity(BOOL_TYPE_OID);
                 PgOperator top_and_opr("and", bool_type);
                 PgOperator *top_opr;
                 if (request->where_conds != nullptr) {

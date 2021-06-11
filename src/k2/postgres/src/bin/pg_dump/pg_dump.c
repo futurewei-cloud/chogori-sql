@@ -15872,8 +15872,8 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
 			/* Get the table properties from YugaByte. */
-			YBCPgTableDesc ybc_tabledesc = NULL;
-			YBCPgTableProperties properties;
+			K2PgTableDesc ybc_tabledesc = NULL;
+			K2PgTableProperties properties;
 			HandleYBStatus(YBCPgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
 			HandleYBStatus(YBCPgGetTableProperties(ybc_tabledesc, &properties));
 

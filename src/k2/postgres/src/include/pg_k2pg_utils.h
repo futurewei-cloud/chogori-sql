@@ -137,14 +137,14 @@ extern void HandleYBStatusIgnoreNotFound(YBCStatus status, bool *not_found);
  * the given YugaByte statement.
  */
 extern void HandleYBStatusWithOwner(YBCStatus status,
-																		YBCPgStatement ybc_stmt,
+																		K2PgStatement ybc_stmt,
 																		ResourceOwner owner);
 
 /*
  * Same as HandleYBStatus but delete the table description first if the
  * status is not ok.
  */
-extern void HandleYBTableDescStatus(YBCStatus status, YBCPgTableDesc table);
+extern void HandleYBTableDescStatus(YBCStatus status, K2PgTableDesc table);
 /*
  * YB initialization that needs to happen when a PostgreSQL backend process
  * is started. Reports errors using ereport.
@@ -191,7 +191,7 @@ extern const char* YBPgTypeOidToStr(Oid type_id);
  * Return a string representation of the given PgDataType, or say it is unknown.
  * What is returned is always a static C string constant.
  */
-extern const char* YBCPgDataTypeToStr(YBCPgDataType k2pg_type);
+extern const char* K2PgDataTypeToStr(K2PgDataType k2pg_type);
 
 /*
  * Report an error saying the given type as not supported by YugaByte.

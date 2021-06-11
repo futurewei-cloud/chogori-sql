@@ -178,7 +178,7 @@ static void PrintDSMLeakWarning(dsm_segment *seg);
 /**
  * YugaByte-specific
  */
-static void PrintYugaByteStmtLeakWarning(YBCPgStatement k2pg_stmt);
+static void PrintYugaByteStmtLeakWarning(K2PgStatement k2pg_stmt);
 
 /*****************************************************************************
  *	  INTERNAL ROUTINES														 *
@@ -680,8 +680,8 @@ ResourceOwnerReleaseInternal(ResourceOwner owner,
 			/* Ditto for YugaByte statements */
 			while (ResourceArrayGetAny(&(owner->ybstmtarr), &foundres))
 			{
-				YBCPgStatement	res =
-					(YBCPgStatement) DatumGetPointer(foundres);
+				K2PgStatement	res =
+					(K2PgStatement) DatumGetPointer(foundres);
 
 				if (isCommit)
 					PrintYugaByteStmtLeakWarning(res);
@@ -1347,7 +1347,7 @@ ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner)
  * Caller must have previously done ResourceOwnerEnlargeYugaByteStmts()
  */
 void
-ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
+ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
 {
 	ResourceArrayAdd(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt));
 }
@@ -1356,7 +1356,7 @@ ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
  * Forget that a YugaByte statement is owned by a ResourceOwner
  */
 void
-ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
+ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
 {
 	if (!ResourceArrayRemove(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt)))
 		elog(ERROR, "YugaByte statement %p is not owned by resource owner %s",
@@ -1367,7 +1367,7 @@ ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, YBCPgStatement k2pg_stmt)
  * Debugging subroutine
  */
 static void
-PrintYugaByteStmtLeakWarning(YBCPgStatement k2pg_stmt)
+PrintYugaByteStmtLeakWarning(K2PgStatement k2pg_stmt)
 {
 	elog(WARNING, "YugaByte statement leak: statement %p still referenced",
 		 k2pg_stmt);

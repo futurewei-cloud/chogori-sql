@@ -3717,7 +3717,7 @@ ATController(AlterTableStmt *parsetree,
 	 * Prepare the YB alter statement handle -- need to call this before the
 	 * system catalogs are changed below (since it looks up table metadata).
 	 */
-	YBCPgStatement handle = NULL;
+	K2PgStatement handle = NULL;
 	if (IsYBRelation(rel))
 	{
 		handle = YBCPrepareAlterTable(parsetree, rel, relid);

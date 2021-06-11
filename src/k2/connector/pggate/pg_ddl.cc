@@ -247,7 +247,7 @@ PgAlterTable::~PgAlterTable() {
 }
 
 Status PgAlterTable::AddColumn(const std::string& name,
-                               const YBCPgTypeEntity *attr_type,
+                               const K2PgTypeEntity *attr_type,
                                int order,
                                bool is_not_null) {
   ColumnSchema colSchema(name, static_cast<DataType>(attr_type->k2pg_type), is_not_null, false, false, order, ColumnSchema::SortingType::kNotSpecified);

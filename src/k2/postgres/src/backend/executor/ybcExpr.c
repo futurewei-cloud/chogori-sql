@@ -40,32 +40,32 @@
 #include "executor/ybcExpr.h"
 #include "catalog/ybctype.h"
 
-YBCPgExpr YBCNewColumnRef(YBCPgStatement ybc_stmt, int16_t attr_num, int attr_typid,
-						  const YBCPgTypeAttrs *type_attrs) {
-	YBCPgExpr expr = NULL;
-	const YBCPgTypeEntity *type_entity = YBCDataTypeFromOidMod(attr_num, attr_typid);
+K2PgExpr YBCNewColumnRef(K2PgStatement ybc_stmt, int16_t attr_num, int attr_typid,
+						  const K2PgTypeAttrs *type_attrs) {
+	K2PgExpr expr = NULL;
+	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(attr_num, attr_typid);
 	HandleYBStatus(YBCPgNewColumnRef(ybc_stmt, attr_num, type_entity, type_attrs, &expr));
 	return expr;
 }
 
-YBCPgExpr YBCNewConstant(YBCPgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null) {
-	YBCPgExpr expr = NULL;
-	const YBCPgTypeEntity *type_entity = YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
+K2PgExpr YBCNewConstant(K2PgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null) {
+	K2PgExpr expr = NULL;
+	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
 	HandleYBStatus(YBCPgNewConstant(ybc_stmt, type_entity, datum, is_null, &expr));
 	return expr;
 }
 
-YBCPgExpr YBCNewEvalExprCall(YBCPgStatement ybc_stmt,
+K2PgExpr YBCNewEvalExprCall(K2PgStatement ybc_stmt,
                              Expr *pg_expr,
                              int32_t attno,
                              int32_t typid,
                              int32_t typmod) {
-	YBCPgExpr ybc_expr = NULL;
-	const YBCPgTypeEntity *type_ent = YBCDataTypeFromOidMod(InvalidAttrNumber, typid);
+	K2PgExpr ybc_expr = NULL;
+	const K2PgTypeEntity *type_ent = YBCDataTypeFromOidMod(InvalidAttrNumber, typid);
 	YBCPgNewOperator(ybc_stmt, "eval_expr_call", type_ent, &ybc_expr);
 
 	Datum expr_datum = CStringGetDatum(nodeToString(pg_expr));
-	YBCPgExpr expr = YBCNewConstant(ybc_stmt, CSTRINGOID, expr_datum , /* IsNull */ false);
+	K2PgExpr expr = YBCNewConstant(ybc_stmt, CSTRINGOID, expr_datum , /* IsNull */ false);
 	YBCPgOperatorAppendArg(ybc_expr, expr);
 
 	/*
@@ -73,11 +73,11 @@ YBCPgExpr YBCNewEvalExprCall(YBCPgStatement ybc_stmt,
 	 * DocDB Schema.
 	 * TODO(mihnea): Eventually DocDB should know the full YSQL/PG types and we can remove this.
 	 */
-	YBCPgExpr attno_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) attno, /* IsNull */ false);
+	K2PgExpr attno_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) attno, /* IsNull */ false);
 	YBCPgOperatorAppendArg(ybc_expr, attno_expr);
-	YBCPgExpr typid_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typid, /* IsNull */ false);
+	K2PgExpr typid_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typid, /* IsNull */ false);
 	YBCPgOperatorAppendArg(ybc_expr, typid_expr);
-	YBCPgExpr typmod_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typmod, /* IsNull */ false);
+	K2PgExpr typmod_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typmod, /* IsNull */ false);
 	YBCPgOperatorAppendArg(ybc_expr, typmod_expr);
 
 	return ybc_expr;

@@ -97,7 +97,7 @@ K2FinishInitDB()
 void
 YBCCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bool colocated)
 {
-	YBCPgStatement handle;
+	K2PgStatement handle;
 
 	HandleYBStatus(YBCPgNewCreateDatabase(dbname,
 										  dboid,
@@ -111,7 +111,7 @@ YBCCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bo
 void
 YBCDropDatabase(Oid dboid, const char *dbname)
 {
-	YBCPgStatement handle;
+	K2PgStatement handle;
 
 	HandleYBStatus(YBCPgNewDropDatabase(dbname,
 										dboid,
@@ -132,7 +132,7 @@ YBCReserveOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_o
 /* ------------------------------------------------------------------------- */
 /*  Table Functions. */
 
-static void CreateTableAddColumn(YBCPgStatement handle,
+static void CreateTableAddColumn(K2PgStatement handle,
 								 Form_pg_attribute att,
 								 bool is_hash,
 								 bool is_primary,
@@ -140,7 +140,7 @@ static void CreateTableAddColumn(YBCPgStatement handle,
 								 bool is_nulls_first)
 {
 	const AttrNumber attnum = att->attnum;
-	const YBCPgTypeEntity *col_type = YBCDataTypeFromOidMod(attnum,
+	const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(attnum,
 															att->atttypid);
 	HandleYBStatus(YBCPgCreateTableAddColumn(handle,
 																					 NameStr(att->attname),
@@ -156,7 +156,7 @@ static void CreateTableAddColumn(YBCPgStatement handle,
  * Columns need to be sent in order first hash columns, then rest of primary
  * key columns, then regular columns.
  */
-static void CreateTableAddColumns(YBCPgStatement handle,
+static void CreateTableAddColumns(K2PgStatement handle,
 								  TupleDesc desc,
 								  Constraint *primary_key,
 								  const bool colocated)
@@ -298,7 +298,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 		return; /* Nothing to do. */
 	}
 
-	YBCPgStatement handle = NULL;
+	K2PgStatement handle = NULL;
 	ListCell       *listptr;
 
 	char *db_name = get_database_name(MyDatabaseId);
@@ -371,7 +371,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 void
 YBCDropTable(Oid relationId)
 {
-	YBCPgStatement	handle = NULL;
+	K2PgStatement	handle = NULL;
 	bool			colocated = false;
 
 	/* Determine if table is colocated */
@@ -423,7 +423,7 @@ YBCDropTable(Oid relationId)
 
 void
 YBCTruncateTable(Relation rel) {
-	YBCPgStatement	handle;
+	K2PgStatement	handle;
 	Oid				relationId = RelationGetRelid(rel);
 	bool			colocated = false;
 
@@ -531,7 +531,7 @@ YBCCreateIndex(const char *indexName,
 		}
 	}
 
-	YBCPgStatement handle = NULL;
+	K2PgStatement handle = NULL;
 
 	HandleYBStatus(YBCPgNewCreateIndex(db_name,
 									   schema_name,
@@ -550,7 +550,7 @@ YBCCreateIndex(const char *indexName,
 		Form_pg_attribute     att         = TupleDescAttr(indexTupleDesc, i);
 		char                  *attname    = NameStr(att->attname);
 		AttrNumber            attnum      = att->attnum;
-		const YBCPgTypeEntity *col_type   = YBCDataTypeFromOidMod(attnum, att->atttypid);
+		const K2PgTypeEntity *col_type   = YBCDataTypeFromOidMod(attnum, att->atttypid);
 		const bool            is_key      = (i < indexInfo->ii_NumIndexKeyAttrs);
 
 		if (is_key)
@@ -581,10 +581,10 @@ YBCCreateIndex(const char *indexName,
 	HandleYBStatus(YBCPgExecCreateIndex(handle));
 }
 
-YBCPgStatement
+K2PgStatement
 YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 {
-	YBCPgStatement handle = NULL;
+	K2PgStatement handle = NULL;
 	HandleYBStatus(YBCPgNewAlterTable(MyDatabaseId,
 									  relationId,
 									  &handle));
@@ -619,7 +619,7 @@ YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 				typeTuple = typenameType(NULL, colDef->typeName, &typmod);
 				typeOid = HeapTupleGetOid(typeTuple);
 				order = RelationGetNumberOfAttributes(rel) + col;
-				const YBCPgTypeEntity *col_type = YBCDataTypeFromOidMod(order, typeOid);
+				const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(order, typeOid);
 
 				HandleYBStatus(YBCPgAlterTableAddColumn(handle, colDef->colname,
 																										order, col_type,
@@ -702,7 +702,7 @@ YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 }
 
 void
-YBCExecAlterTable(YBCPgStatement handle, Oid relationId)
+YBCExecAlterTable(K2PgStatement handle, Oid relationId)
 {
 	if (handle)
 	{
@@ -715,7 +715,7 @@ YBCExecAlterTable(YBCPgStatement handle, Oid relationId)
 void
 YBCRename(RenameStmt *stmt, Oid relationId)
 {
-	YBCPgStatement handle = NULL;
+	K2PgStatement handle = NULL;
 	char *db_name	  = get_database_name(MyDatabaseId);
 
 	switch (stmt->renameType)
@@ -749,7 +749,7 @@ YBCRename(RenameStmt *stmt, Oid relationId)
 void
 YBCDropIndex(Oid relationId)
 {
-	YBCPgStatement	handle;
+	K2PgStatement	handle;
 	bool			colocated = false;
 
 	/* Determine if table is colocated */

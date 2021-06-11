@@ -61,7 +61,7 @@ typedef struct YbScanDescData
 #define K2PG_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
 
 	/* The handle for the internal YB Select statement. */
-	YBCPgStatement handle;
+	K2PgStatement handle;
 	ResourceOwner stmt_owner;
 	bool is_exec_done;
 
@@ -77,7 +77,7 @@ typedef struct YbScanDescData
 	Oid tableOid;
 
 	/* Kept query-plan control to pass it to PgGate during preparation */
-	YBCPgPrepareParameters prepare_params;
+	K2PgPrepareParameters prepare_params;
 
 	/*
 	 * Kept execution control to pass it to PgGate.
@@ -87,7 +87,7 @@ typedef struct YbScanDescData
 	 * - YBC-index-scan in-turn will passes this attribute to PgGate to control the index-scan
 	 *   execution in YB tablet server.
 	 */
-	YBCPgExecParameters *exec_params;
+	K2PgExecParameters *exec_params;
 } YbScanDescData;
 
 typedef struct YbScanDescData *YbScanDesc;

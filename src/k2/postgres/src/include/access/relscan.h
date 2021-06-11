@@ -158,7 +158,7 @@ typedef struct IndexScanDescData
 	 * - Postgres IndexScan function will call and pass "k2pg_exec_params" to PgGate to control the
 	 *   index-scan execution in YugaByte.
 	 */
-	YBCPgExecParameters *k2pg_exec_params;
+	K2PgExecParameters *k2pg_exec_params;
 }			IndexScanDescData;
 
 /* Generic structure for parallel scans */

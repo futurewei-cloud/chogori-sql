@@ -113,7 +113,7 @@ extern bool YBCIsSingleRowTxnCapableRel(ResultRelInfo *resultRelInfo);
 
 extern Datum YBCGetYBTupleIdFromSlot(TupleTableSlot *slot);
 
-extern Datum YBCGetYBTupleIdFromTuple(YBCPgStatement pg_stmt,
+extern Datum YBCGetYBTupleIdFromTuple(K2PgStatement pg_stmt,
 									  Relation rel,
 									  HeapTuple tuple,
 									  TupleDesc tupleDesc);

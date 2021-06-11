@@ -25,15 +25,15 @@ extern "C" {
 
 // This must be called exactly once to initialize the YPostgreSQL/SKV gateway API before any other
 // functions in this API are called.
-void YBCInitPgGate(const YBCPgTypeEntity *YBCDataTypeTable, int count, YBCPgCallbacks pg_callbacks);
+void YBCInitPgGate(const K2PgTypeEntity *YBCDataTypeTable, int count, K2PgCallbacks pg_callbacks);
 void YBCDestroyPgGate();
 
 // Initialize ENV within which PGSQL calls will be executed.
-YBCStatus YBCPgCreateEnv(YBCPgEnv *pg_env);
-YBCStatus YBCPgDestroyEnv(YBCPgEnv pg_env);
+YBCStatus YBCPgCreateEnv(K2PgEnv *pg_env);
+YBCStatus YBCPgDestroyEnv(K2PgEnv pg_env);
 
 // Initialize a session to process statements that come from the same client connection.
-YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name);
+YBCStatus YBCPgInitSession(const K2PgEnv pg_env, const char *database_name);
 
 // Initialize YBCPgMemCtx.
 // - Postgres uses memory context to hold all of its allocated space. Once all associated operations
@@ -42,15 +42,15 @@ YBCStatus YBCPgInitSession(const YBCPgEnv pg_env, const char *database_name);
 //   memory will be held by YBCPgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
 //   Postgres operations are done, associated YugaByte memory context (YBCPgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
-YBCPgMemctx YBCPgCreateMemctx();
-YBCStatus YBCPgDestroyMemctx(YBCPgMemctx memctx);
-YBCStatus YBCPgResetMemctx(YBCPgMemctx memctx);
+K2PgMemctx YBCPgCreateMemctx();
+YBCStatus YBCPgDestroyMemctx(K2PgMemctx memctx);
+YBCStatus YBCPgResetMemctx(K2PgMemctx memctx);
 
 // Invalidate the sessions table cache.
 YBCStatus YBCPgInvalidateCache();
 
 // Clear all values and expressions that were bound to the given statement.
-YBCStatus YBCPgClearBinds(YBCPgStatement handle);
+YBCStatus YBCPgClearBinds(K2PgStatement handle);
 
 // Check if initdb has been already run.
 YBCStatus YBCPgIsInitDbDone(bool* initdb_done);
@@ -68,7 +68,7 @@ YBCStatus YBCGetSharedCatalogVersion(uint64_t* catalog_version);
 YBCStatus YBCPgConnectDatabase(const char *database_name);
 
 // Get whether the given database is colocated.
-YBCStatus YBCPgIsDatabaseColocated(const YBCPgOid database_oid, bool *colocated);
+YBCStatus YBCPgIsDatabaseColocated(const K2PgOid database_oid, bool *colocated);
 
 YBCStatus YBCInsertSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
@@ -107,38 +107,38 @@ YBCStatus K2PGFinishInitDB();
 
 // Create database.
 YBCStatus YBCPgNewCreateDatabase(const char *database_name,
-                                 YBCPgOid database_oid,
-                                 YBCPgOid source_database_oid,
-                                 YBCPgOid next_oid,
+                                 K2PgOid database_oid,
+                                 K2PgOid source_database_oid,
+                                 K2PgOid next_oid,
                                  const bool colocated,
-                                 YBCPgStatement *handle);
-YBCStatus YBCPgExecCreateDatabase(YBCPgStatement handle);
+                                 K2PgStatement *handle);
+YBCStatus YBCPgExecCreateDatabase(K2PgStatement handle);
 
 // Drop database.
 YBCStatus YBCPgNewDropDatabase(const char *database_name,
-                               YBCPgOid database_oid,
-                               YBCPgStatement *handle);
-YBCStatus YBCPgExecDropDatabase(YBCPgStatement handle);
+                               K2PgOid database_oid,
+                               K2PgStatement *handle);
+YBCStatus YBCPgExecDropDatabase(K2PgStatement handle);
 
 // Alter database.
 YBCStatus YBCPgNewAlterDatabase(const char *database_name,
-                               YBCPgOid database_oid,
-                               YBCPgStatement *handle);
-YBCStatus YBCPgAlterDatabaseRenameDatabase(YBCPgStatement handle, const char *new_name);
-YBCStatus YBCPgExecAlterDatabase(YBCPgStatement handle);
+                               K2PgOid database_oid,
+                               K2PgStatement *handle);
+YBCStatus YBCPgAlterDatabaseRenameDatabase(K2PgStatement handle, const char *new_name);
+YBCStatus YBCPgExecAlterDatabase(K2PgStatement handle);
 
 // Reserve oids.
-YBCStatus YBCPgReserveOids(YBCPgOid database_oid,
-                           YBCPgOid next_oid,
+YBCStatus YBCPgReserveOids(K2PgOid database_oid,
+                           K2PgOid next_oid,
                            uint32_t count,
-                           YBCPgOid *begin_oid,
-                           YBCPgOid *end_oid);
+                           K2PgOid *begin_oid,
+                           K2PgOid *end_oid);
 
 YBCStatus YBCPgGetCatalogMasterVersion(uint64_t *version);
 
 void YBCPgInvalidateTableCache(
-    const YBCPgOid database_oid,
-    const YBCPgOid table_oid);
+    const K2PgOid database_oid,
+    const K2PgOid table_oid);
 
 YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_uuid);
 
@@ -149,70 +149,70 @@ YBCStatus YBCPgInvalidateTableCacheByTableId(const char *table_uuid);
 YBCStatus YBCPgNewCreateTable(const char *database_name,
                               const char *schema_name,
                               const char *table_name,
-                              YBCPgOid database_oid,
-                              YBCPgOid table_oid,
+                              K2PgOid database_oid,
+                              K2PgOid table_oid,
                               bool is_shared_table,
                               bool if_not_exist,
                               bool add_primary_key,
                               const bool colocated,
-                              YBCPgStatement *handle);
+                              K2PgStatement *handle);
 
-YBCStatus YBCPgCreateTableAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
-                                    const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
+YBCStatus YBCPgCreateTableAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
+                                    const K2PgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first);
 
-YBCStatus YBCPgExecCreateTable(YBCPgStatement handle);
+YBCStatus YBCPgExecCreateTable(K2PgStatement handle);
 
-YBCStatus YBCPgNewAlterTable(YBCPgOid database_oid,
-                             YBCPgOid table_oid,
-                             YBCPgStatement *handle);
+YBCStatus YBCPgNewAlterTable(K2PgOid database_oid,
+                             K2PgOid table_oid,
+                             K2PgStatement *handle);
 
-YBCStatus YBCPgAlterTableAddColumn(YBCPgStatement handle, const char *name, int order,
-                                   const YBCPgTypeEntity *attr_type, bool is_not_null);
+YBCStatus YBCPgAlterTableAddColumn(K2PgStatement handle, const char *name, int order,
+                                   const K2PgTypeEntity *attr_type, bool is_not_null);
 
-YBCStatus YBCPgAlterTableRenameColumn(YBCPgStatement handle, const char *oldname,
+YBCStatus YBCPgAlterTableRenameColumn(K2PgStatement handle, const char *oldname,
                                       const char *newname);
 
-YBCStatus YBCPgAlterTableDropColumn(YBCPgStatement handle, const char *name);
+YBCStatus YBCPgAlterTableDropColumn(K2PgStatement handle, const char *name);
 
-YBCStatus YBCPgAlterTableRenameTable(YBCPgStatement handle, const char *db_name,
+YBCStatus YBCPgAlterTableRenameTable(K2PgStatement handle, const char *db_name,
                                      const char *newname);
 
-YBCStatus YBCPgExecAlterTable(YBCPgStatement handle);
+YBCStatus YBCPgExecAlterTable(K2PgStatement handle);
 
-YBCStatus YBCPgNewDropTable(YBCPgOid database_oid,
-                            YBCPgOid table_oid,
+YBCStatus YBCPgNewDropTable(K2PgOid database_oid,
+                            K2PgOid table_oid,
                             bool if_exist,
-                            YBCPgStatement *handle);
+                            K2PgStatement *handle);
 
-YBCStatus YBCPgExecDropTable(YBCPgStatement handle);
+YBCStatus YBCPgExecDropTable(K2PgStatement handle);
 
-YBCStatus YBCPgNewTruncateTable(YBCPgOid database_oid,
-                                YBCPgOid table_oid,
-                                YBCPgStatement *handle);
+YBCStatus YBCPgNewTruncateTable(K2PgOid database_oid,
+                                K2PgOid table_oid,
+                                K2PgStatement *handle);
 
-YBCStatus YBCPgExecTruncateTable(YBCPgStatement handle);
+YBCStatus YBCPgExecTruncateTable(K2PgStatement handle);
 
-YBCStatus YBCPgGetTableDesc(YBCPgOid database_oid,
-                            YBCPgOid table_oid,
-                            YBCPgTableDesc *handle);
+YBCStatus YBCPgGetTableDesc(K2PgOid database_oid,
+                            K2PgOid table_oid,
+                            K2PgTableDesc *handle);
 
-YBCStatus YBCPgGetColumnInfo(YBCPgTableDesc table_desc,
+YBCStatus YBCPgGetColumnInfo(K2PgTableDesc table_desc,
                              int16_t attr_number,
                              bool *is_primary,
                              bool *is_hash);
 
-YBCStatus YBCPgGetTableProperties(YBCPgTableDesc table_desc,
-                                  YBCPgTableProperties *properties);
+YBCStatus YBCPgGetTableProperties(K2PgTableDesc table_desc,
+                                  K2PgTableProperties *properties);
 
-YBCStatus YBCPgDmlModifiesRow(YBCPgStatement handle, bool *modifies_row);
+YBCStatus YBCPgDmlModifiesRow(K2PgStatement handle, bool *modifies_row);
 
-YBCStatus YBCPgSetIsSysCatalogVersionChange(YBCPgStatement handle);
+YBCStatus YBCPgSetIsSysCatalogVersionChange(K2PgStatement handle);
 
-YBCStatus YBCPgSetCatalogCacheVersion(YBCPgStatement handle, uint64_t catalog_cache_version);
+YBCStatus YBCPgSetCatalogCacheVersion(K2PgStatement handle, uint64_t catalog_cache_version);
 
-YBCStatus YBCPgIsTableColocated(const YBCPgOid database_oid,
-                                const YBCPgOid table_oid,
+YBCStatus YBCPgIsTableColocated(const K2PgOid database_oid,
+                                const K2PgOid table_oid,
                                 bool *colocated);
 
 // INDEX -------------------------------------------------------------------------------------------
@@ -222,38 +222,38 @@ YBCStatus YBCPgIsTableColocated(const YBCPgOid database_oid,
 YBCStatus YBCPgNewCreateIndex(const char *database_name,
                               const char *schema_name,
                               const char *index_name,
-                              YBCPgOid database_oid,
-                              YBCPgOid index_oid,
-                              YBCPgOid table_oid,
+                              K2PgOid database_oid,
+                              K2PgOid index_oid,
+                              K2PgOid table_oid,
                               bool is_shared_index,
                               bool is_unique_index,
                               const bool skip_index_backfill,
                               bool if_not_exist,
-                              YBCPgStatement *handle);
+                              K2PgStatement *handle);
 
-YBCStatus YBCPgCreateIndexAddColumn(YBCPgStatement handle, const char *attr_name, int attr_num,
-                                    const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
+YBCStatus YBCPgCreateIndexAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
+                                    const K2PgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first);
 
-YBCStatus YBCPgExecCreateIndex(YBCPgStatement handle);
+YBCStatus YBCPgExecCreateIndex(K2PgStatement handle);
 
-YBCStatus YBCPgNewDropIndex(YBCPgOid database_oid,
-                            YBCPgOid index_oid,
+YBCStatus YBCPgNewDropIndex(K2PgOid database_oid,
+                            K2PgOid index_oid,
                             bool if_exist,
-                            YBCPgStatement *handle);
+                            K2PgStatement *handle);
 
-YBCStatus YBCPgExecDropIndex(YBCPgStatement handle);
+YBCStatus YBCPgExecDropIndex(K2PgStatement handle);
 
 YBCStatus YBCPgWaitUntilIndexPermissionsAtLeast(
-    const YBCPgOid database_oid,
-    const YBCPgOid table_oid,
-    const YBCPgOid index_oid,
+    const K2PgOid database_oid,
+    const K2PgOid table_oid,
+    const K2PgOid index_oid,
     const uint32_t target_index_permissions,
     uint32_t *actual_index_permissions);
 
 YBCStatus YBCPgAsyncUpdateIndexPermissions(
-    const YBCPgOid database_oid,
-    const YBCPgOid indexed_table_oid);
+    const K2PgOid database_oid,
+    const K2PgOid indexed_table_oid);
 
 //--------------------------------------------------------------------------------------------------
 // DML statements (select, insert, update, delete, truncate)
@@ -262,7 +262,7 @@ YBCStatus YBCPgAsyncUpdateIndexPermissions(
 // This function is for specifying the selected or returned expressions.
 // - SELECT target_expr1, target_expr2, ...
 // - INSERT / UPDATE / DELETE ... RETURNING target_expr1, target_expr2, ...
-YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target);
+YBCStatus YBCPgDmlAppendTarget(K2PgStatement handle, K2PgExpr target);
 
 // Binding Columns: Bind column with a value (expression) in a statement.
 // + This API is used to identify the rows you want to operate on. If binding columns are not
@@ -288,88 +288,88 @@ YBCStatus YBCPgDmlAppendTarget(YBCPgStatement handle, YBCPgExpr target);
 // - For Index Scan, the target columns of the bind are those in the index table.
 //   The index-scan will use the bind to find base-ybctid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
-YBCStatus YBCPgDmlBindColumn(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
-YBCStatus YBCPgDmlBindColumnCondEq(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value);
-YBCStatus YBCPgDmlBindColumnCondBetween(YBCPgStatement handle, int attr_num, YBCPgExpr attr_value,
-    YBCPgExpr attr_value_end);
-YBCStatus YBCPgDmlBindColumnCondIn(YBCPgStatement handle, int attr_num, int n_attr_values,
-    YBCPgExpr *attr_values);
+YBCStatus YBCPgDmlBindColumn(K2PgStatement handle, int attr_num, K2PgExpr attr_value);
+YBCStatus YBCPgDmlBindColumnCondEq(K2PgStatement handle, int attr_num, K2PgExpr attr_value);
+YBCStatus YBCPgDmlBindColumnCondBetween(K2PgStatement handle, int attr_num, K2PgExpr attr_value,
+    K2PgExpr attr_value_end);
+YBCStatus YBCPgDmlBindColumnCondIn(K2PgStatement handle, int attr_num, int n_attr_values,
+    K2PgExpr *attr_values);
 
 // bind range condition so as to derive key prefix
-YBCStatus PgDmlBindRangeConds(YBCPgStatement handle, YBCPgExpr where_conds);
+YBCStatus PgDmlBindRangeConds(K2PgStatement handle, K2PgExpr where_conds);
 
 // bind where clause for a DML operation
-YBCStatus PgDmlBindWhereConds(YBCPgStatement handle, YBCPgExpr where_conds);
+YBCStatus PgDmlBindWhereConds(K2PgStatement handle, K2PgExpr where_conds);
 
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
-YBCStatus YBCPgDmlBindTable(YBCPgStatement handle);
+YBCStatus YBCPgDmlBindTable(K2PgStatement handle);
 
 // API for SET clause.
-YBCStatus YBCPgDmlAssignColumn(YBCPgStatement handle,
+YBCStatus YBCPgDmlAssignColumn(K2PgStatement handle,
                                int attr_num,
-                               YBCPgExpr attr_value);
+                               K2PgExpr attr_value);
 
 // This function is to fetch the targets in YBCPgDmlAppendTarget() from the rows that were defined
 // by YBCPgDmlBindColumn().
-YBCStatus YBCPgDmlFetch(YBCPgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
-                        YBCPgSysColumns *syscols, bool *has_data);
+YBCStatus YBCPgDmlFetch(K2PgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
+                        K2PgSysColumns *syscols, bool *has_data);
 
 // Utility method that checks stmt type and calls either exec insert, update, or delete internally.
-YBCStatus YBCPgDmlExecWriteOp(YBCPgStatement handle, int32_t *rows_affected_count);
+YBCStatus YBCPgDmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_count);
 
 // This function returns the tuple id (ybctid) of a Postgres tuple.
-YBCStatus YBCPgDmlBuildYBTupleId(YBCPgStatement handle, const YBCPgAttrValueDescriptor *attrs,
+YBCStatus YBCPgDmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid);
 
 // DB Operations: WHERE(partially supported by K2-SKV)
 // TODO: ORDER_BY, GROUP_BY, etc.
 
 // INSERT ------------------------------------------------------------------------------------------
-YBCStatus YBCPgNewInsert(YBCPgOid database_oid,
-                         YBCPgOid table_oid,
+YBCStatus YBCPgNewInsert(K2PgOid database_oid,
+                         K2PgOid table_oid,
                          bool is_single_row_txn,
-                         YBCPgStatement *handle);
+                         K2PgStatement *handle);
 
-YBCStatus YBCPgExecInsert(YBCPgStatement handle);
+YBCStatus YBCPgExecInsert(K2PgStatement handle);
 
-YBCStatus YBCPgInsertStmtSetUpsertMode(YBCPgStatement handle);
+YBCStatus YBCPgInsertStmtSetUpsertMode(K2PgStatement handle);
 
-YBCStatus YBCPgInsertStmtSetWriteTime(YBCPgStatement handle, const uint64_t write_time);
+YBCStatus YBCPgInsertStmtSetWriteTime(K2PgStatement handle, const uint64_t write_time);
 
 // UPDATE ------------------------------------------------------------------------------------------
-YBCStatus YBCPgNewUpdate(YBCPgOid database_oid,
-                         YBCPgOid table_oid,
+YBCStatus YBCPgNewUpdate(K2PgOid database_oid,
+                         K2PgOid table_oid,
                          bool is_single_row_txn,
-                         YBCPgStatement *handle);
+                         K2PgStatement *handle);
 
-YBCStatus YBCPgExecUpdate(YBCPgStatement handle);
+YBCStatus YBCPgExecUpdate(K2PgStatement handle);
 
 // DELETE ------------------------------------------------------------------------------------------
-YBCStatus YBCPgNewDelete(YBCPgOid database_oid,
-                         YBCPgOid table_oid,
+YBCStatus YBCPgNewDelete(K2PgOid database_oid,
+                         K2PgOid table_oid,
                          bool is_single_row_txn,
-                         YBCPgStatement *handle);
+                         K2PgStatement *handle);
 
-YBCStatus YBCPgExecDelete(YBCPgStatement handle);
+YBCStatus YBCPgExecDelete(K2PgStatement handle);
 
 // Colocated TRUNCATE ------------------------------------------------------------------------------
-YBCStatus YBCPgNewTruncateColocated(YBCPgOid database_oid,
-                                    YBCPgOid table_oid,
+YBCStatus YBCPgNewTruncateColocated(K2PgOid database_oid,
+                                    K2PgOid table_oid,
                                     bool is_single_row_txn,
-                                    YBCPgStatement *handle);
+                                    K2PgStatement *handle);
 
-YBCStatus YBCPgExecTruncateColocated(YBCPgStatement handle);
+YBCStatus YBCPgExecTruncateColocated(K2PgStatement handle);
 
 // SELECT ------------------------------------------------------------------------------------------
-YBCStatus YBCPgNewSelect(YBCPgOid database_oid,
-                         YBCPgOid table_oid,
-                         const YBCPgPrepareParameters *prepare_params,
-                         YBCPgStatement *handle);
+YBCStatus YBCPgNewSelect(K2PgOid database_oid,
+                         K2PgOid table_oid,
+                         const K2PgPrepareParameters *prepare_params,
+                         K2PgStatement *handle);
 
 // Set forward/backward scan direction.
-YBCStatus YBCPgSetForwardScan(YBCPgStatement handle, bool is_forward_scan);
+YBCStatus YBCPgSetForwardScan(K2PgStatement handle, bool is_forward_scan);
 
-YBCStatus YBCPgExecSelect(YBCPgStatement handle, const YBCPgExecParameters *exec_params);
+YBCStatus YBCPgExecSelect(K2PgStatement handle, const K2PgExecParameters *exec_params);
 
 // Transaction control -----------------------------------------------------------------------------
 YBCStatus YBCPgBeginTransaction();
@@ -386,40 +386,40 @@ YBCStatus YBCPgExitSeparateDdlTxnMode(bool success);
 // Expressions.
 
 // Column references.
-YBCStatus YBCPgNewColumnRef(YBCPgStatement stmt, int attr_num, const YBCPgTypeEntity *type_entity,
-                            const YBCPgTypeAttrs *type_attrs, YBCPgExpr *expr_handle);
+YBCStatus YBCPgNewColumnRef(K2PgStatement stmt, int attr_num, const K2PgTypeEntity *type_entity,
+                            const K2PgTypeAttrs *type_attrs, K2PgExpr *expr_handle);
 
 // Constant expressions.
-YBCStatus YBCPgNewConstant(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
-                           uint64_t datum, bool is_null, YBCPgExpr *expr_handle);
-YBCStatus YBCPgNewConstantOp(YBCPgStatement stmt, const YBCPgTypeEntity *type_entity,
-                           uint64_t datum, bool is_null, YBCPgExpr *expr_handle, bool is_gt);
+YBCStatus YBCPgNewConstant(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
+                           uint64_t datum, bool is_null, K2PgExpr *expr_handle);
+YBCStatus YBCPgNewConstantOp(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
+                           uint64_t datum, bool is_null, K2PgExpr *expr_handle, bool is_gt);
 
 // The following update functions only work for constants.
 // Overwriting the constant expression with new value.
-YBCStatus YBCPgUpdateConstInt2(YBCPgExpr expr, int16_t value, bool is_null);
-YBCStatus YBCPgUpdateConstInt4(YBCPgExpr expr, int32_t value, bool is_null);
-YBCStatus YBCPgUpdateConstInt8(YBCPgExpr expr, int64_t value, bool is_null);
-YBCStatus YBCPgUpdateConstFloat4(YBCPgExpr expr, float value, bool is_null);
-YBCStatus YBCPgUpdateConstFloat8(YBCPgExpr expr, double value, bool is_null);
-YBCStatus YBCPgUpdateConstText(YBCPgExpr expr, const char *value, bool is_null);
-YBCStatus YBCPgUpdateConstChar(YBCPgExpr expr, const char *value, int64_t bytes, bool is_null);
+YBCStatus YBCPgUpdateConstInt2(K2PgExpr expr, int16_t value, bool is_null);
+YBCStatus YBCPgUpdateConstInt4(K2PgExpr expr, int32_t value, bool is_null);
+YBCStatus YBCPgUpdateConstInt8(K2PgExpr expr, int64_t value, bool is_null);
+YBCStatus YBCPgUpdateConstFloat4(K2PgExpr expr, float value, bool is_null);
+YBCStatus YBCPgUpdateConstFloat8(K2PgExpr expr, double value, bool is_null);
+YBCStatus YBCPgUpdateConstText(K2PgExpr expr, const char *value, bool is_null);
+YBCStatus YBCPgUpdateConstChar(K2PgExpr expr, const char *value, int64_t bytes, bool is_null);
 
 // Expressions with operators "=", "+", "between", "in", ...
-YBCStatus YBCPgNewOperator(YBCPgStatement stmt, const char *opname,
-                           const YBCPgTypeEntity *type_entity,
-                           YBCPgExpr *op_handle);
-YBCStatus YBCPgOperatorAppendArg(YBCPgExpr op_handle, YBCPgExpr arg);
+YBCStatus YBCPgNewOperator(K2PgStatement stmt, const char *opname,
+                           const K2PgTypeEntity *type_entity,
+                           K2PgExpr *op_handle);
+YBCStatus YBCPgOperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg);
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
-bool YBCForeignKeyReferenceExists(YBCPgOid table_oid, const char* ybctid, int64_t ybctid_size);
+bool YBCForeignKeyReferenceExists(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size);
 
 // Add an entry to foreign key reference cache.
-YBCStatus YBCCacheForeignKeyReference(YBCPgOid table_oid, const char* ybctid, int64_t ybctid_size);
+YBCStatus YBCCacheForeignKeyReference(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size);
 
 // Delete an entry from foreign key reference cache.
-YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(YBCPgOid table_oid, uint64_t ybctid);
+YBCStatus YBCPgDeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t ybctid);
 
 void ClearForeignKeyReferenceCache();
 

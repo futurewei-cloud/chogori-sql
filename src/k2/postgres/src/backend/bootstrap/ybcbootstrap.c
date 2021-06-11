@@ -45,7 +45,7 @@
 
 #include "parser/parser.h"
 
-static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
+static void YBCAddSysCatalogColumn(K2PgStatement k2pg_stmt,
 								   IndexStmt *pkey_idx,
 								   const char *attname,
 								   int attnum,
@@ -56,7 +56,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 
 	ListCell      *lc;
 	bool          is_key    = false;
-	const YBCPgTypeEntity *col_type  = YBCDataTypeFromOidMod(attnum, type_id);
+	const K2PgTypeEntity *col_type  = YBCDataTypeFromOidMod(attnum, type_id);
 
 	if (pkey_idx)
 	{
@@ -87,7 +87,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 	}
 }
 
-static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
+static void YBCAddSysCatalogColumns(K2PgStatement k2pg_stmt,
 									TupleDesc tupdesc,
 									IndexStmt *pkey_idx,
 									const bool key)
@@ -128,7 +128,7 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	Assert(IsBootstrapProcessingMode());
 	char           *db_name     = "template1";
 	char           *schema_name = "pg_catalog";
-	YBCPgStatement k2pg_stmt      = NULL;
+	K2PgStatement k2pg_stmt      = NULL;
 
 	HandleYBStatus(YBCPgNewCreateTable(db_name,
 	                                   schema_name,

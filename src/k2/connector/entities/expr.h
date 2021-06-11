@@ -120,11 +120,11 @@ class PgExpr {
 
     typedef std::shared_ptr<PgExpr> SharedPtr;
 
-    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity);
+    explicit PgExpr(Opcode opcode, const K2PgTypeEntity *type_entity);
 
-    explicit PgExpr(Opcode opcode, const YBCPgTypeEntity *type_entity, const PgTypeAttrs *type_attrs);
+    explicit PgExpr(Opcode opcode, const K2PgTypeEntity *type_entity, const PgTypeAttrs *type_attrs);
 
-    explicit PgExpr(const char *opname, const YBCPgTypeEntity *type_entity);
+    explicit PgExpr(const char *opname, const K2PgTypeEntity *type_entity);
 
     virtual ~PgExpr();
 
@@ -190,10 +190,10 @@ class PgConstant : public PgExpr {
   // Public types.
   typedef std::shared_ptr<PgConstant> SharedPtr;
   // Constructor.
-  explicit PgConstant(const YBCPgTypeEntity *type_entity, uint64_t datum, bool is_null,
+  explicit PgConstant(const K2PgTypeEntity *type_entity, uint64_t datum, bool is_null,
       PgExpr::Opcode opcode = PgExpr::Opcode::PG_EXPR_CONSTANT);
 
-  explicit PgConstant(const YBCPgTypeEntity *type_entity, SqlValue value);
+  explicit PgConstant(const K2PgTypeEntity *type_entity, SqlValue value);
 
   // Destructor.
   virtual ~PgConstant();
@@ -262,7 +262,7 @@ class PgOperator : public PgExpr {
   typedef std::shared_ptr<PgOperator> SharedPtr;
 
   // Constructor.
-  explicit PgOperator(const char *name, const YBCPgTypeEntity *type_entity);
+  explicit PgOperator(const char *name, const K2PgTypeEntity *type_entity);
   virtual ~PgOperator();
 
   // Append arguments.

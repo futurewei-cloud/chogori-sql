@@ -83,7 +83,7 @@ static void ybcAddAttributeColumn(YbScanPlan scan_plan, AttrNumber attnum)
  * the scan plan.
  */
 static void ybcCheckPrimaryKeyAttribute(YbScanPlan      scan_plan,
-										YBCPgTableDesc  ybc_table_desc,
+										K2PgTableDesc  ybc_table_desc,
 										AttrNumber      attnum)
 {
 	bool is_primary = false;
@@ -122,7 +122,7 @@ static void ybcLoadTableInfo(Relation relation, YbScanPlan scan_plan)
 {
 	Oid            dboid          = YBCGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
-	YBCPgTableDesc ybc_table_desc = NULL;
+	K2PgTableDesc ybc_table_desc = NULL;
 
 	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_table_desc));
 
@@ -161,7 +161,7 @@ static void ybcBindColumn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumber att
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
 
 	HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
 													ybScan->handle,
@@ -173,7 +173,7 @@ void ybcBindColumnCondEq(YbScanDesc ybScan, bool is_hash_key, TupleDesc bind_des
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	YBCPgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
 
 	if (is_hash_key)
 		HandleYBStatusWithOwner(YBCPgDmlBindColumn(ybScan->handle, attnum, ybc_expr),
@@ -190,9 +190,9 @@ static void ybcBindColumnCondBetween(YbScanDesc ybScan, TupleDesc bind_desc, Att
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	YBCPgExpr ybc_expr = start_valid ? YBCNewConstant(ybScan->handle, atttypid, value,
+	K2PgExpr ybc_expr = start_valid ? YBCNewConstant(ybScan->handle, atttypid, value,
       false /* isnull */) : NULL;
-	YBCPgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
+	K2PgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
       false /* isnull */) : NULL;
 
   HandleYBStatusWithOwner(YBCPgDmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
@@ -209,7 +209,7 @@ static void ybcBindColumnCondIn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumb
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	YBCPgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
+	K2PgExpr ybc_exprs[nvalues]; /* VLA - scratch space */
 	for (int i = 0; i < nvalues; i++) {
 		/*
 		 * For IN we are removing all null values in ybcBindScanKeys before
@@ -242,8 +242,8 @@ static void ybcAddTargetColumn(YbScanDesc ybScan, AttrNumber attnum)
 		atttypmod = attr->atttypmod;
 	}
 
-	YBCPgTypeAttrs type_attrs = { atttypmod };
-	YBCPgExpr expr = YBCNewColumnRef(ybScan->handle, attnum, atttypid, &type_attrs);
+	K2PgTypeAttrs type_attrs = { atttypmod };
+	K2PgExpr expr = YBCNewColumnRef(ybScan->handle, attnum, atttypid, &type_attrs);
 	HandleYBStatusWithOwner(YBCPgDmlAppendTarget(ybScan->handle, expr),
 													ybScan->handle,
 													ybScan->stmt_owner);
@@ -257,7 +257,7 @@ static HeapTuple ybcFetchNextHeapTuple(YbScanDesc ybScan, bool is_forward_scan)
 
 	Datum           *values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
 	bool            *nulls  = (bool *) palloc(tupdesc->natts * sizeof(bool));
-	YBCPgSysColumns syscols;
+	K2PgSysColumns syscols;
 
 	/* Execute the select statement. */
 	if (!ybScan->is_exec_done)
@@ -312,7 +312,7 @@ static IndexTuple ybcFetchNextIndexTuple(YbScanDesc ybScan, Relation index, bool
 
 	Datum           *values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
 	bool            *nulls = (bool *) palloc(tupdesc->natts * sizeof(bool));
-	YBCPgSysColumns syscols;
+	K2PgSysColumns syscols;
 
 	/* Execute the select statement. */
 	if (!ybScan->is_exec_done)
@@ -1602,7 +1602,7 @@ void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 
 HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 {
-	YBCPgStatement ybc_stmt;
+	K2PgStatement ybc_stmt;
 	TupleDesc      tupdesc = RelationGetDescr(relation);
 
 	HandleYBStatus(YBCPgNewSelect(YBCGetDatabaseOid(relation),
@@ -1611,7 +1611,7 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 																&ybc_stmt));
 
 	/* Bind ybctid to identify the current row. */
-	YBCPgExpr ybctid_expr = YBCNewConstant(ybc_stmt,
+	K2PgExpr ybctid_expr = YBCNewConstant(ybc_stmt,
 										   BYTEAOID,
 										   ybctid,
 										   false);
@@ -1622,20 +1622,20 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 	 */
 	if (RelationGetForm(relation)->relhasoids)
 	{
-		YBCPgTypeAttrs type_attrs = { 0 };
-		YBCPgExpr   expr = YBCNewColumnRef(ybc_stmt, ObjectIdAttributeNumber, InvalidOid,
+		K2PgTypeAttrs type_attrs = { 0 };
+		K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, ObjectIdAttributeNumber, InvalidOid,
 										   &type_attrs);
 		HandleYBStatus(YBCPgDmlAppendTarget(ybc_stmt, expr));
 	}
 	for (AttrNumber attnum = 1; attnum <= tupdesc->natts; attnum++)
 	{
 		Form_pg_attribute att = TupleDescAttr(tupdesc, attnum - 1);
-		YBCPgTypeAttrs type_attrs = { att->atttypmod };
-		YBCPgExpr   expr = YBCNewColumnRef(ybc_stmt, attnum, att->atttypid, &type_attrs);
+		K2PgTypeAttrs type_attrs = { att->atttypmod };
+		K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, attnum, att->atttypid, &type_attrs);
 		HandleYBStatus(YBCPgDmlAppendTarget(ybc_stmt, expr));
 	}
-	YBCPgTypeAttrs type_attrs = { 0 };
-	YBCPgExpr   expr = YBCNewColumnRef(ybc_stmt, YBTupleIdAttributeNumber, InvalidOid,
+	K2PgTypeAttrs type_attrs = { 0 };
+	K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, YBTupleIdAttributeNumber, InvalidOid,
 									   &type_attrs);
 	HandleYBStatus(YBCPgDmlAppendTarget(ybc_stmt, expr));
 
@@ -1650,7 +1650,7 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 
 	Datum           *values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
 	bool            *nulls  = (bool *) palloc(tupdesc->natts * sizeof(bool));
-	YBCPgSysColumns syscols;
+	K2PgSysColumns syscols;
 
 	/* Fetch one row. */
 	HandleYBStatus(YBCPgDmlFetch(ybc_stmt,

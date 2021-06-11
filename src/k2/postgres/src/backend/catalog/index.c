@@ -2707,7 +2707,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 	/*
 	 * Set some exec params.
 	 */
-	YBCPgExecParameters *exec_params = &estate->k2pg_exec_params;
+	K2PgExecParameters *exec_params = &estate->k2pg_exec_params;
 	if (read_time)
 		exec_params->read_time = *read_time;
 	if (row_bounds)
