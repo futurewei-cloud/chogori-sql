@@ -106,7 +106,7 @@ ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isn
 	YBCBuildState  *buildstate = (YBCBuildState *)state;
 
 	if (!buildstate->isprimary)
-		YBCExecuteInsertIndex(index,
+		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
 							  heapTuple->t_ybctid,
@@ -179,7 +179,7 @@ ybcininsert(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation 
 			IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		YBCExecuteInsertIndex(index,
+		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
 							  ybctid,
@@ -193,7 +193,7 @@ ybcindelete(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation 
 			struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		YBCExecuteDeleteIndex(index, values, isnull, ybctid);
+		K2PgExecuteDeleteIndex(index, values, isnull, ybctid);
 }
 
 IndexBulkDeleteResult *

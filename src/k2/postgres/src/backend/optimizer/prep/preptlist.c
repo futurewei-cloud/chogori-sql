@@ -145,7 +145,7 @@ preprocess_targetlist(PlannerInfo *root)
 		{
 			bool is_k2pg_relation = false;
 			if (!target_relation)
-				is_k2pg_relation = IsYBRelationById(getrelid(rc->rti, range_table));
+				is_k2pg_relation = IsK2PgRelationById(getrelid(rc->rti, range_table));
 			else
 				is_k2pg_relation = IsYBBackedRelation(target_relation);
 

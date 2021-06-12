@@ -808,7 +808,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	if (IsYugaByteEnabled())
 	{
 		CheckIsYBSupportedRelationByKind(relkind);
-		YBCCreateTable(stmt, relkind, descriptor, relationId, namespaceId);
+		K2PgCreateTable(stmt, relkind, descriptor, relationId, namespaceId);
 	}
 
 	/*
@@ -1619,7 +1619,7 @@ ExecuteTruncateGuts(List *explicit_rels, List *relids, List *relids_logged,
 		if (IsYBRelation(rel))
 		{
 			// Call YugaByte API to truncate tables.
-			YBCTruncateTable(rel);
+			K2PgTruncateTable(rel);
 		}
 		else if (rel->rd_createSubid == mySubid ||
 				 rel->rd_newRelfilenodeSubid == mySubid)
@@ -2982,7 +2982,7 @@ renameatt(RenameStmt *stmt)
 
 	if (IsYugaByteEnabled())
 	{
-		YBCRename(stmt, relid);
+		K2PgRename(stmt, relid);
 	}
 
 	ObjectAddressSubSet(address, RelationRelationId, relid, attnum);
@@ -3182,7 +3182,7 @@ RenameRelation(RenameStmt *stmt)
 	/* Do the work */
 	if (IsYugaByteEnabled())
 	{
-      YBCRename(stmt, relid);
+      K2PgRename(stmt, relid);
 	}
 
 	ObjectAddressSet(address, RelationRelationId, relid);
@@ -3720,7 +3720,7 @@ ATController(AlterTableStmt *parsetree,
 	K2PgStatement handle = NULL;
 	if (IsYBRelation(rel))
 	{
-		handle = YBCPrepareAlterTable(parsetree, rel, relid);
+		handle = K2PgPrepareAlterTable(parsetree, rel, relid);
 	}
 
 	/* Phase 2: update system catalogs */
@@ -3733,7 +3733,7 @@ ATController(AlterTableStmt *parsetree,
 	 */
 	if (handle)
 	{
-		YBCExecAlterTable(handle, relid);
+		K2PgExecAlterPgTable(handle, relid);
 	}
 	/* Phase 3: scan/rewrite tables as needed */
 	ATRewriteTables(parsetree, &wqueue, lockmode);

@@ -977,7 +977,7 @@ index_create(Relation heapRelation,
 	 */
 	if (IsYBRelation(indexRelation) && !isprimary)
 	{
-		YBCCreateIndex(indexRelationName,
+		K2PgCreateIndex(indexRelationName,
 					   indexInfo,
 					   indexTupDesc,
 					   coloptions,

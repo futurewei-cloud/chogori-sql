@@ -2573,7 +2573,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	relid = root->simple_rte_array[1]->relid;
 
 	/* Verify we're a YB relation. */
-	if (!IsYBRelationById(relid))
+	if (!IsK2PgRelationById(relid))
 		return false;
 
 	/* Ensure we close the relation before returning. */

@@ -1130,12 +1130,12 @@ doDeletion(const ObjectAddress *object, int flags)
 
 					Assert(object->objectSubId == 0);
 
-					if (IsYBRelationById(object->objectId))
+					if (IsK2PgRelationById(object->objectId))
 					{
 						Relation index = RelationIdGetRelation(object->objectId);
 
 						if (!index->rd_index->indisprimary)
-							YBCDropIndex(object->objectId);
+							K2PgDropIndex(object->objectId);
 
 						RelationClose(index);
 					}
@@ -1148,8 +1148,8 @@ doDeletion(const ObjectAddress *object, int flags)
 											object->objectSubId);
 					else
 					{
-						if (IsYBRelationById(object->objectId))
-							YBCDropTable(object->objectId);
+						if (IsK2PgRelationById(object->objectId))
+							K2PgDropTable(object->objectId);
 						heap_drop_with_catalog(object->objectId);
 					}
 				}

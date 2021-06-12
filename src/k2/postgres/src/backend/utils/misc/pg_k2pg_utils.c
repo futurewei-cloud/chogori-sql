@@ -104,7 +104,7 @@ IsYBRelation(Relation relation)
 }
 
 bool
-IsYBRelationById(Oid relid)
+IsK2PgRelationById(Oid relid)
 {
 	Relation relation     = RelationIdGetRelation(relid);
 	bool     is_supported = IsYBRelation(relation);

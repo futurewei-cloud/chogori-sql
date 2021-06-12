@@ -2616,7 +2616,7 @@ CopyFrom(CopyState cstate)
 	 */
 	if (YBIsNonTxnCopyEnabled() &&
 		useYBMultiInsert &&
-		!YBCRelInfoHasSecondaryIndices(resultRelInfo))
+		!K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 	{
 		useNonTxnInsert = true;
 	}
@@ -2869,11 +2869,11 @@ CopyFrom(CopyState cstate)
 					{
 						if (useNonTxnInsert)
 						{
-							YBCExecuteNonTxnInsert(cstate->rel, tupDesc, tuple);
+							K2PgExecuteNonTxnInsert(cstate->rel, tupDesc, tuple);
 						}
 						else
 						{
-							YBCExecuteInsert(cstate->rel, tupDesc, tuple);
+							K2PgExecuteInsert(cstate->rel, tupDesc, tuple);
 						}
 					}
 					else if (resultRelInfo->ri_FdwRoutine != NULL)

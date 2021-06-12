@@ -634,7 +634,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	new_record[Anum_pg_database_dattablespace - 1] = ObjectIdGetDatum(dst_deftablespace);
 
 	if (IsYugaByteEnabled())
-		YBCCreateDatabase(dboid, dbname, src_dboid, InvalidOid, dbcolocated);
+		K2PgCreateDatabase(dboid, dbname, src_dboid, InvalidOid, dbcolocated);
 
 	/*
 	 * We deliberately set datacl to default (NULL), rather than copying it
@@ -1090,7 +1090,7 @@ removing_database_from_system:
 	 */
 	if (IsYugaByteEnabled())
 	{
-		YBCDropDatabase(db_id, dbname);
+		K2PgDropDatabase(db_id, dbname);
 	}
 }
 

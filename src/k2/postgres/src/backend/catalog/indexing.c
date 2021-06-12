@@ -265,7 +265,7 @@ CatalogTupleInsert(Relation heapRel, HeapTuple tup)
 
 	if (IsYugaByteEnabled())
 	{
-		oid = YBCExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
+		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 	}
@@ -298,7 +298,7 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 
 	if (IsYugaByteEnabled())
 	{
-		oid = YBCExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
+		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 	}
@@ -347,7 +347,7 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 								RelationGetRelationName(heapRel));
 		}
 
-		YBCUpdateSysCatalogTuple(heapRel, oldtup, tup);
+		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 
@@ -393,7 +393,7 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 								RelationGetRelationName(heapRel));
 		}
 
-		YBCUpdateSysCatalogTuple(heapRel, oldtup, tup);
+		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 
@@ -428,7 +428,7 @@ CatalogTupleDelete(Relation heapRel, HeapTuple tup)
 {
 	if (IsYugaByteEnabled())
 	{
-		YBCDeleteSysCatalogTuple(heapRel, tup);
+		K2PgDeleteSysCatalogTuple(heapRel, tup);
 
 		CatalogIndexState indstate = CatalogOpenIndexes(heapRel);
 

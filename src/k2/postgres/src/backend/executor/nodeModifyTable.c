@@ -517,7 +517,7 @@ ExecInsert(ModifyTableState *mtstate,
 				 * locked and released in this call.
 				 * TODO(Mikhail) Verify the YugaByte transaction support works properly for on-conflict.
 				 */
-				newId = YBCHeapInsert(slot, tuple, estate);
+				newId = K2PgHeapInsert(slot, tuple, estate);
 
 				/* insert index entries for tuple */
 				recheckIndexes = ExecInsertIndexTuples(slot, tuple,
@@ -585,10 +585,10 @@ ExecInsert(ModifyTableState *mtstate,
 			 */
 			if (IsYBRelation(resultRelationDesc))
 			{
-				newId = YBCHeapInsert(slot, tuple, estate);
+				newId = K2PgHeapInsert(slot, tuple, estate);
 
 				/* insert index entries for tuple */
-				if (YBCRelInfoHasSecondaryIndices(resultRelInfo))
+				if (K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 					recheckIndexes = ExecInsertIndexTuples(slot, tuple, estate, false, NULL, NIL);
 			}
 			else
@@ -779,7 +779,7 @@ ExecDelete(ModifyTableState *mtstate,
 	}
 	else if (IsYBRelation(resultRelationDesc))
 	{
-		bool row_found = YBCExecuteDelete(resultRelationDesc, planSlot, estate, mtstate);
+		bool row_found = K2PgExecuteDelete(resultRelationDesc, planSlot, estate, mtstate);
 		if (!row_found)
 		{
 			/*
@@ -789,9 +789,9 @@ ExecDelete(ModifyTableState *mtstate,
 			return NULL;
 		}
 
-		if (YBCRelInfoHasSecondaryIndices(resultRelInfo))
+		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 		{
-			Datum	ybctid = YBCGetYBTupleIdFromSlot(planSlot);
+			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
 			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
@@ -1137,7 +1137,7 @@ ExecUpdate(ModifyTableState *mtstate,
 		RangeTblEntry *rte = rt_fetch(resultRelInfo->ri_RangeTableIndex,
 									  estate->es_range_table);
 
-		bool row_found = YBCExecuteUpdate(resultRelationDesc, planSlot, tuple, estate, mtstate, rte->updatedCols);
+		bool row_found = K2PgExecuteUpdate(resultRelationDesc, planSlot, tuple, estate, mtstate, rte->updatedCols);
 
 		if (!row_found)
 		{
@@ -1151,10 +1151,10 @@ ExecUpdate(ModifyTableState *mtstate,
 		/*
 		 * Update indexes if needed.
 		 */
-		if (YBCRelInfoHasSecondaryIndices(resultRelInfo) &&
+		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo) &&
 		    !((ModifyTable *)mtstate->ps.plan)->no_index_update)
 		{
-			Datum	ybctid = YBCGetYBTupleIdFromSlot(planSlot);
+			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
 			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
@@ -2300,7 +2300,7 @@ ExecModifyTable(PlanState *pstate)
 				 *    trigger execution.
 				 */
 				if (IsYBRelation(resultRelInfo->ri_RelationDesc) &&
-					(YBCRelInfoHasSecondaryIndices(resultRelInfo) ||
+					(K2PgRelInfoHasSecondaryIndices(resultRelInfo) ||
 					YBRelHasOldRowTriggers(resultRelInfo->ri_RelationDesc,
 					                       operation)))
 				{

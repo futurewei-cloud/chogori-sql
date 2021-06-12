@@ -408,7 +408,7 @@ DefineIndex(Oid relationId,
 	 */
 	stmt->concurrent = (!K2PgGetDisableIndexBackfill()
 						&& !stmt->primary
-						&& IsYBRelationById(relationId));
+						&& IsK2PgRelationById(relationId));
 	/* Use fast path create index when in nested DDL.  This is desired
 	 * when there would be no concurrency issues (e.g. `CREATE TABLE
 	 * ... (... UNIQUE (...))`).  However, there may be cases where it

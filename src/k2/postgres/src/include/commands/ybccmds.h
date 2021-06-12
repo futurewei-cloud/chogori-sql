@@ -40,26 +40,26 @@ extern void K2FinishInitDB();
 
 /*  Database Functions -------------------------------------------------------------------------- */
 
-extern void YBCCreateDatabase(
+extern void K2PgCreateDatabase(
 	Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bool colocated);
 
-extern void YBCDropDatabase(Oid dboid, const char *dbname);
+extern void K2PgDropDatabase(Oid dboid, const char *dbname);
 
-extern void YBCReserveOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_oid);
+extern void K2PgReservePgOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_oid);
 
 /*  Table Functions ----------------------------------------------------------------------------- */
 
-extern void YBCCreateTable(CreateStmt *stmt,
+extern void K2PgCreateTable(CreateStmt *stmt,
 						   char relkind,
 						   TupleDesc desc,
 						   Oid relationId,
 						   Oid namespaceId);
 
-extern void YBCDropTable(Oid relationId);
+extern void K2PgDropTable(Oid relationId);
 
-extern void YBCTruncateTable(Relation rel);
+extern void K2PgTruncateTable(Relation rel);
 
-extern void YBCCreateIndex(const char *indexName,
+extern void K2PgCreateIndex(const char *indexName,
 						   IndexInfo *indexInfo,
 						   TupleDesc indexTupleDesc,
 						   int16 *coloptions,
@@ -69,12 +69,12 @@ extern void YBCCreateIndex(const char *indexName,
 						   OptSplit *split_options,
 						   const bool skip_index_backfill);
 
-extern void YBCDropIndex(Oid relationId);
+extern void K2PgDropIndex(Oid relationId);
 
-extern K2PgStatement YBCPrepareAlterTable(AlterTableStmt* stmt, Relation rel, Oid relationId);
+extern K2PgStatement K2PgPrepareAlterTable(AlterTableStmt* stmt, Relation rel, Oid relationId);
 
-extern void YBCExecAlterTable(K2PgStatement handle, Oid relationId);
+extern void K2PgExecAlterPgTable(K2PgStatement handle, Oid relationId);
 
-extern void YBCRename(RenameStmt* stmt, Oid relationId);
+extern void K2PgRename(RenameStmt* stmt, Oid relationId);
 
 #endif

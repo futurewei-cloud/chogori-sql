@@ -526,7 +526,7 @@ BootstrapModeMain(void)
 	{
 		K2InitPGCluster();
 
-		YBCCreateDatabase(TemplateDbOid,
+		K2PgCreateDatabase(TemplateDbOid,
 		                  "template1",
 		                  InvalidOid,
 		                  FirstBootstrapObjectId,
@@ -832,7 +832,7 @@ InsertOneTuple(Oid objectid)
 		HeapTupleSetOid(tuple, objectid);
 
 	if (IsYugaByteEnabled())
-		YBCExecuteInsert(boot_reldesc, tupDesc, tuple);
+		K2PgExecuteInsert(boot_reldesc, tupDesc, tuple);
 	else
 		simple_heap_insert(boot_reldesc, tuple);
 

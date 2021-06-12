@@ -77,7 +77,7 @@ extern void CheckIsYBSupportedRelationByKind(char relkind);
  * Given a relation (table) id, returns whether this table is handled by
  * YugaByte: i.e. it is not a temporary or foreign table.
  */
-extern bool IsYBRelationById(Oid relid);
+extern bool IsK2PgRelationById(Oid relid);
 
 extern bool IsYBRelation(Relation relation);
 

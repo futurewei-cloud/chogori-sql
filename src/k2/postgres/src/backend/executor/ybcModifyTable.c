@@ -66,7 +66,7 @@ void MarkCurrentCommandUsed() {
  * Returns whether a relation's attribute is a real column in the backing
  * YugaByte table. (It implies we can both read from and write to it).
  */
-bool IsRealYBColumn(Relation rel, int attrNum)
+bool IsRealK2PgColumn(Relation rel, int attrNum)
 {
 	return (attrNum > 0 && !TupleDescAttr(rel->rd_att, attrNum - 1)->attisdropped) ||
 	       (rel->rd_rel->relhasoids && attrNum == ObjectIdAttributeNumber);
@@ -75,7 +75,7 @@ bool IsRealYBColumn(Relation rel, int attrNum)
 /*
  * Returns whether a relation's attribute is a YB system column.
  */
-bool IsYBSystemColumn(int attrNum)
+bool IsK2PgSystemColumn(int attrNum)
 {
 	return (attrNum == YBRowIdAttributeNumber ||
 			attrNum == YBIdxBaseTupleIdAttributeNumber ||
@@ -85,10 +85,10 @@ bool IsYBSystemColumn(int attrNum)
 /*
  * Returns whether relation is capable of single row execution.
  */
-bool YBCIsSingleRowTxnCapableRel(ResultRelInfo *resultRelInfo)
+bool K2PgIsSingleRowTxnCapableRel(ResultRelInfo *resultRelInfo)
 {
 	bool has_triggers = resultRelInfo->ri_TrigDesc && resultRelInfo->ri_TrigDesc->numtriggers > 0;
-	bool has_indices = YBCRelInfoHasSecondaryIndices(resultRelInfo);
+	bool has_indices = K2PgRelInfoHasSecondaryIndices(resultRelInfo);
 	return !has_indices && !has_triggers;
 }
 
@@ -133,24 +133,24 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 	Oid            relid         = RelationGetRelid(rel);
 	int            natts         = RelationGetNumberOfAttributes(rel);
 	Bitmapset      *pkey         = NULL;
-	K2PgTableDesc ybc_tabledesc = NULL;
+	K2PgTableDesc k2pg_tabledesc = NULL;
 
 	/* Get the primary key columns 'pkey' from YugaByte. */
-	HandleK2PgStatus(K2PgGetTableDesc(dboid, relid, &ybc_tabledesc));
+	HandleK2PgStatus(K2PgGetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = minattr; attnum <= natts; attnum++)
 	{
-		if ((!includeYBSystemColumns && !IsRealYBColumn(rel, attnum)) ||
-			(!IsRealYBColumn(rel, attnum) && !IsYBSystemColumn(attnum)))
+		if ((!includeYBSystemColumns && !IsRealK2PgColumn(rel, attnum)) ||
+			(!IsRealK2PgColumn(rel, attnum) && !IsK2PgSystemColumn(attnum)))
 		{
 			continue;
 		}
 
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
+		HandleYBTableDescStatus(K2PgGetColumnInfo(k2pg_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
-		                                           &is_hash), ybc_tabledesc);
+		                                           &is_hash), k2pg_tabledesc);
 		if (is_primary)
 		{
 			pkey = bms_add_member(pkey, attnum - minattr);
@@ -163,7 +163,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 /*
  * Get primary key columns as bitmap of a table for real YB columns.
  */
-Bitmapset *GetYBTablePrimaryKey(Relation rel)
+Bitmapset *GetK2PgTablePrimaryKey(Relation rel)
 {
 	return GetTablePrimaryKey(rel, FirstLowInvalidHeapAttributeNumber + 1 /* minattr */,
 							  false /* includeYBSystemColumns */);
@@ -172,7 +172,7 @@ Bitmapset *GetYBTablePrimaryKey(Relation rel)
 /*
  * Get primary key columns as bitmap of a table for real and system YB columns.
  */
-Bitmapset *GetFullYBTablePrimaryKey(Relation rel)
+Bitmapset *GetFullK2PgTablePrimaryKey(Relation rel)
 {
 	return GetTablePrimaryKey(rel, YBSystemFirstLowInvalidAttributeNumber + 1 /* minattr */,
 							  true /* includeYBSystemColumns */);
@@ -181,7 +181,7 @@ Bitmapset *GetFullYBTablePrimaryKey(Relation rel)
 /*
  * Get the ybctid from a YB scan slot for UPDATE/DELETE.
  */
-Datum YBCGetYBTupleIdFromSlot(TupleTableSlot *slot)
+Datum K2PgGetPgTupleIdFromSlot(TupleTableSlot *slot)
 {
 	/*
 	 * Look for ybctid in the tuple first if the slot contains a tuple packed with ybctid.
@@ -212,11 +212,11 @@ Datum YBCGetYBTupleIdFromSlot(TupleTableSlot *slot)
  * meaning the ybctid will be unique. Therefore you should only use this if the relation has
  * a primary key or you're doing an insert.
  */
-Datum YBCGetYBTupleIdFromTuple(K2PgStatement pg_stmt,
+Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 							   Relation rel,
 							   HeapTuple tuple,
 							   TupleDesc tupleDesc) {
-	Bitmapset *pkey = GetFullYBTablePrimaryKey(rel);
+	Bitmapset *pkey = GetFullK2PgTablePrimaryKey(rel);
 	AttrNumber minattr = YBSystemFirstLowInvalidAttributeNumber + 1;
 	const int nattrs = bms_num_members(pkey);
 	K2PgAttrValueDescriptor *attrs =
@@ -252,7 +252,7 @@ Datum YBCGetYBTupleIdFromTuple(K2PgStatement pg_stmt,
 /*
  * Bind ybctid to the statement.
  */
-static void YBCBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
+static void K2PgBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
 	K2PgExpr ybc_expr = YBCNewConstant(pg_stmt, BYTEAOID, tuple_id,
 										false /* is_null */);
 	HandleK2PgStatus(K2PgDmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, ybc_expr));
@@ -272,7 +272,7 @@ static bool IsSystemCatalogChange(Relation rel)
  * Will handle the case if the write changes the system catalogs meaning
  * we need to increment the catalog versions accordingly.
  */
-static void YBCExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_affected_count)
+static void K2PgExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_affected_count)
 {
 	bool is_syscatalog_change = IsSystemCatalogChange(rel);
 	bool modifies_row = false;
@@ -319,7 +319,7 @@ static void YBCExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_aff
 /*
  * Utility method to insert a tuple into the relation's backing YugaByte table.
  */
-static Oid YBCExecuteInsertInternal(Relation rel,
+static Oid K2PgExecuteInsertInternal(Relation rel,
                                     TupleDesc tupleDesc,
                                     HeapTuple tuple,
                                     bool is_single_row_txn)
@@ -328,7 +328,7 @@ static Oid YBCExecuteInsertInternal(Relation rel,
 	Oid            relid    = RelationGetRelid(rel);
 	AttrNumber     minattr  = FirstLowInvalidHeapAttributeNumber + 1;
 	int            natts    = RelationGetNumberOfAttributes(rel);
-	Bitmapset      *pkey    = GetYBTablePrimaryKey(rel);
+	Bitmapset      *pkey    = GetK2PgTablePrimaryKey(rel);
 	K2PgStatement insert_stmt = NULL;
 	bool           is_null  = false;
 
@@ -346,13 +346,13 @@ static Oid YBCExecuteInsertInternal(Relation rel,
 	                              &insert_stmt));
 
 	/* Get the ybctid for the tuple and bind to statement */
-	tuple->t_ybctid = YBCGetYBTupleIdFromTuple(insert_stmt, rel, tuple, tupleDesc);
-	YBCBindTupleId(insert_stmt, tuple->t_ybctid);
+	tuple->t_ybctid = K2PgGetPgTupleIdFromTuple(insert_stmt, rel, tuple, tupleDesc);
+	K2PgBindTupleId(insert_stmt, tuple->t_ybctid);
 
 	for (AttrNumber attnum = minattr; attnum <= natts; attnum++)
 	{
 		/* Skip virtual (system) and dropped columns */
-		if (!IsRealYBColumn(rel, attnum))
+		if (!IsRealK2PgColumn(rel, attnum))
 		{
 			continue;
 		}
@@ -385,7 +385,7 @@ static Oid YBCExecuteInsertInternal(Relation rel,
 	}
 
 	/* Execute the insert */
-	YBCExecWriteStmt(insert_stmt, rel, NULL /* rows_affected_count */);
+	K2PgExecWriteStmt(insert_stmt, rel, NULL /* rows_affected_count */);
 
 	/* Clean up */
 	insert_stmt = NULL;
@@ -459,27 +459,27 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
 		           false /* is_null */);
 }
 
-Oid YBCExecuteInsert(Relation rel,
+Oid K2PgExecuteInsert(Relation rel,
                      TupleDesc tupleDesc,
                      HeapTuple tuple)
 {
-	return YBCExecuteInsertInternal(rel,
+	return K2PgExecuteInsertInternal(rel,
 	                                tupleDesc,
 	                                tuple,
 	                                false /* is_single_row_txn */);
 }
 
-Oid YBCExecuteNonTxnInsert(Relation rel,
+Oid K2PgExecuteNonTxnInsert(Relation rel,
 						   TupleDesc tupleDesc,
 						   HeapTuple tuple)
 {
-	return YBCExecuteInsertInternal(rel,
+	return K2PgExecuteInsertInternal(rel,
 	                                tupleDesc,
 	                                tuple,
 	                                true /* is_single_row_txn */);
 }
 
-Oid YBCHeapInsert(TupleTableSlot *slot,
+Oid K2PgHeapInsert(TupleTableSlot *slot,
 				  HeapTuple tuple,
 				  EState *estate)
 {
@@ -498,15 +498,15 @@ Oid YBCHeapInsert(TupleTableSlot *slot,
 		 * single row (i.e. single-row-modify txn), and there are no indices
 		 * or triggers on the target table.
 		 */
-		return YBCExecuteNonTxnInsert(resultRelationDesc, slot->tts_tupleDescriptor, tuple);
+		return K2PgExecuteNonTxnInsert(resultRelationDesc, slot->tts_tupleDescriptor, tuple);
 	}
 	else
 	{
-		return YBCExecuteInsert(resultRelationDesc, slot->tts_tupleDescriptor, tuple);
+		return K2PgExecuteInsert(resultRelationDesc, slot->tts_tupleDescriptor, tuple);
 	}
 }
 
-void YBCExecuteInsertIndex(Relation index,
+void K2PgExecuteInsertIndex(Relation index,
 						   Datum *values,
 						   bool *isnull,
 						   Datum ybctid,
@@ -549,10 +549,10 @@ void YBCExecuteInsertIndex(Relation index,
 		HandleK2PgStatus(K2PgInsertStmtSetWriteTime(insert_stmt, 50));
 
 	/* Execute the insert and clean up. */
-	YBCExecWriteStmt(insert_stmt, index, NULL /* rows_affected_count */);
+	K2PgExecWriteStmt(insert_stmt, index, NULL /* rows_affected_count */);
 }
 
-bool YBCExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, ModifyTableState *mtstate)
+bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, ModifyTableState *mtstate)
 {
 	Oid            dboid          = YBCGetDatabaseOid(rel);
 	Oid            relid          = RelationGetRelid(rel);
@@ -575,14 +575,14 @@ bool YBCExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modify
 	if (isSingleRow)
 	{
 		HeapTuple tuple = ExecMaterializeSlot(slot);
-		ybctid = YBCGetYBTupleIdFromTuple(delete_stmt,
+		ybctid = K2PgGetPgTupleIdFromTuple(delete_stmt,
 										  rel,
 										  tuple,
 										  slot->tts_tupleDescriptor);
 	}
 	else
 	{
-		ybctid = YBCGetYBTupleIdFromSlot(slot);
+		ybctid = K2PgGetPgTupleIdFromSlot(slot);
 	}
 
 	if (ybctid == 0)
@@ -602,7 +602,7 @@ bool YBCExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modify
 
 	/* Execute the statement. */
 	int rows_affected_count = 0;
-	YBCExecWriteStmt(delete_stmt, rel, isSingleRow ? &rows_affected_count : NULL);
+	K2PgExecWriteStmt(delete_stmt, rel, isSingleRow ? &rows_affected_count : NULL);
 
 	/* Cleanup. */
 	delete_stmt = NULL;
@@ -610,7 +610,7 @@ bool YBCExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modify
 	return !isSingleRow || rows_affected_count > 0;
 }
 
-void YBCExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum ybctid)
+void K2PgExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum ybctid)
 {
   Assert(index->rd_rel->relkind == RELKIND_INDEX);
 
@@ -631,10 +631,10 @@ void YBCExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum yb
 	/* Delete row from foreign key cache */
 	HandleK2PgStatus(K2PgDeleteFromForeignKeyReferenceCache(relid, ybctid));
 
-	YBCExecWriteStmt(delete_stmt, index, NULL /* rows_affected_count */);
+	K2PgExecWriteStmt(delete_stmt, index, NULL /* rows_affected_count */);
 }
 
-bool YBCExecuteUpdate(Relation rel,
+bool K2PgExecuteUpdate(Relation rel,
 					  TupleTableSlot *slot,
 					  HeapTuple tuple,
 					  EState *estate,
@@ -662,14 +662,14 @@ bool YBCExecuteUpdate(Relation rel,
 	 */
 	if (isSingleRow)
 	{
-		ybctid = YBCGetYBTupleIdFromTuple(update_stmt,
+		ybctid = K2PgGetPgTupleIdFromTuple(update_stmt,
 										  rel,
 										  tuple,
 										  slot->tts_tupleDescriptor);
 	}
 	else
 	{
-		ybctid = YBCGetYBTupleIdFromSlot(slot);
+		ybctid = K2PgGetPgTupleIdFromSlot(slot);
 	}
 
 	if (ybctid == 0)
@@ -700,7 +700,7 @@ bool YBCExecuteUpdate(Relation rel,
 		int32_t type_mod = att_desc->atttypmod;
 
 		/* Skip virtual (system) and dropped columns */
-		if (!IsRealYBColumn(rel, attnum))
+		if (!IsRealK2PgColumn(rel, attnum))
 			continue;
 
 		/*
@@ -740,7 +740,7 @@ bool YBCExecuteUpdate(Relation rel,
 
 	/* Execute the statement. */
 	int rows_affected_count = 0;
-	YBCExecWriteStmt(update_stmt, rel, isSingleRow ? &rows_affected_count : NULL);
+	K2PgExecWriteStmt(update_stmt, rel, isSingleRow ? &rows_affected_count : NULL);
 
 	/* Cleanup. */
 	update_stmt = NULL;
@@ -756,7 +756,7 @@ bool YBCExecuteUpdate(Relation rel,
 	return !isSingleRow || rows_affected_count > 0;
 }
 
-void YBCDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
+void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 {
 	Oid            dboid       = YBCGetDatabaseOid(rel);
 	Oid            relid       = RelationGetRelid(rel);
@@ -790,13 +790,13 @@ void YBCDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 	MarkCurrentCommandUsed();
 	CacheInvalidateHeapTuple(rel, tuple, NULL);
 
-	YBCExecWriteStmt(delete_stmt, rel, NULL /* rows_affected_count */);
+	K2PgExecWriteStmt(delete_stmt, rel, NULL /* rows_affected_count */);
 
 	/* Complete execution */
 	delete_stmt = NULL;
 }
 
-void YBCUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple)
+void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple)
 {
 	Oid            dboid       = YBCGetDatabaseOid(rel);
 	Oid            relid       = RelationGetRelid(rel);
@@ -811,10 +811,10 @@ void YBCUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple)
 								  &update_stmt));
 
 	AttrNumber minattr = FirstLowInvalidHeapAttributeNumber + 1;
-	Bitmapset  *pkey   = GetYBTablePrimaryKey(rel);
+	Bitmapset  *pkey   = GetK2PgTablePrimaryKey(rel);
 
 	/* Bind the ybctid to the statement. */
-	YBCBindTupleId(update_stmt, tuple->t_ybctid);
+	K2PgBindTupleId(update_stmt, tuple->t_ybctid);
 
 	/* Assign values to the non-primary-key columns to update the current row. */
 	for (int idx = 0; idx < natts; idx++)
@@ -849,12 +849,12 @@ void YBCUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple)
 		CacheInvalidateHeapTuple(rel, tuple, NULL);
 
 	/* Execute the statement and clean up */
-	YBCExecWriteStmt(update_stmt, rel, NULL /* rows_affected_count */);
+	K2PgExecWriteStmt(update_stmt, rel, NULL /* rows_affected_count */);
 	update_stmt = NULL;
 }
 
 bool
-YBCRelInfoHasSecondaryIndices(ResultRelInfo *resultRelInfo)
+K2PgRelInfoHasSecondaryIndices(ResultRelInfo *resultRelInfo)
 {
 	return resultRelInfo->ri_NumIndices > 1 ||
 			(resultRelInfo->ri_NumIndices == 1 &&

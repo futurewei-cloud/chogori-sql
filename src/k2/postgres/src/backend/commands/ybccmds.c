@@ -95,7 +95,7 @@ K2FinishInitDB()
 /*  Database Functions. */
 
 void
-YBCCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bool colocated)
+K2PgCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bool colocated)
 {
 	K2PgStatement handle;
 
@@ -109,7 +109,7 @@ YBCCreateDatabase(Oid dboid, const char *dbname, Oid src_dboid, Oid next_oid, bo
 }
 
 void
-YBCDropDatabase(Oid dboid, const char *dbname)
+K2PgDropDatabase(Oid dboid, const char *dbname)
 {
 	K2PgStatement handle;
 
@@ -120,7 +120,7 @@ YBCDropDatabase(Oid dboid, const char *dbname)
 }
 
 void
-YBCReserveOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_oid)
+K2PgReservePgOids(Oid dboid, Oid next_oid, uint32 count, Oid *begin_oid, Oid *end_oid)
 {
 	HandleK2PgStatus(K2PgReserveOids(dboid,
 									next_oid,
@@ -286,7 +286,7 @@ CreateSplitPointDatums(ParseState *pstate,
 }
 
 void
-YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, Oid pgNamespaceId)
+K2PgCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, Oid pgNamespaceId)
 {
 	if (relkind != RELKIND_RELATION)
 	{
@@ -369,7 +369,7 @@ YBCCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, O
 }
 
 void
-YBCDropTable(Oid relationId)
+K2PgDropTable(Oid relationId)
 {
 	K2PgStatement	handle = NULL;
 	bool			colocated = false;
@@ -422,7 +422,7 @@ YBCDropTable(Oid relationId)
 }
 
 void
-YBCTruncateTable(Relation rel) {
+K2PgTruncateTable(Relation rel) {
 	K2PgStatement	handle;
 	Oid				relationId = RelationGetRelid(rel);
 	bool			colocated = false;
@@ -497,7 +497,7 @@ YBCTruncateTable(Relation rel) {
 }
 
 void
-YBCCreateIndex(const char *indexName,
+K2PgCreateIndex(const char *indexName,
 			   IndexInfo *indexInfo,
 			   TupleDesc indexTupleDesc,
 			   int16 *coloptions,
@@ -582,7 +582,7 @@ YBCCreateIndex(const char *indexName,
 }
 
 K2PgStatement
-YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
+K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 {
 	K2PgStatement handle = NULL;
 	HandleK2PgStatus(K2PgNewAlterTable(MyDatabaseId,
@@ -702,18 +702,18 @@ YBCPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 }
 
 void
-YBCExecAlterTable(K2PgStatement handle, Oid relationId)
+K2PgExecAlterPgTable(K2PgStatement handle, Oid relationId)
 {
 	if (handle)
 	{
-		if (IsYBRelationById(relationId)) {
+		if (IsK2PgRelationById(relationId)) {
 			HandleK2PgStatus(K2PgExecAlterTable(handle));
 		}
 	}
 }
 
 void
-YBCRename(RenameStmt *stmt, Oid relationId)
+K2PgRename(RenameStmt *stmt, Oid relationId)
 {
 	K2PgStatement handle = NULL;
 	char *db_name	  = get_database_name(MyDatabaseId);
@@ -743,11 +743,11 @@ YBCRename(RenameStmt *stmt, Oid relationId)
 
 	}
 
-	YBCExecAlterTable(handle, relationId);
+	K2PgExecAlterPgTable(handle, relationId);
 }
 
 void
-YBCDropIndex(Oid relationId)
+K2PgDropIndex(Oid relationId)
 {
 	K2PgStatement	handle;
 	bool			colocated = false;

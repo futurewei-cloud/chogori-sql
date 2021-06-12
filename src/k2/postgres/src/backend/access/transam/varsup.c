@@ -527,7 +527,7 @@ GetNewObjectId(void)
 			Oid begin_oid = InvalidOid;
 			Oid end_oid   = InvalidOid;
 
-			YBCReserveOids(MyDatabaseId,
+			K2PgReserveOids(MyDatabaseId,
 			               ShmemVariableCache->nextOid,
 			               K2PG_OID_PREFETCH,
 			               &begin_oid,
