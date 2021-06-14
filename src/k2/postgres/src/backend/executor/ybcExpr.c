@@ -44,14 +44,14 @@ K2PgExpr YBCNewColumnRef(K2PgStatement ybc_stmt, int16_t attr_num, int attr_typi
 						  const K2PgTypeAttrs *type_attrs) {
 	K2PgExpr expr = NULL;
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(attr_num, attr_typid);
-	HandleK2PgStatus(K2PgNewColumnRef(ybc_stmt, attr_num, type_entity, type_attrs, &expr));
+	HandleK2PgStatus(PgGate_NewColumnRef(ybc_stmt, attr_num, type_entity, type_attrs, &expr));
 	return expr;
 }
 
 K2PgExpr YBCNewConstant(K2PgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null) {
 	K2PgExpr expr = NULL;
 	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
-	HandleK2PgStatus(K2PgNewConstant(ybc_stmt, type_entity, datum, is_null, &expr));
+	HandleK2PgStatus(PgGate_NewConstant(ybc_stmt, type_entity, datum, is_null, &expr));
 	return expr;
 }
 
@@ -62,11 +62,11 @@ K2PgExpr YBCNewEvalExprCall(K2PgStatement ybc_stmt,
                              int32_t typmod) {
 	K2PgExpr ybc_expr = NULL;
 	const K2PgTypeEntity *type_ent = YBCDataTypeFromOidMod(InvalidAttrNumber, typid);
-	K2PgNewOperator(ybc_stmt, "eval_expr_call", type_ent, &ybc_expr);
+	PgGate_NewOperator(ybc_stmt, "eval_expr_call", type_ent, &ybc_expr);
 
 	Datum expr_datum = CStringGetDatum(nodeToString(pg_expr));
 	K2PgExpr expr = YBCNewConstant(ybc_stmt, CSTRINGOID, expr_datum , /* IsNull */ false);
-	K2PgOperatorAppendArg(ybc_expr, expr);
+	PgGate_OperatorAppendArg(ybc_expr, expr);
 
 	/*
 	 * Adding the column type id and mod to the message since we only have the YQL types in the
@@ -74,11 +74,11 @@ K2PgExpr YBCNewEvalExprCall(K2PgStatement ybc_stmt,
 	 * TODO(mihnea): Eventually DocDB should know the full YSQL/PG types and we can remove this.
 	 */
 	K2PgExpr attno_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) attno, /* IsNull */ false);
-	K2PgOperatorAppendArg(ybc_expr, attno_expr);
+	PgGate_OperatorAppendArg(ybc_expr, attno_expr);
 	K2PgExpr typid_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typid, /* IsNull */ false);
-	K2PgOperatorAppendArg(ybc_expr, typid_expr);
+	PgGate_OperatorAppendArg(ybc_expr, typid_expr);
 	K2PgExpr typmod_expr = YBCNewConstant(ybc_stmt, INT4OID, (Datum) typmod, /* IsNull */ false);
-	K2PgOperatorAppendArg(ybc_expr, typmod_expr);
+	PgGate_OperatorAppendArg(ybc_expr, typmod_expr);
 
 	return ybc_expr;
 }

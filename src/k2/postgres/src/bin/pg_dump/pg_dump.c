@@ -711,7 +711,7 @@ main(int argc, char **argv)
 	if (dopt.include_k2pg_metadata)
 	{
 		HandleK2PgStatus(K2PgInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
-		HandleK2PgStatus(K2PgInitPgGateBackend());
+		HandleK2PgStatus(PgGate_InitPgGateBackend());
 	}
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
@@ -962,7 +962,7 @@ main(int argc, char **argv)
 
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
-		K2PgShutdownPgGateBackend();
+		PgGate_ShutdownPgGateBackend();
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
 	exit_nicely(0);
@@ -15864,8 +15864,8 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			/* Get the table properties from YugaByte. */
 			K2PgTableDesc ybc_tabledesc = NULL;
 			K2PgTableProperties properties;
-			HandleK2PgStatus(K2PgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
-			HandleK2PgStatus(K2PgGetTableProperties(ybc_tabledesc, &properties));
+			HandleK2PgStatus(PgGate_GetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
+			HandleK2PgStatus(PgGate_GetTableProperties(ybc_tabledesc, &properties));
 
 			if(properties.is_colocated)
 			{

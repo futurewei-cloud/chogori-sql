@@ -35,14 +35,14 @@ K2PgStatus ExtractValueFromResult(const Result<T>& result, T* value) {
 
 extern "C" {
 
-void K2PgInitPgGate(const K2PgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
+void PgGate_InitPgGate(const K2PgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
     K2ASSERT(log::pg, api_impl == nullptr, "can only be called once");
     api_impl_shutdown_done.exchange(false);
     api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
     K2LOG_I(log::pg, "K2 PgGate open");
 }
 
-void K2PgDestroyPgGate() {
+void PgGate_DestroyPgGate() {
     if (api_impl_shutdown_done.exchange(true)) {
         K2LOG_E(log::pg, "should only be called once");
     } else {
@@ -52,19 +52,19 @@ void K2PgDestroyPgGate() {
     }
 }
 
-K2PgStatus K2PgCreateEnv(K2PgEnv *pg_env) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCreateEnv");
+K2PgStatus PgGate_CreateEnv(K2PgEnv *pg_env) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CreateEnv");
   return ToK2PgStatus(api_impl->CreateEnv(pg_env));
 }
 
-K2PgStatus K2PgDestroyEnv(K2PgEnv pg_env) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDestroyEnv");
+K2PgStatus PgGate_DestroyEnv(K2PgEnv pg_env) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DestroyEnv");
   return ToK2PgStatus(api_impl->DestroyEnv(pg_env));
 }
 
 // Initialize a session to process statements that come from the same client connection.
-K2PgStatus K2PgInitSession(const K2PgEnv pg_env, const char *database_name) {
-  K2LOG_D(log::pg, "PgGateAPI: K2PgInitSession {}", database_name);
+K2PgStatus PgGate_InitSession(const K2PgEnv pg_env, const char *database_name) {
+  K2LOG_D(log::pg, "PgGateAPI: PgGate_InitSession {}", database_name);
   const string db_name(database_name ? database_name : "");
   return ToK2PgStatus(api_impl->InitSession(pg_env, db_name));
 }
@@ -76,43 +76,43 @@ K2PgStatus K2PgInitSession(const K2PgEnv pg_env, const char *database_name) {
 //   memory will be held by YBCPgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
 //   Postgres operations are done, associated YugaByte memory context (YBCPgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
-K2PgMemctx K2PgCreateMemctx() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCreateMemctx");
+K2PgMemctx PgGate_CreateMemctx() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CreateMemctx");
   return api_impl->CreateMemctx();
 }
 
-K2PgStatus K2PgDestroyMemctx(K2PgMemctx memctx) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDestroyMemctx");
+K2PgStatus PgGate_DestroyMemctx(K2PgMemctx memctx) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DestroyMemctx");
   return ToK2PgStatus(api_impl->DestroyMemctx(memctx));
 }
 
-K2PgStatus K2PgResetMemctx(K2PgMemctx memctx) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgResetMemctx");
+K2PgStatus PgGate_ResetMemctx(K2PgMemctx memctx) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ResetMemctx");
   return ToK2PgStatus(api_impl->ResetMemctx(memctx));
 }
 
 // Invalidate the sessions table cache.
-K2PgStatus K2PgInvalidateCache() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInvalidateCache");
+K2PgStatus PgGate_InvalidateCache() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InvalidateCache");
   return ToK2PgStatus(api_impl->InvalidateCache());
 }
 
 // Clear all values and expressions that were bound to the given statement.
-K2PgStatus K2PgClearBinds(K2PgStatement handle) {
+K2PgStatus PgGate_ClearBinds(K2PgStatement handle) {
   K2LOG_V(log::pg, "PgGateAPI: YBCPgClearBind");
   return ToK2PgStatus(api_impl->ClearBinds(handle));
 }
 
 // Check if initdb has been already run.
-K2PgStatus K2PgIsInitDbDone(bool* initdb_done) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgIsInitDbDone");
+K2PgStatus PgGate_IsInitDbDone(bool* initdb_done) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_IsInitDbDone");
   return ExtractValueFromResult(api_impl->IsInitDbDone(), initdb_done);
 }
 
 // Sets catalog_version to the local tserver's catalog version stored in shared
 // memory, or an error if the shared memory has not been initialized (e.g. in initdb).
-K2PgStatus K2PgGetSharedCatalogVersion(uint64_t* catalog_version) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetSharedCatalogVersion");
+K2PgStatus PgGate_GetSharedCatalogVersion(uint64_t* catalog_version) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetSharedCatalogVersion");
   return ExtractValueFromResult(api_impl->GetSharedCatalogVersion(), catalog_version);
 }
 
@@ -121,105 +121,105 @@ K2PgStatus K2PgGetSharedCatalogVersion(uint64_t* catalog_version) {
 //--------------------------------------------------------------------------------------------------
 
 // K2 InitPrimaryCluster
-K2PgStatus K2PgInitPrimaryCluster()
+K2PgStatus PgGate_InitPrimaryCluster()
 {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInitPrimaryCluster");
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InitPrimaryCluster");
   return ToK2PgStatus(api_impl->PGInitPrimaryCluster());
 }
 
-K2PgStatus K2PgFinishInitDB()
+K2PgStatus PgGate_FinishInitDB()
 {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgFinishInitDB()");
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_FinishInitDB()");
   return ToK2PgStatus(api_impl->PGFinishInitDB());
 }
 
 // DATABASE ----------------------------------------------------------------------------------------
 // Connect database. Switch the connected database to the given "database_name".
-K2PgStatus K2PgConnectDatabase(const char *database_name) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgConnectDatabase {}", database_name);
+K2PgStatus PgGate_ConnectDatabase(const char *database_name) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ConnectDatabase {}", database_name);
   return ToK2PgStatus(api_impl->ConnectDatabase(database_name));
 }
 
 // Get whether the given database is colocated.
-K2PgStatus K2PgIsDatabaseColocated(const K2PgOid database_oid, bool *colocated) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgIsDatabaseColocated");
+K2PgStatus PgGate_IsDatabaseColocated(const K2PgOid database_oid, bool *colocated) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_IsDatabaseColocated");
   *colocated = false;
   return K2PgStatusOK();
 }
 
 // Create database.
-K2PgStatus K2PgNewCreateDatabase(const char *database_name,
+K2PgStatus PgGate_NewCreateDatabase(const char *database_name,
                                  K2PgOid database_oid,
                                  K2PgOid source_database_oid,
                                  K2PgOid next_oid,
                                  const bool colocated,
                                  K2PgStatement *handle) {
-  K2LOG_D(log::pg, "PgGateAPI: K2PgNewCreateDatabase {}, {}, {}, {}",
+  K2LOG_D(log::pg, "PgGateAPI: PgGate_NewCreateDatabase {}, {}, {}, {}",
          database_name, database_oid, source_database_oid, next_oid);
   return ToK2PgStatus(api_impl->NewCreateDatabase(database_name, database_oid, source_database_oid, next_oid, handle));
 }
 
-K2PgStatus K2PgExecCreateDatabase(K2PgStatement handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecCreateDatabase");
+K2PgStatus PgGate_ExecCreateDatabase(K2PgStatement handle) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecCreateDatabase");
   return ToK2PgStatus(api_impl->ExecCreateDatabase(handle));
 }
 
 // Drop database.
-K2PgStatus K2PgNewDropDatabase(const char *database_name,
+K2PgStatus PgGate_NewDropDatabase(const char *database_name,
                                K2PgOid database_oid,
                                K2PgStatement *handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewDropDatabase {}, {}", database_name, database_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewDropDatabase {}, {}", database_name, database_oid);
   return ToK2PgStatus(api_impl->NewDropDatabase(database_name, database_oid, handle));
 }
 
-K2PgStatus K2PgExecDropDatabase(K2PgStatement handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecDropDatabase");
+K2PgStatus PgGate_ExecDropDatabase(K2PgStatement handle) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecDropDatabase");
   return ToK2PgStatus(api_impl->ExecDropDatabase(handle));
 }
 
 // Alter database.
-K2PgStatus K2PgNewAlterDatabase(const char *database_name,
+K2PgStatus PgGate_NewAlterDatabase(const char *database_name,
                                K2PgOid database_oid,
                                K2PgStatement *handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewAlterDatabase {}, {}", database_name, database_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewAlterDatabase {}, {}", database_name, database_oid);
   return ToK2PgStatus(api_impl->NewAlterDatabase(database_name, database_oid, handle));
 }
 
-K2PgStatus K2PgAlterDatabaseRenameDatabase(K2PgStatement handle, const char *new_name) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAlterDatabaseRenameDatabase {}", new_name);
+K2PgStatus PgGate_AlterDatabaseRenameDatabase(K2PgStatement handle, const char *new_name) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AlterDatabaseRenameDatabase {}", new_name);
   return ToK2PgStatus(api_impl->AlterDatabaseRenameDatabase(handle, new_name));
 }
 
-K2PgStatus K2PgExecAlterDatabase(K2PgStatement handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecAlterDatabase");
+K2PgStatus PgGate_ExecAlterDatabase(K2PgStatement handle) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecAlterDatabase");
   return ToK2PgStatus(api_impl->ExecAlterDatabase(handle));
 }
 
 // Reserve oids.
-K2PgStatus K2PgReserveOids(K2PgOid database_oid,
+K2PgStatus PgGate_ReserveOids(K2PgOid database_oid,
                            K2PgOid next_oid,
                            uint32_t count,
                            K2PgOid *begin_oid,
                            K2PgOid *end_oid) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgReserveOids {}, {}, {}", database_oid, next_oid, count);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ReserveOids {}, {}, {}", database_oid, next_oid, count);
   return ToK2PgStatus(api_impl->ReserveOids(database_oid, next_oid, count, begin_oid, end_oid));
 }
 
-K2PgStatus K2PgGetCatalogMasterVersion(uint64_t *version) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetCatalogMasterVersion");
+K2PgStatus PgGate_GetCatalogMasterVersion(uint64_t *version) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetCatalogMasterVersion");
   return ToK2PgStatus(api_impl->GetCatalogMasterVersion(version));
 }
 
-void K2PgInvalidateTableCache(
+void PgGate_InvalidateTableCache(
     const K2PgOid database_oid,
     const K2PgOid table_oid) {
   const PgObjectId table_object_id(database_oid, table_oid);
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInvalidateTableCache {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InvalidateTableCache {}, {}", database_oid, table_oid);
   api_impl->InvalidateTableCache(table_object_id);
 }
 
-K2PgStatus K2PgInvalidateTableCacheByTableId(const char *table_uuid) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInvalidateTableCacheByTableId {}", table_uuid);
+K2PgStatus PgGate_InvalidateTableCacheByTableId(const char *table_uuid) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InvalidateTableCacheByTableId {}", table_uuid);
   if (table_uuid == NULL) {
     return ToK2PgStatus(STATUS(InvalidArgument, "table_uuid is null"));
   }
@@ -231,16 +231,16 @@ K2PgStatus K2PgInvalidateTableCacheByTableId(const char *table_uuid) {
 
 // Sequence Operations -----------------------------------------------------------------------------
 
-K2PgStatus K2PgInsertSequenceTuple(int64_t db_oid,
+K2PgStatus PgGate_InsertSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
                                  uint64_t ysql_catalog_version,
                                  int64_t last_val,
                                  bool is_called) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInsertSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InsertSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
   return ToK2PgStatus(api_impl->InsertSequenceTuple(db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
 }
 
-K2PgStatus K2PgUpdateSequenceTupleConditionally(int64_t db_oid,
+K2PgStatus PgGate_UpdateSequenceTupleConditionally(int64_t db_oid,
                                               int64_t seq_oid,
                                               uint64_t ysql_catalog_version,
                                               int64_t last_val,
@@ -248,35 +248,35 @@ K2PgStatus K2PgUpdateSequenceTupleConditionally(int64_t db_oid,
                                               int64_t expected_last_val,
                                               bool expected_is_called,
                                               bool *skipped) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateSequenceTupleConditionally {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTupleConditionally {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
   return ToK2PgStatus(
       api_impl->UpdateSequenceTupleConditionally(db_oid, seq_oid, ysql_catalog_version,
           last_val, is_called, expected_last_val, expected_is_called, skipped));
 }
 
-K2PgStatus K2PgUpdateSequenceTuple(int64_t db_oid,
+K2PgStatus PgGate_UpdateSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
                                  uint64_t ysql_catalog_version,
                                  int64_t last_val,
                                  bool is_called,
                                  bool* skipped) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
   return ToK2PgStatus(api_impl->UpdateSequenceTuple(
       db_oid, seq_oid, ysql_catalog_version, last_val, is_called, skipped));
 }
 
-K2PgStatus K2PgReadSequenceTuple(int64_t db_oid,
+K2PgStatus PgGate_ReadSequenceTuple(int64_t db_oid,
                                int64_t seq_oid,
                                uint64_t ysql_catalog_version,
                                int64_t *last_val,
                                bool *is_called) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgReadSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ReadSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
   return ToK2PgStatus(api_impl->ReadSequenceTuple(
       db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
 }
 
-K2PgStatus K2PgDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDeleteSequenceTuple {}, {}", db_oid, seq_oid);
+K2PgStatus PgGate_DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DeleteSequenceTuple {}, {}", db_oid, seq_oid);
   return ToK2PgStatus(api_impl->DeleteSequenceTuple(db_oid, seq_oid));
 }
 
@@ -285,7 +285,7 @@ K2PgStatus K2PgDeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
 // Create and drop table "database_name.schema_name.table_name()".
 // - When "schema_name" is NULL, the table "database_name.table_name" is created.
 // - When "database_name" is NULL, the table "connected_database_name.table_name" is created.
-K2PgStatus K2PgNewCreateTable(const char *database_name,
+K2PgStatus PgGate_NewCreateTable(const char *database_name,
                               const char *schema_name,
                               const char *table_name,
                               K2PgOid database_oid,
@@ -296,9 +296,9 @@ K2PgStatus K2PgNewCreateTable(const char *database_name,
                               const bool colocated,
                               K2PgStatement *handle) {
   if (is_shared_table) {
-    K2LOG_D(log::pg, "PgGateAPI: K2PgNewCreateTable (shared) {}, {}, {}", database_name, schema_name, table_name);
+    K2LOG_D(log::pg, "PgGateAPI: PgGate_NewCreateTable (shared) {}, {}, {}", database_name, schema_name, table_name);
   } else {
-    K2LOG_V(log::pg, "PgGateAPI: K2PgNewCreateTable {}, {}, {}", database_name, schema_name, table_name);
+    K2LOG_V(log::pg, "PgGateAPI: PgGate_NewCreateTable {}, {}, {}", database_name, schema_name, table_name);
   }
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewCreateTable(
@@ -306,125 +306,125 @@ K2PgStatus K2PgNewCreateTable(const char *database_name,
       if_not_exist, add_primary_key, handle));
 }
 
-K2PgStatus K2PgCreateTableAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
+K2PgStatus PgGate_CreateTableAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
                                     const K2PgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCreateTableAddColumn (name: {}, order: {}, is_hash {}, is_range {})",
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CreateTableAddColumn (name: {}, order: {}, is_hash {}, is_range {})",
     attr_name, attr_num, is_hash, is_range);
   return ToK2PgStatus(api_impl->CreateTableAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
 
-K2PgStatus K2PgExecCreateTable(K2PgStatement handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecCreateTable");
+K2PgStatus PgGate_ExecCreateTable(K2PgStatement handle) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecCreateTable");
   return ToK2PgStatus(api_impl->ExecCreateTable(handle));
 }
 
-K2PgStatus K2PgNewAlterTable(K2PgOid database_oid,
+K2PgStatus PgGate_NewAlterTable(K2PgOid database_oid,
                              K2PgOid table_oid,
                              K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewAlterTable {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewAlterTable {}, {}", database_oid, table_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewAlterTable(table_object_id, handle));
 }
 
-K2PgStatus K2PgAlterTableAddColumn(K2PgStatement handle, const char *name, int order,
+K2PgStatus PgGate_AlterTableAddColumn(K2PgStatement handle, const char *name, int order,
                                    const K2PgTypeEntity *attr_type, bool is_not_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAlterTableAddColumn {}", name);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AlterTableAddColumn {}", name);
   return ToK2PgStatus(api_impl->AlterTableAddColumn(handle, name, order, attr_type, is_not_null));
 }
 
-K2PgStatus K2PgAlterTableRenameColumn(K2PgStatement handle, const char *oldname,
+K2PgStatus PgGate_AlterTableRenameColumn(K2PgStatement handle, const char *oldname,
                                       const char *newname){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAlterTableRenameColumn {}, {}", oldname, newname);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AlterTableRenameColumn {}, {}", oldname, newname);
   return ToK2PgStatus(api_impl->AlterTableRenameColumn(handle, oldname, newname));
 }
 
-K2PgStatus K2PgAlterTableDropColumn(K2PgStatement handle, const char *name){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAlterTableDropColumn {}", name);
+K2PgStatus PgGate_AlterTableDropColumn(K2PgStatement handle, const char *name){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AlterTableDropColumn {}", name);
   return ToK2PgStatus(api_impl->AlterTableDropColumn(handle, name));
 }
 
-K2PgStatus K2PgAlterTableRenameTable(K2PgStatement handle, const char *db_name,
+K2PgStatus PgGate_AlterTableRenameTable(K2PgStatement handle, const char *db_name,
                                      const char *newname){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAlterTableRenameTable {}, {}", db_name, newname);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AlterTableRenameTable {}, {}", db_name, newname);
   return ToK2PgStatus(api_impl->AlterTableRenameTable(handle, db_name, newname));
 }
 
-K2PgStatus K2PgExecAlterTable(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecAlterTable");
+K2PgStatus PgGate_ExecAlterTable(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecAlterTable");
   return ToK2PgStatus(api_impl->ExecAlterTable(handle));
 }
 
-K2PgStatus K2PgNewDropTable(K2PgOid database_oid,
+K2PgStatus PgGate_NewDropTable(K2PgOid database_oid,
                             K2PgOid table_oid,
                             bool if_exist,
                             K2PgStatement *handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewDropTable {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewDropTable {}, {}", database_oid, table_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewDropTable(table_object_id, if_exist, handle));
 }
 
-K2PgStatus K2PgExecDropTable(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecDropTable");
+K2PgStatus PgGate_ExecDropTable(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecDropTable");
   return ToK2PgStatus(api_impl->ExecDropTable(handle));
 }
 
-K2PgStatus K2PgNewTruncateTable(K2PgOid database_oid,
+K2PgStatus PgGate_NewTruncateTable(K2PgOid database_oid,
                                 K2PgOid table_oid,
                                 K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewTruncateTable {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewTruncateTable {}, {}", database_oid, table_oid);
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgExecTruncateTable(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecTruncateTable");
+K2PgStatus PgGate_ExecTruncateTable(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecTruncateTable");
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgGetTableDesc(K2PgOid database_oid,
+K2PgStatus PgGate_GetTableDesc(K2PgOid database_oid,
                             K2PgOid table_oid,
                             K2PgTableDesc *handle) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetTableDesc {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetTableDesc {}, {}", database_oid, table_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->GetTableDesc(table_object_id, handle));
 }
 
-K2PgStatus K2PgGetColumnInfo(K2PgTableDesc table_desc,
+K2PgStatus PgGate_GetColumnInfo(K2PgTableDesc table_desc,
                              int16_t attr_number,
                              bool *is_primary,
                              bool *is_hash) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetTableDesc {}", attr_number);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetTableDesc {}", attr_number);
   return ToK2PgStatus(api_impl->GetColumnInfo(table_desc, attr_number, is_primary, is_hash));
 }
 
-K2PgStatus K2PgGetTableProperties(K2PgTableDesc table_desc,
+K2PgStatus PgGate_GetTableProperties(K2PgTableDesc table_desc,
                                   K2PgTableProperties *properties){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetTableProperties");
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetTableProperties");
   properties->num_hash_key_columns = table_desc->num_hash_key_columns();
   properties->is_colocated = false;
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgDmlModifiesRow(K2PgStatement handle, bool *modifies_row){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlModifiesRow");
+K2PgStatus PgGate_DmlModifiesRow(K2PgStatement handle, bool *modifies_row){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlModifiesRow");
   return ToK2PgStatus(api_impl->DmlModifiesRow(handle, modifies_row));
 }
 
-K2PgStatus K2PgSetIsSysCatalogVersionChange(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetIsSysCatalogVersionChange");
+K2PgStatus PgGate_SetIsSysCatalogVersionChange(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetIsSysCatalogVersionChange");
   return ToK2PgStatus(api_impl->SetIsSysCatalogVersionChange(handle));
 }
 
-K2PgStatus K2PgSetCatalogCacheVersion(K2PgStatement handle, uint64_t catalog_cache_version){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetCatalogCacheVersion {}", catalog_cache_version);
+K2PgStatus PgGate_SetCatalogCacheVersion(K2PgStatement handle, uint64_t catalog_cache_version){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetCatalogCacheVersion {}", catalog_cache_version);
   return ToK2PgStatus(api_impl->SetCatalogCacheVersion(handle, catalog_cache_version));
 }
 
-K2PgStatus K2PgIsTableColocated(const K2PgOid database_oid,
+K2PgStatus PgGate_IsTableColocated(const K2PgOid database_oid,
                                 const K2PgOid table_oid,
                                 bool *colocated) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgIsTableColocated");
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_IsTableColocated");
   *colocated = false;
   return K2PgStatusOK();
 }
@@ -434,7 +434,7 @@ K2PgStatus K2PgIsTableColocated(const K2PgOid database_oid,
 // Create and drop index "database_name.schema_name.index_name()".
 // - When "schema_name" is NULL, the index "database_name.index_name" is created.
 // - When "database_name" is NULL, the index "connected_database_name.index_name" is created.
-K2PgStatus K2PgNewCreateIndex(const char *database_name,
+K2PgStatus PgGate_NewCreateIndex(const char *database_name,
                               const char *schema_name,
                               const char *index_name,
                               K2PgOid database_oid,
@@ -446,9 +446,9 @@ K2PgStatus K2PgNewCreateIndex(const char *database_name,
                               bool if_not_exist,
                               K2PgStatement *handle){
   if (is_shared_index) {
-    K2LOG_D(log::pg, "PgGateAPI: K2PgNewCreateIndex (shared) {}, {}, {}", database_name, schema_name, index_name);
+    K2LOG_D(log::pg, "PgGateAPI: PgGate_NewCreateIndex (shared) {}, {}, {}", database_name, schema_name, index_name);
   } else {
-    K2LOG_V(log::pg, "PgGateAPI: K2PgNewCreateIndex {}, {}, {}", database_name, schema_name, index_name);
+    K2LOG_V(log::pg, "PgGateAPI: PgGate_NewCreateIndex {}, {}, {}", database_name, schema_name, index_name);
   }
   const PgObjectId index_object_id(database_oid, index_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
@@ -458,40 +458,40 @@ K2PgStatus K2PgNewCreateIndex(const char *database_name,
                                            handle));
 }
 
-K2PgStatus K2PgCreateIndexAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
+K2PgStatus PgGate_CreateIndexAddColumn(K2PgStatement handle, const char *attr_name, int attr_num,
                                     const K2PgTypeEntity *attr_type, bool is_hash, bool is_range,
                                     bool is_desc, bool is_nulls_first){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCreateIndexAddColumn (name: {}, order: {}, is_hash: {}, is_range: {})", attr_name, attr_num, is_hash, is_range);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CreateIndexAddColumn (name: {}, order: {}, is_hash: {}, is_range: {})", attr_name, attr_num, is_hash, is_range);
   return ToK2PgStatus(api_impl->CreateIndexAddColumn(handle, attr_name, attr_num, attr_type,
                                                  is_hash, is_range, is_desc, is_nulls_first));
 }
 
-K2PgStatus K2PgExecCreateIndex(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecCreateIndex");
+K2PgStatus PgGate_ExecCreateIndex(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecCreateIndex");
   return ToK2PgStatus(api_impl->ExecCreateIndex(handle));
 }
 
-K2PgStatus K2PgNewDropIndex(K2PgOid database_oid,
+K2PgStatus PgGate_NewDropIndex(K2PgOid database_oid,
                             K2PgOid index_oid,
                             bool if_exist,
                             K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewDropIndex {}, {}", database_oid, index_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewDropIndex {}, {}", database_oid, index_oid);
   const PgObjectId index_id(database_oid, index_oid);
   return ToK2PgStatus(api_impl->NewDropIndex(index_id, if_exist, handle));
 }
 
-K2PgStatus K2PgExecDropIndex(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecDropIndex");
+K2PgStatus PgGate_ExecDropIndex(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecDropIndex");
   return ToK2PgStatus(api_impl->ExecDropIndex(handle));
 }
 
-K2PgStatus K2PgWaitUntilIndexPermissionsAtLeast(
+K2PgStatus PgGate_WaitUntilIndexPermissionsAtLeast(
     const K2PgOid database_oid,
     const K2PgOid table_oid,
     const K2PgOid index_oid,
     const uint32_t target_index_permissions,
     uint32_t *actual_index_permissions) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgWaitUntilIndexPermissionsAtLeast {}, {}, {}", database_oid, table_oid, index_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_WaitUntilIndexPermissionsAtLeast {}, {}, {}", database_oid, table_oid, index_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
   const PgObjectId index_object_id(database_oid, index_oid);
   IndexPermissions returned_index_permissions = IndexPermissions::INDEX_PERM_DELETE_ONLY;
@@ -508,10 +508,10 @@ K2PgStatus K2PgWaitUntilIndexPermissionsAtLeast(
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgAsyncUpdateIndexPermissions(
+K2PgStatus PgGate_AsyncUpdateIndexPermissions(
     const K2PgOid database_oid,
     const K2PgOid indexed_table_oid){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAsyncUpdateIndexPermissions {}, {}", database_oid,  indexed_table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AsyncUpdateIndexPermissions {}, {}", database_oid,  indexed_table_oid);
   const PgObjectId indexed_table_object_id(database_oid, indexed_table_oid);
   return ToK2PgStatus(api_impl->AsyncUpdateIndexPermissions(indexed_table_object_id));
 }
@@ -523,8 +523,8 @@ K2PgStatus K2PgAsyncUpdateIndexPermissions(
 // This function is for specifying the selected or returned expressions.
 // - SELECT target_expr1, target_expr2, ...
 // - INSERT / UPDATE / DELETE ... RETURNING target_expr1, target_expr2, ...
-K2PgStatus K2PgDmlAppendTarget(K2PgStatement handle, K2PgExpr target){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlAppendTarget");
+K2PgStatus PgGate_DmlAppendTarget(K2PgStatement handle, K2PgExpr target){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlAppendTarget");
   return ToK2PgStatus(api_impl->DmlAppendTarget(handle, target));
 }
 
@@ -552,70 +552,70 @@ K2PgStatus K2PgDmlAppendTarget(K2PgStatement handle, K2PgExpr target){
 // - For Index Scan, the target columns of the bind are those in the index table.
 //   The index-scan will use the bind to find base-ybctid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
-K2PgStatus K2PgDmlBindColumn(K2PgStatement handle, int attr_num, K2PgExpr attr_value){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindColumn {}", attr_num);
+K2PgStatus PgGate_DmlBindColumn(K2PgStatement handle, int attr_num, K2PgExpr attr_value){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindColumn {}", attr_num);
   return ToK2PgStatus(api_impl->DmlBindColumn(handle, attr_num, attr_value));
 }
 
-K2PgStatus K2PgDmlBindColumnCondEq(K2PgStatement handle, int attr_num, K2PgExpr attr_value){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindColumnCondEq {}", attr_num);
+K2PgStatus PgGate_DmlBindColumnCondEq(K2PgStatement handle, int attr_num, K2PgExpr attr_value){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindColumnCondEq {}", attr_num);
   return ToK2PgStatus(api_impl->DmlBindColumnCondEq(handle, attr_num, attr_value));
 }
 
-K2PgStatus K2PgDmlBindColumnCondBetween(K2PgStatement handle, int attr_num, K2PgExpr attr_value,
+K2PgStatus PgGate_DmlBindColumnCondBetween(K2PgStatement handle, int attr_num, K2PgExpr attr_value,
     K2PgExpr attr_value_end){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindColumnCondBetween {}", attr_num);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindColumnCondBetween {}", attr_num);
   return ToK2PgStatus(api_impl->DmlBindColumnCondBetween(handle, attr_num, attr_value, attr_value_end));
 }
 
-K2PgStatus K2PgDmlBindColumnCondIn(K2PgStatement handle, int attr_num, int n_attr_values,
+K2PgStatus PgGate_DmlBindColumnCondIn(K2PgStatement handle, int attr_num, int n_attr_values,
     K2PgExpr *attr_values){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindColumnCondIn {}", attr_num);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindColumnCondIn {}", attr_num);
   return ToK2PgStatus(api_impl->DmlBindColumnCondIn(handle, attr_num, n_attr_values, attr_values));
 }
 
-K2PgStatus K2PgDmlBindRangeConds(K2PgStatement handle, K2PgExpr range_conds) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindRangeConds");
+K2PgStatus PgGate_DmlBindRangeConds(K2PgStatement handle, K2PgExpr range_conds) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindRangeConds");
   return ToK2PgStatus(api_impl->DmlBindRangeConds(handle, range_conds));
 }
 
-K2PgStatus K2PgDmlBindWhereConds(K2PgStatement handle, K2PgExpr where_conds) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindWhereConds");
+K2PgStatus PgGate_DmlBindWhereConds(K2PgStatement handle, K2PgExpr where_conds) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindWhereConds");
   return ToK2PgStatus(api_impl->DmlBindWhereConds(handle, where_conds));
 }
 
 // Binding Tables: Bind the whole table in a statement.  Do not use with BindColumn.
-K2PgStatus K2PgDmlBindTable(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBindTable");
+K2PgStatus PgGate_DmlBindTable(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindTable");
   return ToK2PgStatus(api_impl->DmlBindTable(handle));
 }
 
 // API for SET clause.
-K2PgStatus K2PgDmlAssignColumn(K2PgStatement handle,
+K2PgStatus PgGate_DmlAssignColumn(K2PgStatement handle,
                                int attr_num,
                                K2PgExpr attr_value){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlAssignColumn {}", attr_num);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlAssignColumn {}", attr_num);
   return ToK2PgStatus(api_impl->DmlAssignColumn(handle, attr_num, attr_value));
 }
 
-// This function is to fetch the targets in K2PgDmlAppendTarget() from the rows that were defined
-// by K2PgDmlBindColumn().
-K2PgStatus K2PgDmlFetch(K2PgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
+// This function is to fetch the targets in PgGate_DmlAppendTarget() from the rows that were defined
+// by PgGate_DmlBindColumn().
+K2PgStatus PgGate_DmlFetch(K2PgStatement handle, int32_t natts, uint64_t *values, bool *isnulls,
                         K2PgSysColumns *syscols, bool *has_data){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlFetch {}", natts);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlFetch {}", natts);
   return ToK2PgStatus(api_impl->DmlFetch(handle, natts, values, isnulls, syscols, has_data));
 }
 
 // Utility method that checks stmt type and calls either exec insert, update, or delete internally.
-K2PgStatus K2PgDmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_count){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlExecWriteOp");
+K2PgStatus PgGate_DmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_count){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlExecWriteOp");
   return ToK2PgStatus(api_impl->DmlExecWriteOp(handle, rows_affected_count));
 }
 
 // This function returns the tuple id (ybctid) of a Postgres tuple.
-K2PgStatus K2PgDmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
+K2PgStatus PgGate_DmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *ybctid){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDmlBuildYBTupleId {}", nattrs);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBuildYBTupleId {}", nattrs);
   return ToK2PgStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, ybctid));
 }
 
@@ -624,81 +624,81 @@ K2PgStatus K2PgDmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescri
 
 // INSERT ------------------------------------------------------------------------------------------
 
-K2PgStatus K2PgNewInsert(K2PgOid database_oid,
+K2PgStatus PgGate_NewInsert(K2PgOid database_oid,
                          K2PgOid table_oid,
                          bool is_single_row_txn,
                          K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewInsert {}, {}, {}", database_oid, table_oid, is_single_row_txn);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewInsert {}, {}, {}", database_oid, table_oid, is_single_row_txn);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewInsert(table_object_id, is_single_row_txn, handle));
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgExecInsert(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecInsert");
+K2PgStatus PgGate_ExecInsert(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecInsert");
   return ToK2PgStatus(api_impl->ExecInsert(handle));
 }
 
-K2PgStatus K2PgInsertStmtSetUpsertMode(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInsertStmtSetUpsertMode");
+K2PgStatus PgGate_InsertStmtSetUpsertMode(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InsertStmtSetUpsertMode");
   return ToK2PgStatus(api_impl->InsertStmtSetUpsertMode(handle));
 }
 
-K2PgStatus K2PgInsertStmtSetWriteTime(K2PgStatement handle, const uint64_t write_time){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInsertStmtSetWriteTime {}", write_time);
+K2PgStatus PgGate_InsertStmtSetWriteTime(K2PgStatement handle, const uint64_t write_time){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InsertStmtSetWriteTime {}", write_time);
   return ToK2PgStatus(api_impl->InsertStmtSetWriteTime(handle, write_time));
 }
 
 // UPDATE ------------------------------------------------------------------------------------------
-K2PgStatus K2PgNewUpdate(K2PgOid database_oid,
+K2PgStatus PgGate_NewUpdate(K2PgOid database_oid,
                          K2PgOid table_oid,
                          bool is_single_row_txn,
                          K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewUpdate {}, {}, {}", database_oid, table_oid, is_single_row_txn);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewUpdate {}, {}, {}", database_oid, table_oid, is_single_row_txn);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewUpdate(table_object_id, is_single_row_txn, handle));
 }
 
-K2PgStatus K2PgExecUpdate(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecUpdate");
+K2PgStatus PgGate_ExecUpdate(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecUpdate");
   return ToK2PgStatus(api_impl->ExecUpdate(handle));
 }
 
 // DELETE ------------------------------------------------------------------------------------------
-K2PgStatus K2PgNewDelete(K2PgOid database_oid,
+K2PgStatus PgGate_NewDelete(K2PgOid database_oid,
                          K2PgOid table_oid,
                          bool is_single_row_txn,
                          K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewDelete {}, {}, {}", database_oid, table_oid, is_single_row_txn);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewDelete {}, {}, {}", database_oid, table_oid, is_single_row_txn);
   const PgObjectId table_object_id(database_oid, table_oid);
   return ToK2PgStatus(api_impl->NewDelete(table_object_id, is_single_row_txn, handle));
 }
 
-K2PgStatus K2PgExecDelete(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecDelete");
+K2PgStatus PgGate_ExecDelete(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecDelete");
   return ToK2PgStatus(api_impl->ExecDelete(handle));
 }
 
 // Colocated TRUNCATE ------------------------------------------------------------------------------
-K2PgStatus K2PgNewTruncateColocated(K2PgOid database_oid,
+K2PgStatus PgGate_NewTruncateColocated(K2PgOid database_oid,
                                     K2PgOid table_oid,
                                     bool is_single_row_txn,
                                     K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewTruncateColocated {}, {}, {}", database_oid, table_oid, is_single_row_txn);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewTruncateColocated {}, {}, {}", database_oid, table_oid, is_single_row_txn);
   return K2PgStatusOK();
 }
 
-K2PgStatus K2PgExecTruncateColocated(K2PgStatement handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecTruncateColocated");
+K2PgStatus PgGate_ExecTruncateColocated(K2PgStatement handle){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecTruncateColocated");
   return K2PgStatusOK();
 }
 
 // SELECT ------------------------------------------------------------------------------------------
-K2PgStatus K2PgNewSelect(K2PgOid database_oid,
+K2PgStatus PgGate_NewSelect(K2PgOid database_oid,
                          K2PgOid table_oid,
                          const K2PgPrepareParameters *prepare_params,
                          K2PgStatement *handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewSelect {}, {}", database_oid, table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewSelect {}, {}", database_oid, table_oid);
   const PgObjectId table_object_id(database_oid, table_oid);
   const PgObjectId index_object_id(database_oid,
                             prepare_params ? prepare_params->index_oid : kInvalidOid);
@@ -706,60 +706,60 @@ K2PgStatus K2PgNewSelect(K2PgOid database_oid,
 }
 
 // Set forward/backward scan direction.
-K2PgStatus K2PgSetForwardScan(K2PgStatement handle, bool is_forward_scan){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetForwardScan {}", is_forward_scan);
+K2PgStatus PgGate_SetForwardScan(K2PgStatement handle, bool is_forward_scan){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetForwardScan {}", is_forward_scan);
   return ToK2PgStatus(api_impl->SetForwardScan(handle, is_forward_scan));
 }
 
-K2PgStatus K2PgExecSelect(K2PgStatement handle, const K2PgExecParameters *exec_params){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExecSelect");
+K2PgStatus PgGate_ExecSelect(K2PgStatement handle, const K2PgExecParameters *exec_params){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExecSelect");
   return ToK2PgStatus(api_impl->ExecSelect(handle, exec_params));
 }
 
 // Transaction control -----------------------------------------------------------------------------
 
-K2PgStatus K2PgBeginTransaction(){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgBeginTransaction");
+K2PgStatus PgGate_BeginTransaction(){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_BeginTransaction");
   return ToK2PgStatus(api_impl->BeginTransaction());
 }
 
-K2PgStatus K2PgRestartTransaction(){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgRestartTransaction");
+K2PgStatus PgGate_RestartTransaction(){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_RestartTransaction");
   return ToK2PgStatus(api_impl->RestartTransaction());
 }
 
-K2PgStatus K2PgCommitTransaction(){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCommitTransaction");
+K2PgStatus PgGate_CommitTransaction(){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CommitTransaction");
   return ToK2PgStatus(api_impl->CommitTransaction());
 }
 
-K2PgStatus K2PgAbortTransaction(){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgAbortTransaction");
+K2PgStatus PgGate_AbortTransaction(){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_AbortTransaction");
   return ToK2PgStatus(api_impl->AbortTransaction());
 }
 
-K2PgStatus K2PgSetTransactionIsolationLevel(int isolation){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetTransactionIsolationLevel {}", isolation);
+K2PgStatus PgGate_SetTransactionIsolationLevel(int isolation){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetTransactionIsolationLevel {}", isolation);
   return ToK2PgStatus(api_impl->SetTransactionIsolationLevel(isolation));
 }
 
-K2PgStatus K2PgSetTransactionReadOnly(bool read_only){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetTransactionReadOnly {}", read_only);
+K2PgStatus PgGate_SetTransactionReadOnly(bool read_only){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetTransactionReadOnly {}", read_only);
   return ToK2PgStatus(api_impl->SetTransactionReadOnly(read_only));
 }
 
-K2PgStatus K2PgSetTransactionDeferrable(bool deferrable){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetTransactionReadOnly {}", deferrable);
+K2PgStatus PgGate_SetTransactionDeferrable(bool deferrable){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetTransactionReadOnly {}", deferrable);
   return ToK2PgStatus(api_impl->SetTransactionDeferrable(deferrable));
 }
 
-K2PgStatus K2PgEnterSeparateDdlTxnMode(){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgEnterSeparateDdlTxnMode");
+K2PgStatus PgGate_EnterSeparateDdlTxnMode(){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_EnterSeparateDdlTxnMode");
   return ToK2PgStatus(api_impl->EnterSeparateDdlTxnMode());
 }
 
-K2PgStatus K2PgExitSeparateDdlTxnMode(bool success){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgExitSeparateDdlTxnMode");
+K2PgStatus PgGate_ExitSeparateDdlTxnMode(bool success){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ExitSeparateDdlTxnMode");
   return ToK2PgStatus(api_impl->ExitSeparateDdlTxnMode(success));
 }
 
@@ -767,91 +767,91 @@ K2PgStatus K2PgExitSeparateDdlTxnMode(bool success){
 // Expressions.
 
 // Column references.
-K2PgStatus K2PgNewColumnRef(K2PgStatement stmt, int attr_num, const K2PgTypeEntity *type_entity,
+K2PgStatus PgGate_NewColumnRef(K2PgStatement stmt, int attr_num, const K2PgTypeEntity *type_entity,
                             const K2PgTypeAttrs *type_attrs, K2PgExpr *expr_handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewColumnRef {}", attr_num);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewColumnRef {}", attr_num);
   return ToK2PgStatus(api_impl->NewColumnRef(stmt, attr_num, type_entity, type_attrs, expr_handle));
 }
 
 // Constant expressions.
-K2PgStatus K2PgNewConstant(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
+K2PgStatus PgGate_NewConstant(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, K2PgExpr *expr_handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewConstant {}, {}", datum, is_null);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewConstant {}, {}", datum, is_null);
   return ToK2PgStatus(api_impl->NewConstant(stmt, type_entity, datum, is_null, expr_handle));
 }
 
-K2PgStatus K2PgNewConstantOp(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
+K2PgStatus PgGate_NewConstantOp(K2PgStatement stmt, const K2PgTypeEntity *type_entity,
                            uint64_t datum, bool is_null, K2PgExpr *expr_handle, bool is_gt){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewConstantOp {}, {}, {}", datum, is_null, is_gt);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewConstantOp {}, {}, {}", datum, is_null, is_gt);
   return ToK2PgStatus(api_impl->NewConstantOp(stmt, type_entity, datum, is_null, expr_handle, is_gt));
 }
 
 // The following update functions only work for constants.
 // Overwriting the constant expression with new value.
-K2PgStatus K2PgUpdateConstInt2(K2PgExpr expr, int16_t value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstInt2 {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstInt2(K2PgExpr expr, int16_t value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstInt2 {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstInt4(K2PgExpr expr, int32_t value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstInt4 {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstInt4(K2PgExpr expr, int32_t value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstInt4 {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstInt8(K2PgExpr expr, int64_t value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstInt8 {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstInt8(K2PgExpr expr, int64_t value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstInt8 {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstFloat4(K2PgExpr expr, float value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstFloat4 {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstFloat4(K2PgExpr expr, float value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstFloat4 {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstFloat8(K2PgExpr expr, double value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstFloat8 {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstFloat8(K2PgExpr expr, double value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstFloat8 {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstText(K2PgExpr expr, const char *value, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstText {}, {}", value, is_null);
+K2PgStatus PgGate_UpdateConstText(K2PgExpr expr, const char *value, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstText {}, {}", value, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, is_null));
 }
 
-K2PgStatus K2PgUpdateConstChar(K2PgExpr expr, const char *value, int64_t bytes, bool is_null){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgUpdateConstChar {}, {}, {}", value, bytes, is_null);
+K2PgStatus PgGate_UpdateConstChar(K2PgExpr expr, const char *value, int64_t bytes, bool is_null){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateConstChar {}, {}, {}", value, bytes, is_null);
   return ToK2PgStatus(api_impl->UpdateConstant(expr, value, bytes, is_null));
 }
 
 // Expressions with operators "=", "+", "between", "in", ...
-K2PgStatus K2PgNewOperator(K2PgStatement stmt, const char *opname,
+K2PgStatus PgGate_NewOperator(K2PgStatement stmt, const char *opname,
                            const K2PgTypeEntity *type_entity,
                            K2PgExpr *op_handle){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgNewOperator {}", opname);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_NewOperator {}", opname);
   return ToK2PgStatus(api_impl->NewOperator(stmt, opname, type_entity, op_handle));
 }
 
-K2PgStatus K2PgOperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgOperatorAppendArg");
+K2PgStatus PgGate_OperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_OperatorAppendArg");
   return ToK2PgStatus(api_impl->OperatorAppendArg(op_handle, arg));
 }
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
-bool K2PgForeignKeyReferenceExists(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgForeignKeyReferenceExists {}", table_oid);
+bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ForeignKeyReferenceExists {}", table_oid);
   return api_impl->ForeignKeyReferenceExists(table_oid, std::string(ybctid, ybctid_size));
 }
 
 // Add an entry to foreign key reference cache.
-K2PgStatus K2PgCacheForeignKeyReference(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgCacheForeignKeyReference {}", table_oid);
+K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CacheForeignKeyReference {}", table_oid);
   return ToK2PgStatus(api_impl->CacheForeignKeyReference(table_oid, std::string(ybctid, ybctid_size)));
 }
 
 // Delete an entry from foreign key reference cache.
-K2PgStatus K2PgDeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t ybctid){
-  K2LOG_V(log::pg, "PgGateAPI: K2PgDeleteFromForeignKeyReferenceCache {}, {}", table_oid, ybctid);
+K2PgStatus PgGate_DeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t ybctid){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DeleteFromForeignKeyReferenceCache {}, {}", table_oid, ybctid);
   char *value;
   int64_t bytes;
   const K2PgTypeEntity *type_entity = api_impl->FindTypeEntity(kPgByteArrayOid);
@@ -859,13 +859,13 @@ K2PgStatus K2PgDeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t yb
   return ToK2PgStatus(api_impl->DeleteForeignKeyReference(table_oid, std::string(value, bytes)));
 }
 
-void K2PgClearForeignKeyReferenceCache() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgClearForeignKeyReferenceCache");
-  api_impl->K2PgClearForeignKeyReferenceCache();
+void PgGate_ClearForeignKeyReferenceCache() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ClearForeignKeyReferenceCache");
+  api_impl->ClearForeignKeyReferenceCache();
 }
 
-bool K2PgIsInitDbModeEnvVarSet() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgIsInitDbModeEnvVarSet");
+bool PgGate_IsInitDbModeEnvVarSet() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_IsInitDbModeEnvVarSet");
   static bool cached_value = false;
   static bool cached = false;
 
@@ -879,35 +879,35 @@ bool K2PgIsInitDbModeEnvVarSet() {
 }
 
 // This is called by initdb. Used to customize some behavior.
-void K2PgInitFlags() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgInitFlags");
+void PgGate_InitFlags() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InitFlags");
 }
 
 // Retrieves value of ysql_max_read_restart_attempts gflag
-int32_t K2PgGetMaxReadRestartAttempts() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetMaxReadRestartAttempts");
+int32_t PgGate_GetMaxReadRestartAttempts() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetMaxReadRestartAttempts");
   return default_max_read_restart_attempts;
 }
 
 // Retrieves value of ysql_output_buffer_size gflag
-int32_t K2PgGetOutputBufferSize() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetOutputBufferSize");
+int32_t PgGate_GetOutputBufferSize() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetOutputBufferSize");
   return default_output_buffer_size;
 }
 
 // Retrieve value of ysql_disable_index_backfill gflag.
-bool K2PgGetDisableIndexBackfill() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetDisableIndexBackfill");
+bool PgGate_GetDisableIndexBackfill() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetDisableIndexBackfill");
   return default_disable_index_backfill;
 }
 
-bool K2PgIsK2PgEnabled() {
+bool PgGate_IsK2PgEnabled() {
   return api_impl != nullptr;
 }
 
 // Sets the specified timeout in the rpc service.
-void K2PgSetTimeout(int timeout_ms, void* extra) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetTimeout {}", timeout_ms);
+void PgGate_SetTimeout(int timeout_ms, void* extra) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetTimeout {}", timeout_ms);
   if (timeout_ms <= 0) {
     // The timeout is not valid. Use the default GFLAG value.
     return;
@@ -919,48 +919,48 @@ void K2PgSetTimeout(int timeout_ms, void* extra) {
 //--------------------------------------------------------------------------------------------------
 // Thread-Local variables.
 
-void* K2PgGetThreadLocalCurrentMemoryContext() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetThreadLocalCurrentMemoryContext");
+void* PgGate_GetThreadLocalCurrentMemoryContext() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetThreadLocalCurrentMemoryContext");
   return PgGetThreadLocalCurrentMemoryContext();
 }
 
-void* K2PgSetThreadLocalCurrentMemoryContext(void *memctx) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetThreadLocalCurrentMemoryContext");
+void* PgGate_SetThreadLocalCurrentMemoryContext(void *memctx) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetThreadLocalCurrentMemoryContext");
   return PgSetThreadLocalCurrentMemoryContext(memctx);
 }
 
-void K2PgResetCurrentMemCtxThreadLocalVars() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgResetCurrentMemCtxThreadLocalVars");
+void PgGate_ResetCurrentMemCtxThreadLocalVars() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ResetCurrentMemCtxThreadLocalVars");
   PgResetCurrentMemCtxThreadLocalVars();
 }
 
-void* K2PgGetThreadLocalStrTokPtr() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetThreadLocalStrTokPtr");
+void* PgGate_GetThreadLocalStrTokPtr() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetThreadLocalStrTokPtr");
   return PgGetThreadLocalStrTokPtr();
 }
 
-void K2PgSetThreadLocalStrTokPtr(char *new_pg_strtok_ptr) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetThreadLocalStrTokPtr {}", new_pg_strtok_ptr);
+void PgGate_SetThreadLocalStrTokPtr(char *new_pg_strtok_ptr) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetThreadLocalStrTokPtr {}", new_pg_strtok_ptr);
   PgSetThreadLocalStrTokPtr(new_pg_strtok_ptr);
 }
 
-void* K2PgSetThreadLocalJumpBuffer(void* new_buffer) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetThreadLocalJumpBuffer");
+void* PgGate_SetThreadLocalJumpBuffer(void* new_buffer) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetThreadLocalJumpBuffer");
   return PgSetThreadLocalJumpBuffer(new_buffer);
 }
 
-void* K2PgGetThreadLocalJumpBuffer() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetThreadLocalJumpBuffer");
+void* PgGate_GetThreadLocalJumpBuffer() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetThreadLocalJumpBuffer");
   return PgGetThreadLocalJumpBuffer();
 }
 
-void K2PgSetThreadLocalErrMsg(const void* new_msg) {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgSetThreadLocalErrMsg {}", new_msg);
+void PgGate_SetThreadLocalErrMsg(const void* new_msg) {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_SetThreadLocalErrMsg {}", new_msg);
   PgSetThreadLocalErrMsg(new_msg);
 }
 
-const void* K2PgGetThreadLocalErrMsg() {
-  K2LOG_V(log::pg, "PgGateAPI: K2PgGetThreadLocalErrMsg");
+const void* PgGate_GetThreadLocalErrMsg() {
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_GetThreadLocalErrMsg");
   return PgGetThreadLocalErrMsg();
 }
 
@@ -996,11 +996,11 @@ void K2PgAssignTransactionPriorityUpperBound(double newval, void* extra) {
 // the following APIs are called by pg_dump.c only
 // TODO: check if we really need to implement them
 
-K2PgStatus K2PgInitPgGateBackend() {
+K2PgStatus PgGate_InitPgGateBackend() {
     return K2PgStatusOK();
 }
 
-void K2PgShutdownPgGateBackend() {
+void PgGate_ShutdownPgGateBackend() {
 }
 
 } // extern "C"

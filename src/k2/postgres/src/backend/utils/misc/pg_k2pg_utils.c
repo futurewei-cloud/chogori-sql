@@ -67,7 +67,7 @@ bool
 IsK2PgEnabled()
 {
 	/* We do not support Init/Bootstrap processing modes yet. */
-	return K2PgIsK2PgEnabled();
+	return PgGate_IsK2PgEnabled();
 }
 
 void
@@ -334,7 +334,7 @@ K2PgInitPostgresBackend(
 		K2PgCallbacks callbacks;
 		callbacks.FetchUniqueConstraintName = &FetchUniqueConstraintName;
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
-		K2PgInitPgGate(type_table, count, callbacks);
+		PgGate_InitPgGate(type_table, count, callbacks);
 		K2PgInstallTxnDdlHook();
 
 		/*
@@ -343,41 +343,41 @@ K2PgInitPostgresBackend(
 		 *
 		 * TODO: do we really need to DB name / username here?
 		 */
-    HandleK2PgStatus(K2PgInitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
+    HandleK2PgStatus(PgGate_InitSession(/* pg_env */ NULL, db_name ? db_name : user_name));
 	}
 }
 
 void
 K2PgOnPostgresBackendShutdown()
 {
-	K2PgDestroyPgGate();
+	PgGate_DestroyPgGate();
 }
 
 void
-K2PgGateRestartTransaction()
+K2PgRestartTransaction()
 {
 	if (!IsK2PgEnabled())
 		return;
-	HandleK2PgStatus(K2PgRestartTransaction());
+	HandleK2PgStatus(PgGate_RestartTransaction());
 }
 
 void
-K2PgGateCommitTransaction()
+K2PgCommitTransaction()
 {
 	if (!IsK2PgEnabled())
 		return;
 
-	HandleK2PgStatus(K2PgCommitTransaction());
+	HandleK2PgStatus(PgGate_CommitTransaction());
 }
 
 void
-K2PgGateAbortTransaction()
+K2PgAbortTransaction()
 {
 	if (!IsK2PgEnabled())
 		return;
 
 	if (K2PgTransactionsEnabled())
-		HandleK2PgStatus(K2PgAbortTransaction());
+		HandleK2PgStatus(PgGate_AbortTransaction());
 }
 
 bool
@@ -702,7 +702,7 @@ bool
 K2PgIsInitDbAlreadyDone()
 {
 	bool done = false;
-	HandleK2PgStatus(K2PgIsInitDbDone(&done));
+	HandleK2PgStatus(PgGate_IsInitDbDone(&done));
 	return done;
 }
 
@@ -723,7 +723,7 @@ void
 K2PgIncrementDdlNestingLevel()
 {
 	if (ddl_nesting_level == 0)
-		K2PgEnterSeparateDdlTxnMode();
+		PgGate_EnterSeparateDdlTxnMode();
 	ddl_nesting_level++;
 }
 
@@ -732,7 +732,7 @@ K2PgDecrementDdlNestingLevel(bool success)
 {
 	ddl_nesting_level--;
 	if (ddl_nesting_level == 0)
-		K2PgExitSeparateDdlTxnMode(success);
+		PgGate_ExitSeparateDdlTxnMode(success);
 }
 
 static bool IsTransactionalDdlStatement(NodeTag node_tag) {

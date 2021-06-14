@@ -406,7 +406,7 @@ DefineIndex(Oid relationId,
 	 * - indexes in nested DDL
 	 * - unique indexes
 	 */
-	stmt->concurrent = (!K2PgGetDisableIndexBackfill()
+	stmt->concurrent = (!PgGate_GetDisableIndexBackfill()
 						&& !stmt->primary
 						&& IsK2PgRelationById(relationId));
 	/* Use fast path create index when in nested DDL.  This is desired
@@ -1185,7 +1185,7 @@ DefineIndex(Oid relationId,
 	 * through HandleK2PgStatus.
 	 */
 	elog(LOG, "waiting for K2PG_INDEX_PERM_DELETE_ONLY");
-	HandleK2PgStatus(K2PgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_DELETE_ONLY,
@@ -1206,9 +1206,9 @@ DefineIndex(Oid relationId,
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
 	 * through HandleK2PgStatus.
 	 */
-	HandleK2PgStatus(K2PgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for K2PG_INDEX_PERM_WRITE_AND_DELETE");
-	HandleK2PgStatus(K2PgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_WRITE_AND_DELETE,
@@ -1241,9 +1241,9 @@ DefineIndex(Oid relationId,
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
 	 * through HandleK2PgStatus.
 	 */
-	HandleK2PgStatus(K2PgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for Yugabyte index read permission");
-	HandleK2PgStatus(K2PgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_READ_WRITE_AND_DELETE,
@@ -1384,7 +1384,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		Relation rel = RelationIdGetRelation(relId);
 		use_k2pg_ordering = IsK2PgRelation(rel) && !IsSystemRelation(rel);
 		if (IsK2PgRelation(rel))
-			HandleK2PgStatus(K2PgIsTableColocated(MyDatabaseId,
+			HandleK2PgStatus(PgGate_IsTableColocated(MyDatabaseId,
 												 relId,
 												 &colocated));
 		RelationClose(rel);
@@ -2681,7 +2681,7 @@ BackfillIndex(BackfillIndexStmt *stmt)
 	Relation	heapRel;
 	Relation	indexRel;
 
-	if (K2PgGetDisableIndexBackfill())
+	if (PgGate_GetDisableIndexBackfill())
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("backfill is not enabled")));

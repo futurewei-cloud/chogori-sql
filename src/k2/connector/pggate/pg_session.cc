@@ -257,7 +257,7 @@ Status PgSession::HandleResponse(PgOpTemplate& op, const PgObjectId& relation_id
 }
 
 bool PgSession::ShouldHandleTransactionally(const PgOpTemplate& op) {
-  return op.IsTransactional() && !K2PgIsInitDbModeEnvVarSet();
+  return op.IsTransactional() && !PgGate_IsInitDbModeEnvVarSet();
 }
 
 Result<CBFuture<Status>> PgSession::RunAsync(const std::shared_ptr<PgOpTemplate>* op,
@@ -328,7 +328,7 @@ Result<bool> PgSession::IsInitDbDone() {
 }
 
 Result<uint64_t> PgSession::GetSharedCatalogVersion() {
-  // It is the same as K2PgGetCatalogMasterVersion() for now since we use local catalog manager for the timebeing
+  // It is the same as PgGate_GetCatalogMasterVersion() for now since we use local catalog manager for the timebeing
   uint64_t catalog_version;
   RETURN_NOT_OK(catalog_client_->GetCatalogVersion(&catalog_version));
   return catalog_version;

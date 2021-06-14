@@ -1854,10 +1854,10 @@ YBStartTransaction(TransactionState s)
 
 	if (K2PgTransactionsEnabled())
 	{
-		K2PgBeginTransaction();
-		K2PgSetTransactionIsolationLevel(XactIsoLevel);
-		K2PgSetTransactionReadOnly(XactReadOnly);
-		K2PgSetTransactionDeferrable(XactDeferrable);
+		PgGate_BeginTransaction();
+		PgGate_SetTransactionIsolationLevel(XactIsoLevel);
+		PgGate_SetTransactionReadOnly(XactReadOnly);
+		PgGate_SetTransactionDeferrable(XactDeferrable);
 	}
 }
 
@@ -2070,9 +2070,9 @@ CommitTransaction(void)
 	 * At this point all the them has been fired already.
 	 * It is time to commit YB transaction.
 	 * Postgres transaction can be aborted at this point without an issue
-	 * in case of K2PgGateCommitTransaction failure.
+	 * in case of K2PgCommitTransaction failure.
 	 */
-	K2PgGateCommitTransaction();
+	K2PgCommitTransaction();
 
 	CallXactCallbacks(is_parallel_worker ? XACT_EVENT_PARALLEL_PRE_COMMIT
 					  : XACT_EVENT_PRE_COMMIT);
@@ -2731,7 +2731,7 @@ AbortTransaction(void)
 		pgstat_report_xact_timestamp(0);
 	}
 
-	K2PgGateAbortTransaction();
+	K2PgAbortTransaction();
 
 	/*
 	 * State remains TRANS_ABORT until CleanupTransaction().

@@ -527,7 +527,7 @@ GetNewObjectId(void)
 			Oid begin_oid = InvalidOid;
 			Oid end_oid   = InvalidOid;
 
-			K2PgReserveOids(MyDatabaseId,
+			PgGate_ReserveOids(MyDatabaseId,
 			               ShmemVariableCache->nextOid,
 			               K2PG_OID_PREFETCH,
 			               &begin_oid,

@@ -222,7 +222,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 
 	if (IsK2PgEnabled())
 	{
-		HandleK2PgStatus(K2PgInsertSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(PgGate_InsertSequenceTuple(MyDatabaseId,
 											  seqoid,
 											  k2pg_catalog_cache_version,
 											  seqdataform.last_value,
@@ -471,7 +471,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 
 	if (IsK2PgEnabled())
 	{
-		HandleK2PgStatus(K2PgReadSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(PgGate_ReadSequenceTuple(MyDatabaseId,
 											relid,
 											k2pg_catalog_cache_version,
 											&last_val,
@@ -511,7 +511,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 			if (last_val != newdataform->last_value || is_called != newdataform->is_called)
 			{
 				bool skipped = false;
-				HandleK2PgStatus(K2PgUpdateSequenceTuple(MyDatabaseId,
+				HandleK2PgStatus(PgGate_UpdateSequenceTuple(MyDatabaseId,
 													  ObjectIdGetDatum(relid),
 													  k2pg_catalog_cache_version,
 													  newdataform->last_value /* last_val */,
@@ -584,7 +584,7 @@ DeleteSequenceTuple(Oid relid)
 
 	if (IsK2PgEnabled())
 	{
-		HandleK2PgStatus(K2PgDeleteSequenceTuple(MyDatabaseId, relid));
+		HandleK2PgStatus(PgGate_DeleteSequenceTuple(MyDatabaseId, relid));
 	}
 
 	CatalogTupleDelete(rel, tuple);
@@ -605,7 +605,7 @@ YBReadSequenceTuple(Relation seqrel)
   {
     int64_t last_val;
     bool is_called;
-    HandleK2PgStatus(K2PgReadSequenceTuple(MyDatabaseId,
+    HandleK2PgStatus(PgGate_ReadSequenceTuple(MyDatabaseId,
                                         relid,
                                         k2pg_catalog_cache_version,
                                         &last_val,
@@ -756,7 +756,7 @@ retry:
 	{
 		int64_t last_val;
 		bool is_called;
-		HandleK2PgStatus(K2PgReadSequenceTuple(MyDatabaseId,
+		HandleK2PgStatus(PgGate_ReadSequenceTuple(MyDatabaseId,
 											relid,
 											k2pg_catalog_cache_version,
 											&last_val,
@@ -908,7 +908,7 @@ check_bounds:
 		 * update fails, we retry again by reading the last_val and is_called values and going
 		 * through the whole process again.
 		 */
-		HandleK2PgStatus(K2PgUpdateSequenceTupleConditionally(MyDatabaseId,
+		HandleK2PgStatus(PgGate_UpdateSequenceTupleConditionally(MyDatabaseId,
 														   relid,
 														   k2pg_catalog_cache_version,
 														   last /* last_val */,
@@ -1154,7 +1154,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	 */
 	if (IsK2PgEnabled())
 	{
-    HandleK2PgStatus(K2PgUpdateSequenceTuple(MyDatabaseId,
+    HandleK2PgStatus(PgGate_UpdateSequenceTuple(MyDatabaseId,
                                           relid,
                                           k2pg_catalog_cache_version,
                                           next,

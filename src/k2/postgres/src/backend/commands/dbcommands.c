@@ -1173,9 +1173,9 @@ RenameDatabase(const char *oldname, const char *newname)
 
 	if (IsK2PgEnabled()) {
 		K2PgStatement handle = NULL;
-		HandleK2PgStatus(K2PgNewAlterDatabase(oldname, db_id, &handle));
-		HandleK2PgStatus(K2PgAlterDatabaseRenameDatabase(handle, newname));
-		HandleK2PgStatus(K2PgExecAlterDatabase(handle));
+		HandleK2PgStatus(PgGate_NewAlterDatabase(oldname, db_id, &handle));
+		HandleK2PgStatus(PgGate_AlterDatabaseRenameDatabase(handle, newname));
+		HandleK2PgStatus(PgGate_ExecAlterDatabase(handle));
 	}
 
 	InvokeObjectPostAlterHook(DatabaseRelationId, db_id, 0);

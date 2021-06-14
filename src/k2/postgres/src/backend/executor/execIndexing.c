@@ -539,7 +539,7 @@ ExecDeleteIndexTuples(Datum ybctid, HeapTuple tuple, EState *estate)
 		 * If the index is not ready for deletes and index backfill is enabled,
 		 * ignore it
 		 */
-		if (K2PgGetDisableIndexBackfill()
+		if (PgGate_GetDisableIndexBackfill()
 				&& !indexRelation->rd_index->indislive)
 			continue;
 		/* If the index is marked as read-only, ignore it */

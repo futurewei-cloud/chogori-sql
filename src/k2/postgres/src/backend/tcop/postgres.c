@@ -3693,7 +3693,7 @@ static void YBRefreshCache()
 
 	/* Get the latest syscatalog version from the master */
 	uint64_t catalog_master_version = 0;
-	K2PgGetCatalogMasterVersion(&catalog_master_version);
+	PgGate_GetCatalogMasterVersion(&catalog_master_version);
 
 	/* Need to execute some (read) queries internally so start a local txn. */
 	start_xact_command();
@@ -3704,7 +3704,7 @@ static void YBRefreshCache()
 	YBPreloadRelCache();
 
 	/* Also invalidate the pggate cache. */
-	K2PgInvalidateCache();
+	PgGate_InvalidateCache();
 
 	/* Set the new ysql cache version. */
 	k2pg_catalog_cache_version = catalog_master_version;
@@ -3762,7 +3762,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	 * to refresh the cache.
 	 */
 	uint64_t catalog_master_version = 0;
-	K2PgGetCatalogMasterVersion(&catalog_master_version);
+	PgGate_GetCatalogMasterVersion(&catalog_master_version);
 	need_global_cache_refresh =
 		k2pg_catalog_cache_version != catalog_master_version;
 	if (!(need_global_cache_refresh || need_table_cache_refresh))
@@ -3821,7 +3821,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 				ereport(LOG,
 						(errmsg("invalidating table cache entry %s",
 								table_to_refresh)));
-				HandleK2PgStatus(K2PgInvalidateTableCacheByTableId(table_to_refresh));
+				HandleK2PgStatus(PgGate_InvalidateTableCacheByTableId(table_to_refresh));
 			}
 
 			*need_retry = true;
@@ -3935,7 +3935,7 @@ static void YBCheckSharedCatalogCacheVersion() {
 		return;
 
 	uint64_t shared_catalog_version;
-	HandleK2PgStatus(K2PgGetSharedCatalogVersion(&shared_catalog_version));
+	HandleK2PgStatus(PgGate_GetSharedCatalogVersion(&shared_catalog_version));
 
 	if (k2pg_catalog_cache_version < shared_catalog_version) {
 		YBRefreshCache();
@@ -3975,7 +3975,7 @@ k2pg_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_dat
 	if (YBIsDataSent())
 		return false;
 
-	if (attempt >= K2PgGetMaxReadRestartAttempts())
+	if (attempt >= PgGate_GetMaxReadRestartAttempts())
 		return false;
 
 	if (!restart_data)
@@ -4211,7 +4211,7 @@ k2pg_attempt_to_restart_on_error(int attempt,
 			k2pg_restart_portal(restart_data->portal_name);
 		}
 		YBRestoreOutputBufferPosition();
-		K2PgGateRestartTransaction();
+		K2PgRestartTransaction();
 	} else {
 		/* if we shouldn't restart - propagate the error */
 		MemoryContextSwitchTo(error_context);

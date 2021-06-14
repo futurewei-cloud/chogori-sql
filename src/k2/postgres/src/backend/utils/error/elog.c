@@ -179,7 +179,7 @@ static char formatted_log_time[FORMATTED_TS_LEN];
 	do { \
 		if (IsMultiThreadedMode()) \
 		{ \
-			K2PgSetThreadLocalErrMsg(fmt); \
+			PgGate_SetThreadLocalErrMsg(fmt); \
 			return 0; \
 		} \
 	} while(0) \
@@ -1369,9 +1369,9 @@ getinternalerrposition(void)
 void k2pg_pgbackend_ereport(int elevel, const char *fmt,...) {
 	if (fmt != NULL)
 	{
-		K2PgSetThreadLocalErrMsg(fmt);
+		PgGate_SetThreadLocalErrMsg(fmt);
 	}
-	jmp_buf *buffer = K2PgGetThreadLocalJumpBuffer();
+	jmp_buf *buffer = PgGate_GetThreadLocalJumpBuffer();
 	longjmp(*buffer, elevel);
 }
 

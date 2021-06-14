@@ -162,17 +162,17 @@ extern void K2PgOnPostgresBackendShutdown();
 /*
  * Signals PgTxnManager to restart current transaction - pick a new read point, etc.
  */
-extern void K2PgGateRestartTransaction();
+extern void K2PgRestartTransaction();
 
 /*
  * Commits the current YugaByte-level transaction (if any).
  */
-extern void K2PgGateCommitTransaction();
+extern void K2PgCommitTransaction();
 
 /*
  * Aborts the current YugaByte-level transaction.
  */
-extern void K2PgGateAbortTransaction();
+extern void K2PgAbortTransaction();
 
 /*
  * Return true if we want to allow PostgreSQL's own locking. This is needed

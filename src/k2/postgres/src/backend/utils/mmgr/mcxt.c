@@ -41,29 +41,29 @@ MemoryContext CurrentMemoryContext = NULL;
 
 MemoryContext GetThreadLocalCurrentMemoryContext()
 {
-	return (MemoryContext) K2PgGetThreadLocalCurrentMemoryContext();
+	return (MemoryContext) PgGate_GetThreadLocalCurrentMemoryContext();
 }
 
 MemoryContext SetThreadLocalCurrentMemoryContext(MemoryContext memctx)
 {
-	return (MemoryContext) K2PgSetThreadLocalCurrentMemoryContext(memctx);
+	return (MemoryContext) PgGate_SetThreadLocalCurrentMemoryContext(memctx);
 }
 
 void PrepareThreadLocalCurrentMemoryContext()
 {
-	if (K2PgGetThreadLocalCurrentMemoryContext() == NULL)
+	if (PgGate_GetThreadLocalCurrentMemoryContext() == NULL)
 	{
 		MemoryContext memctx = AllocSetContextCreate((MemoryContext) NULL,
 		                                             "DocDBExprMemoryContext",
 		                                             ALLOCSET_SMALL_SIZES);
-		K2PgSetThreadLocalCurrentMemoryContext(memctx);
+		PgGate_SetThreadLocalCurrentMemoryContext(memctx);
 	}
 }
 
 void ResetThreadLocalCurrentMemoryContext()
 {
-	MemoryContext memctx = (MemoryContext) K2PgGetThreadLocalCurrentMemoryContext();
-	K2PgResetCurrentMemCtxThreadLocalVars();
+	MemoryContext memctx = (MemoryContext) PgGate_GetThreadLocalCurrentMemoryContext();
+	PgGate_ResetCurrentMemCtxThreadLocalVars();
 	MemoryContextReset(memctx);
 }
 
@@ -196,7 +196,7 @@ MemoryContextResetOnly(MemoryContext context)
 	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
 	 */
 	if (context->k2pg_memctx) {
-		HandleK2PgStatus(K2PgResetMemctx(context->k2pg_memctx));
+		HandleK2PgStatus(PgGate_ResetMemctx(context->k2pg_memctx));
 	}
 
 	/* Nothing to do if no pallocs since startup or last reset */
@@ -291,7 +291,7 @@ MemoryContextDelete(MemoryContext context)
 	/*
 	 * Destroy YugaByte memory context.
 	 */
-	HandleK2PgStatus(K2PgDestroyMemctx(context->k2pg_memctx));
+	HandleK2PgStatus(PgGate_DestroyMemctx(context->k2pg_memctx));
 	context->k2pg_memctx = NULL;
 
 	VALGRIND_DESTROY_MEMPOOL(context);
@@ -1259,7 +1259,7 @@ K2PgMemctx GetCurrentYbMemctx() {
 
 	if (context->k2pg_memctx == NULL) {
 		// Create the yugabyte context if this is the first time it is used.
-		context->k2pg_memctx = K2PgCreateMemctx();
+		context->k2pg_memctx = PgGate_CreateMemctx();
 	}
 
 	return context->k2pg_memctx;

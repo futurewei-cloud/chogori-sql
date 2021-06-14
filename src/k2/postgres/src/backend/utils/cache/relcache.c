@@ -6145,7 +6145,7 @@ load_relcache_init_file(bool shared)
 
 		/* Else, still need to check with the master version to be sure. */
 		uint64_t catalog_master_version = 0;
-		K2PgGetCatalogMasterVersion(&catalog_master_version);
+		PgGate_GetCatalogMasterVersion(&catalog_master_version);
 
 		/* File version does not match actual master version (i.e. too old) */
 		if (ybc_stored_cache_version != catalog_master_version)

@@ -333,8 +333,8 @@ class PgGateApiImpl {
   // API for SET clause.
   CHECKED_STATUS DmlAssignColumn(PgStatement *handle, int attr_num, PgExpr *attr_value);
 
-  // This function is to fetch the targets in K2PgDmlAppendTarget() from the rows that were defined
-  // by K2PgDmlBindColumn().
+  // This function is to fetch the targets in PgGate_DmlAppendTarget() from the rows that were defined
+  // by PgGate_DmlBindColumn().
   CHECKED_STATUS DmlFetch(PgStatement *handle, int32_t natts, uint64_t *values, bool *isnulls,
                           PgSysColumns *syscols, bool *has_data);
 
@@ -432,7 +432,7 @@ class PgGateApiImpl {
 
   CHECKED_STATUS DeleteForeignKeyReference(K2PgOid table_oid, std::string&& ybctid);
 
-  void K2PgClearForeignKeyReferenceCache();
+  void ClearForeignKeyReferenceCache();
 
   // Sets the specified timeout in the rpc service.
   void SetTimeout(int timeout_ms);

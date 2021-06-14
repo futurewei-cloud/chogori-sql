@@ -136,7 +136,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 	K2PgTableDesc k2pg_tabledesc = NULL;
 
 	/* Get the primary key columns 'pkey' from YugaByte. */
-	HandleK2PgStatus(K2PgGetTableDesc(dboid, relid, &k2pg_tabledesc));
+	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = minattr; attnum <= natts; attnum++)
 	{
 		if ((!includeYBSystemColumns && !IsRealK2PgColumn(rel, attnum)) ||
@@ -147,7 +147,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleK2PgTableDescStatus(K2PgGetColumnInfo(k2pg_tabledesc,
+		HandleK2PgTableDescStatus(PgGate_GetColumnInfo(k2pg_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
 		                                           &is_hash), k2pg_tabledesc);
@@ -244,7 +244,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 		}
 		++next_attr;
 	}
-	HandleK2PgStatus(K2PgDmlBuildYBTupleId(pg_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(pg_stmt, attrs, nattrs, &tuple_id));
 	pfree(attrs);
 	return (Datum)tuple_id;
 }
@@ -255,7 +255,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 static void K2PgBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
 	K2PgExpr ybc_expr = YBCNewConstant(pg_stmt, BYTEAOID, tuple_id,
 										false /* is_null */);
-	HandleK2PgStatus(K2PgDmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, ybc_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, ybc_expr));
 }
 
 /*
@@ -276,7 +276,7 @@ static void K2PgExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_af
 {
 	bool is_syscatalog_change = IsSystemCatalogChange(rel);
 	bool modifies_row = false;
-	HandleK2PgStatus(K2PgDmlModifiesRow(ybc_stmt, &modifies_row));
+	HandleK2PgStatus(PgGate_DmlModifiesRow(ybc_stmt, &modifies_row));
 
 	/*
 	 * If this write may invalidate catalog cache tuples (i.e. UPDATE or DELETE),
@@ -291,13 +291,13 @@ static void K2PgExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_af
 	/* Let the master know if this should increment the catalog version. */
 	if (is_syscatalog_version_change)
 	{
-		HandleK2PgStatus(K2PgSetIsSysCatalogVersionChange(ybc_stmt));
+		HandleK2PgStatus(PgGate_SetIsSysCatalogVersionChange(ybc_stmt));
 	}
 
-	HandleK2PgStatus(K2PgSetCatalogCacheVersion(ybc_stmt, k2pg_catalog_cache_version));
+	HandleK2PgStatus(PgGate_SetCatalogCacheVersion(ybc_stmt, k2pg_catalog_cache_version));
 
 	/* Execute the insert. */
-	HandleK2PgStatus(K2PgDmlExecWriteOp(ybc_stmt, rows_affected_count));
+	HandleK2PgStatus(PgGate_DmlExecWriteOp(ybc_stmt, rows_affected_count));
 
 	/*
 	 * Optimization to increment the catalog version for the local cache as
@@ -340,7 +340,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
 	}
 
 	/* Create the INSERT request and add the values from the tuple. */
-	HandleK2PgStatus(K2PgNewInsert(dboid,
+	HandleK2PgStatus(PgGate_NewInsert(dboid,
 	                              relid,
 	                              is_single_row_txn,
 	                              &insert_stmt));
@@ -370,7 +370,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
 
 		/* Add the column value to the insert request */
 		K2PgExpr ybc_expr = YBCNewConstant(insert_stmt, type_id, datum, is_null);
-		HandleK2PgStatus(K2PgDmlBindColumn(insert_stmt, attnum, ybc_expr));
+		HandleK2PgStatus(PgGate_DmlBindColumn(insert_stmt, attnum, ybc_expr));
 	}
 
 	/*
@@ -399,7 +399,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
 static void BindColumn(K2PgStatement stmt, int attr_num, Oid type_id, Datum datum, bool is_null)
 {
   K2PgExpr expr = YBCNewConstant(stmt, type_id, datum, is_null);
-  HandleK2PgStatus(K2PgDmlBindColumn(stmt, attr_num, expr));
+  HandleK2PgStatus(PgGate_DmlBindColumn(stmt, attr_num, expr));
 }
 
 /*
@@ -524,7 +524,7 @@ void K2PgExecuteInsertIndex(Relation index,
 	 * TODO(jason): rename `is_single_row_txn` to something like
 	 * `non_distributed_txn` when closing issue #4906.
 	 */
-	HandleK2PgStatus(K2PgNewInsert(dboid,
+	HandleK2PgStatus(PgGate_NewInsert(dboid,
 								  relid,
 								  is_backfill /* is_single_row_txn */,
 								  &insert_stmt));
@@ -538,7 +538,7 @@ void K2PgExecuteInsertIndex(Relation index,
 	 * guarantees uniqueness, so no need to read and check it in DocDB.
 	 */
 	if (!index->rd_index->indisunique) {
-		HandleK2PgStatus(K2PgInsertStmtSetUpsertMode(insert_stmt));
+		HandleK2PgStatus(PgGate_InsertStmtSetUpsertMode(insert_stmt));
 	}
 
 	/* For index backfill, set write hybrid time to a time in the past.  This
@@ -546,7 +546,7 @@ void K2PgExecuteInsertIndex(Relation index,
 	 * writes. */
 	/* TODO(jason): don't hard-code 50. */
 	if (is_backfill)
-		HandleK2PgStatus(K2PgInsertStmtSetWriteTime(insert_stmt, 50));
+		HandleK2PgStatus(PgGate_InsertStmtSetWriteTime(insert_stmt, 50));
 
 	/* Execute the insert and clean up. */
 	K2PgExecWriteStmt(insert_stmt, index, NULL /* rows_affected_count */);
@@ -561,7 +561,7 @@ bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modif
 	Datum          ybctid         = 0;
 
 	/* Create DELETE request. */
-	HandleK2PgStatus(K2PgNewDelete(dboid,
+	HandleK2PgStatus(PgGate_NewDelete(dboid,
 								  relid,
 								  estate->es_k2pg_is_single_row_modify_txn,
 								  &delete_stmt));
@@ -595,10 +595,10 @@ bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modif
 	/* Bind ybctid to identify the current row. */
 	K2PgExpr ybctid_expr = YBCNewConstant(delete_stmt, BYTEAOID, ybctid,
 										   false /* is_null */);
-	HandleK2PgStatus(K2PgDmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, ybctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, ybctid_expr));
 
 	/* Delete row from foreign key cache */
-	HandleK2PgStatus(K2PgDeleteFromForeignKeyReferenceCache(relid, ybctid));
+	HandleK2PgStatus(PgGate_DeleteFromForeignKeyReferenceCache(relid, ybctid));
 
 	/* Execute the statement. */
 	int rows_affected_count = 0;
@@ -619,7 +619,7 @@ void K2PgExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum y
 	K2PgStatement delete_stmt = NULL;
 
 	/* Create the DELETE request and add the values from the tuple. */
-	HandleK2PgStatus(K2PgNewDelete(dboid,
+	HandleK2PgStatus(PgGate_NewDelete(dboid,
 								  relid,
 								  false /* is_single_row_txn */,
 								  &delete_stmt));
@@ -629,7 +629,7 @@ void K2PgExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum y
 	                      ybctid, false /* ybctid_as_value */);
 
 	/* Delete row from foreign key cache */
-	HandleK2PgStatus(K2PgDeleteFromForeignKeyReferenceCache(relid, ybctid));
+	HandleK2PgStatus(PgGate_DeleteFromForeignKeyReferenceCache(relid, ybctid));
 
 	K2PgExecWriteStmt(delete_stmt, index, NULL /* rows_affected_count */);
 }
@@ -649,7 +649,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	Datum          ybctid         = 0;
 
 	/* Create update statement. */
-	HandleK2PgStatus(K2PgNewUpdate(dboid,
+	HandleK2PgStatus(PgGate_NewUpdate(dboid,
 								  relid,
 								  estate->es_k2pg_is_single_row_modify_txn,
 								  &update_stmt));
@@ -682,7 +682,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	/* Bind ybctid to identify the current row. */
 	K2PgExpr ybctid_expr = YBCNewConstant(update_stmt, BYTEAOID, ybctid,
 										   false /* is_null */);
-	HandleK2PgStatus(K2PgDmlBindColumn(update_stmt, YBTupleIdAttributeNumber, ybctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(update_stmt, YBTupleIdAttributeNumber, ybctid_expr));
 
 	/* Assign new values to the updated columns for the current row. */
 	tupleDesc = RelationGetDescr(rel);
@@ -723,7 +723,7 @@ bool K2PgExecuteUpdate(Relation rel,
 
 			K2PgExpr ybc_expr = YBCNewEvalExprCall(update_stmt, expr, attnum, type_id, type_mod);
 
-			HandleK2PgStatus(K2PgDmlAssignColumn(update_stmt, attnum, ybc_expr));
+			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
 
 			pushdown_lc = lnext(pushdown_lc);
 		}
@@ -734,7 +734,7 @@ bool K2PgExecuteUpdate(Relation rel,
 			K2PgExpr ybc_expr = YBCNewConstant(update_stmt, type_id,
 												d, is_null);
 
-			HandleK2PgStatus(K2PgDmlAssignColumn(update_stmt, attnum, ybc_expr));
+			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
 		}
 	}
 
@@ -768,7 +768,7 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 				        "Missing column ybctid in DELETE request to YugaByte database")));
 
 	/* Prepare DELETE statement. */
-	HandleK2PgStatus(K2PgNewDelete(dboid,
+	HandleK2PgStatus(PgGate_NewDelete(dboid,
 								  relid,
 								  false /* is_single_row_txn */,
 								  &delete_stmt));
@@ -778,9 +778,9 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 										   false /* is_null */);
 
 	/* Delete row from foreign key cache */
-	HandleK2PgStatus(K2PgDeleteFromForeignKeyReferenceCache(relid, tuple->t_ybctid));
+	HandleK2PgStatus(PgGate_DeleteFromForeignKeyReferenceCache(relid, tuple->t_ybctid));
 
-	HandleK2PgStatus(K2PgDmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, ybctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, ybctid_expr));
 
 	/*
 	 * Mark tuple for invalidation from system caches at next command
@@ -805,7 +805,7 @@ void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple
 	K2PgStatement update_stmt = NULL;
 
 	/* Create update statement. */
-	HandleK2PgStatus(K2PgNewUpdate(dboid,
+	HandleK2PgStatus(PgGate_NewUpdate(dboid,
 								  relid,
 								  false /* is_single_row_txn */,
 								  &update_stmt));
@@ -831,7 +831,7 @@ void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple
 		Datum d = heap_getattr(tuple, attnum, tupleDesc, &is_null);
 		K2PgExpr ybc_expr = YBCNewConstant(update_stmt, TupleDescAttr(tupleDesc, idx)->atttypid,
 											d, is_null);
-		HandleK2PgStatus(K2PgDmlAssignColumn(update_stmt, attnum, ybc_expr));
+		HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
 	}
 
 	/*

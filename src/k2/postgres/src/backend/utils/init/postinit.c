@@ -1026,7 +1026,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsK2PgEnabled() && !IsBootstrapProcessingMode())
 	{
-		K2PgGetCatalogMasterVersion(&k2pg_catalog_cache_version);
+		PgGate_GetCatalogMasterVersion(&k2pg_catalog_cache_version);
 	}
 	RelationCacheInitializePhase3();
 
@@ -1035,7 +1035,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 */
 	if (IsK2PgEnabled() && !IsBootstrapProcessingMode())
 	{
-		HandleK2PgStatus(K2PgIsDatabaseColocated(MyDatabaseId,
+		HandleK2PgStatus(PgGate_IsDatabaseColocated(MyDatabaseId,
 												&MyDatabaseColocated));
 	}
 

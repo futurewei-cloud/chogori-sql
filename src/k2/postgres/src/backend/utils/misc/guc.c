@@ -2289,7 +2289,7 @@ static struct config_int ConfigureNamesInt[] =
 		},
 		&StatementTimeout,
 		0, 0, INT_MAX,
-		NULL, K2PgSetTimeout, NULL
+		NULL, PgGate_SetTimeout, NULL
 	},
 
 	{
