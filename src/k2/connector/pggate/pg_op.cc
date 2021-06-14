@@ -291,7 +291,7 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
 
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
-        pg_tuple->syscols()->ybctid = (uint8_t*)k2pg::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
+        pg_tuple->syscols()->ybctid = (uint8_t*)k2pg::K2PgCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
     }
     K2LOG_D(log::pg, "wrote tuple ybctid={}", ybctid_strings_[nextToConsume_]);
     if (row_orders_.size()) {

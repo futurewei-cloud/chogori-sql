@@ -220,7 +220,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	rel = heap_open(seqoid, AccessExclusiveLock);
 	tupDesc = RelationGetDescr(rel);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		HandleK2PgStatus(K2PgInsertSequenceTuple(MyDatabaseId,
 											  seqoid,
@@ -469,7 +469,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 
 	seqform = (Form_pg_sequence) GETSTRUCT(seqtuple);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		HandleK2PgStatus(K2PgReadSequenceTuple(MyDatabaseId,
 											relid,
@@ -506,7 +506,7 @@ AlterSequence(ParseState *pstate, AlterSeqStmt *stmt)
 	/* If needed, rewrite the sequence relation itself */
 	if (need_seq_rewrite)
 	{
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			if (last_val != newdataform->last_value || is_called != newdataform->is_called)
 			{
@@ -582,7 +582,7 @@ DeleteSequenceTuple(Oid relid)
 	if (!HeapTupleIsValid(tuple))
 		elog(ERROR, "cache lookup failed for sequence %u", relid);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		HandleK2PgStatus(K2PgDeleteSequenceTuple(MyDatabaseId, relid));
 	}
@@ -601,7 +601,7 @@ YBReadSequenceTuple(Relation seqrel)
 
   /* Read our data from YB's table of all sequences */
   FormData_pg_sequence_data seqdataform;
-  if (IsYugaByteEnabled())
+  if (IsK2PgEnabled())
   {
     int64_t last_val;
     bool is_called;
@@ -752,7 +752,7 @@ nextval_internal(Oid relid, bool check_permissions)
 
 retry:
 	rescnt = 0;
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		int64_t last_val;
 		bool is_called;
@@ -788,7 +788,7 @@ retry:
 	 * We don't use the WAL log record. The value has already been updated and there is no way
 	 * to rollback to another sequence number.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		goto check_bounds;
 	/*
 	 * Decide whether we should emit a WAL log record.  If so, force up the
@@ -883,7 +883,7 @@ check_bounds:
 	}
 
 	log -= fetch;				/* adjust for any unfetched numbers */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		Assert(log >= 0);
 
 	/* save info in local cache */
@@ -897,10 +897,10 @@ check_bounds:
 	 * YugaByte doesn't use the WAL, and we don't need to free the buffer because we didn't allocate
 	 * memory for it. So close the relation and return the result now.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		if (last == seq->last_value && seq->is_called == true) {
-		  YBC_DEBUG_LOG_FATAL("Invalid sequence value %ld", last);
+		  K2PG_DEBUG_LOG_FATAL("Invalid sequence value %ld", last);
 		}
 		bool skipped = false;
 		/*
@@ -1116,7 +1116,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	 * Only read the sequence from a disk page if we are in Postgres mode, since YugaByte stores it
 	 * elsewhere and this will cause an error
 	 */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/* lock page' buffer and read tuple */
 		seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
@@ -1152,7 +1152,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	 * Update the sequence in the YugaByte backend. YugaByte doesn't use the WAL, and we
 	 * didn't allocate memory for buffer, so no need to free it.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
     HandleK2PgStatus(K2PgUpdateSequenceTuple(MyDatabaseId,
                                           relid,
@@ -2053,7 +2053,7 @@ pg_sequence_last_value(PG_FUNCTION_ARGS)
 				 errmsg("permission denied for sequence %s",
 						RelationGetRelationName(seqrel))));
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/* TODO(hector): Read the sequence's data. For now return null. */
 		relation_close(seqrel, NoLock);

@@ -67,7 +67,7 @@ ForeignNext(ForeignScanState *node)
 		HeapTuple	tup = ExecMaterializeSlot(slot);
 
 		tup->t_tableOid = RelationGetRelid(node->ss.ss_currentRelation);
-		if (IsYugaByteEnabled()) {
+		if (IsK2PgEnabled()) {
 			tup->t_ybctid = slot->tts_ybctid;
 		}
 	}

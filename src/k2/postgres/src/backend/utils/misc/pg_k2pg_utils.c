@@ -57,28 +57,28 @@
 uint64_t k2pg_catalog_cache_version = K2PG_CATCACHE_VERSION_UNINITIALIZED;
 
 /** These values are lazily initialized based on corresponding environment variables. */
-int ybc_pg_double_write = -1;
-int ybc_disable_pg_locking = -1;
+int k2pg_pg_double_write = -1;
+int k2pg_disable_pg_locking = -1;
 
 /* Forward declarations */
-static void YBCInstallTxnDdlHook();
+static void K2PgInstallTxnDdlHook();
 
 bool
-IsYugaByteEnabled()
+IsK2PgEnabled()
 {
 	/* We do not support Init/Bootstrap processing modes yet. */
-	return K2PgIsYugaByteEnabled();
+	return K2PgIsK2PgEnabled();
 }
 
 void
-CheckIsYBSupportedRelation(Relation relation)
+CheckIsK2PgSupportedRelation(Relation relation)
 {
 	const char relkind = relation->rd_rel->relkind;
-	CheckIsYBSupportedRelationByKind(relkind);
+	CheckIsK2PgSupportedRelationByKind(relkind);
 }
 
 void
-CheckIsYBSupportedRelationByKind(char relkind)
+CheckIsK2PgSupportedRelationByKind(char relkind)
 {
 	if (!(relkind == RELKIND_RELATION || relkind == RELKIND_INDEX ||
 		  relkind == RELKIND_VIEW || relkind == RELKIND_SEQUENCE ||
@@ -89,13 +89,13 @@ CheckIsYBSupportedRelationByKind(char relkind)
 }
 
 bool
-IsYBRelation(Relation relation)
+IsK2PgRelation(Relation relation)
 {
-	if (!IsYugaByteEnabled()) return false;
+	if (!IsK2PgEnabled()) return false;
 
 	const char relkind = relation->rd_rel->relkind;
 
-	CheckIsYBSupportedRelationByKind(relkind);
+	CheckIsK2PgSupportedRelationByKind(relkind);
 
 	/* Currently only support regular tables and indexes.
 	 * Temp tables and views are supported, but they are not YB relations. */
@@ -107,53 +107,53 @@ bool
 IsK2PgRelationById(Oid relid)
 {
 	Relation relation     = RelationIdGetRelation(relid);
-	bool     is_supported = IsYBRelation(relation);
+	bool     is_supported = IsK2PgRelation(relation);
 	RelationClose(relation);
 	return is_supported;
 }
 
 bool
-IsYBBackedRelation(Relation relation)
+IsK2PgBackedRelation(Relation relation)
 {
-	return IsYBRelation(relation) ||
+	return IsK2PgRelation(relation) ||
 		(relation->rd_rel->relkind == RELKIND_VIEW &&
 		relation->rd_rel->relpersistence != RELPERSISTENCE_TEMP);
 }
 
 bool
-YBNeedRetryAfterCacheRefresh(ErrorData *edata)
+K2PgNeedRetryAfterCacheRefresh(ErrorData *edata)
 {
 	// TODO Inspect error code to distinguish retryable errors.
 	return true;
 }
 
-AttrNumber YBGetFirstLowInvalidAttributeNumber(Relation relation)
+AttrNumber K2PgGetFirstLowInvalidAttributeNumber(Relation relation)
 {
-	return IsYBRelation(relation)
+	return IsK2PgRelation(relation)
 	       ? YBFirstLowInvalidAttributeNumber
 	       : FirstLowInvalidHeapAttributeNumber;
 }
 
-AttrNumber YBGetFirstLowInvalidAttributeNumberFromOid(Oid relid)
+AttrNumber K2PgGetFirstLowInvalidAttributeNumberFromOid(Oid relid)
 {
 	Relation   relation = RelationIdGetRelation(relid);
-	AttrNumber attr_num = YBGetFirstLowInvalidAttributeNumber(relation);
+	AttrNumber attr_num = K2PgGetFirstLowInvalidAttributeNumber(relation);
 	RelationClose(relation);
 	return attr_num;
 }
 
-int YBAttnumToBmsIndex(Relation rel, AttrNumber attnum)
+int K2PgAttnumToBmsIndex(Relation rel, AttrNumber attnum)
 {
-	return attnum - YBGetFirstLowInvalidAttributeNumber(rel);
+	return attnum - K2PgGetFirstLowInvalidAttributeNumber(rel);
 }
 
-AttrNumber YBBmsIndexToAttnum(Relation rel, int idx)
+AttrNumber K2PgBmsIndexToAttnum(Relation rel, int idx)
 {
-	return idx + YBGetFirstLowInvalidAttributeNumber(rel);
+	return idx + K2PgGetFirstLowInvalidAttributeNumber(rel);
 }
 
 
-extern bool YBRelHasOldRowTriggers(Relation rel, CmdType operation)
+extern bool K2PgRelHasOldRowTriggers(Relation rel, CmdType operation)
 {
 	TriggerDesc *trigdesc = rel->trigdesc;
 	return (trigdesc &&
@@ -166,7 +166,7 @@ extern bool YBRelHasOldRowTriggers(Relation rel, CmdType operation)
 }
 
 bool
-YBRelHasSecondaryIndices(Relation relation)
+K2PgRelHasSecondaryIndices(Relation relation)
 {
 	if (!relation->rd_rel->relhasindex)
 		return false;
@@ -189,18 +189,18 @@ YBRelHasSecondaryIndices(Relation relation)
 }
 
 bool
-YBTransactionsEnabled()
+K2PgTransactionsEnabled()
 {
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrueWithDefault("K2PG_TRANSACTIONS_ENABLED", true);
+		cached_value = K2PgIsEnvVarTrueWithDefault("K2PG_TRANSACTIONS_ENABLED", true);
 	}
-	return IsYugaByteEnabled() && cached_value;
+	return IsK2PgEnabled() && cached_value;
 }
 
 void
-YBReportFeatureUnsupported(const char *msg)
+K2PgReportFeatureUnsupported(const char *msg)
 {
 	ereport(ERROR,
 			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
@@ -209,12 +209,12 @@ YBReportFeatureUnsupported(const char *msg)
 
 
 static bool
-YBShouldReportErrorStatus()
+K2PgShouldReportErrorStatus()
 {
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrue("K2PG_REPORT_ERROR_STATUS");
+		cached_value = K2PgIsEnvVarTrue("K2PG_REPORT_ERROR_STATUS");
 	}
 
 	return cached_value;
@@ -230,11 +230,11 @@ HandleK2PgStatus(K2PgStatus status)
 	const uint32_t pg_err_code = K2PgStatusPgsqlError(status);
 	char* msg_buf = DupK2PgStatusMessage(status, pg_err_code == ERRCODE_UNIQUE_VIOLATION);
 
-	if (YBShouldReportErrorStatus()) {
-		YBC_LOG_ERROR("HandleK2PgStatus: %s", msg_buf);
+	if (K2PgShouldReportErrorStatus()) {
+		K2PG_LOG_ERROR("HandleK2PgStatus: %s", msg_buf);
 	}
 	const uint16_t txn_err_code = K2PgStatusTransactionError(status);
-	YBCFreeStatus(status);
+	K2PgFreeStatus(status);
 	ereport(ERROR,
 			(errmsg("%s", msg_buf),
 			 errcode(pg_err_code),
@@ -250,7 +250,7 @@ HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found)
 	}
 	if (K2PgStatusIsNotFound(status)) {
 		*not_found = true;
-		YBCFreeStatus(status);
+		K2PgFreeStatus(status);
 		return;
 	}
 	*not_found = false;
@@ -259,24 +259,24 @@ HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found)
 
 void
 HandleK2PgStatusWithOwner(K2PgStatus status,
-												K2PgStatement ybc_stmt,
+												K2PgStatement k2pg_stmt,
 												ResourceOwner owner)
 {
 	if (!status)
 		return;
 
-	if (ybc_stmt)
+	if (k2pg_stmt)
 	{
 		if (owner != NULL)
 		{
-			ResourceOwnerForgetYugaByteStmt(owner, ybc_stmt);
+			ResourceOwnerForgetYugaByteStmt(owner, k2pg_stmt);
 		}
 	}
 	HandleK2PgStatus(status);
 }
 
 void
-HandleYBTableDescStatus(K2PgStatus status, K2PgTableDesc table)
+HandleK2PgTableDescStatus(K2PgStatus status, K2PgTableDesc table)
 {
 	if (!status)
 		return;
@@ -312,12 +312,12 @@ FetchUniqueConstraintName(Oid relation_id, char* dest, size_t max_size)
 }
 
 void
-YBInitPostgresBackend(
+K2PgInitPostgresBackend(
 	const char *program_name,
 	const char *db_name,
 	const char *user_name)
 {
-	HandleK2PgStatus(YBCInit(program_name, palloc, cstring_to_text_with_len));
+	HandleK2PgStatus(K2PgInit(program_name, palloc, cstring_to_text_with_len));
 
 	/*
 	 * Enable "YB mode" for PostgreSQL so that we will initiate a connection
@@ -326,7 +326,7 @@ YBInitPostgresBackend(
 	 * do this if this env variable is set, so we can still run the regular
 	 * PostgreSQL "make check".
 	 */
-	if (YBIsEnabledInPostgresEnvVar())
+	if (K2PgIsEnabledInPostgresEnvVar())
 	{
 		const K2PgTypeEntity *type_table;
 		int count;
@@ -335,7 +335,7 @@ YBInitPostgresBackend(
 		callbacks.FetchUniqueConstraintName = &FetchUniqueConstraintName;
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
 		K2PgInitPgGate(type_table, count, callbacks);
-		YBCInstallTxnDdlHook();
+		K2PgInstallTxnDdlHook();
 
 		/*
 		 * For each process, we create one YBC session for PostgreSQL to use
@@ -348,57 +348,57 @@ YBInitPostgresBackend(
 }
 
 void
-YBOnPostgresBackendShutdown()
+K2PgOnPostgresBackendShutdown()
 {
 	K2PgDestroyPgGate();
 }
 
 void
-YBCRestartTransaction()
+K2PgGateRestartTransaction()
 {
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return;
 	HandleK2PgStatus(K2PgRestartTransaction());
 }
 
 void
-YBCCommitTransaction()
+K2PgGateCommitTransaction()
 {
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return;
 
 	HandleK2PgStatus(K2PgCommitTransaction());
 }
 
 void
-YBCAbortTransaction()
+K2PgGateAbortTransaction()
 {
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return;
 
-	if (YBTransactionsEnabled())
+	if (K2PgTransactionsEnabled())
 		HandleK2PgStatus(K2PgAbortTransaction());
 }
 
 bool
-YBIsPgLockingEnabled()
+K2PgIsPgLockingEnabled()
 {
-	return !YBTransactionsEnabled();
+	return !K2PgTransactionsEnabled();
 }
 
 static bool k2pg_preparing_templates = false;
 void
-YBSetPreparingTemplates() {
+K2PgSetPreparingTemplates() {
 	k2pg_preparing_templates = true;
 }
 
 bool
-YBIsPreparingTemplates() {
+K2PgIsPreparingTemplates() {
 	return k2pg_preparing_templates;
 }
 
 const char*
-YBPgTypeOidToStr(Oid type_id) {
+K2PgTypeOidToStr(Oid type_id) {
 	switch (type_id) {
 		case BOOLOID: return "BOOL";
 		case BYTEAOID: return "BYTEA";
@@ -528,23 +528,23 @@ K2PgDataTypeToStr(K2PgDataType k2pg_type) {
 }
 
 void
-YBReportIfYugaByteEnabled()
+K2PgReportIfK2PgEnabled()
 {
-	if (YBIsEnabledInPostgresEnvVar()) {
+	if (K2PgIsEnabledInPostgresEnvVar()) {
 		ereport(LOG, (errmsg(
-			"YugaByte is ENABLED in PostgreSQL. Transactions are %s.",
-			YBCIsEnvVarTrue("K2PG_TRANSACTIONS_ENABLED") ?
+			"K2Pg is ENABLED in PostgreSQL. Transactions are %s.",
+			K2PgIsEnvVarTrue("K2PG_TRANSACTIONS_ENABLED") ?
 			"enabled" : "disabled")));
 	} else {
-		ereport(LOG, (errmsg("YugaByte is NOT ENABLED -- "
+		ereport(LOG, (errmsg("K2Pg is NOT ENABLED -- "
 							"this is a vanilla PostgreSQL server!")));
 	}
 }
 
 bool
-YBShouldRestartAllChildrenIfOneCrashes() {
-	if (!YBIsEnabledInPostgresEnvVar()) {
-		ereport(LOG, (errmsg("YBShouldRestartAllChildrenIfOneCrashes returning 0, YBIsEnabledInPostgresEnvVar is false")));
+K2PgShouldRestartAllChildrenIfOneCrashes() {
+	if (!K2PgIsEnabledInPostgresEnvVar()) {
+		ereport(LOG, (errmsg("K2PgShouldRestartAllChildrenIfOneCrashes returning 0, K2PgIsEnabledInPostgresEnvVar is false")));
 		return true;
 	}
 	const char* flag =
@@ -555,7 +555,7 @@ YBShouldRestartAllChildrenIfOneCrashes() {
 }
 
 bool
-YBShouldLogStackTraceOnError()
+K2PgShouldLogStackTraceOnError()
 {
 	static int cached_value = -1;
 	if (cached_value != -1)
@@ -563,12 +563,12 @@ YBShouldLogStackTraceOnError()
 		return cached_value;
 	}
 
-	cached_value = YBCIsEnvVarTrue("K2PG_STACK_TRACE_ON_ERROR");
+	cached_value = K2PgIsEnvVarTrue("K2PG_STACK_TRACE_ON_ERROR");
 	return cached_value;
 }
 
 const char*
-YBPgErrorLevelToString(int elevel) {
+K2PgErrorLevelToString(int elevel) {
 	switch (elevel)
 	{
 		case DEBUG5: return "DEBUG5";
@@ -588,7 +588,7 @@ YBPgErrorLevelToString(int elevel) {
 }
 
 const char*
-YBCGetDatabaseName(Oid relid)
+K2PgGetDatabaseName(Oid relid)
 {
 	/*
 	 * Hardcode the names for system db since the cache might not
@@ -606,7 +606,7 @@ YBCGetDatabaseName(Oid relid)
 }
 
 const char*
-YBCGetSchemaName(Oid schemaoid)
+K2PgGetSchemaName(Oid schemaoid)
 {
 	/*
 	 * Hardcode the names for system namespaces since the cache might not
@@ -623,19 +623,19 @@ YBCGetSchemaName(Oid schemaoid)
 }
 
 Oid
-YBCGetDatabaseOid(Relation rel)
+K2PgGetDatabaseOid(Relation rel)
 {
 	return rel->rd_rel->relisshared ? TemplateDbOid : MyDatabaseId;
 }
 
 void
-YBRaiseNotSupported(const char *msg, int issue_no)
+K2PgRaiseNotSupported(const char *msg, int issue_no)
 {
-	YBRaiseNotSupportedSignal(msg, issue_no, YBUnsupportedFeatureSignalLevel());
+	K2PgRaiseNotSupportedSignal(msg, issue_no, K2PgUnsupportedFeatureSignalLevel());
 }
 
 void
-YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
+K2PgRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 {
 	if (issue_no > 0)
 	{
@@ -655,12 +655,12 @@ YBRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level)
 }
 
 //------------------------------------------------------------------------------
-// YB Debug utils.
+// Debug utils.
 
 bool k2pg_debug_mode = false;
 
 const char*
-YBDatumToString(Datum datum, Oid typid)
+K2PgDatumToString(Datum datum, Oid typid)
 {
 	Oid			typoutput = InvalidOid;
 	bool		typisvarlena = false;
@@ -670,7 +670,7 @@ YBDatumToString(Datum datum, Oid typid)
 }
 
 const char*
-YBHeapTupleToString(HeapTuple tuple, TupleDesc tupleDesc)
+K2PgHeapTupleToString(HeapTuple tuple, TupleDesc tupleDesc)
 {
 	Datum attr = (Datum) 0;
 	int natts = tupleDesc->natts;
@@ -688,7 +688,7 @@ YBHeapTupleToString(HeapTuple tuple, TupleDesc tupleDesc)
 		else
 		{
 			Oid typid = TupleDescAttr(tupleDesc, attnum - 1)->atttypid;
-			appendStringInfoString(&buf, YBDatumToString(attr, typid));
+			appendStringInfoString(&buf, K2PgDatumToString(attr, typid));
 		}
 		if (attnum != natts) {
 			appendStringInfoString(&buf, ", ");
@@ -699,7 +699,7 @@ YBHeapTupleToString(HeapTuple tuple, TupleDesc tupleDesc)
 }
 
 bool
-YBIsInitDbAlreadyDone()
+K2PgIsInitDbAlreadyDone()
 {
 	bool done = false;
 	HandleK2PgStatus(K2PgIsInitDbDone(&done));
@@ -714,13 +714,13 @@ static ProcessUtility_hook_type prev_ProcessUtility = NULL;
 static int ddl_nesting_level = 0;
 
 int
-YBGetDdlNestingLevel()
+K2PgGetDdlNestingLevel()
 {
 	return ddl_nesting_level;
 }
 
 void
-YBIncrementDdlNestingLevel()
+K2PgIncrementDdlNestingLevel()
 {
 	if (ddl_nesting_level == 0)
 		K2PgEnterSeparateDdlTxnMode();
@@ -728,7 +728,7 @@ YBIncrementDdlNestingLevel()
 }
 
 void
-YBDecrementDdlNestingLevel(bool success)
+K2PgDecrementDdlNestingLevel(bool success)
 {
 	ddl_nesting_level--;
 	if (ddl_nesting_level == 0)
@@ -826,7 +826,7 @@ static bool IsTransactionalDdlStatement(NodeTag node_tag) {
 	}
 }
 
-static void YBTxnDdlProcessUtility(
+static void K2PgTxnDdlProcessUtility(
 		PlannedStmt *pstmt,
 		const char *queryString,
 		ProcessUtilityContext context,
@@ -840,7 +840,7 @@ static void YBTxnDdlProcessUtility(
 	bool is_txn_ddl = IsTransactionalDdlStatement(node_tag);
 
 	if (is_txn_ddl) {
-		YBIncrementDdlNestingLevel();
+		K2PgIncrementDdlNestingLevel();
 	}
 	PG_TRY();
 	{
@@ -856,20 +856,20 @@ static void YBTxnDdlProcessUtility(
 	PG_CATCH();
 	{
 		if (is_txn_ddl) {
-			YBDecrementDdlNestingLevel(/* success */ false);
+			K2PgDecrementDdlNestingLevel(/* success */ false);
 		}
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
 	if (is_txn_ddl) {
-		YBDecrementDdlNestingLevel(/* success */ true);
+		K2PgDecrementDdlNestingLevel(/* success */ true);
 	}
 }
 
 
-static void YBCInstallTxnDdlHook() {
+static void K2PgInstallTxnDdlHook() {
 	if (!K2PgIsInitDbModeEnvVarSet()) {
 		prev_ProcessUtility = ProcessUtility_hook;
-		ProcessUtility_hook = YBTxnDdlProcessUtility;
+		ProcessUtility_hook = K2PgTxnDdlProcessUtility;
 	}
 }

@@ -129,7 +129,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 									 AttrNumber minattr,
 									 bool includeYBSystemColumns)
 {
-	Oid            dboid         = YBCGetDatabaseOid(rel);
+	Oid            dboid         = K2PgGetDatabaseOid(rel);
 	Oid            relid         = RelationGetRelid(rel);
 	int            natts         = RelationGetNumberOfAttributes(rel);
 	Bitmapset      *pkey         = NULL;
@@ -147,7 +147,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleYBTableDescStatus(K2PgGetColumnInfo(k2pg_tabledesc,
+		HandleK2PgTableDescStatus(K2PgGetColumnInfo(k2pg_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
 		                                           &is_hash), k2pg_tabledesc);
@@ -324,7 +324,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
                                     HeapTuple tuple,
                                     bool is_single_row_txn)
 {
-	Oid            dboid    = YBCGetDatabaseOid(rel);
+	Oid            dboid    = K2PgGetDatabaseOid(rel);
 	Oid            relid    = RelationGetRelid(rel);
 	AttrNumber     minattr  = FirstLowInvalidHeapAttributeNumber + 1;
 	int            natts    = RelationGetNumberOfAttributes(rel);
@@ -515,7 +515,7 @@ void K2PgExecuteInsertIndex(Relation index,
 	Assert(index->rd_rel->relkind == RELKIND_INDEX);
 	Assert(ybctid != 0);
 
-	Oid            dboid    = YBCGetDatabaseOid(index);
+	Oid            dboid    = K2PgGetDatabaseOid(index);
 	Oid            relid    = RelationGetRelid(index);
 	K2PgStatement insert_stmt = NULL;
 
@@ -554,7 +554,7 @@ void K2PgExecuteInsertIndex(Relation index,
 
 bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, ModifyTableState *mtstate)
 {
-	Oid            dboid          = YBCGetDatabaseOid(rel);
+	Oid            dboid          = K2PgGetDatabaseOid(rel);
 	Oid            relid          = RelationGetRelid(rel);
 	K2PgStatement delete_stmt    = NULL;
 	bool           isSingleRow    = mtstate->k2pg_mt_is_single_row_update_or_delete;
@@ -614,7 +614,7 @@ void K2PgExecuteDeleteIndex(Relation index, Datum *values, bool *isnull, Datum y
 {
   Assert(index->rd_rel->relkind == RELKIND_INDEX);
 
-	Oid            dboid    = YBCGetDatabaseOid(index);
+	Oid            dboid    = K2PgGetDatabaseOid(index);
 	Oid            relid    = RelationGetRelid(index);
 	K2PgStatement delete_stmt = NULL;
 
@@ -642,7 +642,7 @@ bool K2PgExecuteUpdate(Relation rel,
 					  Bitmapset *updatedCols)
 {
 	TupleDesc      tupleDesc      = slot->tts_tupleDescriptor;
-	Oid            dboid          = YBCGetDatabaseOid(rel);
+	Oid            dboid          = K2PgGetDatabaseOid(rel);
 	Oid            relid          = RelationGetRelid(rel);
 	K2PgStatement update_stmt    = NULL;
 	bool           isSingleRow    = mtstate->k2pg_mt_is_single_row_update_or_delete;
@@ -709,7 +709,7 @@ bool K2PgExecuteUpdate(Relation rel,
 		 * might be triggers that modify the heap tuple to set (other) columns
 		 * (e.g. using the SPI module functions).
 		 */
-		int bms_idx = attnum - YBGetFirstLowInvalidAttributeNumber(rel);
+		int bms_idx = attnum - K2PgGetFirstLowInvalidAttributeNumber(rel);
 		if (isSingleRow && !whole_row && !bms_is_member(bms_idx, updatedCols))
 			continue;
 
@@ -748,7 +748,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	/*
 	 * If the relation has indexes, save the ybctid to insert the updated row into the indexes.
 	 */
-	if (YBRelHasSecondaryIndices(rel))
+	if (K2PgRelHasSecondaryIndices(rel))
 	{
 		tuple->t_ybctid = ybctid;
 	}
@@ -758,7 +758,7 @@ bool K2PgExecuteUpdate(Relation rel,
 
 void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 {
-	Oid            dboid       = YBCGetDatabaseOid(rel);
+	Oid            dboid       = K2PgGetDatabaseOid(rel);
 	Oid            relid       = RelationGetRelid(rel);
 	K2PgStatement delete_stmt = NULL;
 
@@ -798,7 +798,7 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 
 void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple)
 {
-	Oid            dboid       = YBCGetDatabaseOid(rel);
+	Oid            dboid       = K2PgGetDatabaseOid(rel);
 	Oid            relid       = RelationGetRelid(rel);
 	TupleDesc      tupleDesc   = RelationGetDescr(rel);
 	int            natts       = RelationGetNumberOfAttributes(rel);

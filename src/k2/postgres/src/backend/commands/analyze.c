@@ -371,7 +371,7 @@ do_analyze_rel(Relation onerel, int options, VacuumParams *params,
 	/*
 	 * ANALYZE not supported for Yugabyte relations.
 	 */
-	if (IsYBRelation(onerel))
+	if (IsK2PgRelation(onerel))
 	{
 		ereport(WARNING,
 				(errmsg("analyzing non-temporary tables will be ignored")));

@@ -805,9 +805,9 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	CommandCounterIncrement();
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		CheckIsYBSupportedRelationByKind(relkind);
+		CheckIsK2PgSupportedRelationByKind(relkind);
 		K2PgCreateTable(stmt, relkind, descriptor, relationId, namespaceId);
 	}
 
@@ -1616,7 +1616,7 @@ ExecuteTruncateGuts(List *explicit_rels, List *relids, List *relids_logged,
 		 * truncate it in-place, because a rollback would cause the whole
 		 * table or the current physical file to be thrown away anyway.
 		 */
-		if (IsYBRelation(rel))
+		if (IsK2PgRelation(rel))
 		{
 			// Call YugaByte API to truncate tables.
 			K2PgTruncateTable(rel);
@@ -2980,7 +2980,7 @@ renameatt(RenameStmt *stmt)
 						   0,	/* expected inhcount */
 						   stmt->behavior);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		K2PgRename(stmt, relid);
 	}
@@ -3180,7 +3180,7 @@ RenameRelation(RenameStmt *stmt)
 	RenameRelationInternal(relid, stmt->newname, false);
 
 	/* Do the work */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
       K2PgRename(stmt, relid);
 	}
@@ -3407,9 +3407,9 @@ AlterTableInternal(Oid relid, List *cmds, bool recurse)
 
 	ATController(NULL, rel, cmds, recurse, lockmode);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		YBReportFeatureUnsupported("Alter table is not yet supported");
+		K2PgReportFeatureUnsupported("Alter table is not yet supported");
 	}
 
 }
@@ -3718,7 +3718,7 @@ ATController(AlterTableStmt *parsetree,
 	 * system catalogs are changed below (since it looks up table metadata).
 	 */
 	K2PgStatement handle = NULL;
-	if (IsYBRelation(rel))
+	if (IsK2PgRelation(rel))
 	{
 		handle = K2PgPrepareAlterTable(parsetree, rel, relid);
 	}
@@ -4101,7 +4101,7 @@ ATRewriteCatalogs(List **wqueue, LOCKMODE lockmode)
 	}
 
 	/* YugaByte doesn't support toast tables. */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		return;
 
 	/* Check to see if a toast table must be added. */
@@ -4917,7 +4917,7 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 						{
 							/* If YugaByte is enabled, the add constraint operation is not atomic.
 							 * So we must delete the relevant entries from the catalog tables. */
-							if (IsYugaByteEnabled())
+							if (IsK2PgEnabled())
 							{
 								ATExecDropConstraint(oldrel, con->name, DROP_RESTRICT, true, false,
 													 false, lockmode);
@@ -9398,7 +9398,7 @@ ATExecDropConstraint(Relation rel, const char *constrName,
 			heap_close(frel, NoLock);
 		}
 
-		if (IsYugaByteEnabled() &&
+		if (IsK2PgEnabled() &&
 			contype == CONSTRAINT_PRIMARY)
 		{
 			ereport(ERROR,
@@ -14483,7 +14483,7 @@ ComputePartitionAttrs(Relation rel, List *partParams, AttrNumber *partattrs,
 		if (strategy == PARTITION_STRATEGY_HASH)
 			am_oid = HASH_AM_OID;
 		else
-			am_oid = IsYugaByteEnabled() ? LSM_AM_OID : BTREE_AM_OID;
+			am_oid = IsK2PgEnabled() ? LSM_AM_OID : BTREE_AM_OID;
 
 		if (!pelem->opclass)
 		{

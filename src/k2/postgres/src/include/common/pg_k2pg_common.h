@@ -30,57 +30,57 @@
 /**
  * Checks if the given environment variable is set to a "true" value (e.g. "1").
  */
-extern bool YBCIsEnvVarTrue(const char* env_var_name);
+extern bool K2PgIsEnvVarTrue(const char* env_var_name);
 
 /**
  * Checks if the given environment variable is set to a "true" value (e.g. "1"),
  * but with the given default value in case the environment variable is not
  * defined, or is set to an empty string or the string "auto".
  */
-extern bool YBCIsEnvVarTrueWithDefault(
+extern bool K2PgIsEnvVarTrueWithDefault(
     const char* env_var_name,
     bool default_value);
 
 /**
  * Checks if the K2PG_ENABLED_IN_POSTGRES is set. This is different from
- * IsYugaByteEnabled(), because the IsYugaByteEnabled() also checks that we are
+ * IsK2PgEnabled(), because the IsK2PgEnabled() also checks that we are
  * in the "normal processing mode" and we have a YB client session.
  */
-extern bool YBIsEnabledInPostgresEnvVar();
+extern bool K2PgIsEnabledInPostgresEnvVar();
 
 /**
  * Returns true to allow running PostgreSQL server and initdb as any user. This
  * is needed by some Docker/Kubernetes environments.
  */
-extern bool YBShouldAllowRunningAsAnyUser();
+extern bool K2PgShouldAllowRunningAsAnyUser();
 
 /**
  * Check if the environment variable indicating that this is a child process
  * of initdb is set.
  */
-extern bool YBIsInitDbModeEnvVarSet();
+extern bool K2PgIsInitDbModeEnvVarSet();
 
 /**
  * Set the environment variable that will tell initdb's child process
  * that they are running as part of initdb.
  */
-extern void YBSetInitDbModeEnvVar();
+extern void K2PgSetInitDbModeEnvVar();
 
 
 /**
  * Checks if environment variables indicating that YB's unsupported features must
  * be restricted are set
  */
-extern bool YBIsUsingYBParser();
+extern bool K2PgIsUsingYBParser();
 
 /**
  * Returns ERROR or WARNING level depends on environment variable
  */
-extern int YBUnsupportedFeatureSignalLevel();
+extern int K2PgUnsupportedFeatureSignalLevel();
 
 /**
  * Returns whether non-transactional COPY gflag is enabled.
  */
-extern bool YBIsNonTxnCopyEnabled();
+extern bool K2PgIsNonTxnCopyEnabled();
 
 #endif /* PG_K2PG_COMMON_H */

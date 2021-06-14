@@ -463,7 +463,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 						break;
 
 					case TRANS_STMT_PREPARE:
-						if  (IsYugaByteEnabled()) {
+						if  (IsK2PgEnabled()) {
 							ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 									errmsg("PREPARE not supported by YugaByte yet")));
@@ -1035,7 +1035,7 @@ ProcessUtilitySlow(ParseState *pstate,
 															 stmt);
 
 							/* No need for toasting attributes in YB mode */
-							if (!IsYugaByteEnabled())
+							if (!IsK2PgEnabled())
 							{
 								/*
 								* Let NewRelationCreateToastTable decide if this

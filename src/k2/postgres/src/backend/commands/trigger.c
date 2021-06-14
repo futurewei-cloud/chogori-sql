@@ -3447,7 +3447,7 @@ TriggerEnabled(EState *estate, ResultRelInfo *relinfo,
 		modified = false;
 		for (i = 0; i < trigger->tgnattr; i++)
 		{
-			if (bms_is_member(trigger->tgattr[i] - YBGetFirstLowInvalidAttributeNumber(relinfo->ri_RelationDesc),
+			if (bms_is_member(trigger->tgattr[i] - K2PgGetFirstLowInvalidAttributeNumber(relinfo->ri_RelationDesc),
 							  modifiedCols))
 			{
 				modified = true;
@@ -3908,7 +3908,7 @@ GetCurrentFDWTuplestore(AfterTriggerShared evtshared)
 
 	Assert(afterTriggers.query_depth > -1);
 	AfterTriggersQueryData* trigger_data = &afterTriggers.query_stack[afterTriggers.query_depth];
-	const bool is_deferred = IsYugaByteEnabled() && afterTriggerCheckState(evtshared);
+	const bool is_deferred = IsK2PgEnabled() && afterTriggerCheckState(evtshared);
 	ret = is_deferred ? trigger_data->ybc_txn_fdw_tuplestore : trigger_data->fdw_tuplestore;
 	if (ret == NULL)
 	{
@@ -4565,7 +4565,7 @@ afterTriggerInvokeEvents(AfterTriggerEventList *events,
 					 * Need to create a tuple slot for both YugaByte tables and
 					 * foreign tables
 					 */
-					if (IsYBBackedRelation(rel) ||
+					if (IsK2PgBackedRelation(rel) ||
 					    rel->rd_rel->relkind == RELKIND_FOREIGN_TABLE)
 					{
 						if (slot1 != NULL)
@@ -5097,7 +5097,7 @@ AfterTriggerEndXact(bool isCommit)
 	/* No more afterTriggers manipulation until next transaction starts. */
 	afterTriggers.query_depth = -1;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/* Close all transaction level tuplestores. */
 		ListCell *lc;
@@ -5982,7 +5982,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 	 * In YugaByte mode we (re)use the FDW trigger flags (since we also use the
 	 * FDW tuplestore).
 	 */
-	if (!((IsYBBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger))
+	if (!((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger))
 		new_event.ate_flags = (row_trigger && event == TRIGGER_EVENT_UPDATE) ?
 			AFTER_TRIGGER_2CTID : AFTER_TRIGGER_1CTID;
 	/* else, we'll initialize ate_flags for each trigger */
@@ -6041,7 +6041,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		 * In YugaByte mode we also use the tuplestore to store/pass tuples
 		 * within a query execution.
 		 */
-		if ((IsYBBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)
+		if ((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)
 				/*
 				 * Set flag to AFTER_TRIGGER_FDW_REUSE (0) by default.
 				 * AFTER_TRIGGER_FDW_FETCH flag will be added later if needed.
@@ -6089,9 +6089,9 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		 * In YugaByte mode we also use the tuplestore to store/pass tuples
 		 * within a query execution.
 		 */
-		if ((IsYBBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)
+		if ((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)
 		{
-			if (IsYugaByteEnabled() && afterTriggerCheckState(&new_shared))
+			if (IsK2PgEnabled() && afterTriggerCheckState(&new_shared))
 			{
 				/* deferred trigger case */
 				if (!ybc_txn_fdw_tuplestore)

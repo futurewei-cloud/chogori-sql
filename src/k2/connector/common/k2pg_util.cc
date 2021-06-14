@@ -179,7 +179,7 @@ uint16_t K2PgStatusTransactionError(K2PgStatus s) {
   return static_cast<uint16_t>(txn_err.value());
 }
 
-void YBCFreeStatus(K2PgStatus s) {
+void K2PgFreeStatus(K2PgStatus s) {
   FreeK2PgStatus(s);
 }
 
@@ -203,7 +203,7 @@ char* DupK2PgStatusMessage(K2PgStatus status, bool message_only) {
   if (message_only) {
     sz -= 2 + code_strlen;
   }
-  char* const msg_buf = reinterpret_cast<char*>(YBCPAlloc(sz));
+  char* const msg_buf = reinterpret_cast<char*>(K2PgPAlloc(sz));
   char* pos = msg_buf;
   if (!message_only) {
     memcpy(msg_buf, code_as_cstring, code_strlen);
@@ -216,20 +216,20 @@ char* DupK2PgStatusMessage(K2PgStatus status, bool message_only) {
   return msg_buf;
 }
 
-bool YBCIsRestartReadError(uint16_t txn_errcode) {
+bool K2PgIsRestartReadError(uint16_t txn_errcode) {
   return txn_errcode == static_cast<uint16_t>(TransactionErrorCode::kReadRestartRequired);
 }
 
-K2PgStatus YBCInitGFlags(const char* argv0) {
+K2PgStatus K2PgInitGFlags(const char* argv0) {
   return ToK2PgStatus(k2pg::InitGFlags(argv0));
 }
 
-K2PgStatus YBCInit(const char* argv0,
-                  YBCPAllocFn palloc_fn,
-                  YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
-  YBCSetPAllocFn(palloc_fn);
+K2PgStatus K2PgInit(const char* argv0,
+                  K2PgPAllocFn palloc_fn,
+                  K2PgCStringToTextWithLenFn cstring_to_text_with_len_fn) {
+  K2PgSetPAllocFn(palloc_fn);
   if (cstring_to_text_with_len_fn) {
-    YBCSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
+    K2PgSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
   }
   auto status = k2pg::InitGFlags(argv0);
   if (status.ok() && !FLAGS_process_info_dir.empty()) {
@@ -238,7 +238,7 @@ K2PgStatus YBCInit(const char* argv0,
   return ToK2PgStatus(status);
 }
 
-void YBCLogImpl(
+void K2PgLogImpl(
     google::LogSeverity severity,
     const char* file,
     int line,
@@ -254,8 +254,8 @@ void YBCLogImpl(
   log_msg.stream() << buf;
 }
 
-const char* YBCGetStackTrace() {
-    return YBCPAllocStdString("Not Implemented");
+const char* K2PgGetStackTrace() {
+    return K2PgPAllocStdString("Not Implemented");
 }
 
 } // extern "C"

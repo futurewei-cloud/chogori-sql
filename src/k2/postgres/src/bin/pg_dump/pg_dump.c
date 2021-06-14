@@ -299,7 +299,7 @@ static void HandleK2PgStatus(K2PgStatus status) {
 	if (status) {
 		/* Copy the message to the current memory context and free the K2PgStatus. */
 		const char* msg_buf = DupK2PgStatusMessage(status, false);
-		YBCFreeStatus(status);
+		K2PgFreeStatus(status);
 		exit_horribly(NULL, "%s\n", msg_buf);
 	}
 }
@@ -710,7 +710,7 @@ main(int argc, char **argv)
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
 	{
-		HandleK2PgStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
+		HandleK2PgStatus(K2PgInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
 		HandleK2PgStatus(K2PgInitPgGateBackend());
 	}
 #endif  /* DISABLE_K2PG_EXTENTIONS */

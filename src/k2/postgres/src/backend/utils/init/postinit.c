@@ -672,9 +672,9 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 
 	/* Connect to YugaByte cluster. */
 	if (bootstrap)
-		YBInitPostgresBackend("postgres", "", username);
+		K2PgInitPostgresBackend("postgres", "", username);
 	else
-		YBInitPostgresBackend("postgres", in_dbname, username);
+		K2PgInitPostgresBackend("postgres", in_dbname, username);
 
 	/*
 	 * Load relcache entries for the shared system catalogs.  This must create
@@ -982,7 +982,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	}
 
 	/* No local physical path for the database in YugaByte mode */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/*
 		 * Now we should be able to access the database directory safely. Verify
@@ -1024,7 +1024,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 * In YugaByte mode initialize the catalog cache version to the latest
 	 * version from the master (except during initdb).
 	 */
-	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
+	if (IsK2PgEnabled() && !IsBootstrapProcessingMode())
 	{
 		K2PgGetCatalogMasterVersion(&k2pg_catalog_cache_version);
 	}
@@ -1033,7 +1033,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	/*
 	 * Also cache whather the database is colocated for optimization purposes.
 	 */
-	if (IsYugaByteEnabled() && !IsBootstrapProcessingMode())
+	if (IsK2PgEnabled() && !IsBootstrapProcessingMode())
 	{
 		HandleK2PgStatus(K2PgIsDatabaseColocated(MyDatabaseId,
 												&MyDatabaseColocated));

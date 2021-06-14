@@ -7903,7 +7903,7 @@ opt_index_name:
 
 access_method_clause:
 			USING access_method						{ $$ = $2; }
-			| /*EMPTY*/								{ $$ = IsYugaByteEnabled() ?
+			| /*EMPTY*/								{ $$ = IsK2PgEnabled() ?
 															 NULL : DEFAULT_INDEX_TYPE;	}
 		;
 
@@ -17208,7 +17208,7 @@ raise_feature_not_supported_signal(int pos, core_yyscan_t yyscanner, const char 
 static void
 raise_feature_not_supported(int pos, core_yyscan_t yyscanner, const char *msg, int issue)
 {
-	raise_feature_not_supported_signal(pos, yyscanner, msg, issue, YBUnsupportedFeatureSignalLevel());
+	raise_feature_not_supported_signal(pos, yyscanner, msg, issue, K2PgUnsupportedFeatureSignalLevel());
 }
 
 static void
@@ -17217,7 +17217,7 @@ ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int is
 	static int use_k2pg_parser = -1;
 	if (use_k2pg_parser == -1)
 	{
-		use_k2pg_parser = YBIsUsingYBParser();
+		use_k2pg_parser = K2PgIsUsingYBParser();
 	}
 
 	if (use_k2pg_parser)
@@ -17229,7 +17229,7 @@ ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int is
 static void
 ybc_not_support(int pos, core_yyscan_t yyscanner, const char *msg, int issue)
 {
-	ybc_not_support_signal(pos, yyscanner, msg, issue, YBUnsupportedFeatureSignalLevel());
+	ybc_not_support_signal(pos, yyscanner, msg, issue, K2PgUnsupportedFeatureSignalLevel());
 }
 
 static void
@@ -17238,7 +17238,7 @@ ybc_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg)
 	static int restricted = -1;
 	if (restricted == -1)
 	{
-		restricted = YBIsUsingYBParser() && YBIsPreparingTemplates();
+		restricted = K2PgIsUsingYBParser() && K2PgIsPreparingTemplates();
 	}
 
 	if (restricted)
@@ -17253,7 +17253,7 @@ beta_features_enabled()
 	static int beta_enabled = -1;
 	if (beta_enabled == -1)
 	{
-		beta_enabled = YBCIsEnvVarTrueWithDefault("FLAGS_ysql_beta_features", true);
+		beta_enabled = K2PgIsEnvVarTrueWithDefault("FLAGS_ysql_beta_features", true);
 	}
 	return beta_enabled;
 }
@@ -17261,9 +17261,9 @@ beta_features_enabled()
 static void
 check_beta_feature(int pos, core_yyscan_t yyscanner, const char *flag, const char *feature)
 {
-	if (YBIsUsingYBParser() && !(beta_features_enabled() || YBCIsEnvVarTrue(flag)))
+	if (K2PgIsUsingYBParser() && !(beta_features_enabled() || K2PgIsEnvVarTrue(flag)))
 	{
-		int signal_level = YBUnsupportedFeatureSignalLevel();
+		int signal_level = K2PgUnsupportedFeatureSignalLevel();
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("'%s' is a beta feature and beta features are disabled.", feature),

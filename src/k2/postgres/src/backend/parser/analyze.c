@@ -120,7 +120,7 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
 
 	if (pstate->p_target_relation &&
 		pstate->p_target_relation->rd_rel->relpersistence == RELPERSISTENCE_TEMP
-		&& IsYugaByteEnabled())
+		&& IsK2PgEnabled())
 	{
 		SetTxnWithPGRel();
 	}
@@ -157,7 +157,7 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 
 	if (pstate->p_target_relation &&
 		pstate->p_target_relation->rd_rel->relpersistence == RELPERSISTENCE_TEMP
-		&& IsYugaByteEnabled())
+		&& IsK2PgEnabled())
 	{
 		SetTxnWithPGRel();
 	}
@@ -867,7 +867,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 		qry->targetList = lappend(qry->targetList, tle);
 
 		rte->insertedCols = bms_add_member(rte->insertedCols,
-										   attr_num - YBGetFirstLowInvalidAttributeNumber(pstate->p_target_relation));
+										   attr_num - K2PgGetFirstLowInvalidAttributeNumber(pstate->p_target_relation));
 
 		icols = lnext(icols);
 		attnos = lnext(attnos);
@@ -2362,7 +2362,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 							RelationGetRelationName(pstate->p_target_relation)),
 					 parser_errposition(pstate, origTarget->location)));
 
-		if (IsYBRelation(pstate->p_target_relation))
+		if (IsK2PgRelation(pstate->p_target_relation))
 		{
 
 			// Currently, YugaByte does not allow updating primary key columns that were specified
@@ -2370,10 +2370,10 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 			K2PgTableDesc ybc_tabledesc = NULL;
 			bool is_primary = false;
 			bool is_hash = false;
-			HandleK2PgStatus(K2PgGetTableDesc(YBCGetDatabaseOid(pstate->p_target_relation),
+			HandleK2PgStatus(K2PgGetTableDesc(K2PgGetDatabaseOid(pstate->p_target_relation),
 											 RelationGetRelid(pstate->p_target_relation),
 											 &ybc_tabledesc));
-			HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
+			HandleK2PgTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
 													   attrno,
 													   &is_primary,
 													   &is_hash), ybc_tabledesc);
@@ -2381,7 +2381,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 
 			if (is_hash || is_primary)
 			{
-				YBRaiseNotSupported("Update PRIMARY KEY columns are not yet supported", -1);
+				K2PgRaiseNotSupported("Update PRIMARY KEY columns are not yet supported", -1);
 			}
 		}
 
@@ -2392,7 +2392,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 
 		/* Mark the target column as requiring update permissions */
 		target_rte->updatedCols = bms_add_member(target_rte->updatedCols,
-												 attrno - YBGetFirstLowInvalidAttributeNumber(pstate->p_target_relation));
+												 attrno - K2PgGetFirstLowInvalidAttributeNumber(pstate->p_target_relation));
 
 		orig_tl = lnext(orig_tl);
 	}

@@ -121,7 +121,7 @@ preprocess_targetlist(PlannerInfo *root)
 	 */
 	tlist = parse->targetList;
 	if (command_type == CMD_INSERT || command_type == CMD_UPDATE ||
-			(command_type == CMD_DELETE && IsYBRelation(target_relation) && parse->returningList != NULL))
+			(command_type == CMD_DELETE && IsK2PgRelation(target_relation) && parse->returningList != NULL))
 		tlist = expand_targetlist(tlist, command_type,
 								  result_relation, target_relation);
 
@@ -147,7 +147,7 @@ preprocess_targetlist(PlannerInfo *root)
 			if (!target_relation)
 				is_k2pg_relation = IsK2PgRelationById(getrelid(rc->rti, range_table));
 			else
-				is_k2pg_relation = IsYBBackedRelation(target_relation);
+				is_k2pg_relation = IsK2PgBackedRelation(target_relation);
 
 			if (is_k2pg_relation)
 			{
@@ -399,7 +399,7 @@ expand_targetlist(List *tlist, int command_type,
 					break;
 				case CMD_DELETE:
 					// This case is added only for DELETE from YugaByte table with RETURNING clause.
-					if (IsYugaByteEnabled())
+					if (IsK2PgEnabled())
 					{
 						if (att_tup->attisdropped) {
 						/* Insert NULL for dropped column */

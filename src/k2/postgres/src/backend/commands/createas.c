@@ -118,7 +118,7 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	intoRelationAddr = DefineRelation(create, relkind, InvalidOid, NULL, NULL);
 
 	/* TOAST tables are not needed in YugaByte database */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/*
 		 * If necessary, create a TOAST table for the target table.  Note that
@@ -540,7 +540,7 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 
 	for (attnum = 1; attnum <= intoRelationDesc->rd_att->natts; attnum++)
 		rte->insertedCols = bms_add_member(rte->insertedCols,
-										   attnum - YBGetFirstLowInvalidAttributeNumber(intoRelationDesc));
+										   attnum - K2PgGetFirstLowInvalidAttributeNumber(intoRelationDesc));
 
 	ExecCheckRTPerms(list_make1(rte), true);
 
@@ -609,10 +609,10 @@ intorel_receive(TupleTableSlot *slot, DestReceiver *self)
 	 * we must use PG transaction codepaths as well
 	 */
 	if (myState->rel->rd_rel->relpersistence == RELPERSISTENCE_TEMP
-			&& IsYugaByteEnabled())
+			&& IsK2PgEnabled())
 		SetTxnWithPGRel();
 
-	if (IsYBRelation(myState->rel))
+	if (IsK2PgRelation(myState->rel))
 	{
 		K2PgExecuteInsert(myState->rel, RelationGetDescr(myState->rel), tuple);
 	}

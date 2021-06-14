@@ -179,7 +179,7 @@ static void CreateTableAddColumns(K2PgStatement handle,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("PRIMARY KEY containing column of type"
 										" '%s' not yet supported",
-										YBPgTypeOidToStr(att->atttypid))));
+										K2PgTypeOidToStr(att->atttypid))));
 					SortByDir order = index_elem->ordering;
 					/* In YB mode, the first column defaults to HASH if it is
 					 * not set and its table is not colocated */
@@ -308,7 +308,7 @@ K2PgCreateTable(CreateStmt *stmt, char relkind, TupleDesc desc, Oid relationId, 
 		schema_name = get_namespace_name(pgNamespaceId);
 	}
 	if (!IsBootstrapProcessingMode())
-		YBC_LOG_INFO("Creating Table %s.%s.%s",
+		K2PG_LOG_INFO("Creating Table %s.%s.%s",
 					 db_name,
 					 schema_name,
 					 stmt->relation->relname);
@@ -511,7 +511,7 @@ K2PgCreateIndex(const char *indexName,
 	char *schema_name = get_namespace_name(RelationGetNamespace(rel));
 
 	if (!IsBootstrapProcessingMode())
-		YBC_LOG_INFO("Creating index %s.%s.%s",
+		K2PG_LOG_INFO("Creating index %s.%s.%s",
 					 db_name,
 					 schema_name,
 					 indexName);
@@ -559,7 +559,7 @@ K2PgCreateIndex(const char *indexName,
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("INDEX on column of type '%s' not yet supported",
-								YBPgTypeOidToStr(att->atttypid))));
+								K2PgTypeOidToStr(att->atttypid))));
 		}
 
 		const int16 options        = coloptions[i];

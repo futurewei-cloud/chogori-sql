@@ -116,7 +116,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 	/*
 	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
 	 */
-	if (IsYugaByteEnabled()) {
+	if (IsK2PgEnabled()) {
 		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;
 
 		// TODO(hector) Add row marks for INDEX_ONLY_SCAN
@@ -168,7 +168,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 		 *
 		 * YugaByte index tuple is always visible.
 		 */
-		if (!IsYugaByteEnabled() &&
+		if (!IsK2PgEnabled() &&
 			!VM_ALL_VISIBLE(scandesc->heapRelation,
 							ItemPointerGetBlockNumber(tid),
 							&node->ioss_VMBuffer))
@@ -258,7 +258,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 		 *
 		 * YugaByte index tuple does not require locking.
 		 */
-		if (tuple == NULL && !IsYugaByteEnabled())
+		if (tuple == NULL && !IsK2PgEnabled())
 			PredicateLockPage(scandesc->heapRelation,
 							  ItemPointerGetBlockNumber(tid),
 							  estate->es_snapshot);

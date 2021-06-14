@@ -2819,7 +2819,7 @@ FlushBuffer(BufferDesc *buf, SMgrRelation reln)
 BlockNumber
 RelationGetNumberOfBlocksInFork(Relation relation, ForkNumber forkNum)
 {
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	{
 		return 0;
 	}

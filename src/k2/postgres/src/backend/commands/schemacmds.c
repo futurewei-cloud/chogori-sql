@@ -216,9 +216,9 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 					   None_Receiver,
 					   NULL);
 
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
-			YBC_LOG_INFO("Creating schema %s/%s", get_database_name(MyDatabaseId), schemaName);
+			K2PG_LOG_INFO("Creating schema %s/%s", get_database_name(MyDatabaseId), schemaName);
 		}
 
 		/* make sure later steps can see the object created here */

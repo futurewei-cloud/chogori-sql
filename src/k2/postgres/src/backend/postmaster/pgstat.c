@@ -2711,7 +2711,7 @@ CreateSharedBackendStatus(void)
 		}
 	}
 
-	if (YBIsEnabledInPostgresEnvVar()) {
+	if (K2PgIsEnabledInPostgresEnvVar()) {
 		Size DatabaseNameBufferSize;
 		DatabaseNameBufferSize = mul_size(NAMEDATALEN, NumBackendStatSlots);
 		DatabaseNameBuffer = (char *)
@@ -2914,7 +2914,7 @@ pgstat_bestart(void)
 	beentry->st_xact_start_timestamp = 0;
 	beentry->st_databaseid = MyDatabaseId;
 
-	if (YBIsEnabledInPostgresEnvVar() && beentry->st_databaseid > 0) {
+	if (K2PgIsEnabledInPostgresEnvVar() && beentry->st_databaseid > 0) {
 		HeapTuple tuple;
 		tuple = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(beentry->st_databaseid));
 		Form_pg_database dbForm;

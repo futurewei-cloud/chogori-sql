@@ -171,7 +171,7 @@ ybcinbackfill(Relation heap,
 void
 ybcinbuildempty(Relation index)
 {
-	YBC_LOG_WARNING("Unexpected building of empty unlogged index");
+	K2PG_LOG_WARNING("Unexpected building of empty unlogged index");
 }
 
 bool
@@ -200,14 +200,14 @@ IndexBulkDeleteResult *
 ybcinbulkdelete(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 				IndexBulkDeleteCallback callback, void *callback_state)
 {
-	YBC_LOG_WARNING("Unexpected bulk delete of index via vacuum");
+	K2PG_LOG_WARNING("Unexpected bulk delete of index via vacuum");
 	return NULL;
 }
 
 IndexBulkDeleteResult *
 ybcinvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
 {
-	YBC_LOG_WARNING("Unexpected index cleanup via vacuum");
+	K2PG_LOG_WARNING("Unexpected index cleanup via vacuum");
 	return NULL;
 }
 

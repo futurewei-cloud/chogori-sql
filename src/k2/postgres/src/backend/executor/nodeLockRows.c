@@ -66,7 +66,7 @@ lnext:
 	{
 		ExecAuxRowMark *aerm = (ExecAuxRowMark *) lfirst(lc);
 		ExecRowMark *erm = aerm->rowmark;
-		if (IsYBBackedRelation(erm->relation))
+		if (IsK2PgBackedRelation(erm->relation))
 		{
 			n_k2pg_relations++;
 		}

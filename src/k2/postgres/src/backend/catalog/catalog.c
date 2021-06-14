@@ -311,7 +311,7 @@ GetNewOid(Relation relation)
 		/*
 		 * In YugaByte we convert the OID index into a primary key.
 		 */
-		if (!IsYugaByteEnabled())
+		if (!IsK2PgEnabled())
 		{
 			/*
 			 * System catalogs that have OIDs should *always* have a unique OID

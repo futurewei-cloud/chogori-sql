@@ -221,7 +221,7 @@ index_insert(Relation indexRelation,
 	 * For YugaByte-based index, call the variant of aminsert that takes the full tuple instead of
 	 * the tuple id.
 	 */
-	if (IsYugaByteEnabled() && IsYBRelation(indexRelation))
+	if (IsK2PgEnabled() && IsK2PgRelation(indexRelation))
 	{
 		CHECK_REL_PROCEDURE(k2pg_aminsert);
 		return indexRelation->rd_amroutine->k2pg_aminsert(indexRelation, values, isnull,
@@ -638,7 +638,7 @@ index_fetch_heap(IndexScanDesc scan)
 	 * - If YugaByte returns an index-tuple, the returned ybctid value should be used to query data.
 	 * - If YugaByte returns a heap_tuple, all requested data was already selected in the tuple.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		if (scan->xs_hitup != 0)
 			return scan->xs_hitup;

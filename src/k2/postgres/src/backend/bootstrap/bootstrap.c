@@ -522,7 +522,7 @@ BootstrapModeMain(void)
 	 * In YugaByte we only need to create the template1 database
 	 * (corresponding to creating the "base/1" subdir as its oid is hardcoded).
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		K2InitPGCluster();
 
@@ -541,7 +541,7 @@ BootstrapModeMain(void)
 	CommitTransactionCommand();
 
 	/* We do not use a relation map file in YugaByte mode yet */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/*
 		 * We should now know about all mapped relations, so it's okay to write
@@ -549,7 +549,7 @@ BootstrapModeMain(void)
 		 */
 		RelationMapFinishBootstrap();
 	}
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		// set initDbDone to be true on K2 SKV
 		K2FinishInitDB();
@@ -831,7 +831,7 @@ InsertOneTuple(Oid objectid)
 	if (objectid != (Oid) 0)
 		HeapTupleSetOid(tuple, objectid);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		K2PgExecuteInsert(boot_reldesc, tupDesc, tuple);
 	else
 		simple_heap_insert(boot_reldesc, tuple);

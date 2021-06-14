@@ -191,7 +191,7 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 		root->all_baserels = bms_add_member(root->all_baserels, brel->relid);
 	}
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		for (rti = 1; rti < root->simple_rel_array_size; rti++)
 		{
@@ -681,7 +681,7 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 					return;
 			}
 
-			if (IsYugaByteEnabled())
+			if (IsK2PgEnabled())
 			{
 				/* If YB scan, disable parallelization for now. */
 				return;

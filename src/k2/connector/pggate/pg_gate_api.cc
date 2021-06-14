@@ -47,7 +47,7 @@ void K2PgDestroyPgGate() {
         K2LOG_E(log::pg, "should only be called once");
     } else {
         k2pg::gate::PgGateApiImpl* local_api_impl = api_impl;
-        api_impl = nullptr; // K2PgIsYugaByteEnabled() must return false from now on.
+        api_impl = nullptr; // IsK2PgEnabled() must return false from now on.
         delete local_api_impl;
     }
 }
@@ -901,7 +901,7 @@ bool K2PgGetDisableIndexBackfill() {
   return default_disable_index_backfill;
 }
 
-bool K2PgIsYugaByteEnabled() {
+bool K2PgIsK2PgEnabled() {
   return api_impl != nullptr;
 }
 
@@ -985,12 +985,12 @@ bool K2PgAllowForPrimaryKey(const K2PgTypeEntity *type_entity) {
   return false;
 }
 
-void YBCAssignTransactionPriorityLowerBound(double newval, void* extra) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCAssignTransactionPriorityLowerBound {}", newval);
+void K2PgAssignTransactionPriorityLowerBound(double newval, void* extra) {
+  K2LOG_V(log::pg, "PgGateAPI: K2PgAssignTransactionPriorityLowerBound {}", newval);
 }
 
-void YBCAssignTransactionPriorityUpperBound(double newval, void* extra) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCAssignTransactionPriorityUpperBound {}", newval);
+void K2PgAssignTransactionPriorityUpperBound(double newval, void* extra) {
+  K2LOG_V(log::pg, "PgGateAPI: K2PgAssignTransactionPriorityUpperBound {}", newval);
 }
 
 // the following APIs are called by pg_dump.c only

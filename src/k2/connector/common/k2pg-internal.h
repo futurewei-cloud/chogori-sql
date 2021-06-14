@@ -31,17 +31,17 @@ K2PgStatus ToK2PgStatus(const Status& status);
 K2PgStatus ToK2PgStatus(Status&& status);
 void FreeK2PgStatus(K2PgStatus status);
 
-void YBCSetPAllocFn(YBCPAllocFn pg_palloc_fn);
-void* YBCPAlloc(size_t size);
+void K2PgSetPAllocFn(K2PgPAllocFn pg_palloc_fn);
+void* K2PgPAlloc(size_t size);
 
-void YBCSetCStringToTextWithLenFn(YBCCStringToTextWithLenFn fn);
-void* YBCCStringToTextWithLen(const char* c, int size);
+void K2PgSetCStringToTextWithLenFn(K2PgCStringToTextWithLenFn fn);
+void* K2PgCStringToTextWithLen(const char* c, int size);
 
 // K2PgStatus definition for Some common Status.
 
 K2PgStatus K2PgStatusNotSupport(const std::string& feature_name);
 
 // Duplicate the given string in memory allocated using PostgreSQL's palloc.
-const char* YBCPAllocStdString(const std::string& s);
+const char* K2PgPAllocStdString(const std::string& s);
 
 } // namespace k2pg

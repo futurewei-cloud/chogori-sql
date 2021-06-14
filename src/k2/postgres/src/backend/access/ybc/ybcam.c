@@ -72,7 +72,7 @@ typedef YbScanPlanData *YbScanPlan;
 
 static void ybcAddAttributeColumn(YbScanPlan scan_plan, AttrNumber attnum)
 {
-  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+  const int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
   if (bms_is_member(idx, scan_plan->primary_key))
     scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
@@ -97,12 +97,12 @@ static void ybcCheckPrimaryKeyAttribute(YbScanPlan      scan_plan,
 	 * - Number of all columns: IndexRelation->rd_index->indnatts
 	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
 	 */
-	HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_table_desc,
+	HandleK2PgTableDescStatus(K2PgGetColumnInfo(ybc_table_desc,
 											   attnum,
 											   &is_primary,
 											   &is_hash), ybc_table_desc);
 
-	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+	int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
 	if (is_hash)
 	{
@@ -120,7 +120,7 @@ static void ybcCheckPrimaryKeyAttribute(YbScanPlan      scan_plan,
  */
 static void ybcLoadTableInfo(Relation relation, YbScanPlan scan_plan)
 {
-	Oid            dboid          = YBCGetDatabaseOid(relation);
+	Oid            dboid          = K2PgGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
 	K2PgTableDesc ybc_table_desc = NULL;
 
@@ -543,7 +543,7 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 
 static bool ybc_should_pushdown_op(YbScanPlan scan_plan, AttrNumber attnum, int op_strategy)
 {
-	const int idx =  YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+	const int idx =  K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
 	switch (op_strategy)
 	{
@@ -660,7 +660,7 @@ static void	ybcSetupScanKeys(Relation relation,
 		if (scan_plan->bind_key_attnums[i] == InvalidOid)
 			break;
 
-		int idx = YBAttnumToBmsIndex(scan_plan->target_relation, scan_plan->bind_key_attnums[i]);
+		int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, scan_plan->bind_key_attnums[i]);
 		/*
 		 * TODO: Can we have bound keys on non-pkey columns here?
 		 *       If not we do not need the is_primary_key below.
@@ -707,7 +707,7 @@ static void	ybcSetupScanKeys(Relation relation,
 	if (index && index->rd_index->indisprimary) {
 		/* For primary key, column_attnums are used, so we process it different from other scans */
 		for (int i = 0; i < index->rd_index->indnatts; i++) {
-			int key_column = YBAttnumToBmsIndex(index, index->rd_index->indkey.values[i]);
+			int key_column = K2PgAttnumToBmsIndex(index, index->rd_index->indkey.values[i]);
 			if (!delete_key && !bms_is_member(key_column, scan_plan->sk_cols)) {
 				delete_key = true;
 			}
@@ -716,7 +716,7 @@ static void	ybcSetupScanKeys(Relation relation,
 				bms_del_member(scan_plan->sk_cols, key_column);
 		}
 	} else {
-		int max_idx = YBAttnumToBmsIndex(relation, scan_plan->bind_desc->natts);
+		int max_idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_desc->natts);
 		for (int idx = 0; idx <= max_idx; idx++)
 		{
 			if (!delete_key &&
@@ -735,7 +735,7 @@ static void ybcBindScanKeys(Relation relation,
 							Relation index,
 							YbScanDesc ybScan,
 							YbScanPlan scan_plan) {
-	Oid		dboid    = YBCGetDatabaseOid(relation);
+	Oid		dboid    = K2PgGetDatabaseOid(relation);
 	Oid		relid    = RelationGetRelid(relation);
 
 	HandleK2PgStatus(K2PgNewSelect(dboid, relid, &ybScan->prepare_params, &ybScan->handle));
@@ -748,7 +748,7 @@ static void ybcBindScanKeys(Relation relation,
 		/* Bind the scan keys */
 		for (int i = 0; i < ybScan->nkeys; i++)
 		{
-			int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 			if (bms_is_member(idx, scan_plan->sk_cols))
 			{
 				bool is_null = (ybScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
@@ -764,7 +764,7 @@ static void ybcBindScanKeys(Relation relation,
 		int max_idx = 0;
 		for (int i = 0; i < ybScan->nkeys; i++)
 		{
-			int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 			if (!bms_is_member(idx, scan_plan->sk_cols))
 				continue;
 
@@ -798,7 +798,7 @@ static void ybcBindScanKeys(Relation relation,
 		for (int i = 0; i < ybScan->nkeys; i++)
 		{
 			/* Check if this is primary columns */
-			int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 			if (!bms_is_member(idx, scan_plan->sk_cols))
 				continue;
 
@@ -844,7 +844,7 @@ static void ybcBindScanKeys(Relation relation,
 		for (int k = 0; k < noffsets; k++)
 		{
 			int i = offsets[k];
-			int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 
 			/* Do not bind more than one condition to a column */
 			if (is_column_bound[idx])
@@ -989,7 +989,7 @@ static void ybcBindScanKeys(Relation relation,
 		}
 
 		/* Bind keys for BETWEEN */
-		int min_idx = YBAttnumToBmsIndex(relation, 1);
+		int min_idx = K2PgAttnumToBmsIndex(relation, 1);
 		for (int idx = min_idx; idx < max_idx; idx++)
 		{
 			/* Do not bind more than one condition to a column */
@@ -1001,7 +1001,7 @@ static void ybcBindScanKeys(Relation relation,
 
 			ybcBindColumnCondBetween(ybScan,
 			                         scan_plan->bind_desc,
-									 YBBmsIndexToAttnum(relation, idx),
+									 K2PgBmsIndexToAttnum(relation, idx),
 									 start_valid[idx], start[idx],
 									 end_valid[idx], end[idx]);
 			is_column_bound[idx] = true;
@@ -1521,7 +1521,7 @@ void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 		Expr	   *clause = rinfo->clause;
 		Oid			clause_op;
 		int			op_strategy;
-		int			bms_idx = YBAttnumToBmsIndex(scan_plan.target_relation, attnum);
+		int			bms_idx = K2PgAttnumToBmsIndex(scan_plan.target_relation, attnum);
 
 		if (IsA(clause, NullTest))
 		{
@@ -1605,7 +1605,7 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 	K2PgStatement ybc_stmt;
 	TupleDesc      tupdesc = RelationGetDescr(relation);
 
-	HandleK2PgStatus(K2PgNewSelect(YBCGetDatabaseOid(relation),
+	HandleK2PgStatus(K2PgNewSelect(K2PgGetDatabaseOid(relation),
 																RelationGetRelid(relation),
 																NULL /* prepare_params */,
 																&ybc_stmt));

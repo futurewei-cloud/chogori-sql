@@ -291,7 +291,7 @@ RI_FKey_check(TriggerData *trigdata)
 	}
 
 	/* For YB relations visibility will be handled by DocDB (storage layer). */
-	if (!IsYBRelation(trigdata->tg_relation))
+	if (!IsK2PgRelation(trigdata->tg_relation))
 	{
 		/*
 		* We should not even consider checking the row if it is no longer valid,
@@ -401,7 +401,7 @@ RI_FKey_check(TriggerData *trigdata)
 	/*
 	 * Skip foreign key check if referenced row is present in YB cache.
 	 */
-	if (IsYBRelation(pk_rel))
+	if (IsK2PgRelation(pk_rel))
 	{
 		/*
 		 * Get the referenced index table.
@@ -494,7 +494,7 @@ RI_FKey_check(TriggerData *trigdata)
 	{
 		elog(ERROR, "SPI_finish failed");
 	}
-	else if (IsYBRelation(pk_rel) && tuple_id != NULL)
+	else if (IsK2PgRelation(pk_rel) && tuple_id != NULL)
 	{
 		K2PgCacheForeignKeyReference(ref_table_id, tuple_id, tuple_id_size);
 		elog(DEBUG1, "Cached foreign key reference: table ID %u, tuple ID %s",
@@ -1949,10 +1949,10 @@ RI_Initial_Check(Trigger *trigger, Relation fk_rel, Relation pk_rel)
 	{
 		int			attno;
 
-		attno = riinfo->pk_attnums[i] - YBGetFirstLowInvalidAttributeNumber(pk_rel);
+		attno = riinfo->pk_attnums[i] - K2PgGetFirstLowInvalidAttributeNumber(pk_rel);
 		pkrte->selectedCols = bms_add_member(pkrte->selectedCols, attno);
 
-		attno = riinfo->fk_attnums[i] - YBGetFirstLowInvalidAttributeNumber(fk_rel);
+		attno = riinfo->fk_attnums[i] - K2PgGetFirstLowInvalidAttributeNumber(fk_rel);
 		fkrte->selectedCols = bms_add_member(fkrte->selectedCols, attno);
 	}
 
@@ -2628,7 +2628,7 @@ ri_PerformCheck(const RI_ConstraintInfo *riinfo,
 	 * that SPI_execute_snapshot will register the snapshots, so we don't need
 	 * to bother here.
 	 */
-	if (!IsYBRelation(pk_rel) && IsolationUsesXactSnapshot() && detectNewRows)
+	if (!IsK2PgRelation(pk_rel) && IsolationUsesXactSnapshot() && detectNewRows)
 	{
 		CommandCounterIncrement();	/* be sure all my own work is visible */
 		test_snapshot = GetLatestSnapshot();
@@ -2704,7 +2704,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 			false : true;
 
 	HandleK2PgStatus(K2PgNewSelect(
-		YBCGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
+		K2PgGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
 	const int16 *attnums = riinfo->fk_attnums;

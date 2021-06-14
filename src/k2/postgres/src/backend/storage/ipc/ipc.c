@@ -148,8 +148,8 @@ proc_exit(int code)
 	}
 #endif
 
-	if (IsYugaByteEnabled())
-		YBOnPostgresBackendShutdown();
+	if (IsK2PgEnabled())
+		K2PgOnPostgresBackendShutdown();
 
 	elog(DEBUG3, "exit(%d)", code);
 

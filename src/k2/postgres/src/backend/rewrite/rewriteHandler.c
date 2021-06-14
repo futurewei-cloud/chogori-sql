@@ -1320,15 +1320,15 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 	const char *attrname;
 	TargetEntry *tle;
 
-	if (IsYBRelation(target_relation))
+	if (IsK2PgRelation(target_relation))
 	{
 		/*
 		 * If there are secondary indices on the target table, or if we have a
 		 * row-level trigger corresponding to the operations, then also return
 		 * the whole row.
 		 */
-		if (YBRelHasOldRowTriggers(target_relation, parsetree->commandType) ||
-		    YBRelHasSecondaryIndices(target_relation))
+		if (K2PgRelHasOldRowTriggers(target_relation, parsetree->commandType) ||
+		    K2PgRelHasSecondaryIndices(target_relation))
 		{
 			var = makeWholeRowVar(target_rte,
 								  parsetree->resultRelation,
@@ -2710,8 +2710,8 @@ adjust_view_column_set(Bitmapset *cols,
 {
 	Bitmapset  *result = NULL;
 	int			col;
-	AttrNumber view_lowattrno = YBGetFirstLowInvalidAttributeNumber(view_rel);
-	AttrNumber base_lowattrno = YBGetFirstLowInvalidAttributeNumberFromOid(base_relid);
+	AttrNumber view_lowattrno = K2PgGetFirstLowInvalidAttributeNumber(view_rel);
+	AttrNumber base_lowattrno = K2PgGetFirstLowInvalidAttributeNumberFromOid(base_relid);
 
 	col = -1;
 	while ((col = bms_next_member(cols, col)) >= 0)

@@ -657,7 +657,7 @@ findDependentObjects(const ObjectAddress *object,
 				 * If YugaByte is enabled, systable_recheck_tuple doesn't work
 				 * since the function uses the buffer to determine the tuple's visibility.
 				 */
-				if (!IsYugaByteEnabled() && !systable_recheck_tuple(scan, tup))
+				if (!IsK2PgEnabled() && !systable_recheck_tuple(scan, tup))
 				{
 					systable_endscan(scan);
 					ReleaseDeletionLock(&otherObject);
@@ -757,7 +757,7 @@ findDependentObjects(const ObjectAddress *object,
 		 * If YugaByte is enabled, systable_recheck_tuple doesn't work
 		 * since the function uses the buffer to determine the tuple's visibility.
 		 */
-		if (!IsYugaByteEnabled() && !systable_recheck_tuple(scan, tup))
+		if (!IsK2PgEnabled() && !systable_recheck_tuple(scan, tup))
 		{
 			/* release the now-useless lock */
 			ReleaseDeletionLock(&otherObject);

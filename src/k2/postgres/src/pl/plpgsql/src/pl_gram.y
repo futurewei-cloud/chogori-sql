@@ -4091,7 +4091,7 @@ ybc_not_support(int pos, const char *feature, int issue) {
 	static int restricted = -1;
 	if (restricted == -1)
 	{
-		restricted = YBIsUsingYBParser();
+		restricted = K2PgIsUsingYBParser();
 	}
 
 	if (!restricted)
@@ -4099,7 +4099,7 @@ ybc_not_support(int pos, const char *feature, int issue) {
 		return;
 	}
 
-	int signal_level = YBUnsupportedFeatureSignalLevel();
+	int signal_level = K2PgUnsupportedFeatureSignalLevel();
 	if (issue > 0)
 	{
 		ereport(signal_level,

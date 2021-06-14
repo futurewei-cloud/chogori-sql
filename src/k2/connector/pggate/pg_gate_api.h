@@ -437,7 +437,7 @@ int32_t K2PgGetOutputBufferSize();
 // Retrieve value of ysql_disable_index_backfill gflag.
 bool K2PgGetDisableIndexBackfill();
 
-bool K2PgIsYugaByteEnabled();
+bool K2PgIsK2PgEnabled();
 
 // Sets the specified timeout in the rpc service.
 void K2PgSetTimeout(int timeout_ms, void* extra);

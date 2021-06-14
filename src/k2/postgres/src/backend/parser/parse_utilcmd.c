@@ -387,7 +387,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	 * If YB is enabled, add the index constraints to the statement as they
 	 * might be passed down to YugaByte (e.g. as primary key).
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		stmt->constraints = list_concat(stmt->constraints, cxt.ixconstraints);
 	}
@@ -776,7 +776,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 												constraint->location)));
 				if (constraint->keys == NIL)
 					constraint->keys = list_make1(makeString(column->colname));
-				if (IsYugaByteEnabled())
+				if (IsK2PgEnabled())
 				{
 					if (constraint->k2pg_index_params == NIL)
 					{
@@ -991,7 +991,7 @@ transformTableConstraint(CreateStmtContext *cxt, Constraint *constraint)
 			break;
 	}
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		YBCheckDeferrableConstraint(cxt, constraint);
 }
 
@@ -2039,7 +2039,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 
 	index->relation = cxt->relation;
 	index->accessMethod = constraint->access_method ? constraint->access_method :
-			(IsYugaByteEnabled() && index->relation->relpersistence != RELPERSISTENCE_TEMP
+			(IsK2PgEnabled() && index->relation->relpersistence != RELPERSISTENCE_TEMP
 					? DEFAULT_K2PG_INDEX_TYPE
 					: DEFAULT_INDEX_TYPE);
 	index->options = constraint->options;
@@ -2216,7 +2216,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 							 errdetail("Cannot create a primary key or unique constraint using such an index."),
 							 parser_errposition(cxt->pstate, constraint->location)));
 
-				if (IsYugaByteEnabled())
+				if (IsK2PgEnabled())
 				{
 					IndexElem *index_elem = makeNode(IndexElem);
 					index_elem->name = attname;

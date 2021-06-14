@@ -235,7 +235,7 @@ do { \
 	} \
 	else \
 	{ \
-		if (IsYugaByteEnabled()) \
+		if (IsK2PgEnabled()) \
 		{ \
 			snprintf(filename, sizeof(filename), "%d_%s", \
 			         MyDatabaseId, RELCACHE_INIT_FILENAME); \
@@ -257,7 +257,7 @@ do { \
 	} \
 	else \
 	{ \
-		if (IsYugaByteEnabled()) \
+		if (IsK2PgEnabled()) \
 		{ \
 			snprintf(filename, sizeof(filename), "%d_%s.%d", \
 			         MyDatabaseId, RELCACHE_INIT_FILENAME, MyProcPid); \
@@ -1957,7 +1957,7 @@ RelationInitPhysicalAddr(Relation relation)
 	else
 		relation->rd_node.dbNode = MyDatabaseId;
 
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	  return;
 
 	if (relation->rd_rel->relfilenode)
@@ -4182,7 +4182,7 @@ RelationCacheInitializePhase2(void)
 	MemoryContext oldcxt;
 
 	/* We do not use a relation map file in YugaByte mode yet */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/*
 		 * relation mapper needs initialized too
@@ -4248,7 +4248,7 @@ RelationCacheInitializePhase3(void)
 	bool		needNewCacheFile = !criticalSharedRelcachesBuilt;
 
 	/* We do not use a relation map file in YugaByte mode yet */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 	  /*
 	   * relation mapper needs initialized too
@@ -4293,7 +4293,7 @@ RelationCacheInitializePhase3(void)
 	 * In YB mode initialize the relache at the beginning so that we need
 	 * fewer cache lookups in steady state.
 	 */
-	if (needNewCacheFile && IsYugaByteEnabled())
+	if (needNewCacheFile && IsK2PgEnabled())
 	{
 		YBPreloadRelCache();
 	}
@@ -4544,7 +4544,7 @@ RelationCacheInitializePhase3(void)
 	 * During initdb also preload catalog caches (not just relation cache) as
 	 * they will be used heavily.
 	 */
-	if (IsYugaByteEnabled() && YBIsPreparingTemplates())
+	if (IsK2PgEnabled() && K2PgIsPreparingTemplates())
 	{
 		YBPreloadCatalogCaches();
 	}
@@ -4560,7 +4560,7 @@ static void
 load_critical_index(Oid indexoid, Oid heapoid)
 {
 	Relation	ird;
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/* TODO We do not support/use critical indexes in YugaByte mode yet */
 		return;
@@ -5587,7 +5587,7 @@ restart:
 	idindexattrs = NULL;
 	projindexes = NULL;
 	indexno = 0;
-	attr_offset = YBGetFirstLowInvalidAttributeNumber(relation);
+	attr_offset = K2PgGetFirstLowInvalidAttributeNumber(relation);
 	foreach(l, indexoidlist)
 	{
 		Oid			indexOid = lfirst_oid(l);
@@ -6122,7 +6122,7 @@ load_relcache_init_file(bool shared)
 	if (magic != RELCACHE_INIT_FILEMAGIC)
 		goto read_failed;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/* Read the stored catalog version number */
 		if (fread(&ybc_stored_cache_version,
@@ -6450,7 +6450,7 @@ load_relcache_init_file(bool shared)
 	 * TODO We do not support/use critical indexes in YugaByte mode yet so set
 	 * the expected number of indexes to 0 so we do not fail here.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		num_critical_shared_indexes = 0;
 		num_critical_local_indexes  = 0;
@@ -6495,7 +6495,7 @@ load_relcache_init_file(bool shared)
 	pfree(rels);
 	FreeFile(fp);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/*
 		 * Set the catalog version if needed.
@@ -6581,7 +6581,7 @@ write_relcache_init_file(bool shared)
 	if (fwrite(&magic, 1, sizeof(magic), fp) != sizeof(magic))
 		elog(FATAL, "could not write init file");
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		/* Write the ysql_catalog_version */
 		if (fwrite(&k2pg_catalog_cache_version,
@@ -6879,7 +6879,7 @@ RelationCacheInitFileRemove(void)
 	 * In YugaByte mode we anyway do a cache version check on each backend init
 	 * so no need to preemptively clean up the init files here.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		return;
 	}

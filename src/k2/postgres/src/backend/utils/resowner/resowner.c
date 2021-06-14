@@ -448,7 +448,7 @@ ResourceOwnerCreate(ResourceOwner parent, const char *name)
 	ResourceArrayInit(&(owner->dsmarr), PointerGetDatum(NULL));
 	ResourceArrayInit(&(owner->jitarr), PointerGetDatum(NULL));
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		ResourceArrayInit(&(owner->ybstmtarr), PointerGetDatum(NULL));
 
 	return owner;
@@ -675,7 +675,7 @@ ResourceOwnerReleaseInternal(ResourceOwner owner,
 			FileClose(res);
 		}
 
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			/* Ditto for YugaByte statements */
 			while (ResourceArrayGetAny(&(owner->ybstmtarr), &foundres))

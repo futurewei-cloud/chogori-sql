@@ -519,7 +519,7 @@ void
 assign_transaction_read_only(bool newval, void *extra)
 {
 	XactReadOnly = newval;
-	if (YBTransactionsEnabled())
+	if (K2PgTransactionsEnabled())
 	{
 		K2PgSetTransactionReadOnly(XactReadOnly);
 	}
@@ -598,7 +598,7 @@ void
 assign_XactIsoLevel(const char *newval, void *extra)
 {
 	XactIsoLevel = *((int *) extra);
-	if (YBTransactionsEnabled())
+	if (K2PgTransactionsEnabled())
 	{
 		K2PgSetTransactionIsolationLevel(XactIsoLevel);
 	}
@@ -650,7 +650,7 @@ void
 assign_transaction_deferrable(bool newval, void *extra)
 {
   XactDeferrable = newval;
-	if (YBTransactionsEnabled())
+	if (K2PgTransactionsEnabled())
 	{
 		K2PgSetTransactionDeferrable(XactDeferrable);
 	}

@@ -496,7 +496,7 @@ bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	}
 
 	Relation        rel                = RelationIdGetRelation(relid);
-	Oid             dboid              = YBCGetDatabaseOid(rel);
+	Oid             dboid              = K2PgGetDatabaseOid(rel);
 	AttrNumber      natts              = RelationGetNumberOfAttributes(rel);
 	K2PgTableDesc  ybc_tabledesc      = NULL;
 	Bitmapset      *primary_key_attrs  = NULL;
@@ -507,7 +507,7 @@ bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	{
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
+		HandleK2PgTableDescStatus(K2PgGetColumnInfo(ybc_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
 		                                           &is_hash), ybc_tabledesc);

@@ -15,26 +15,26 @@
 namespace k2pg {
 
 namespace {
-YBCPAllocFn g_palloc_fn = nullptr;
-YBCCStringToTextWithLenFn g_cstring_to_text_with_len_fn = nullptr;
+K2PgPAllocFn g_palloc_fn = nullptr;
+K2PgCStringToTextWithLenFn g_cstring_to_text_with_len_fn = nullptr;
 }  // anonymous namespace
 
-void YBCSetPAllocFn(YBCPAllocFn palloc_fn) {
+void K2PgSetPAllocFn(K2PgPAllocFn palloc_fn) {
   CHECK_NOTNULL(palloc_fn);
   g_palloc_fn = palloc_fn;
 }
 
-void* YBCPAlloc(size_t size) {
+void* K2PgPAlloc(size_t size) {
   CHECK_NOTNULL(g_palloc_fn);
   return g_palloc_fn(size);
 }
 
-void YBCSetCStringToTextWithLenFn(YBCCStringToTextWithLenFn fn) {
+void K2PgSetCStringToTextWithLenFn(K2PgCStringToTextWithLenFn fn) {
   CHECK_NOTNULL(fn);
   g_cstring_to_text_with_len_fn = fn;
 }
 
-void* YBCCStringToTextWithLen(const char* c, int size) {
+void* K2PgCStringToTextWithLen(const char* c, int size) {
   CHECK_NOTNULL(g_cstring_to_text_with_len_fn);
   return g_cstring_to_text_with_len_fn(c, size);
 }
@@ -61,9 +61,9 @@ K2PgStatus K2PgStatusNotSupport(const std::string& feature_name) {
   }
 }
 
-const char* YBCPAllocStdString(const std::string& s) {
+const char* K2PgPAllocStdString(const std::string& s) {
   const size_t len = s.size();
-  char* result = reinterpret_cast<char*>(YBCPAlloc(len + 1));
+  char* result = reinterpret_cast<char*>(K2PgPAlloc(len + 1));
   memcpy(result, s.c_str(), len);
   result[len] = 0;
   return result;

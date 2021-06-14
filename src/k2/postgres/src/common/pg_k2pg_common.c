@@ -36,13 +36,13 @@
 #include "utils/elog.h"
 
 bool
-YBCIsEnvVarTrue(const char* env_var_name)
+K2PgIsEnvVarTrue(const char* env_var_name)
 {
-	return YBCIsEnvVarTrueWithDefault(env_var_name, /* default_value */ false);
+	return K2PgIsEnvVarTrueWithDefault(env_var_name, /* default_value */ false);
 }
 
 bool
-YBCIsEnvVarTrueWithDefault(const char* env_var_name, bool default_value)
+K2PgIsEnvVarTrueWithDefault(const char* env_var_name, bool default_value)
 {
 	const char* env_var_value = getenv(env_var_name);
 	if (!env_var_value ||
@@ -55,43 +55,43 @@ YBCIsEnvVarTrueWithDefault(const char* env_var_name, bool default_value)
 }
 
 bool
-YBIsEnabledInPostgresEnvVar()
+K2PgIsEnabledInPostgresEnvVar()
 {
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrue("K2PG_ENABLED_IN_POSTGRES");
+		cached_value = K2PgIsEnvVarTrue("K2PG_ENABLED_IN_POSTGRES");
 	}
 	return cached_value;
 }
 
 bool
-YBShouldAllowRunningAsAnyUser()
+K2PgShouldAllowRunningAsAnyUser()
 {
-	if (YBIsEnabledInPostgresEnvVar())
+	if (K2PgIsEnabledInPostgresEnvVar())
     {
 		return true;
 	}
 	static int cached_value = -1;
 	if (cached_value == -1)
     {
-		cached_value = YBCIsEnvVarTrue("K2PG_ALLOW_RUNNING_AS_ANY_USER");
+		cached_value = K2PgIsEnvVarTrue("K2PG_ALLOW_RUNNING_AS_ANY_USER");
 	}
 	return cached_value;
 }
 
-bool YBIsInitDbModeEnvVarSet()
+bool K2PgIsInitDbModeEnvVarSet()
 {
 
 	static int cached_value = -1;
 	if (cached_value == -1)
     {
-		cached_value = YBCIsEnvVarTrue("K2PG_INITDB_MODE");
+		cached_value = K2PgIsEnvVarTrue("K2PG_INITDB_MODE");
 	}
 	return cached_value;
 }
 
-void YBSetInitDbModeEnvVar()
+void K2PgSetInitDbModeEnvVar()
 {
 	int setenv_retval = setenv("K2PG_INITDB_MODE", "1", /* overwrite */ true);
 	if (setenv_retval != 0)
@@ -102,34 +102,34 @@ void YBSetInitDbModeEnvVar()
 }
 
 bool
-YBIsUsingYBParser()
+K2PgIsUsingYBParser()
 {
 	static int cached_value = -1;
 	if (cached_value == -1) {
-		cached_value = !YBIsInitDbModeEnvVarSet() && YBIsEnabledInPostgresEnvVar();
+		cached_value = !K2PgIsInitDbModeEnvVarSet() && K2PgIsEnabledInPostgresEnvVar();
 	}
 	return cached_value;
 }
 
 int
-YBUnsupportedFeatureSignalLevel()
+K2PgUnsupportedFeatureSignalLevel()
 {
 	static int cached_value = -1;
 	if (cached_value == -1) {
 		// TODO(dmitry): Remove 'K2PG_SUPPRESS_UNSUPPORTED_ERROR'
-		cached_value = YBCIsEnvVarTrue("K2PG_SUPPRESS_UNSUPPORTED_ERROR") ||
-									 YBCIsEnvVarTrue("FLAGS_ysql_suppress_unsupported_error") ? WARNING : ERROR;
+		cached_value = K2PgIsEnvVarTrue("K2PG_SUPPRESS_UNSUPPORTED_ERROR") ||
+									 K2PgIsEnvVarTrue("FLAGS_ysql_suppress_unsupported_error") ? WARNING : ERROR;
 	}
 	return cached_value;
 }
 
 bool
-YBIsNonTxnCopyEnabled()
+K2PgIsNonTxnCopyEnabled()
 {
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = YBCIsEnvVarTrue("FLAGS_ysql_non_txn_copy");
+		cached_value = K2PgIsEnvVarTrue("FLAGS_ysql_non_txn_copy");
 	}
 	return cached_value;
 }

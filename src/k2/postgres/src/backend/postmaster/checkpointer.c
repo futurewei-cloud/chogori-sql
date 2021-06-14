@@ -984,7 +984,7 @@ RequestCheckpoint(int flags)
 		return;
 	}
 
-	if (IsYugaByteEnabled()) {
+	if (IsK2PgEnabled()) {
         return;
     }
 

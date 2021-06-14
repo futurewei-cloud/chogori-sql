@@ -919,7 +919,7 @@ markRTEForSelectPriv(ParseState *pstate, RangeTblEntry *rte,
 		rte->requiredPerms |= ACL_SELECT;
 		/* Must offset the attnum to fit in a bitmapset */
 		rte->selectedCols = bms_add_member(rte->selectedCols,
-												col - YBGetFirstLowInvalidAttributeNumberFromOid(rte->relid));
+												col - K2PgGetFirstLowInvalidAttributeNumberFromOid(rte->relid));
 	}
 	else if (rte->rtekind == RTE_JOIN)
 	{

@@ -416,12 +416,12 @@ errstart(int elevel, const char *filename, int lineno,
 	edata->assoc_context = ErrorContext;
 
 	recursion_depth--;
-	if (YBShouldLogStackTraceOnError() && elevel >= ERROR)
+	if (K2PgShouldLogStackTraceOnError() && elevel >= ERROR)
 	{
-		YBCLogImpl(
+		K2PgLogImpl(
 			/* severity (2=ERROR) */ 2,
 			filename, lineno, /* stack_trace */ true,
-			"Postgres error: %s", YBPgErrorLevelToString(elevel));
+			"Postgres error: %s", K2PgErrorLevelToString(elevel));
 	}
 	return true;
 }
@@ -504,7 +504,7 @@ errfinish(int dummy,...)
 		if (whereToSendOutput == DestRemote)
 			pq_endcopyout(true);
 
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 			/* When it's FATAL, the memory context that "debug_query_string" points to might have been
 			 * deleted or even corrupted. Set "debug_query_string" to NULL before emitting error.
 			 * The variable "debug_query_string" contains the user statement that is currently executed.
@@ -787,9 +787,9 @@ errcode_for_socket_access(void)
 		} \
 		/* Done with expanded fmt */ \
 		pfree(fmtbuf); \
-		/* In YB debug mode, add stack trace info (to first msg only) */ \
-		if (IsYugaByteEnabled() && k2pg_debug_mode && !appendval) { \
-			appendStringInfoString(&buf, YBCGetStackTrace()); \
+		/* In debug mode, add stack trace info (to first msg only) */ \
+		if (IsK2PgEnabled() && k2pg_debug_mode && !appendval) { \
+			appendStringInfoString(&buf, K2PgGetStackTrace()); \
 		} \
 		/* Save the completed message into the stack item */ \
 		if (edata->targetfield) \
@@ -3297,7 +3297,7 @@ send_message_to_frontend(ErrorData *edata)
 			err_sendstring(&msgbuf, edata->hint);
 		}
 
-		if (edata->context && !(IsYugaByteEnabled() && edata->hide_ctx))
+		if (edata->context && !(IsK2PgEnabled() && edata->hide_ctx))
 		{
 			pq_sendbyte(&msgbuf, PG_DIAG_CONTEXT);
 			err_sendstring(&msgbuf, edata->context);

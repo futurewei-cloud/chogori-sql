@@ -418,7 +418,7 @@ GetFdwRoutineForRelation(Relation relation, bool makecopy)
 
 	if (relation->rd_fdwroutine == NULL)
 	{
-		if (IsYBRelation(relation)) {
+		if (IsK2PgRelation(relation)) {
 			/* Get the custom YB FDW directly */
 			fdwroutine = (FdwRoutine *) ybc_fdw_handler();
 		} else {

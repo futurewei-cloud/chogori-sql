@@ -996,7 +996,7 @@ static void parse_param(Param *node, FDWExprRefValues *ref_values) {
 
 static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
 {
-  const int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+  const int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
   if (bms_is_member(idx, scan_plan->primary_key))
     scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
@@ -1019,12 +1019,12 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 	 * - Number of all columns: IndexRelation->rd_index->indnatts
 	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
 	 */
-	HandleYBTableDescStatus(K2PgGetColumnInfo(ybc_table_desc,
+	HandleK2PgTableDescStatus(K2PgGetColumnInfo(ybc_table_desc,
 											   attnum,
 											   &is_primary,
 											   &is_hash), ybc_table_desc);
 
-	int idx = YBAttnumToBmsIndex(scan_plan->target_relation, attnum);
+	int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
 	if (is_hash || is_primary)
 	{
@@ -1044,7 +1044,7 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
  */
 static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
 {
-	Oid            dboid          = YBCGetDatabaseOid(relation);
+	Oid            dboid          = K2PgGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
 	K2PgTableDesc ybc_table_desc = NULL;
 
@@ -1178,7 +1178,7 @@ static void pgBindScanKeys(Relation relation,
 	/* Bind the scan keys */
 	for (int i = 0; i < scan_plan->nkeys; i++)
 	{
-		int idx = YBAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
+		int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 		if (bms_is_member(idx, scan_plan->sk_cols))
 		{
 			// check if the key is in the Opr conditions
@@ -1485,7 +1485,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	ybc_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
 
 	node->fdw_state = (void *) ybc_state;
-	HandleK2PgStatus(K2PgNewSelect(YBCGetDatabaseOid(relation),
+	HandleK2PgStatus(K2PgNewSelect(K2PgGetDatabaseOid(relation),
 				   RelationGetRelid(relation),
 				   NULL /* prepare_params */,
 				   &ybc_state->handle));

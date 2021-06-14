@@ -1178,7 +1178,7 @@ RecordTransactionCommit(void)
 	bool		RelcacheInitFileInval = false;
 	bool		wrote_xlog;
 
-	if (IsYugaByteEnabled() && !IsCurrentTxnWithPGRel())
+	if (IsK2PgEnabled() && !IsCurrentTxnWithPGRel())
 	{
 		return latestXid;
 	}
@@ -1849,10 +1849,10 @@ AtSubCleanup_Memory(void)
 static void
 YBStartTransaction(TransactionState s)
 {
-	s->isYBTxnWithPostgresRel = !IsYugaByteEnabled();
+	s->isYBTxnWithPostgresRel = !IsK2PgEnabled();
 	s->ybDataSent             = false;
 
-	if (YBTransactionsEnabled())
+	if (K2PgTransactionsEnabled())
 	{
 		K2PgBeginTransaction();
 		K2PgSetTransactionIsolationLevel(XactIsoLevel);
@@ -2070,9 +2070,9 @@ CommitTransaction(void)
 	 * At this point all the them has been fired already.
 	 * It is time to commit YB transaction.
 	 * Postgres transaction can be aborted at this point without an issue
-	 * in case of YBCCommitTransaction failure.
+	 * in case of K2PgGateCommitTransaction failure.
 	 */
-	YBCCommitTransaction();
+	K2PgGateCommitTransaction();
 
 	CallXactCallbacks(is_parallel_worker ? XACT_EVENT_PARALLEL_PRE_COMMIT
 					  : XACT_EVENT_PRE_COMMIT);
@@ -2429,7 +2429,7 @@ PrepareTransaction(void)
 	StartPrepare(gxact);
 
 	AtPrepare_Notify();
-	if (YBIsPgLockingEnabled()) {
+	if (K2PgIsPgLockingEnabled()) {
 		AtPrepare_Locks();
 		AtPrepare_PredicateLocks();
 	}
@@ -2492,7 +2492,7 @@ PrepareTransaction(void)
 
 	PostPrepare_MultiXact(xid);
 
-	if (YBIsPgLockingEnabled()) {
+	if (K2PgIsPgLockingEnabled()) {
 		PostPrepare_Locks(xid);
 		PostPrepare_PredicateLocks(xid);
 	}
@@ -2570,7 +2570,7 @@ AbortTransaction(void)
 	AtAbort_Memory();
 	AtAbort_ResourceOwner();
 
-	if (YBIsPgLockingEnabled()) {
+	if (K2PgIsPgLockingEnabled()) {
 		/*
 		* Release any LW locks we might be holding as quickly as possible.
 		* (Regular locks, however, must be held till we finish aborting.)
@@ -2594,7 +2594,7 @@ AbortTransaction(void)
 	/* Cancel condition variable sleep */
 	ConditionVariableCancelSleep();
 
-	if (YBIsPgLockingEnabled()) {
+	if (K2PgIsPgLockingEnabled()) {
 		/*
 		* Also clean up any open wait for lock, since the lock manager will choke
 		* if we try to wait for another lock before doing this.
@@ -2731,7 +2731,7 @@ AbortTransaction(void)
 		pgstat_report_xact_timestamp(0);
 	}
 
-	YBCAbortTransaction();
+	K2PgGateAbortTransaction();
 
 	/*
 	 * State remains TRANS_ABORT until CleanupTransaction().

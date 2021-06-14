@@ -172,7 +172,7 @@ recheck:
 	if (function)
 	{
 		/* We have a compiled function, but is it still valid? */
-		if (IsYugaByteEnabled() ? function->k2pg_catalog_version == k2pg_catalog_cache_version :
+		if (IsK2PgEnabled() ? function->k2pg_catalog_version == k2pg_catalog_cache_version :
 				(function->fn_xmin == HeapTupleHeaderGetRawXmin(procTup->t_data) &&
 				ItemPointerEquals(&function->fn_tid, &procTup->t_self)))
 			function_valid = true;

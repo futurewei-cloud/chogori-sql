@@ -947,16 +947,16 @@ PostmasterMain(int argc, char *argv[])
 				(errmsg_internal("-----------------------------------------")));
 	}
 
-	YBReportIfYugaByteEnabled();
+	K2PgReportIfK2PgEnabled();
 #ifdef __APPLE__
-	if (YBIsEnabledInPostgresEnvVar()) {
+	if (K2PgIsEnabledInPostgresEnvVar()) {
 		/*
 		 * Resolve local hostname to initialize macOS network libraries. If we
 		 * don't do this, there might be a lot of segmentation faults in
 		 * PostgreSQL backend processes in tests on macOS (especially debug
 		 * mode).
 		 */
-		YBCResolveHostname();
+		K2PgResolveHostname();
 	}
 #endif
 
@@ -1007,7 +1007,7 @@ PostmasterMain(int argc, char *argv[])
 	 * Logical replication is not supported in YugaByte mode currently and the
 	 * registration is disabled.
 	 */
-	if (!YBIsEnabledInPostgresEnvVar())
+	if (!K2PgIsEnabledInPostgresEnvVar())
 		ApplyLauncherRegister();
 
 	/*
@@ -1653,7 +1653,7 @@ ServerLoop(void)
 
 	nSockets = initMasks(&readmask);
 #ifdef __APPLE__
-	bool k2pg_enabled = YBIsEnabledInPostgresEnvVar();
+	bool k2pg_enabled = K2PgIsEnabledInPostgresEnvVar();
 #endif
 
 	for (;;)
@@ -1762,7 +1762,7 @@ ServerLoop(void)
 		if (pmState == PM_RUN || pmState == PM_RECOVERY ||
 			pmState == PM_HOT_STANDBY)
 		{
-			if (CheckpointerPID == 0 && !YBIsEnabledInPostgresEnvVar())
+			if (CheckpointerPID == 0 && !K2PgIsEnabledInPostgresEnvVar())
 				CheckpointerPID = StartCheckpointer();
 			if (BgWriterPID == 0)
 				BgWriterPID = StartBackgroundWriter();
@@ -1784,7 +1784,7 @@ ServerLoop(void)
 		 */
 		if (!IsBinaryUpgrade && AutoVacPID == 0 &&
 			(AutoVacuumingActive() || start_autovac_launcher) &&
-			pmState == PM_RUN && !YBIsEnabledInPostgresEnvVar())
+			pmState == PM_RUN && !K2PgIsEnabledInPostgresEnvVar())
 		{
 			AutoVacPID = StartAutoVacLauncher();
 			if (AutoVacPID != 0)
@@ -1901,7 +1901,7 @@ initMasks(fd_set *rmask)
 	FD_ZERO(rmask);
 
 #ifdef __APPLE__
-	if (YBIsEnabledInPostgresEnvVar()) {
+	if (K2PgIsEnabledInPostgresEnvVar()) {
 		FD_SET(STDIN_FILENO, rmask);
 		maxsock = STDIN_FILENO;
 	}
@@ -2920,7 +2920,7 @@ reaper(SIGNAL_ARGS)
 			 * when we entered consistent recovery state.  It doesn't matter
 			 * if this fails, we'll just try again later.
 			 */
-			if (CheckpointerPID == 0 && !YBIsEnabledInPostgresEnvVar())
+			if (CheckpointerPID == 0 && !K2PgIsEnabledInPostgresEnvVar())
 				CheckpointerPID = StartCheckpointer();
 			if (BgWriterPID == 0)
 				BgWriterPID = StartBackgroundWriter();
@@ -2932,7 +2932,7 @@ reaper(SIGNAL_ARGS)
 			 * situation, some of them may be alive already.
 			 */
 			if (!IsBinaryUpgrade && AutoVacuumingActive() &&
-			    AutoVacPID == 0 && !YBIsEnabledInPostgresEnvVar())
+			    AutoVacPID == 0 && !K2PgIsEnabledInPostgresEnvVar())
 			{
 				AutoVacPID = StartAutoVacLauncher();
 			}
@@ -3352,8 +3352,8 @@ HandleChildCrash(int pid, int exitstatus, const char *procname)
 	 * clutter log.
 	 */
 	take_action = !FatalError && Shutdown != ImmediateShutdown;
-	if (YBIsEnabledInPostgresEnvVar()) {
-		take_action = take_action && YBShouldRestartAllChildrenIfOneCrashes();
+	if (K2PgIsEnabledInPostgresEnvVar()) {
+		take_action = take_action && K2PgShouldRestartAllChildrenIfOneCrashes();
 	}
 
 	if (take_action)
@@ -3750,7 +3750,7 @@ PostmasterStateMachine(void)
 				 */
 				Assert(Shutdown > NoShutdown);
 				/* Start the checkpointer if not running */
-				if (CheckpointerPID == 0 && !YBIsEnabledInPostgresEnvVar())
+				if (CheckpointerPID == 0 && !K2PgIsEnabledInPostgresEnvVar())
 					CheckpointerPID = StartCheckpointer();
 				/* And tell it to shut down */
 				if (CheckpointerPID != 0)
@@ -5120,7 +5120,7 @@ sigusr1_handler(SIGNAL_ARGS)
 		 * we'll just try again later.
 		 */
 		Assert(CheckpointerPID == 0);
-        if (!YBIsEnabledInPostgresEnvVar()) {
+        if (!K2PgIsEnabledInPostgresEnvVar()) {
 		    CheckpointerPID = StartCheckpointer();
         }
 		Assert(BgWriterPID == 0);
@@ -5194,7 +5194,7 @@ sigusr1_handler(SIGNAL_ARGS)
 
 	if (CheckPostmasterSignal(PMSIGNAL_START_AUTOVAC_LAUNCHER) &&
 		Shutdown == NoShutdown &&
-		!YBIsEnabledInPostgresEnvVar())
+		!K2PgIsEnabledInPostgresEnvVar())
 	{
 		/*
 		 * Start one iteration of the autovacuum daemon, even if autovacuuming
@@ -5210,14 +5210,14 @@ sigusr1_handler(SIGNAL_ARGS)
 
 	if (CheckPostmasterSignal(PMSIGNAL_START_AUTOVAC_WORKER) &&
 		Shutdown == NoShutdown &&
-		!YBIsEnabledInPostgresEnvVar())
+		!K2PgIsEnabledInPostgresEnvVar())
 	{
 		/* The autovacuum launcher wants us to start a worker process. */
 		StartAutovacuumWorker();
 	}
 
 	if (CheckPostmasterSignal(PMSIGNAL_START_WALRECEIVER) &&
-	    !YBIsEnabledInPostgresEnvVar())
+	    !K2PgIsEnabledInPostgresEnvVar())
 	{
 		/* Startup Process wants us to start the walreceiver process. */
 		/* Start immediately if possible, else remember request for later. */
@@ -5383,7 +5383,7 @@ StartChildProcess(AuxProcType type)
 	int			ac = 0;
 	char		typebuf[32];
 
-	if (YBIsEnabledInPostgresEnvVar() &&
+	if (K2PgIsEnabledInPostgresEnvVar() &&
 	    (type == BgWriterProcess ||
 		 type == WalWriterProcess ||
 		 type == WalReceiverProcess)) {

@@ -509,7 +509,7 @@ Datum
 pg_notify(PG_FUNCTION_ARGS)
 {
 	// Note: Async_Notify is replaced by NOOP
-	YBRaiseNotSupportedSignal("NOTIFY not supported yet and will be ignored", 1872 /* issue_no */, WARNING);
+	K2PgRaiseNotSupportedSignal("NOTIFY not supported yet and will be ignored", 1872 /* issue_no */, WARNING);
 
 	const char *channel;
 	const char *payload;

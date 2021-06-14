@@ -301,7 +301,7 @@ Boot_CreateStmt:
 						elog(DEBUG4, "relation created with OID %u", id);
 					}
 
-					if (IsYugaByteEnabled())
+					if (IsK2PgEnabled())
 					{
 						YBCCreateSysCatalogTable($2, $3, tupdesc, shared_relation, $13);
 					}
@@ -583,7 +583,7 @@ boot_column_val:
 Boot_CheckInitDbDone:
       YBCHECKINITDBDONE
       {
-				if (YBIsInitDbAlreadyDone())
+				if (K2PgIsInitDbAlreadyDone())
 					exit(K2PG_INITDB_ALREADY_DONE_EXIT_CODE);
 			}
 
