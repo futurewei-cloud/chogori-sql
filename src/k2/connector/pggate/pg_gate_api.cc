@@ -35,10 +35,10 @@ K2PgStatus ExtractValueFromResult(const Result<T>& result, T* value) {
 
 extern "C" {
 
-void PgGate_InitPgGate(const K2PgTypeEntity *YBCDataTypeTable, int count, PgCallbacks pg_callbacks) {
+void PgGate_InitPgGate(const K2PgTypeEntity *k2PgDataTypeTable, int count, PgCallbacks pg_callbacks) {
     K2ASSERT(log::pg, api_impl == nullptr, "can only be called once");
     api_impl_shutdown_done.exchange(false);
-    api_impl = new k2pg::gate::PgGateApiImpl(YBCDataTypeTable, count, pg_callbacks);
+    api_impl = new k2pg::gate::PgGateApiImpl(k2PgDataTypeTable, count, pg_callbacks);
     K2LOG_I(log::pg, "K2 PgGate open");
 }
 
@@ -69,12 +69,12 @@ K2PgStatus PgGate_InitSession(const K2PgEnv pg_env, const char *database_name) {
   return ToK2PgStatus(api_impl->InitSession(pg_env, db_name));
 }
 
-// Initialize YBCPgMemCtx.
+// Initialize K2PgMemCtx.
 // - Postgres uses memory context to hold all of its allocated space. Once all associated operations
 //   are done, the context is destroyed.
 // - There YugaByte objects are bound to Postgres operations. All of these objects' allocated
-//   memory will be held by YBCPgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
-//   Postgres operations are done, associated YugaByte memory context (YBCPgMemCtx) will be
+//   memory will be held by K2PgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
+//   Postgres operations are done, associated YugaByte memory context (K2PgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
 K2PgMemctx PgGate_CreateMemctx() {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_CreateMemctx");
@@ -99,7 +99,7 @@ K2PgStatus PgGate_InvalidateCache() {
 
 // Clear all values and expressions that were bound to the given statement.
 K2PgStatus PgGate_ClearBinds(K2PgStatement handle) {
-  K2LOG_V(log::pg, "PgGateAPI: YBCPgClearBind");
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ClearBinds");
   return ToK2PgStatus(api_impl->ClearBinds(handle));
 }
 

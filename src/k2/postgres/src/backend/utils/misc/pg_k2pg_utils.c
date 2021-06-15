@@ -330,7 +330,7 @@ K2PgInitPostgresBackend(
 	{
 		const K2PgTypeEntity *type_table;
 		int count;
-		YBCGetTypeTable(&type_table, &count);
+		K2PgGetTypeTable(&type_table, &count);
 		K2PgCallbacks callbacks;
 		callbacks.FetchUniqueConstraintName = &FetchUniqueConstraintName;
 		callbacks.GetCurrentYbMemctx = &GetCurrentYbMemctx;
@@ -338,7 +338,7 @@ K2PgInitPostgresBackend(
 		K2PgInstallTxnDdlHook();
 
 		/*
-		 * For each process, we create one YBC session for PostgreSQL to use
+		 * For each process, we create one K2PG session for PostgreSQL to use
 		 * when accessing YugaByte storage.
 		 *
 		 * TODO: do we really need to DB name / username here?

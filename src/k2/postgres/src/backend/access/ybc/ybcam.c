@@ -157,23 +157,23 @@ static Oid ybc_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
 /*
  * Bind a scan key.
  */
-static void ybcBindColumn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
+static void ybcBindColumn(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr ybc_expr = K2PgNewConstant(ybScan->handle, atttypid, value, is_null);
 
 	HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(ybScan->handle, attnum, ybc_expr),
 													ybScan->handle,
 													ybScan->stmt_owner);
 }
 
-void ybcBindColumnCondEq(YbScanDesc ybScan, bool is_hash_key, TupleDesc bind_desc,
+void ybcBindColumnCondEq(K2PgScanDesc ybScan, bool is_hash_key, TupleDesc bind_desc,
 						 AttrNumber attnum, Datum value, bool is_null)
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr ybc_expr = YBCNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr ybc_expr = K2PgNewConstant(ybScan->handle, atttypid, value, is_null);
 
 	if (is_hash_key)
 		HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(ybScan->handle, attnum, ybc_expr),
@@ -185,14 +185,14 @@ void ybcBindColumnCondEq(YbScanDesc ybScan, bool is_hash_key, TupleDesc bind_des
 														ybScan->stmt_owner);
 }
 
-static void ybcBindColumnCondBetween(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
+static void ybcBindColumnCondBetween(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
                                      bool start_valid, Datum value, bool end_valid, Datum value_end)
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr ybc_expr = start_valid ? YBCNewConstant(ybScan->handle, atttypid, value,
+	K2PgExpr ybc_expr = start_valid ? K2PgNewConstant(ybScan->handle, atttypid, value,
       false /* isnull */) : NULL;
-	K2PgExpr ybc_expr_end = end_valid ? YBCNewConstant(ybScan->handle, atttypid, value_end,
+	K2PgExpr ybc_expr_end = end_valid ? K2PgNewConstant(ybScan->handle, atttypid, value_end,
       false /* isnull */) : NULL;
 
   HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondBetween(ybScan->handle, attnum, ybc_expr,
@@ -204,7 +204,7 @@ static void ybcBindColumnCondBetween(YbScanDesc ybScan, TupleDesc bind_desc, Att
 /*
  * Bind an array of scan keys for a column.
  */
-static void ybcBindColumnCondIn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
+static void ybcBindColumnCondIn(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
                                 int nvalues, Datum *values)
 {
 	Oid	atttypid = ybc_get_atttypid(bind_desc, attnum);
@@ -216,7 +216,7 @@ static void ybcBindColumnCondIn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumb
 		 * getting here (relying on btree/lsm operators being strict).
 		 * So we can safely set is_null to false for all options left here.
 		 */
-		ybc_exprs[i] = YBCNewConstant(ybScan->handle, atttypid, values[i], false /* is_null */);
+		ybc_exprs[i] = K2PgNewConstant(ybScan->handle, atttypid, values[i], false /* is_null */);
 	}
 
 	HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondIn(ybScan->handle, attnum, nvalues, ybc_exprs),
@@ -227,7 +227,7 @@ static void ybcBindColumnCondIn(YbScanDesc ybScan, TupleDesc bind_desc, AttrNumb
 /*
  * Add a target column.
  */
-static void ybcAddTargetColumn(YbScanDesc ybScan, AttrNumber attnum)
+static void ybcAddTargetColumn(K2PgScanDesc ybScan, AttrNumber attnum)
 {
 	/* Regular (non-system) attribute. */
 	Oid atttypid = InvalidOid;
@@ -243,13 +243,13 @@ static void ybcAddTargetColumn(YbScanDesc ybScan, AttrNumber attnum)
 	}
 
 	K2PgTypeAttrs type_attrs = { atttypmod };
-	K2PgExpr expr = YBCNewColumnRef(ybScan->handle, attnum, atttypid, &type_attrs);
+	K2PgExpr expr = K2PgNewColumnRef(ybScan->handle, attnum, atttypid, &type_attrs);
 	HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(ybScan->handle, expr),
 													ybScan->handle,
 													ybScan->stmt_owner);
 }
 
-static HeapTuple ybcFetchNextHeapTuple(YbScanDesc ybScan, bool is_forward_scan)
+static HeapTuple ybcFetchNextHeapTuple(K2PgScanDesc ybScan, bool is_forward_scan)
 {
 	HeapTuple tuple    = NULL;
 	bool      has_data = false;
@@ -304,7 +304,7 @@ static HeapTuple ybcFetchNextHeapTuple(YbScanDesc ybScan, bool is_forward_scan)
 	return tuple;
 }
 
-static IndexTuple ybcFetchNextIndexTuple(YbScanDesc ybScan, Relation index, bool is_forward_scan)
+static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bool is_forward_scan)
 {
 	IndexTuple tuple    = NULL;
 	bool       has_data = false;
@@ -407,7 +407,7 @@ static IndexTuple ybcFetchNextIndexTuple(YbScanDesc ybScan, Relation index, bool
  */
 static void
 ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
-				 YbScanDesc ybScan, YbScanPlan scan_plan)
+				 K2PgScanDesc ybScan, YbScanPlan scan_plan)
 {
 	int i;
 	memset(scan_plan, 0, sizeof(*scan_plan));
@@ -649,7 +649,7 @@ static int int_compar_cb(const void *v1, const void *v2)
 /* Use the scan-descriptor and scan-plan to setup scan key for filtering */
 static void	ybcSetupScanKeys(Relation relation,
 							 Relation index,
-							 YbScanDesc ybScan,
+							 K2PgScanDesc ybScan,
 							 YbScanPlan scan_plan)
 {
 	/*
@@ -733,7 +733,7 @@ static void	ybcSetupScanKeys(Relation relation,
 /* Use the scan-descriptor and scan-plan to setup binds for the queryplan */
 static void ybcBindScanKeys(Relation relation,
 							Relation index,
-							YbScanDesc ybScan,
+							K2PgScanDesc ybScan,
 							YbScanPlan scan_plan) {
 	Oid		dboid    = K2PgGetDatabaseOid(relation);
 	Oid		relid    = RelationGetRelid(relation);
@@ -1012,7 +1012,7 @@ static void ybcBindScanKeys(Relation relation,
 /* Setup the targets */
 static void ybcSetupTargets(Relation relation,
 														Relation index,
-														YbScanDesc ybScan,
+														K2PgScanDesc ybScan,
 														YbScanPlan scan_plan) {
 	if (scan_plan->target_relation->rd_rel->relhasoids)
 		ybcAddTargetColumn(ybScan, ObjectIdAttributeNumber);
@@ -1070,8 +1070,8 @@ static void ybcSetupTargets(Relation relation,
  * - If "xs_want_itup" is true, Postgres layer is expecting an IndexTuple that has ybctid to
  *   identify the desired row.
  */
-YbScanDesc
-ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
+K2PgScanDesc
+k2pgBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
 {
 	if (nkeys > K2PG_MAX_SCAN_KEYS)
 		ereport(ERROR,
@@ -1080,7 +1080,7 @@ ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, Sc
 						K2PG_MAX_SCAN_KEYS)));
 
 	/* Set up YugaByte scan description */
-	YbScanDesc ybScan = (YbScanDesc) palloc0(sizeof(YbScanDescData));
+	K2PgScanDesc ybScan = (K2PgScanDesc) palloc0(sizeof(K2PgScanDescData));
 	ybScan->key   = key;
 	ybScan->nkeys = nkeys;
 	ybScan->exec_params = NULL;
@@ -1122,7 +1122,7 @@ ybcBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, Sc
 	return ybScan;
 }
 
-void ybcEndScan(YbScanDesc ybScan)
+void k2pgEndScan(K2PgScanDesc ybScan)
 {
 	if (ybScan->handle)
 	{
@@ -1245,7 +1245,7 @@ indextuple_matches_key(IndexTuple tup,
 	return true;
 }
 
-HeapTuple ybc_getnext_heaptuple(YbScanDesc ybScan, bool is_forward_scan, bool *recheck)
+HeapTuple k2pg_getnext_heaptuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck)
 {
 	int         nkeys    = ybScan->nkeys;
 	ScanKey     key      = ybScan->key;
@@ -1267,7 +1267,7 @@ HeapTuple ybc_getnext_heaptuple(YbScanDesc ybScan, bool is_forward_scan, bool *r
 	return NULL;
 }
 
-IndexTuple ybc_getnext_indextuple(YbScanDesc ybScan, bool is_forward_scan, bool *recheck)
+IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck)
 {
 	int         nkeys    = ybScan->nkeys;
 	ScanKey     key      = ybScan->key;
@@ -1290,7 +1290,7 @@ IndexTuple ybc_getnext_indextuple(YbScanDesc ybScan, bool is_forward_scan, bool 
 	return NULL;
 }
 
-SysScanDesc ybc_systable_beginscan(Relation relation,
+SysScanDesc k2pg_systable_beginscan(Relation relation,
                                    Oid indexId,
                                    bool indexOK,
                                    Snapshot snapshot,
@@ -1339,7 +1339,7 @@ SysScanDesc ybc_systable_beginscan(Relation relation,
 		}
 	}
 
-	YbScanDesc ybScan = ybcBeginScan(relation, index, false /* xs_want_itup */, nkeys, key);
+	K2PgScanDesc ybScan = k2pgBeginScan(relation, index, false /* xs_want_itup */, nkeys, key);
 
 	/* Set up Postgres sys table scan description */
 	SysScanDesc scan_desc = (SysScanDesc) palloc0(sizeof(SysScanDescData));
@@ -1355,13 +1355,13 @@ SysScanDesc ybc_systable_beginscan(Relation relation,
 	return scan_desc;
 }
 
-HeapTuple ybc_systable_getnext(SysScanDesc scan_desc)
+HeapTuple k2pg_systable_getnext(SysScanDesc scan_desc)
 {
 	bool recheck = false;
 
 	Assert(PointerIsValid(scan_desc->ybscan));
 
-	HeapTuple tuple = ybc_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
+	HeapTuple tuple = k2pg_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
 											&recheck);
 
 	Assert(!recheck);
@@ -1370,20 +1370,20 @@ HeapTuple ybc_systable_getnext(SysScanDesc scan_desc)
 }
 
 
-void ybc_systable_endscan(SysScanDesc scan_desc)
+void k2pg_systable_endscan(SysScanDesc scan_desc)
 {
 	Assert(PointerIsValid(scan_desc->ybscan));
-	ybcEndScan(scan_desc->ybscan);
+	k2pgEndScan(scan_desc->ybscan);
 }
 
-HeapScanDesc ybc_heap_beginscan(Relation relation,
+HeapScanDesc k2pg_heap_beginscan(Relation relation,
                                 Snapshot snapshot,
                                 int nkeys,
                                 ScanKey key,
                                 bool temp_snap)
 {
 	/* Restart should not be prevented if operation caused by system read of system table. */
-	YbScanDesc ybScan = ybcBeginScan(relation, NULL /* index */, false /* xs_want_itup */,
+	K2PgScanDesc ybScan = k2pgBeginScan(relation, NULL /* index */, false /* xs_want_itup */,
 	                                 nkeys, key);
 
 	/* Set up Postgres sys table scan description */
@@ -1397,13 +1397,13 @@ HeapScanDesc ybc_heap_beginscan(Relation relation,
 	return scan_desc;
 }
 
-HeapTuple ybc_heap_getnext(HeapScanDesc scan_desc)
+HeapTuple k2pg_heap_getnext(HeapScanDesc scan_desc)
 {
 	bool recheck = false;
 
 	Assert(PointerIsValid(scan_desc->ybscan));
 
-	HeapTuple tuple = ybc_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
+	HeapTuple tuple = k2pg_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
 											&recheck);
 
 	Assert(!recheck);
@@ -1411,10 +1411,10 @@ HeapTuple ybc_heap_getnext(HeapScanDesc scan_desc)
 	return tuple;
 }
 
-void ybc_heap_endscan(HeapScanDesc scan_desc)
+void k2pg_heap_endscan(HeapScanDesc scan_desc)
 {
 	Assert(PointerIsValid(scan_desc->ybscan));
-	ybcEndScan(scan_desc->ybscan);
+	k2pgEndScan(scan_desc->ybscan);
 	if (scan_desc->rs_temp_snap)
 		UnregisterSnapshot(scan_desc->rs_snapshot);
 	pfree(scan_desc);
@@ -1422,7 +1422,7 @@ void ybc_heap_endscan(HeapScanDesc scan_desc)
 
 /* --------------------------------------------------------------------------------------------- */
 
-void ybcCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
+void k2pgCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 					 bool is_backwards_scan, bool is_uncovered_idx_scan,
 					 Cost *startup_cost, Cost *total_cost)
 {
@@ -1437,11 +1437,11 @@ void ybcCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 	Cost k2pg_per_tuple_cost_factor = 10;
 	if (is_backwards_scan)
 	{
-		k2pg_per_tuple_cost_factor *= YBC_BACKWARDS_SCAN_COST_FACTOR;
+		k2pg_per_tuple_cost_factor *= K2PG_BACKWARDS_SCAN_COST_FACTOR;
 	}
 	if (is_uncovered_idx_scan)
 	{
-		k2pg_per_tuple_cost_factor *= YBC_UNCOVERED_INDEX_COST_FACTOR;
+		k2pg_per_tuple_cost_factor *= K2PG_UNCOVERED_INDEX_COST_FACTOR;
 	}
 
 	Cost cost_per_tuple = cpu_tuple_cost * k2pg_per_tuple_cost_factor +
@@ -1468,7 +1468,7 @@ static double ybcIndexEvalClauseSelectivity(Bitmapset *qual_cols,
 	 */
 	if (bms_is_empty(qual_cols) || !bms_is_subset(hash_key, qual_cols))
 	{
-		return YBC_FULL_SCAN_SELECTIVITY;
+		return K2PG_FULL_SCAN_SELECTIVITY;
 	}
 
 	/*
@@ -1478,14 +1478,14 @@ static double ybcIndexEvalClauseSelectivity(Bitmapset *qual_cols,
 	if (bms_is_subset(primary_key, qual_cols))
 	{
 		/* For unique indexes full key guarantees single row. */
-		return is_unique_idx ? YBC_SINGLE_ROW_SELECTIVITY
-						     : YBC_SINGLE_KEY_SELECTIVITY;
+		return is_unique_idx ? K2PG_SINGLE_ROW_SELECTIVITY
+						     : K2PG_SINGLE_KEY_SELECTIVITY;
 	}
 
-	return YBC_HASH_SCAN_SELECTIVITY;
+	return K2PG_HASH_SCAN_SELECTIVITY;
 }
 
-void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
+void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 						  Cost *startup_cost, Cost *total_cost)
 {
 	Relation	index = RelationIdGetRelation(path->indexinfo->indexoid);
@@ -1571,10 +1571,10 @@ void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	 */
 	if (is_partial_idx)
 	{
-		*selectivity *= YBC_PARTIAL_IDX_PRED_SELECTIVITY;
+		*selectivity *= K2PG_PARTIAL_IDX_PRED_SELECTIVITY;
 	}
 
-	ybcCostEstimate(baserel, *selectivity, is_backwards_scan,
+	k2pgCostEstimate(baserel, *selectivity, is_backwards_scan,
 	                is_uncovered_idx_scan, startup_cost, total_cost);
 
 	/*
@@ -1600,7 +1600,7 @@ void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	RelationClose(index);
 }
 
-HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
+HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 {
 	K2PgStatement ybc_stmt;
 	TupleDesc      tupdesc = RelationGetDescr(relation);
@@ -1611,7 +1611,7 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 																&ybc_stmt));
 
 	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = YBCNewConstant(ybc_stmt,
+	K2PgExpr ybctid_expr = K2PgNewConstant(ybc_stmt,
 										   BYTEAOID,
 										   ybctid,
 										   false);
@@ -1623,7 +1623,7 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 	if (RelationGetForm(relation)->relhasoids)
 	{
 		K2PgTypeAttrs type_attrs = { 0 };
-		K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, ObjectIdAttributeNumber, InvalidOid,
+		K2PgExpr   expr = K2PgNewColumnRef(ybc_stmt, ObjectIdAttributeNumber, InvalidOid,
 										   &type_attrs);
 		HandleK2PgStatus(PgGate_DmlAppendTarget(ybc_stmt, expr));
 	}
@@ -1631,11 +1631,11 @@ HeapTuple YBCFetchTuple(Relation relation, Datum ybctid)
 	{
 		Form_pg_attribute att = TupleDescAttr(tupdesc, attnum - 1);
 		K2PgTypeAttrs type_attrs = { att->atttypmod };
-		K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, attnum, att->atttypid, &type_attrs);
+		K2PgExpr   expr = K2PgNewColumnRef(ybc_stmt, attnum, att->atttypid, &type_attrs);
 		HandleK2PgStatus(PgGate_DmlAppendTarget(ybc_stmt, expr));
 	}
 	K2PgTypeAttrs type_attrs = { 0 };
-	K2PgExpr   expr = YBCNewColumnRef(ybc_stmt, YBTupleIdAttributeNumber, InvalidOid,
+	K2PgExpr   expr = K2PgNewColumnRef(ybc_stmt, YBTupleIdAttributeNumber, InvalidOid,
 									   &type_attrs);
 	HandleK2PgStatus(PgGate_DmlAppendTarget(ybc_stmt, expr));
 

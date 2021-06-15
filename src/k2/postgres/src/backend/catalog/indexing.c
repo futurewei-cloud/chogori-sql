@@ -339,7 +339,7 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 		{
 			if (tup->t_ybctid)
 			{
-				oldtup = YBCFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
@@ -385,7 +385,7 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 		{
 			if (tup->t_ybctid)
 			{
-				oldtup = YBCFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else

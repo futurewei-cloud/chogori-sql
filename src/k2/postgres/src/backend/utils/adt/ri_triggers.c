@@ -2728,7 +2728,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		Oid	type_id = (attnums[i] > 0) ?
 			TupleDescAttr(fk_rel->rd_att, attnums[i] - 1)->atttypid : InvalidOid;
 
-		next_attr->type_entity = YBCDataTypeFromOidMod(attnums[i], type_id);
+		next_attr->type_entity = K2PgDataTypeFromOidMod(attnums[i], type_id);
 		next_attr->datum = heap_getattr(tup, attnums[i], tupdesc, &next_attr->is_null);
 
 		++next_attr;
@@ -2739,7 +2739,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		/* Reference key is based on unique index, fill in YBUniqueIdxKeySuffixAttributeNumber */
 		col = bms_next_member(pkey, col);
 		next_attr->attr_num = col + minattr;
-		next_attr->type_entity = YBCDataTypeFromOidMod(YBUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
+		next_attr->type_entity = K2PgDataTypeFromOidMod(YBUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
 
 		/*
 		 * Since foreign key checks are only done for non-null columns,
@@ -2750,7 +2750,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 
 	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
 
-	const K2PgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
+	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
 	type_entity->datum_to_k2pg(tuple_id, value, bytes);
 
 	pfree(attrs);

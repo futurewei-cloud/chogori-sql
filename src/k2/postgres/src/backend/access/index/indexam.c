@@ -642,7 +642,7 @@ index_fetch_heap(IndexScanDesc scan)
 	{
 		if (scan->xs_hitup != 0)
 			return scan->xs_hitup;
-		return YBCFetchTuple(scan->heapRelation, scan->xs_ctup.t_ybctid);
+		return K2PgFetchTuple(scan->heapRelation, scan->xs_ctup.t_ybctid);
 	}
 
 	ItemPointer tid = &scan->xs_ctup.t_self;

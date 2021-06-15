@@ -2477,7 +2477,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 	mtstate->mt_plans = (PlanState **) palloc0(sizeof(PlanState *) * nplans);
 	mtstate->resultRelInfo = estate->es_result_relations + node->resultRelIndex;
-	mtstate->k2pg_mt_is_single_row_update_or_delete = YBCIsSingleRowUpdateOrDelete(node);
+	mtstate->k2pg_mt_is_single_row_update_or_delete = K2PgIsSingleRowUpdateOrDelete(node);
 
 	/* If modifying a partitioned table, initialize the root table info */
 	if (node->rootResultRelIndex >= 0)

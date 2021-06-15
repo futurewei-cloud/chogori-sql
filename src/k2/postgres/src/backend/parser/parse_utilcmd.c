@@ -864,7 +864,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 }
 
 static void
-YBCheckDeferrableConstraint(CreateStmtContext *cxt, Constraint *constraint)
+K2PgCheckDeferrableConstraint(CreateStmtContext *cxt, Constraint *constraint)
 {
 	if (!constraint->deferrable || cxt->relation->relpersistence == RELPERSISTENCE_TEMP)
 		return;
@@ -992,7 +992,7 @@ transformTableConstraint(CreateStmtContext *cxt, Constraint *constraint)
 	}
 
 	if (IsK2PgEnabled())
-		YBCheckDeferrableConstraint(cxt, constraint);
+		K2PgCheckDeferrableConstraint(cxt, constraint);
 }
 
 /*

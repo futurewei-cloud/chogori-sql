@@ -3919,7 +3919,7 @@ static bool k2pg_check_retry_allowed(const char *query_string)
 	        strncmp(command_tag, "UPDATE", 6) == 0);
 }
 
-static void YBCheckSharedCatalogCacheVersion() {
+static void K2PgCheckSharedCatalogCacheVersion() {
 	/*
 	 * We cannot refresh the cache if we are already inside a transaction, so don't
 	 * bother checking shared memory.
@@ -4818,7 +4818,7 @@ PostgresMain(int argc, char *argv[],
 			continue;
 
 		if (IsK2PgEnabled()) {
-			YBCheckSharedCatalogCacheVersion();
+			K2PgCheckSharedCatalogCacheVersion();
 		}
 
 		switch (firstchar)

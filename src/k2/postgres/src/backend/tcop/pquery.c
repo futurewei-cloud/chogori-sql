@@ -1241,7 +1241,7 @@ PortalRunMulti(Portal portal,
 		if (!IsTransactionBlock() && list_length(portal->stmts) == 1)
 		{
 			PlannedStmt *pstmt = linitial_node(PlannedStmt, portal->stmts);
-			is_single_row_modify_txn = YBCIsSingleRowModify(pstmt);
+			is_single_row_modify_txn = K2PgIsSingleRowModify(pstmt);
 		}
 	}
 

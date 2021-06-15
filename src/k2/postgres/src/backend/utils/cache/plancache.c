@@ -1057,7 +1057,7 @@ choose_custom_plan(CachedPlanSource *plansource, ParamListInfo boundParams)
 	if (plansource->gplan && list_length(plansource->gplan->stmt_list)) {
 		PlannedStmt *pstmt =
 			linitial_node(PlannedStmt, plansource->gplan->stmt_list);
-		if (YBCIsSingleRowModify(pstmt)) {
+		if (K2PgIsSingleRowModify(pstmt)) {
 			return true;
 		}
 	}

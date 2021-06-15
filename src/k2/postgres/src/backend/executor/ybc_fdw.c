@@ -1101,7 +1101,7 @@ K2PgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 	const K2PgTypeEntity *type_ent = K2PgFindTypeEntity(BYTEAOID);
 	char *opr_name = NULL;
 
-    // YBCPgEpxr and FDWOprCond separate column refs and constant literals without keeping the
+    // K2PgEpxr and FDWOprCond separate column refs and constant literals without keeping the
     // structure of the expression, so we need to switch the direction of the comparison if the
     // column reference was not first in the original expression.
 	switch(get_oprrest(opr_cond->opno)) {
@@ -1145,9 +1145,9 @@ K2PgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 
 	PgGate_NewOperator(fdw_state->handle,  opr_name, type_ent, &opr_expr);
 	K2PgTypeAttrs ref_type_attrs = { opr_cond->ref->atttypmod};
-	K2PgExpr col_ref = YBCNewColumnRef(fdw_state->handle, opr_cond->ref->attr_num, opr_cond->ref->attr_typid, &ref_type_attrs);
+	K2PgExpr col_ref = K2PgNewColumnRef(fdw_state->handle, opr_cond->ref->attr_num, opr_cond->ref->attr_typid, &ref_type_attrs);
 	PgGate_OperatorAppendArg(opr_expr, col_ref);
-	K2PgExpr val = YBCNewConstant(fdw_state->handle, opr_cond->val->atttypid, opr_cond->val->value, opr_cond->val->is_null);
+	K2PgExpr val = K2PgNewConstant(fdw_state->handle, opr_cond->val->atttypid, opr_cond->val->value, opr_cond->val->is_null);
 	PgGate_OperatorAppendArg(opr_expr, val);
 	return opr_expr;
 }
@@ -1242,12 +1242,12 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	fdw_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
 
 	/* Set the estimate for the total number of rows (tuples) in this table. */
-	baserel->tuples = YBC_DEFAULT_NUM_ROWS;
+	baserel->tuples = K2PG_DEFAULT_NUM_ROWS;
 
 	/*
 	 * Initialize the estimate for the number of rows returned by this query.
 	 * This does not yet take into account the restriction clauses, but it will
-	 * be updated later by ybcIndexCostEstimate once it inspects the clauses.
+	 * be updated later by k2pgIndexCostEstimate once it inspects the clauses.
 	 */
 	baserel->rows = baserel->tuples;
 
@@ -1290,7 +1290,7 @@ ybcGetForeignPaths(PlannerInfo *root,
 	Cost total_cost;
 
 	/* Estimate costs */
-	ybcCostEstimate(baserel, YBC_FULL_SCAN_SELECTIVITY,
+	k2pgCostEstimate(baserel, K2PG_FULL_SCAN_SELECTIVITY,
 	                false /* is_backwards scan */,
 	                false /* is_uncovered_idx_scan */,
 	                &startup_cost, &total_cost);
@@ -1561,7 +1561,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 			}
 
 			K2PgTypeAttrs type_attrs = {attr_typmod};
-			K2PgExpr      expr       = YBCNewColumnRef(ybc_state->handle,
+			K2PgExpr      expr       = K2PgNewColumnRef(ybc_state->handle,
 														target->resno,
 														attr_typid,
 														&type_attrs);
@@ -1588,7 +1588,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 				}
 
 				K2PgTypeAttrs type_attrs = { TupleDescAttr(tupdesc, i)->atttypmod };
-				K2PgExpr      expr       = YBCNewColumnRef(ybc_state->handle,
+				K2PgExpr      expr       = K2PgNewColumnRef(ybc_state->handle,
 															i + 1,
 															TupleDescAttr(tupdesc, i)->atttypid,
 															&type_attrs);
@@ -1669,7 +1669,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 						Form_pg_attribute attr = TupleDescAttr(tupdesc, attno - 1);
 						K2PgTypeAttrs type_attrs = {attr->atttypmod};
 
-						K2PgExpr arg = YBCNewColumnRef(ybc_state->handle,
+						K2PgExpr arg = K2PgNewColumnRef(ybc_state->handle,
 														attno,
 														attr->atttypid,
 														&type_attrs);

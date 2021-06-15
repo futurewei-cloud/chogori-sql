@@ -341,7 +341,7 @@ systable_beginscan(Relation heapRelation,
 
 	if (IsK2PgEnabled())
 	{
-		return ybc_systable_beginscan(heapRelation,
+		return k2pg_systable_beginscan(heapRelation,
 		                              indexId,
 		                              indexOK,
 		                              snapshot,
@@ -434,7 +434,7 @@ systable_getnext(SysScanDesc sysscan)
 
 	if (IsK2PgEnabled())
 	{
-		return ybc_systable_getnext(sysscan);
+		return k2pg_systable_getnext(sysscan);
 	}
 
 	if (sysscan->irel)
@@ -520,7 +520,7 @@ systable_endscan(SysScanDesc sysscan)
 {
 	if (IsK2PgEnabled())
 	{
-		return ybc_systable_endscan(sysscan);
+		return k2pg_systable_endscan(sysscan);
 	}
 
 	if (sysscan->irel)

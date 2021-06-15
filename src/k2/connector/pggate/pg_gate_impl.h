@@ -81,7 +81,7 @@ using k2pg::sql::catalog::SqlCatalogManager;
 // Implements support for CAPI.
 class PgGateApiImpl {
   public:
-  PgGateApiImpl(const K2PgTypeEntity *YBCDataTypeTable, int count, K2PgCallbacks pg_callbacks);
+  PgGateApiImpl(const K2PgTypeEntity *k2PgDataTypeTable, int count, K2PgCallbacks pg_callbacks);
   virtual ~PgGateApiImpl();
 
  // Initialize ENV within which PGSQL calls will be executed.

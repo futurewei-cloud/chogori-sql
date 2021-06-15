@@ -78,7 +78,7 @@ typedef struct HeapScanDescData
 	int			rs_cindex;		/* current tuple's index in vistuples */
 	int			rs_ntuples;		/* number of visible tuples on page */
 	OffsetNumber rs_vistuples[MaxHeapTuplesPerPage];	/* their offsets */
-	YbScanDesc	ybscan;			/* only valid in yb-scan case */
+	K2PgScanDesc	ybscan;			/* only valid in yb-scan case */
 }			HeapScanDescData;
 
 /*
@@ -178,7 +178,7 @@ typedef struct SysScanDescData
 	HeapScanDesc scan;			/* only valid in heap-scan case */
 	IndexScanDesc iscan;		/* only valid in index-scan case */
 	Snapshot	snapshot;		/* snapshot to unregister at end of scan */
-	YbScanDesc	ybscan;			/* only valid in yb-scan case */
+	K2PgScanDesc	ybscan;			/* only valid in yb-scan case */
 }			SysScanDescData;
 
 #endif							/* RELSCAN_H */

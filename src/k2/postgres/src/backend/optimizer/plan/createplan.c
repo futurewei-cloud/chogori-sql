@@ -2647,7 +2647,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 
 			/* Verify expression is supported. */
 			bool needs_pushdown = false;
-			if (!YBCIsSupportedSingleRowModifyAssignExpr(tle->expr, tle->resno, &needs_pushdown))
+			if (!K2PgIsSupportedSingleRowModifyAssignExpr(tle->expr, tle->resno, &needs_pushdown))
 			{
 				RelationClose(relation);
 				return false;
@@ -2761,7 +2761,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 		var = castNode(Var, get_leftop(clause));
 
 		/* Verify expression is supported. */
-		if (!YBCIsSupportedSingleRowModifyWhereExpr(expr))
+		if (!K2PgIsSupportedSingleRowModifyWhereExpr(expr))
 		{
 			return false;
 		}
@@ -2808,7 +2808,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	/*
 	 * Verify all YB primary keys are specified in the WHERE clause.
 	 */
-	if (!YBCAllPrimaryKeysProvided(relid, primary_key_attrs))
+	if (!K2PgAllPrimaryKeysProvided(relid, primary_key_attrs))
 	{
 		return false;
 	}

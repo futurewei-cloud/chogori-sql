@@ -10,8 +10,8 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-// This module contains C definitions for all YugaByte structures that are used to exhange data
-// and metadata between Postgres and YBClient libraries.
+// This module contains C definitions for all K2 PG structures that are used to exchange data
+// and metadata between Postgres and K2 PG Gate libraries.
 #pragma once
 
 #include <stddef.h>

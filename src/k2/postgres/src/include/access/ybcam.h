@@ -40,13 +40,13 @@
 /*
  * SCAN PLAN - Two structures.
  * - "struct YbScanPlanData" contains variables that are used during preparing statement.
- * - "struct YbScanDescData" contains variables that are used thru out the life of the statement.
+ * - "struct K2PgScanDescData" contains variables that are used thru out the life of the statement.
  *
- * YugaByte ScanPlan has two different lists.
+ * K2PG ScanPlan has two different lists.
  *   Binding list:
  *   - This list is used to receive the user-given data for key columns (WHERE clause).
  *   - "sk_attno" is the INDEX's attnum for the key columns that are used to query data.
- *     In YugaByte, primary index attnum is the same as column attnum in the UserTable.
+ *     In K2PG, primary index attnum is the same as column attnum in the UserTable.
  *   - "bind_desc" is the description of the index columns (count, types, ...).
  *   - The bind lists don't need to be included in the description as they are only needed
  *     during setup.
@@ -56,7 +56,7 @@
  *   - The target fields are used for double-checking key values after selecting data
  *     from database. It should be removed once we no longer need to double-check the key values.
  */
-typedef struct YbScanDescData
+typedef struct K2PgScanDescData
 {
 #define K2PG_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
 
@@ -81,97 +81,97 @@ typedef struct YbScanDescData
 
 	/*
 	 * Kept execution control to pass it to PgGate.
-	 * - When YBC-index-scan layer is called by Postgres IndexScan functions, it will read the
+	 * - When K2PG-index-scan layer is called by Postgres IndexScan functions, it will read the
 	 *   "k2pg_exec_params" from Postgres IndexScan and kept the info in this attribute.
 	 *
-	 * - YBC-index-scan in-turn will passes this attribute to PgGate to control the index-scan
+	 * - K2PG-index-scan in-turn will passes this attribute to PgGate to control the index-scan
 	 *   execution in YB tablet server.
 	 */
 	K2PgExecParameters *exec_params;
-} YbScanDescData;
+} K2PgScanDescData;
 
-typedef struct YbScanDescData *YbScanDesc;
+typedef struct K2PgScanDescData *K2PgScanDesc;
 
 /*
  * Access to YB-stored system catalogs (mirroring API from genam.c)
  * We ignore the index id and always do a regular YugaByte scan (Postgres
  * would do either heap scan or index scan depending on the params).
  */
-extern SysScanDesc ybc_systable_beginscan(Relation relation,
+extern SysScanDesc k2pg_systable_beginscan(Relation relation,
 										  Oid indexId,
 										  bool indexOK,
 										  Snapshot snapshot,
 										  int nkeys,
 										  ScanKey key);
-extern HeapTuple ybc_systable_getnext(SysScanDesc scanDesc);
-extern void ybc_systable_endscan(SysScanDesc scan_desc);
+extern HeapTuple k2pg_systable_getnext(SysScanDesc scanDesc);
+extern void k2pg_systable_endscan(SysScanDesc scan_desc);
 
 /*
- * Access to YB-stored system catalogs (mirroring API from heapam.c)
- * We will do a YugaByte scan instead of a heap scan.
+ * Access to K2-stored system catalogs (mirroring API from heapam.c)
+ * We will do a K2 scan instead of a heap scan.
  */
-extern HeapScanDesc ybc_heap_beginscan(Relation relation,
+extern HeapScanDesc k2pg_heap_beginscan(Relation relation,
                                        Snapshot snapshot,
                                        int nkeys,
                                        ScanKey key,
 									   bool temp_snap);
-extern HeapTuple ybc_heap_getnext(HeapScanDesc scanDesc);
-extern void ybc_heap_endscan(HeapScanDesc scanDesc);
+extern HeapTuple k2pg_heap_getnext(HeapScanDesc scanDesc);
+extern void k2pg_heap_endscan(HeapScanDesc scanDesc);
 
 /*
  * The ybc_idx API is used to process the following SELECT.
  *   SELECT data FROM heapRelation WHERE rowid IN
  *     ( SELECT rowid FROM indexRelation WHERE key = given_value )
  */
-YbScanDesc ybcBeginScan(Relation relation,
+K2PgScanDesc k2pgBeginScan(Relation relation,
                         Relation index,
                         bool xs_want_itup,
                         int nkeys,
                         ScanKey key);
 
-HeapTuple ybc_getnext_heaptuple(YbScanDesc ybScan, bool is_forward_scan, bool *recheck);
-IndexTuple ybc_getnext_indextuple(YbScanDesc ybScan, bool is_forward_scan, bool *recheck);
+HeapTuple k2pg_getnext_heaptuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck);
+IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck);
 
-void ybcEndScan(YbScanDesc ybScan);
+void k2pgEndScan(K2PgScanDesc ybScan);
 
 /* Number of rows assumed for a YB table if no size estimates exist */
-#define YBC_DEFAULT_NUM_ROWS  1000
+#define K2PG_DEFAULT_NUM_ROWS  1000
 
-#define YBC_SINGLE_ROW_SELECTIVITY	(1.0 / YBC_DEFAULT_NUM_ROWS)
-#define YBC_SINGLE_KEY_SELECTIVITY	(10.0 / YBC_DEFAULT_NUM_ROWS)
-#define YBC_HASH_SCAN_SELECTIVITY	(100.0 / YBC_DEFAULT_NUM_ROWS)
-#define YBC_FULL_SCAN_SELECTIVITY	1.0
+#define K2PG_SINGLE_ROW_SELECTIVITY	(1.0 / K2PG_DEFAULT_NUM_ROWS)
+#define K2PG_SINGLE_KEY_SELECTIVITY	(10.0 / K2PG_DEFAULT_NUM_ROWS)
+#define K2PG_HASH_SCAN_SELECTIVITY	(100.0 / K2PG_DEFAULT_NUM_ROWS)
+#define K2PG_FULL_SCAN_SELECTIVITY	1.0
 
 /*
  * For a partial index the index predicate will filter away some rows.
  * TODO: Evaluate this based on the predicate itself and table stats.
  */
-#define YBC_PARTIAL_IDX_PRED_SELECTIVITY 0.8
+#define K2PG_PARTIAL_IDX_PRED_SELECTIVITY 0.8
 
 /*
  * Backwards scans are more expensive in DocDB.
  * TODO: the ysql_backward_prefetch_scale_factor gflag is correlated to this
  * but is too low (1/16 implying 16x slower) to be used here.
  */
-#define YBC_BACKWARDS_SCAN_COST_FACTOR 1.1
+#define K2PG_BACKWARDS_SCAN_COST_FACTOR 1.1
 
 /*
  * Uncovered indexes will require extra RPCs to the main table to retrieve the
  * values for all required columns. These requests are now batched in PgGate
  * so the extra cost should be relatively low in general.
  */
-#define YBC_UNCOVERED_INDEX_COST_FACTOR 1.1
+#define K2PG_UNCOVERED_INDEX_COST_FACTOR 1.1
 
-extern void ybcCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
+extern void k2pgCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
                             bool is_backwards_scan, bool is_uncovered_idx_scan,
 							Cost *startup_cost, Cost *total_cost);
-extern void ybcIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
+extern void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 								 Cost *startup_cost, Cost *total_cost);
 
 /*
  * Fetch a single tuple by the ybctid.
  */
-extern HeapTuple YBCFetchTuple(Relation relation, Datum ybctid);
+extern HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid);
 
 
 #endif							/* YBCAM_H */

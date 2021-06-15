@@ -235,7 +235,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 			Oid	type_id = (attnum > 0) ?
 					TupleDescAttr(tupleDesc, attnum - 1)->atttypid : InvalidOid;
 
-			next_attr->type_entity = YBCDataTypeFromOidMod(attnum, type_id);
+			next_attr->type_entity = K2PgDataTypeFromOidMod(attnum, type_id);
 			next_attr->datum = heap_getattr(tuple, attnum, tupleDesc, &next_attr->is_null);
 		} else {
 			next_attr->datum = 0;
@@ -253,7 +253,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
  * Bind ybctid to the statement.
  */
 static void K2PgBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
-	K2PgExpr ybc_expr = YBCNewConstant(pg_stmt, BYTEAOID, tuple_id,
+	K2PgExpr ybc_expr = K2PgNewConstant(pg_stmt, BYTEAOID, tuple_id,
 										false /* is_null */);
 	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, ybc_expr));
 }
@@ -369,7 +369,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
 		}
 
 		/* Add the column value to the insert request */
-		K2PgExpr ybc_expr = YBCNewConstant(insert_stmt, type_id, datum, is_null);
+		K2PgExpr ybc_expr = K2PgNewConstant(insert_stmt, type_id, datum, is_null);
 		HandleK2PgStatus(PgGate_DmlBindColumn(insert_stmt, attnum, ybc_expr));
 	}
 
@@ -398,7 +398,7 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
  */
 static void BindColumn(K2PgStatement stmt, int attr_num, Oid type_id, Datum datum, bool is_null)
 {
-  K2PgExpr expr = YBCNewConstant(stmt, type_id, datum, is_null);
+  K2PgExpr expr = K2PgNewConstant(stmt, type_id, datum, is_null);
   HandleK2PgStatus(PgGate_DmlBindColumn(stmt, attr_num, expr));
 }
 
@@ -593,7 +593,7 @@ bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modif
 	}
 
 	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = YBCNewConstant(delete_stmt, BYTEAOID, ybctid,
+	K2PgExpr ybctid_expr = K2PgNewConstant(delete_stmt, BYTEAOID, ybctid,
 										   false /* is_null */);
 	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, ybctid_expr));
 
@@ -680,7 +680,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	}
 
 	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = YBCNewConstant(update_stmt, BYTEAOID, ybctid,
+	K2PgExpr ybctid_expr = K2PgNewConstant(update_stmt, BYTEAOID, ybctid,
 										   false /* is_null */);
 	HandleK2PgStatus(PgGate_DmlBindColumn(update_stmt, YBTupleIdAttributeNumber, ybctid_expr));
 
@@ -719,9 +719,9 @@ bool K2PgExecuteUpdate(Relation rel,
 		{
 			TargetEntry *tle = (TargetEntry *) lfirst(pushdown_lc);
 			Expr *expr = copyObject(tle->expr);
-			YBCExprInstantiateParams(expr, estate->es_param_list_info);
+			K2PgExprInstantiateParams(expr, estate->es_param_list_info);
 
-			K2PgExpr ybc_expr = YBCNewEvalExprCall(update_stmt, expr, attnum, type_id, type_mod);
+			K2PgExpr ybc_expr = K2PgNewEvalExprCall(update_stmt, expr, attnum, type_id, type_mod);
 
 			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
 
@@ -731,7 +731,7 @@ bool K2PgExecuteUpdate(Relation rel,
 		{
 			bool is_null = false;
 			Datum d = heap_getattr(tuple, attnum, tupleDesc, &is_null);
-			K2PgExpr ybc_expr = YBCNewConstant(update_stmt, type_id,
+			K2PgExpr ybc_expr = K2PgNewConstant(update_stmt, type_id,
 												d, is_null);
 
 			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
@@ -774,7 +774,7 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 								  &delete_stmt));
 
 	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = YBCNewConstant(delete_stmt, BYTEAOID, tuple->t_ybctid,
+	K2PgExpr ybctid_expr = K2PgNewConstant(delete_stmt, BYTEAOID, tuple->t_ybctid,
 										   false /* is_null */);
 
 	/* Delete row from foreign key cache */
@@ -829,7 +829,7 @@ void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple
 
 		bool is_null = false;
 		Datum d = heap_getattr(tuple, attnum, tupleDesc, &is_null);
-		K2PgExpr ybc_expr = YBCNewConstant(update_stmt, TupleDescAttr(tupleDesc, idx)->atttypid,
+		K2PgExpr ybc_expr = K2PgNewConstant(update_stmt, TupleDescAttr(tupleDesc, idx)->atttypid,
 											d, is_null);
 		HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
 	}

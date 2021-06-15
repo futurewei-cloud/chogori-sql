@@ -59,7 +59,7 @@ namespace gate {
 
 using k2pg::sql::kPgByteArrayOid;
 
-PgGateApiImpl::PgGateApiImpl(const K2PgTypeEntity *YBCDataTypeArray, int count, K2PgCallbacks callbacks)
+PgGateApiImpl::PgGateApiImpl(const K2PgTypeEntity *k2PgDataTypeArray, int count, K2PgCallbacks callbacks)
     : k2_adapter_(CreateK2Adapter()),
       catalog_manager_(CreateCatalogManager()),
       catalog_client_(CreateCatalogClient()),
@@ -67,7 +67,7 @@ PgGateApiImpl::PgGateApiImpl(const K2PgTypeEntity *YBCDataTypeArray, int count, 
       pg_txn_handler_(new PgTxnHandler(k2_adapter_)) {
   // Setup type mapping.
   for (int idx = 0; idx < count; idx++) {
-    const K2PgTypeEntity *type_entity = &YBCDataTypeArray[idx];
+    const K2PgTypeEntity *type_entity = &k2PgDataTypeArray[idx];
     type_map_[type_entity->type_oid] = type_entity;
   }
   k2_adapter_->Init();

@@ -33,13 +33,13 @@
 #include "pggate/pg_gate_api.h"
 
 // Construct column reference expression.
-extern K2PgExpr YBCNewColumnRef(K2PgStatement ybc_stmt, int16_t attr_num, int attr_typid,
+extern K2PgExpr K2PgNewColumnRef(K2PgStatement ybc_stmt, int16_t attr_num, int attr_typid,
 																 const K2PgTypeAttrs *type_attrs);
 
 // Construct constant expression using the given datatype "type_id" and value "datum".
-extern K2PgExpr YBCNewConstant(K2PgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null);
+extern K2PgExpr K2PgNewConstant(K2PgStatement ybc_stmt, Oid type_id, Datum datum, bool is_null);
 
 // Construct a generic eval_expr call for given a PG Expr and its expected type and attno.
-extern K2PgExpr YBCNewEvalExprCall(K2PgStatement ybc_stmt, Expr *expr, int32_t attno, int32_t type_id, int32_t type_mod);
+extern K2PgExpr K2PgNewEvalExprCall(K2PgStatement ybc_stmt, Expr *expr, int32_t attno, int32_t type_id, int32_t type_mod);
 
 #endif							/* YBCEXPR_H */

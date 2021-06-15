@@ -169,7 +169,6 @@ SqlValue::SqlValue(const K2PgTypeEntity* type_entity, uint64_t datum, bool is_nu
       type_ = ValueType::SLICE;
       if (!is_null) {
         char* plaintext;
-        // Calls YBCDatumToDecimalText in ybctype.c
         type_entity->datum_to_k2pg(datum, &plaintext, nullptr);
         k2pg::Decimal k2pg_decimal(plaintext);
         data_.slice_val_ = k2pg_decimal.EncodeToComparable();

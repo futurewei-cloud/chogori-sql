@@ -25,7 +25,7 @@ extern "C" {
 
 // This must be called exactly once to initialize the YPostgreSQL/SKV gateway API before any other
 // functions in this API are called.
-void PgGate_InitPgGate(const K2PgTypeEntity *YBCDataTypeTable, int count, K2PgCallbacks pg_callbacks);
+void PgGate_InitPgGate(const K2PgTypeEntity *k2PgDataTypeTable, int count, K2PgCallbacks pg_callbacks);
 void PgGate_DestroyPgGate();
 
 // Initialize ENV within which PGSQL calls will be executed.
@@ -35,12 +35,12 @@ K2PgStatus PgGate_DestroyEnv(K2PgEnv pg_env);
 // Initialize a session to process statements that come from the same client connection.
 K2PgStatus PgGate_InitSession(const K2PgEnv pg_env, const char *database_name);
 
-// Initialize YBCPgMemCtx.
+// Initialize K2PgMemCtx.
 // - Postgres uses memory context to hold all of its allocated space. Once all associated operations
 //   are done, the context is destroyed.
 // - There K2Pg objects are bound to Postgres operations. All of these objects' allocated
-//   memory will be held by YBCPgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
-//   Postgres operations are done, associated YugaByte memory context (YBCPgMemCtx) will be
+//   memory will be held by K2PgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
+//   Postgres operations are done, associated YugaByte memory context (K2PgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
 K2PgMemctx PgGate_CreateMemctx();
 K2PgStatus PgGate_DestroyMemctx(K2PgMemctx memctx);

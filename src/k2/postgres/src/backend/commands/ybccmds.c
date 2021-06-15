@@ -140,7 +140,7 @@ static void CreateTableAddColumn(K2PgStatement handle,
 								 bool is_nulls_first)
 {
 	const AttrNumber attnum = att->attnum;
-	const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(attnum,
+	const K2PgTypeEntity *col_type = K2PgDataTypeFromOidMod(attnum,
 															att->atttypid);
 	HandleK2PgStatus(PgGate_CreateTableAddColumn(handle,
 																					 NameStr(att->attname),
@@ -174,7 +174,7 @@ static void CreateTableAddColumns(K2PgStatement handle,
 				Form_pg_attribute att = TupleDescAttr(desc, i);
 				if (strcmp(NameStr(att->attname), index_elem->name) == 0)
 				{
-					if (!YBCDataTypeIsValidForKey(att->atttypid))
+					if (!K2PgDataTypeIsValidForKey(att->atttypid))
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("PRIMARY KEY containing column of type"
@@ -550,12 +550,12 @@ K2PgCreateIndex(const char *indexName,
 		Form_pg_attribute     att         = TupleDescAttr(indexTupleDesc, i);
 		char                  *attname    = NameStr(att->attname);
 		AttrNumber            attnum      = att->attnum;
-		const K2PgTypeEntity *col_type   = YBCDataTypeFromOidMod(attnum, att->atttypid);
+		const K2PgTypeEntity *col_type   = K2PgDataTypeFromOidMod(attnum, att->atttypid);
 		const bool            is_key      = (i < indexInfo->ii_NumIndexKeyAttrs);
 
 		if (is_key)
 		{
-			if (!YBCDataTypeIsValidForKey(att->atttypid))
+			if (!K2PgDataTypeIsValidForKey(att->atttypid))
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("INDEX on column of type '%s' not yet supported",
@@ -619,7 +619,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 				typeTuple = typenameType(NULL, colDef->typeName, &typmod);
 				typeOid = HeapTupleGetOid(typeTuple);
 				order = RelationGetNumberOfAttributes(rel) + col;
-				const K2PgTypeEntity *col_type = YBCDataTypeFromOidMod(order, typeOid);
+				const K2PgTypeEntity *col_type = K2PgDataTypeFromOidMod(order, typeOid);
 
 				HandleK2PgStatus(PgGate_AlterTableAddColumn(handle, colDef->colname,
 																										order, col_type,
