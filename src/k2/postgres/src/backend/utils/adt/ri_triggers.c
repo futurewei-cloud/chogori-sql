@@ -291,7 +291,7 @@ RI_FKey_check(TriggerData *trigdata)
 	}
 
 	/* For YB relations visibility will be handled by DocDB (storage layer). */
-	if (!IsYBRelation(trigdata->tg_relation))
+	if (!IsK2PgRelation(trigdata->tg_relation))
 	{
 		/*
 		* We should not even consider checking the row if it is no longer valid,
@@ -401,7 +401,7 @@ RI_FKey_check(TriggerData *trigdata)
 	/*
 	 * Skip foreign key check if referenced row is present in YB cache.
 	 */
-	if (IsYBRelation(pk_rel))
+	if (IsK2PgRelation(pk_rel))
 	{
 		/*
 		 * Get the referenced index table.
@@ -421,7 +421,7 @@ RI_FKey_check(TriggerData *trigdata)
 			riinfo, new_row, (void **)&tuple_id, &tuple_id_size);
 		RelationClose(idx_rel);
 
-		if (tuple_id != NULL && YBCForeignKeyReferenceExists(ref_table_id, tuple_id, tuple_id_size))
+		if (tuple_id != NULL && PgGate_ForeignKeyReferenceExists(ref_table_id, tuple_id, tuple_id_size))
 		{
 			elog(DEBUG1, "Skipping FK check for table %d, ybctid %s", ref_table_id, tuple_id);
 			heap_close(pk_rel, RowShareLock);
@@ -494,9 +494,9 @@ RI_FKey_check(TriggerData *trigdata)
 	{
 		elog(ERROR, "SPI_finish failed");
 	}
-	else if (IsYBRelation(pk_rel) && tuple_id != NULL)
+	else if (IsK2PgRelation(pk_rel) && tuple_id != NULL)
 	{
-		YBCCacheForeignKeyReference(ref_table_id, tuple_id, tuple_id_size);
+		PgGate_CacheForeignKeyReference(ref_table_id, tuple_id, tuple_id_size);
 		elog(DEBUG1, "Cached foreign key reference: table ID %u, tuple ID %s",
 			 ref_table_id, tuple_id);
 	}
@@ -1949,10 +1949,10 @@ RI_Initial_Check(Trigger *trigger, Relation fk_rel, Relation pk_rel)
 	{
 		int			attno;
 
-		attno = riinfo->pk_attnums[i] - YBGetFirstLowInvalidAttributeNumber(pk_rel);
+		attno = riinfo->pk_attnums[i] - K2PgGetFirstLowInvalidAttributeNumber(pk_rel);
 		pkrte->selectedCols = bms_add_member(pkrte->selectedCols, attno);
 
-		attno = riinfo->fk_attnums[i] - YBGetFirstLowInvalidAttributeNumber(fk_rel);
+		attno = riinfo->fk_attnums[i] - K2PgGetFirstLowInvalidAttributeNumber(fk_rel);
 		fkrte->selectedCols = bms_add_member(fkrte->selectedCols, attno);
 	}
 
@@ -2628,7 +2628,7 @@ ri_PerformCheck(const RI_ConstraintInfo *riinfo,
 	 * that SPI_execute_snapshot will register the snapshots, so we don't need
 	 * to bother here.
 	 */
-	if (!IsYBRelation(pk_rel) && IsolationUsesXactSnapshot() && detectNewRows)
+	if (!IsK2PgRelation(pk_rel) && IsolationUsesXactSnapshot() && detectNewRows)
 	{
 		CommandCounterIncrement();	/* be sure all my own work is visible */
 		test_snapshot = GetLatestSnapshot();
@@ -2695,26 +2695,26 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 				const RI_ConstraintInfo *riinfo, HeapTuple tup,
 				void **value, int64_t *bytes)
 {
-	YBCPgStatement ybc_stmt;
-	YBCPgPrepareParameters prepare_params;
+	K2PgStatement k2pg_stmt;
+	K2PgPrepareParameters prepare_params;
 
 	prepare_params.index_oid = RelationGetRelid(idx_rel);
 	prepare_params.index_only_scan = true;
 	prepare_params.use_secondary_index = (RelationGetRelid(idx_rel) == RelationGetRelid(pk_rel)) ?
 			false : true;
 
-	HandleYBStatus(YBCPgNewSelect(
-		YBCGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
+	HandleK2PgStatus(PgGate_NewSelect(
+		K2PgGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &k2pg_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
 	const int16 *attnums = riinfo->fk_attnums;
 	AttrNumber minattr = YBSystemFirstLowInvalidAttributeNumber + 1;
 
-	Bitmapset *pkey = GetFullYBTablePrimaryKey(idx_rel);
+	Bitmapset *pkey = GetFullK2PgTablePrimaryKey(idx_rel);
 	const int nattrs = bms_num_members(pkey);
-	YBCPgAttrValueDescriptor *attrs =
-			(YBCPgAttrValueDescriptor*)palloc(nattrs * sizeof(YBCPgAttrValueDescriptor));
-	YBCPgAttrValueDescriptor *next_attr = attrs;
+	K2PgAttrValueDescriptor *attrs =
+			(K2PgAttrValueDescriptor*)palloc(nattrs * sizeof(K2PgAttrValueDescriptor));
+	K2PgAttrValueDescriptor *next_attr = attrs;
 	uint64_t tuple_id;
 
 	int i;
@@ -2728,7 +2728,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		Oid	type_id = (attnums[i] > 0) ?
 			TupleDescAttr(fk_rel->rd_att, attnums[i] - 1)->atttypid : InvalidOid;
 
-		next_attr->type_entity = YBCDataTypeFromOidMod(attnums[i], type_id);
+		next_attr->type_entity = K2PgDataTypeFromOidMod(attnums[i], type_id);
 		next_attr->datum = heap_getattr(tup, attnums[i], tupdesc, &next_attr->is_null);
 
 		++next_attr;
@@ -2739,7 +2739,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		/* Reference key is based on unique index, fill in YBUniqueIdxKeySuffixAttributeNumber */
 		col = bms_next_member(pkey, col);
 		next_attr->attr_num = col + minattr;
-		next_attr->type_entity = YBCDataTypeFromOidMod(YBUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
+		next_attr->type_entity = K2PgDataTypeFromOidMod(YBUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
 
 		/*
 		 * Since foreign key checks are only done for non-null columns,
@@ -2748,10 +2748,10 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		next_attr->is_null = true;
 	}
 
-	HandleYBStatus(YBCPgDmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(k2pg_stmt, attrs, nattrs, &tuple_id));
 
-	const YBCPgTypeEntity *type_entity = YBCDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
-	type_entity->datum_to_yb(tuple_id, value, bytes);
+	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
+	type_entity->datum_to_k2pg(tuple_id, value, bytes);
 
 	pfree(attrs);
 }

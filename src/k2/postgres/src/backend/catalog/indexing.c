@@ -111,7 +111,7 @@ CatalogIndexInsert(CatalogIndexState indstate, HeapTuple heapTuple)
 		 * No need to update YugaByte primary key which is intrinic part of
 		 * the base table.
 		 */
-		if (IsYugaByteEnabled() && relationDescs[i]->rd_index->indisprimary)
+		if (IsK2PgEnabled() && relationDescs[i]->rd_index->indisprimary)
 			continue;
 
 		IndexInfo  *indexInfo;
@@ -201,7 +201,7 @@ CatalogIndexDelete(CatalogIndexState indstate, HeapTuple heapTuple)
 		 * No need to update YugaByte primary key which is intrinic part of
 		 * the base table.
 		 */
-		if (IsYugaByteEnabled() && relationDescs[i]->rd_index->indisprimary)
+		if (IsK2PgEnabled() && relationDescs[i]->rd_index->indisprimary)
 			continue;
 
 		IndexInfo  *indexInfo;
@@ -263,9 +263,9 @@ CatalogTupleInsert(Relation heapRel, HeapTuple tup)
 	CatalogIndexState indstate;
 	Oid			oid;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		oid = YBCExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
+		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 	}
@@ -296,9 +296,9 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 {
 	Oid			oid;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		oid = YBCExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
+		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 	}
@@ -330,24 +330,24 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 
 	indstate = CatalogOpenIndexes(heapRel);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		HeapTuple	oldtup = NULL;
-		bool		has_indices = YBRelHasSecondaryIndices(heapRel);
+		bool		has_indices = K2PgRelHasSecondaryIndices(heapRel);
 
 		if (has_indices)
 		{
 			if (tup->t_ybctid)
 			{
-				oldtup = YBCFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				YBC_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 
-		YBCUpdateSysCatalogTuple(heapRel, oldtup, tup);
+		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 
@@ -376,24 +376,24 @@ void
 CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 						   CatalogIndexState indstate)
 {
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		HeapTuple	oldtup = NULL;
-		bool		has_indices = YBRelHasSecondaryIndices(heapRel);
+		bool		has_indices = K2PgRelHasSecondaryIndices(heapRel);
 
 		if (has_indices)
 		{
 			if (tup->t_ybctid)
 			{
-				oldtup = YBCFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				YBC_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 
-		YBCUpdateSysCatalogTuple(heapRel, oldtup, tup);
+		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
 		YBSetSysCacheTuple(heapRel, tup);
 
@@ -426,9 +426,9 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 void
 CatalogTupleDelete(Relation heapRel, HeapTuple tup)
 {
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		YBCDeleteSysCatalogTuple(heapRel, tup);
+		K2PgDeleteSysCatalogTuple(heapRel, tup);
 
 		CatalogIndexState indstate = CatalogOpenIndexes(heapRel);
 

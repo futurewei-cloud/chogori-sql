@@ -191,7 +191,7 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 		root->all_baserels = bms_add_member(root->all_baserels, brel->relid);
 	}
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		for (rti = 1; rti < root->simple_rel_array_size; rti++)
 		{
@@ -200,12 +200,12 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 			if (relation != NULL && relation->rtekind == RTE_RELATION)
 			{
 				RangeTblEntry *rte = root->simple_rte_array[rti];
-				if (IsYBRelationById(rte->relid)) {
+				if (IsK2PgRelationById(rte->relid)) {
 					/*
 					 * Set the YugaByte FDW routine because we will use the foreign
 					 * scan API below.
 					 */
-					relation->fdwroutine = (FdwRoutine *) ybc_fdw_handler();
+					relation->fdwroutine = (FdwRoutine *) k2pg_fdw_handler();
 				}
 			}
 		}
@@ -402,7 +402,7 @@ set_rel_size(PlannerInfo *root, RelOptInfo *rel,
 				}
 				else if (rte->tablesample != NULL)
 				{
-					if (IsYBRelationById(rte->relid))
+					if (IsK2PgRelationById(rte->relid))
 					{
 						/* TODO we don't support tablesample queries yet. */
 						ereport(ERROR,
@@ -417,7 +417,7 @@ set_rel_size(PlannerInfo *root, RelOptInfo *rel,
 				else
 				{
 					/* Plain relation */
-					if (IsYBRelationById(rte->relid))
+					if (IsK2PgRelationById(rte->relid))
 					{
 						set_foreign_size(root, rel, rte);
 					}
@@ -502,7 +502,7 @@ set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 				}
 				else if (rte->tablesample != NULL)
 				{
-					if (IsYBRelationById(rte->relid))
+					if (IsK2PgRelationById(rte->relid))
 					{
 						/* TODO we don't support tablesample queries yet. */
 						ereport(ERROR,
@@ -517,7 +517,7 @@ set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 				else
 				{
 					/* Plain relation */
-					if (IsYBRelationById(rte->relid))
+					if (IsK2PgRelationById(rte->relid))
 					{
 						/*
 						 * Using a foreign scan which will use the YB FDW by
@@ -681,7 +681,7 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 					return;
 			}
 
-			if (IsYugaByteEnabled())
+			if (IsK2PgEnabled())
 			{
 				/* If YB scan, disable parallelization for now. */
 				return;

@@ -1588,7 +1588,7 @@ ExecAgg(PlanState *pstate)
 		 *
 		 * Pushdown aggregates to K2 platform if the plan state meets proper conditions.
 		 */
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			pstate->state->k2pg_exec_params.limit_use_default = true;
 			if (node->k2_pushdown_supported)

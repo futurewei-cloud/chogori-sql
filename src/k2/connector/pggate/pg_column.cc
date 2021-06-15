@@ -110,7 +110,7 @@ namespace k2pg
 
     std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(PgStatement *stmt, std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
       if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
-        const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(STRING_TYPE_OID);
+        const K2PgTypeEntity *string_type = K2PgFindTypeEntity(STRING_TYPE_OID);
         std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(row_id));
         bind_var_ = std::make_shared<BindVariable>(index(), pg_const.get());
         // the PgConstant's life cycle in the bind_var should be managed by the statement

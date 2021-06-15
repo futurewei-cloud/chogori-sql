@@ -328,7 +328,7 @@ ExecInsertIndexTuples(TupleTableSlot *slot,
 		 * No need to update YugaByte primary key which is intrinic part of
 		 * the base table.
 		 */
-		if (IsYugaByteEnabled() && indexRelation->rd_index->indisprimary)
+		if (IsK2PgEnabled() && indexRelation->rd_index->indisprimary)
 			continue;
 
 		/* If the index is marked as read-only, ignore it */
@@ -528,7 +528,7 @@ ExecDeleteIndexTuples(Datum ybctid, HeapTuple tuple, EState *estate)
 		 * No need to update YugaByte primary key which is intrinic part of
 		 * the base table.
 		 */
-		if (IsYugaByteEnabled() && indexRelation->rd_index->indisprimary)
+		if (IsK2PgEnabled() && indexRelation->rd_index->indisprimary)
 			continue;
 
 		indexInfo = indexInfoArray[i];
@@ -539,7 +539,7 @@ ExecDeleteIndexTuples(Datum ybctid, HeapTuple tuple, EState *estate)
 		 * If the index is not ready for deletes and index backfill is enabled,
 		 * ignore it
 		 */
-		if (YBCGetDisableIndexBackfill()
+		if (PgGate_GetDisableIndexBackfill()
 				&& !indexRelation->rd_index->indislive)
 			continue;
 		/* If the index is marked as read-only, ignore it */
@@ -923,7 +923,7 @@ retry:
 		 * code block.
 		 * TODO(Mikhail) Verify correctness in YugaByte transaction management for on-conflict.
 		 */
-		if (!IsYugaByteEnabled()) {
+		if (!IsK2PgEnabled()) {
 			xwait = TransactionIdIsValid(DirtySnapshot.xmin) ?
 				DirtySnapshot.xmin : DirtySnapshot.xmax;
 
@@ -953,7 +953,7 @@ retry:
 		if (violationOK)
 		{
 			conflict = true;
-			if (IsYugaByteEnabled()) {
+			if (IsK2PgEnabled()) {
 				estate->k2pg_conflict_slot = existing_slot;
 			}
 			if (conflictTid)

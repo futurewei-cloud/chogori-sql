@@ -589,7 +589,7 @@ typedef struct EState
 	TupleTableSlot *k2pg_conflict_slot; /* If a conflict is to be resolved when inserting data,
 																		 * we cache the conflict tuple here when processing and
 																		 * then free the slot after the conflict is resolved. */
-	YBCPgExecParameters k2pg_exec_params;
+	K2PgExecParameters k2pg_exec_params;
 } EState;
 
 

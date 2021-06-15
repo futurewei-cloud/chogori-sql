@@ -33,7 +33,7 @@ DEFINE_string(process_info_dir, "", \
                  "Directory where all postgres process will writes their PIDs and executable name");
 
 
-YBCStatus YBCStatusOK() {
+K2PgStatus K2PgStatusOK() {
   return nullptr;
 }
 
@@ -109,12 +109,12 @@ Status InitGFlags(const char* argv0) {
 
 extern "C" {
 
-YBCStatus YBCStatus_OK = nullptr;
+K2PgStatus K2PgStatus_OK = nullptr;
 
-// Wraps Status object created by YBCStatus.
+// Wraps Status object created by K2PgStatus.
 class StatusWrapper {
  public:
-  explicit StatusWrapper(YBCStatus s) : status_(s, false) {}
+  explicit StatusWrapper(K2PgStatus s) : status_(s, false) {}
 
   ~StatusWrapper() {
     status_.DetachStruct();
@@ -132,78 +132,78 @@ class StatusWrapper {
   Status status_;
 };
 
-bool YBCStatusIsOK(YBCStatus s) {
+bool K2PgStatusIsOK(K2PgStatus s) {
   return StatusWrapper(s)->IsOk();
 }
 
-bool YBCStatusIsNotFound(YBCStatus s) {
+bool K2PgStatusIsNotFound(K2PgStatus s) {
   return StatusWrapper(s)->IsNotFound();
 }
 
-bool YBCStatusIsDuplicateKey(YBCStatus s) {
+bool K2PgStatusIsDuplicateKey(K2PgStatus s) {
   return StatusWrapper(s)->IsAlreadyPresent();
 }
 
-uint32_t YBCStatusPgsqlError(YBCStatus s) {
+uint32_t K2PgStatusPgsqlError(K2PgStatus s) {
   StatusWrapper wrapper(s);
   const uint8_t* pg_err_ptr = wrapper->ErrorData(PgsqlErrorTag::kCategory);
   // If we have PgsqlError explicitly set, we decode it
-  YBPgErrorCode result = pg_err_ptr != nullptr ? PgsqlErrorTag::Decode(pg_err_ptr)
-                                               : YBPgErrorCode::K2PG_INTERNAL_ERROR;
+  K2PgErrorCode result = pg_err_ptr != nullptr ? PgsqlErrorTag::Decode(pg_err_ptr)
+                                               : K2PgErrorCode::K2PG_INTERNAL_ERROR;
 
   // If the error is the default generic K2PG_INTERNAL_ERROR (as we also set in AsyncRpc::Failed)
   // then we try to deduce it from a transaction error.
-  if (result == YBPgErrorCode::K2PG_INTERNAL_ERROR) {
+  if (result == K2PgErrorCode::K2PG_INTERNAL_ERROR) {
     const uint8_t* txn_err_ptr = wrapper->ErrorData(TransactionErrorTag::kCategory);
     if (txn_err_ptr != nullptr) {
       switch (TransactionErrorTag::Decode(txn_err_ptr)) {
         case TransactionErrorCode::kAborted: [[fallthrough]];
         case TransactionErrorCode::kReadRestartRequired: [[fallthrough]];
         case TransactionErrorCode::kConflict:
-          result = YBPgErrorCode::K2PG_T_R_SERIALIZATION_FAILURE;
+          result = K2PgErrorCode::K2PG_T_R_SERIALIZATION_FAILURE;
           break;
         case TransactionErrorCode::kSnapshotTooOld:
-          result = YBPgErrorCode::K2PG_SNAPSHOT_TOO_OLD;
+          result = K2PgErrorCode::K2PG_SNAPSHOT_TOO_OLD;
           break;
         case TransactionErrorCode::kNone: [[fallthrough]];
         default:
-          result = YBPgErrorCode::K2PG_INTERNAL_ERROR;
+          result = K2PgErrorCode::K2PG_INTERNAL_ERROR;
       }
     }
   }
   return static_cast<uint32_t>(result);
 }
 
-uint16_t YBCStatusTransactionError(YBCStatus s) {
+uint16_t K2PgStatusTransactionError(K2PgStatus s) {
   const TransactionError txn_err(*StatusWrapper(s));
   return static_cast<uint16_t>(txn_err.value());
 }
 
-void YBCFreeStatus(YBCStatus s) {
-  FreeYBCStatus(s);
+void K2PgFreeStatus(K2PgStatus s) {
+  FreeK2PgStatus(s);
 }
 
-size_t YBCStatusMessageLen(YBCStatus s) {
+size_t K2PgStatusMessageLen(K2PgStatus s) {
   return StatusWrapper(s)->message().size();
 }
 
-const char* YBCStatusMessageBegin(YBCStatus s) {
+const char* K2PgStatusMessageBegin(K2PgStatus s) {
   return StatusWrapper(s)->message().cdata();
 }
 
-const char* YBCStatusCodeAsCString(YBCStatus s) {
+const char* K2PgStatusCodeAsCString(K2PgStatus s) {
   return StatusWrapper(s)->CodeAsCString();
 }
 
-char* DupYBStatusMessage(YBCStatus status, bool message_only) {
-  const char* const code_as_cstring = YBCStatusCodeAsCString(status);
+char* DupK2PgStatusMessage(K2PgStatus status, bool message_only) {
+  const char* const code_as_cstring = K2PgStatusCodeAsCString(status);
   const size_t code_strlen = strlen(code_as_cstring);
-  const size_t status_len = YBCStatusMessageLen(status);
+  const size_t status_len = K2PgStatusMessageLen(status);
   size_t sz = code_strlen + status_len + 3;
   if (message_only) {
     sz -= 2 + code_strlen;
   }
-  char* const msg_buf = reinterpret_cast<char*>(YBCPAlloc(sz));
+  char* const msg_buf = reinterpret_cast<char*>(K2PgPAlloc(sz));
   char* pos = msg_buf;
   if (!message_only) {
     memcpy(msg_buf, code_as_cstring, code_strlen);
@@ -211,34 +211,34 @@ char* DupYBStatusMessage(YBCStatus status, bool message_only) {
     *pos++ = ':';
     *pos++ = ' ';
   }
-  memcpy(pos, YBCStatusMessageBegin(status), status_len);
+  memcpy(pos, K2PgStatusMessageBegin(status), status_len);
   pos[status_len] = 0;
   return msg_buf;
 }
 
-bool YBCIsRestartReadError(uint16_t txn_errcode) {
+bool K2PgIsRestartReadError(uint16_t txn_errcode) {
   return txn_errcode == static_cast<uint16_t>(TransactionErrorCode::kReadRestartRequired);
 }
 
-YBCStatus YBCInitGFlags(const char* argv0) {
-  return ToYBCStatus(k2pg::InitGFlags(argv0));
+K2PgStatus K2PgInitGFlags(const char* argv0) {
+  return ToK2PgStatus(k2pg::InitGFlags(argv0));
 }
 
-YBCStatus YBCInit(const char* argv0,
-                  YBCPAllocFn palloc_fn,
-                  YBCCStringToTextWithLenFn cstring_to_text_with_len_fn) {
-  YBCSetPAllocFn(palloc_fn);
+K2PgStatus K2PgInit(const char* argv0,
+                  K2PgPAllocFn palloc_fn,
+                  K2PgCStringToTextWithLenFn cstring_to_text_with_len_fn) {
+  K2PgSetPAllocFn(palloc_fn);
   if (cstring_to_text_with_len_fn) {
-    YBCSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
+    K2PgSetCStringToTextWithLenFn(cstring_to_text_with_len_fn);
   }
   auto status = k2pg::InitGFlags(argv0);
   if (status.ok() && !FLAGS_process_info_dir.empty()) {
     WriteCurrentProcessInfo(FLAGS_process_info_dir);
   }
-  return ToYBCStatus(status);
+  return ToK2PgStatus(status);
 }
 
-void YBCLogImpl(
+void K2PgLogImpl(
     google::LogSeverity severity,
     const char* file,
     int line,
@@ -254,8 +254,8 @@ void YBCLogImpl(
   log_msg.stream() << buf;
 }
 
-const char* YBCGetStackTrace() {
-    return YBCPAllocStdString("Not Implemented");
+const char* K2PgGetStackTrace() {
+    return K2PgPAllocStdString("Not Implemented");
 }
 
 } // extern "C"

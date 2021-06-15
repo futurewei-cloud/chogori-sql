@@ -339,9 +339,9 @@ systable_beginscan(Relation heapRelation,
 	SysScanDesc sysscan;
 	Relation	irel;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		return ybc_systable_beginscan(heapRelation,
+		return k2pg_systable_beginscan(heapRelation,
 		                              indexId,
 		                              indexOK,
 		                              snapshot,
@@ -432,9 +432,9 @@ systable_getnext(SysScanDesc sysscan)
 {
 	HeapTuple	htup;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		return ybc_systable_getnext(sysscan);
+		return k2pg_systable_getnext(sysscan);
 	}
 
 	if (sysscan->irel)
@@ -518,9 +518,9 @@ systable_recheck_tuple(SysScanDesc sysscan, HeapTuple tup)
 void
 systable_endscan(SysScanDesc sysscan)
 {
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		return ybc_systable_endscan(sysscan);
+		return k2pg_systable_endscan(sysscan);
 	}
 
 	if (sysscan->irel)

@@ -29,7 +29,7 @@
 bool
 ItemPointerEquals(ItemPointer pointer1, ItemPointer pointer2)
 {
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_INTERNAL_ERROR), errmsg_internal(

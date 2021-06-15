@@ -89,7 +89,7 @@ public:
   static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
 
   static void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
-  static Status K2StatusToYBStatus(const k2::Status& status);
+  static Status K2StatusToK2PgStatus(const k2::Status& status);
   static SqlOpResponse::RequestStatus K2StatusToPGStatus(const k2::Status& status);
 
   // We have two implicit fields (tableID and indexID) in the SKV, so this is the offset to get a user field

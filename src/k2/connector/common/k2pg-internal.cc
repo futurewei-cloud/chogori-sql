@@ -15,55 +15,55 @@
 namespace k2pg {
 
 namespace {
-YBCPAllocFn g_palloc_fn = nullptr;
-YBCCStringToTextWithLenFn g_cstring_to_text_with_len_fn = nullptr;
+K2PgPAllocFn g_palloc_fn = nullptr;
+K2PgCStringToTextWithLenFn g_cstring_to_text_with_len_fn = nullptr;
 }  // anonymous namespace
 
-void YBCSetPAllocFn(YBCPAllocFn palloc_fn) {
+void K2PgSetPAllocFn(K2PgPAllocFn palloc_fn) {
   CHECK_NOTNULL(palloc_fn);
   g_palloc_fn = palloc_fn;
 }
 
-void* YBCPAlloc(size_t size) {
+void* K2PgPAlloc(size_t size) {
   CHECK_NOTNULL(g_palloc_fn);
   return g_palloc_fn(size);
 }
 
-void YBCSetCStringToTextWithLenFn(YBCCStringToTextWithLenFn fn) {
+void K2PgSetCStringToTextWithLenFn(K2PgCStringToTextWithLenFn fn) {
   CHECK_NOTNULL(fn);
   g_cstring_to_text_with_len_fn = fn;
 }
 
-void* YBCCStringToTextWithLen(const char* c, int size) {
+void* K2PgCStringToTextWithLen(const char* c, int size) {
   CHECK_NOTNULL(g_cstring_to_text_with_len_fn);
   return g_cstring_to_text_with_len_fn(c, size);
 }
 
-YBCStatus ToYBCStatus(const Status& status) {
+K2PgStatus ToK2PgStatus(const Status& status) {
   return status.RetainStruct();
 }
 
-YBCStatus ToYBCStatus(Status&& status) {
+K2PgStatus ToK2PgStatus(Status&& status) {
   return status.DetachStruct();
 }
 
-void FreeYBCStatus(YBCStatus status) {
+void FreeK2PgStatus(K2PgStatus status) {
   // Create Status object that receives control over provided status, so it will be destoyed with
   // k2pg_status.
   Status k2pg_status(status, false);
 }
 
-YBCStatus YBCStatusNotSupport(const std::string& feature_name) {
+K2PgStatus K2PgStatusNotSupport(const std::string& feature_name) {
   if (feature_name.empty()) {
-    return ToYBCStatus(STATUS(NotSupported, "Feature is not supported"));
+    return ToK2PgStatus(STATUS(NotSupported, "Feature is not supported"));
   } else {
-    return ToYBCStatus(STATUS_FORMAT(NotSupported, "Feature '{}' not supported", feature_name));
+    return ToK2PgStatus(STATUS_FORMAT(NotSupported, "Feature '{}' not supported", feature_name));
   }
 }
 
-const char* YBCPAllocStdString(const std::string& s) {
+const char* K2PgPAllocStdString(const std::string& s) {
   const size_t len = s.size();
-  char* result = reinterpret_cast<char*>(YBCPAlloc(len + 1));
+  char* result = reinterpret_cast<char*>(K2PgPAlloc(len + 1));
   memcpy(result, s.c_str(), len);
   result[len] = 0;
   return result;

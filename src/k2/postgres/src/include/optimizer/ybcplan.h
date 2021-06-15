@@ -28,20 +28,18 @@
 #include "nodes/relation.h"
 
 
-void YBCExprInstantiateParams(Expr* expr, ParamListInfo paramLI);
+void K2PgExprInstantiateParams(Expr* expr, ParamListInfo paramLI);
 
-bool YBCIsSupportedSingleRowModifyWhereExpr(Expr *expr);
+bool K2PgIsSupportedSingleRowModifyWhereExpr(Expr *expr);
 
-bool YBCIsSupportedSingleRowModifyAssignExpr(Expr *expr,
+bool K2PgIsSupportedSingleRowModifyAssignExpr(Expr *expr,
                                              AttrNumber target_attno,
                                              bool *needs_pushdown);
 
-bool YBCIsSingleRowModify(PlannedStmt *pstmt);
+bool K2PgIsSingleRowModify(PlannedStmt *pstmt);
 
-bool YBCIsSingleRowUpdateOrDelete(ModifyTable *modifyTable);
+bool K2PgIsSingleRowUpdateOrDelete(ModifyTable *modifyTable);
 
-bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs);
+bool K2PgAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs);
 
 #endif // YBCPLAN_H
-
-

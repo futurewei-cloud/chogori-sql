@@ -44,7 +44,7 @@ typedef struct
 	bool	isprimary;		/* are we building a primary index? */
 	double	index_tuples;	/* # of tuples inserted into index */
 	bool	is_backfill;	/* are we concurrently backfilling an index? */
-} YBCBuildState;
+} K2PgBuildState;
 
 /*
  * LSM handler function: return IndexAmRoutine with access method parameters
@@ -103,10 +103,10 @@ static void
 ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isnull,
 				   bool tupleIsAlive, void *state)
 {
-	YBCBuildState  *buildstate = (YBCBuildState *)state;
+	K2PgBuildState  *buildstate = (K2PgBuildState *)state;
 
 	if (!buildstate->isprimary)
-		YBCExecuteInsertIndex(index,
+		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
 							  heapTuple->t_ybctid,
@@ -118,7 +118,7 @@ ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isn
 IndexBuildResult *
 ybcinbuild(Relation heap, Relation index, struct IndexInfo *indexInfo)
 {
-	YBCBuildState	buildstate;
+	K2PgBuildState	buildstate;
 	double			heap_tuples = 0;
 
 	/* Do the heap scan */
@@ -144,7 +144,7 @@ ybcinbackfill(Relation heap,
 			  uint64_t *read_time,
 			  RowBounds *row_bounds)
 {
-	YBCBuildState	buildstate;
+	K2PgBuildState	buildstate;
 	double			heap_tuples = 0;
 
 	/* Do the heap scan */
@@ -171,7 +171,7 @@ ybcinbackfill(Relation heap,
 void
 ybcinbuildempty(Relation index)
 {
-	YBC_LOG_WARNING("Unexpected building of empty unlogged index");
+	K2PG_LOG_WARNING("Unexpected building of empty unlogged index");
 }
 
 bool
@@ -179,7 +179,7 @@ ybcininsert(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation 
 			IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		YBCExecuteInsertIndex(index,
+		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
 							  ybctid,
@@ -193,21 +193,21 @@ ybcindelete(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation 
 			struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		YBCExecuteDeleteIndex(index, values, isnull, ybctid);
+		K2PgExecuteDeleteIndex(index, values, isnull, ybctid);
 }
 
 IndexBulkDeleteResult *
 ybcinbulkdelete(IndexVacuumInfo *info, IndexBulkDeleteResult *stats,
 				IndexBulkDeleteCallback callback, void *callback_state)
 {
-	YBC_LOG_WARNING("Unexpected bulk delete of index via vacuum");
+	K2PG_LOG_WARNING("Unexpected bulk delete of index via vacuum");
 	return NULL;
 }
 
 IndexBulkDeleteResult *
 ybcinvacuumcleanup(IndexVacuumInfo *info, IndexBulkDeleteResult *stats)
 {
-	YBC_LOG_WARNING("Unexpected index cleanup via vacuum");
+	K2PG_LOG_WARNING("Unexpected index cleanup via vacuum");
 	return NULL;
 }
 
@@ -231,7 +231,7 @@ ybcincostestimate(struct PlannerInfo *root, struct IndexPath *path, double loop_
 				  Cost *indexStartupCost, Cost *indexTotalCost, Selectivity *indexSelectivity,
 				  double *indexCorrelation, double *indexPages)
 {
-	ybcIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
+	k2pgIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
 }
 
 bytea *
@@ -280,7 +280,7 @@ ybcinrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,	ScanKey orderbys
 		scan->opaque = NULL;
 	}
 
-	YbScanDesc ybScan = ybcBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
+	K2PgScanDesc ybScan = k2pgBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
 																	 nscankeys, scankey);
 	ybScan->index = scan->indexRelation;
 	scan->opaque = ybScan;
@@ -301,7 +301,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	Assert(dir == ForwardScanDirection || dir == BackwardScanDirection);
 	const bool is_forward_scan = (dir == ForwardScanDirection);
 
-	YbScanDesc ybscan = (YbScanDesc) scan->opaque;
+	K2PgScanDesc ybscan = (K2PgScanDesc) scan->opaque;
 	ybscan->exec_params = scan->k2pg_exec_params;
 	Assert(PointerIsValid(ybscan));
 
@@ -311,7 +311,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	scan->xs_ctup.t_ybctid = 0;
 	if (ybscan->prepare_params.index_only_scan)
 	{
-		IndexTuple tuple = ybc_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		IndexTuple tuple = k2pg_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
 			scan->xs_ctup.t_ybctid = tuple->t_ybctid;
@@ -321,7 +321,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	}
 	else
 	{
-		HeapTuple tuple = ybc_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		HeapTuple tuple = k2pg_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
 			scan->xs_ctup.t_ybctid = tuple->t_ybctid;
@@ -336,7 +336,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 void
 ybcinendscan(IndexScanDesc scan)
 {
-	YbScanDesc ybscan = (YbScanDesc)scan->opaque;
+	K2PgScanDesc ybscan = (K2PgScanDesc)scan->opaque;
 	Assert(PointerIsValid(ybscan));
-	ybcEndScan(ybscan);
+	k2pgEndScan(ybscan);
 }

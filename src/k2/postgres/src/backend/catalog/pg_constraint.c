@@ -955,7 +955,7 @@ get_relation_constraint_attnos(Relation rel, const char *conname,
 			for (i = 0; i < numcols; i++)
 			{
 				conattnos = bms_add_member(conattnos,
-										   attnums[i] - YBGetFirstLowInvalidAttributeNumber(rel));
+										   attnums[i] - K2PgGetFirstLowInvalidAttributeNumber(rel));
 			}
 		}
 	}

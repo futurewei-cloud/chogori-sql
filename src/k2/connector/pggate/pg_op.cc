@@ -66,14 +66,14 @@ constexpr bool isNumericType() { return std::is_arithmetic<T>::value || std::is_
 // template resolution for types that are not supported
 template <typename T>
 std::enable_if_t<!isNumericType<T>(), Status>
-TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
+TranslateUserCol(int index, const K2PgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
     return STATUS(InternalError, "unsupported type for user column");
 }
 
 // translate numeric types (integers, bool, floats)
 template <typename T>
 std::enable_if_t<isNumericType<T>(), Status>
-TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
+TranslateUserCol(int index, const K2PgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<T> field, PgTuple* pg_tuple) {
     switch (type_entity->k2pg_type) {
         case K2SQL_DATA_TYPE_INT8: {
             int8_t val = (int8_t)field.value();
@@ -135,7 +135,7 @@ TranslateUserCol(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttr
 // translate k2::String -based types
 template <>
 Status
-TranslateUserCol<k2::String>(int index, const YBCPgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<k2::String> field, PgTuple* pg_tuple) {
+TranslateUserCol<k2::String>(int index, const K2PgTypeEntity* type_entity, const PgTypeAttrs* type_attrs, std::optional<k2::String> field, PgTuple* pg_tuple) {
     switch (type_entity->k2pg_type) {
         case K2SQL_DATA_TYPE_BINARY: {
             pg_tuple->WriteDatum(index, type_entity->k2pg_to_datum(field.value().c_str(), field.value().size(), type_attrs));
@@ -291,7 +291,7 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
 
     if (pg_tuple->syscols()) {
         auto& ybctid_str = ybctid_strings_[nextToConsume_];
-        pg_tuple->syscols()->ybctid = (uint8_t*)k2pg::YBCCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
+        pg_tuple->syscols()->ybctid = (uint8_t*)k2pg::K2PgCStringToTextWithLen(ybctid_str.data(), ybctid_str.size());
     }
     K2LOG_D(log::pg, "wrote tuple ybctid={}", ybctid_strings_[nextToConsume_]);
     if (row_orders_.size()) {
@@ -605,7 +605,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& ybctids) 
     PgReadOpTemplate *read_op = GetReadOp(0);
     read_op->set_active(true);
     std::shared_ptr<SqlOpReadRequest> request = read_op->request();
-    const YBCPgTypeEntity *string_type = YBCPgFindTypeEntity(STRING_TYPE_OID);
+    const K2PgTypeEntity *string_type = K2PgFindTypeEntity(STRING_TYPE_OID);
     // populate ybctid values.
     request->ybctid_column_values.clear();
     for (const std::string& ybctid : ybctids) {

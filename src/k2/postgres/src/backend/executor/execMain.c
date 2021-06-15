@@ -678,7 +678,7 @@ ExecCheckRTEPerms(RangeTblEntry *rte)
 			while ((col = bms_next_member(rte->selectedCols, col)) >= 0)
 			{
 				/* Add appropriate offset to get attribute # from column # */
-				AttrNumber attno = col + YBGetFirstLowInvalidAttributeNumberFromOid(relOid);
+				AttrNumber attno = col + K2PgGetFirstLowInvalidAttributeNumberFromOid(relOid);
 
 				if (attno == InvalidAttrNumber)
 				{
@@ -741,7 +741,7 @@ ExecCheckRTEPermsModified(Oid relOid, Oid userid, Bitmapset *modifiedCols,
 	while ((col = bms_next_member(modifiedCols, col)) >= 0)
 	{
 		/* Add appropriate offset to get attribute # from column # */
-		AttrNumber attno = col + YBGetFirstLowInvalidAttributeNumberFromOid(relOid);
+		AttrNumber attno = col + K2PgGetFirstLowInvalidAttributeNumberFromOid(relOid);
 
 		if (attno == InvalidAttrNumber)
 		{
@@ -2003,7 +2003,7 @@ ExecConstraints(ResultRelInfo *resultRelInfo,
 			Form_pg_attribute att = TupleDescAttr(tupdesc, attrChk - 1);
 
 			if (mtstate && mtstate->k2pg_mt_is_single_row_update_or_delete &&
-			    !bms_is_member(att->attnum - YBGetFirstLowInvalidAttributeNumber(rel), modifiedCols))
+			    !bms_is_member(att->attnum - K2PgGetFirstLowInvalidAttributeNumber(rel), modifiedCols))
 			{
 				/*
 				 * For single-row-updates, we only know the values of the
@@ -2333,7 +2333,7 @@ ExecBuildSlotValueDescription(Relation rel,
 			 */
 			aclresult = pg_attribute_aclcheck(reloid, att->attnum,
 											  GetUserId(), ACL_SELECT);
-			if (bms_is_member(att->attnum - YBGetFirstLowInvalidAttributeNumber(rel),
+			if (bms_is_member(att->attnum - K2PgGetFirstLowInvalidAttributeNumber(rel),
 							  modifiedCols) || aclresult == ACLCHECK_OK)
 			{
 				column_perm = any_perm = true;
@@ -2463,7 +2463,7 @@ ExecBuildAuxRowMark(ExecRowMark *erm, List *targetlist)
 	if (erm->markType != ROW_MARK_COPY)
 	{
 		/* need ctid for all methods other than COPY */
-		if (IsYBBackedRelation(erm->relation))
+		if (IsK2PgBackedRelation(erm->relation))
 		{
 			snprintf(resname, sizeof(resname), "ybctid%u", erm->rowmarkId);
 		}

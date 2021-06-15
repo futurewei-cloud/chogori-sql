@@ -88,7 +88,7 @@ public:
       null_value_ = false;
   }
 
-  SqlValue(const YBCPgTypeEntity* type_entity, uint64_t datum, bool is_null);
+  SqlValue(const K2PgTypeEntity* type_entity, uint64_t datum, bool is_null);
 
   SqlValue(const SqlValue& val) = default;
 

@@ -28,7 +28,7 @@
 /* The actual PostgreSQL error codes have been taken from the generated errcodes.h file. */
 namespace k2pg {
 
-enum class YBPgErrorCode : uint32_t {
+enum class K2PgErrorCode : uint32_t {
   /* Class 00 - Successful Completion */
   K2PG_SUCCESSFUL_COMPLETION = K2PG_MAKE_SQLSTATE('0', '0', '0', '0', '0'),
 
@@ -377,7 +377,7 @@ enum class YBPgErrorCode : uint32_t {
 #undef K2PG_MAKE_SQLSTATE
 #undef K2PG_PGSIXBIT
 
-inline std::string ToString(YBPgErrorCode code) {
+inline std::string ToString(K2PgErrorCode code) {
   std::string result;
   result.resize(5);
   uint32_t u32_code = static_cast<uint32_t>(code);

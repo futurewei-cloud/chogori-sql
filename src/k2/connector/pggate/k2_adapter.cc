@@ -531,7 +531,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     response.paging_state = nullptr;
     K2LOG_D(log::k2Adapter, "handleReadByRowIds set response paging state to null for read op tid={}", op->request()->table_id);
     response.status = K2StatusToPGStatus(status);
-    prom->set_value(K2StatusToYBStatus(status));
+    prom->set_value(K2StatusToK2PgStatus(status));
 }
 
 CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
@@ -561,7 +561,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 K2LOG_E(log::k2Adapter, "Unable to create scan read request");
                 response.rows_affected_count = 0;
                 response.status = K2StatusToPGStatus(scan_create_result.status);
-                prom->set_value(K2StatusToYBStatus(scan_create_result.status));
+                prom->set_value(K2StatusToK2PgStatus(scan_create_result.status));
                 return;
             }
 
@@ -634,7 +634,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->endScanRecord = std::move(endRecord);
 
             if (request->where_conds != nullptr || !leftover_exprs.empty()) {
-                const YBCPgTypeEntity *bool_type = YBCPgFindTypeEntity(BOOL_TYPE_OID);
+                const K2PgTypeEntity *bool_type = K2PgFindTypeEntity(BOOL_TYPE_OID);
                 PgOperator top_and_opr("and", bool_type);
                 PgOperator *top_opr;
                 if (request->where_conds != nullptr) {
@@ -679,7 +679,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         *(op->mutable_rows_data()) = std::move(scan_result.records);
 
         response.status = K2StatusToPGStatus(scan_result.status);
-        prom->set_value(K2StatusToYBStatus(scan_result.status));
+        prom->set_value(K2StatusToK2PgStatus(scan_result.status));
 
         } catch (const std::exception& e) {
             K2LOG_W(log::k2Adapter, "Throw in handleReadOp {}", e.what());
@@ -762,7 +762,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
         K2LOG_D(log::k2Adapter, "K2 write status: {}", writeStatus);
         response.status = K2StatusToPGStatus(writeStatus);
-        prom->set_value(K2StatusToYBStatus(writeStatus));
+        prom->set_value(K2StatusToK2PgStatus(writeStatus));
 
         } catch (const std::exception& e) {
             K2LOG_W(log::k2Adapter, "Throw in handlewrite: {}", e.what());
@@ -1053,7 +1053,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     // cross-thread traffic
     k2::GetSchemaResult schema_result = schema_f.get();
     if (!schema_result.status.is2xxOK()) {
-        return std::make_pair(k2::dto::SKVRecord(), K2StatusToYBStatus(schema_result.status));
+        return std::make_pair(k2::dto::SKVRecord(), K2StatusToK2PgStatus(schema_result.status));
     }
 
     std::shared_ptr<k2::dto::Schema>& schema = schema_result.schema;
@@ -1152,7 +1152,7 @@ std::string K2Adapter::YBCTIDToString(std::shared_ptr<BindVariable> ybctid_colum
 }
 
 
-Status K2Adapter::K2StatusToYBStatus(const k2::Status& status) {
+Status K2Adapter::K2StatusToK2PgStatus(const k2::Status& status) {
     // TODO verify this translation with how the upper layers use the Status,
     // especially the Aborted status
     switch (status.code) {

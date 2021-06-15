@@ -431,7 +431,7 @@ ExecInsert(ModifyTableState *mtstate,
 		 * one; except that if we got here via tuple-routing, we don't need to
 		 * if there's no BR trigger defined on the partition.
 		 */
-		if (!IsYBRelation(resultRelationDesc))
+		if (!IsK2PgRelation(resultRelationDesc))
 		{
 			/*
 			 * TODO(Hector) When partitioning is supported in YugaByte, this check must be enabled.
@@ -500,7 +500,7 @@ ExecInsert(ModifyTableState *mtstate,
 					 * snapshot at higher isolation levels.
 					 */
 					Assert(onconflict == ONCONFLICT_NOTHING);
-					if (!IsYBRelation(resultRelationDesc)) {
+					if (!IsK2PgRelation(resultRelationDesc)) {
 						// YugaByte does not use Postgres transaction control code.
 						ExecCheckTIDVisible(estate, resultRelInfo, &conflictTid);
 					}
@@ -510,14 +510,14 @@ ExecInsert(ModifyTableState *mtstate,
 				}
 			}
 
-			if (IsYBRelation(resultRelationDesc))
+			if (IsK2PgRelation(resultRelationDesc))
 			{
 				/*
 				 * YugaByte handles transaction-control internally, so speculative token are not being
 				 * locked and released in this call.
 				 * TODO(Mikhail) Verify the YugaByte transaction support works properly for on-conflict.
 				 */
-				newId = YBCHeapInsert(slot, tuple, estate);
+				newId = K2PgHeapInsert(slot, tuple, estate);
 
 				/* insert index entries for tuple */
 				recheckIndexes = ExecInsertIndexTuples(slot, tuple,
@@ -583,12 +583,12 @@ ExecInsert(ModifyTableState *mtstate,
 			 * Note: heap_insert returns the tid (location) of the new tuple
 			 * in the t_self field.
 			 */
-			if (IsYBRelation(resultRelationDesc))
+			if (IsK2PgRelation(resultRelationDesc))
 			{
-				newId = YBCHeapInsert(slot, tuple, estate);
+				newId = K2PgHeapInsert(slot, tuple, estate);
 
 				/* insert index entries for tuple */
-				if (YBCRelInfoHasSecondaryIndices(resultRelInfo))
+				if (K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 					recheckIndexes = ExecInsertIndexTuples(slot, tuple, estate, false, NULL, NIL);
 			}
 			else
@@ -777,9 +777,9 @@ ExecDelete(ModifyTableState *mtstate,
 		tuple = ExecMaterializeSlot(slot);
 		tuple->t_tableOid = RelationGetRelid(resultRelationDesc);
 	}
-	else if (IsYBRelation(resultRelationDesc))
+	else if (IsK2PgRelation(resultRelationDesc))
 	{
-		bool row_found = YBCExecuteDelete(resultRelationDesc, planSlot, estate, mtstate);
+		bool row_found = K2PgExecuteDelete(resultRelationDesc, planSlot, estate, mtstate);
 		if (!row_found)
 		{
 			/*
@@ -789,9 +789,9 @@ ExecDelete(ModifyTableState *mtstate,
 			return NULL;
 		}
 
-		if (YBCRelInfoHasSecondaryIndices(resultRelInfo))
+		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 		{
-			Datum	ybctid = YBCGetYBTupleIdFromSlot(planSlot);
+			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
 			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
@@ -963,7 +963,7 @@ ldelete:;
 			Assert(!TupIsNull(slot));
 			delbuffer = InvalidBuffer;
 		}
-		else if (IsYBRelation(resultRelationDesc))
+		else if (IsK2PgRelation(resultRelationDesc))
 		{
 			if (mtstate->k2pg_mt_is_single_row_update_or_delete)
 			{
@@ -1122,7 +1122,7 @@ ExecUpdate(ModifyTableState *mtstate,
 		 */
 		tuple->t_tableOid = RelationGetRelid(resultRelationDesc);
 	}
-	else if (IsYBRelation(resultRelationDesc))
+	else if (IsK2PgRelation(resultRelationDesc))
 	{
 		if (resultRelInfo->ri_WithCheckOptions != NIL)
 			ExecWithCheckOptions(WCO_RLS_UPDATE_CHECK, resultRelInfo, slot, estate);
@@ -1137,7 +1137,7 @@ ExecUpdate(ModifyTableState *mtstate,
 		RangeTblEntry *rte = rt_fetch(resultRelInfo->ri_RangeTableIndex,
 									  estate->es_range_table);
 
-		bool row_found = YBCExecuteUpdate(resultRelationDesc, planSlot, tuple, estate, mtstate, rte->updatedCols);
+		bool row_found = K2PgExecuteUpdate(resultRelationDesc, planSlot, tuple, estate, mtstate, rte->updatedCols);
 
 		if (!row_found)
 		{
@@ -1151,10 +1151,10 @@ ExecUpdate(ModifyTableState *mtstate,
 		/*
 		 * Update indexes if needed.
 		 */
-		if (YBCRelInfoHasSecondaryIndices(resultRelInfo) &&
+		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo) &&
 		    !((ModifyTable *)mtstate->ps.plan)->no_index_update)
 		{
-			Datum	ybctid = YBCGetYBTupleIdFromSlot(planSlot);
+			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
 			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
@@ -1492,7 +1492,7 @@ lreplace:;
 		 * For ON CONFLICT DO UPDATE, the INSERT returning clause is setup
 		 * differently, so junkFilter is not needed.
 		 */
-		if (IsYBRelation(resultRelationDesc) && resultRelInfo->ri_junkFilter)
+		if (IsK2PgRelation(resultRelationDesc) && resultRelInfo->ri_junkFilter)
 			slot = ExecFilterJunk(resultRelInfo->ri_junkFilter, planSlot);
 
 		return ExecProcessReturning(resultRelInfo, slot, planSlot);
@@ -1545,7 +1545,7 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 	 * However, YugaByte writes the conflict tuple including its "ybctid" to execution state "estate"
 	 * and then frees the slot when done.
 	 */
-	if (IsYBBackedRelation(relation)) {
+	if (IsK2PgBackedRelation(relation)) {
 		/* Not using heap buffer for YugaByte */
 		buffer = InvalidBuffer;
 
@@ -1650,7 +1650,7 @@ k2pg_skip_transaction_control_check:
 	 */
 	ResetExprContext(econtext);
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		oldtuple = ExecMaterializeSlot(estate->k2pg_conflict_slot);
 		ExecStoreTuple(oldtuple, mtstate->mt_existing, buffer, false);
@@ -1691,7 +1691,7 @@ k2pg_skip_transaction_control_check:
 	if (!ExecQual(onConflictSetWhere, econtext))
 	{
 		/* YugaByte don't use the heap buffer to cache the conflict tuple */
-		if (!IsYugaByteEnabled())
+		if (!IsK2PgEnabled())
 			ReleaseBuffer(buffer);
 		InstrCountFiltered1(&mtstate->ps, 1);
 		return true;			/* done with the tuple */
@@ -1738,7 +1738,7 @@ k2pg_skip_transaction_control_check:
 							canSetTag);
 
 	/* YugaByte don't use the heap buffer to cache the conflict tuple */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		ReleaseBuffer(buffer);
 	return true;
 }
@@ -2299,9 +2299,9 @@ ExecModifyTable(PlanState *pstate)
 				 * 2. For tables with row triggers we need to pass the old row for
 				 *    trigger execution.
 				 */
-				if (IsYBRelation(resultRelInfo->ri_RelationDesc) &&
-					(YBCRelInfoHasSecondaryIndices(resultRelInfo) ||
-					YBRelHasOldRowTriggers(resultRelInfo->ri_RelationDesc,
+				if (IsK2PgRelation(resultRelInfo->ri_RelationDesc) &&
+					(K2PgRelInfoHasSecondaryIndices(resultRelInfo) ||
+					K2PgRelHasOldRowTriggers(resultRelInfo->ri_RelationDesc,
 					                       operation)))
 				{
 					resno = ExecFindJunkAttribute(junkfilter, "wholerow");
@@ -2477,7 +2477,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 
 	mtstate->mt_plans = (PlanState **) palloc0(sizeof(PlanState *) * nplans);
 	mtstate->resultRelInfo = estate->es_result_relations + node->resultRelIndex;
-	mtstate->k2pg_mt_is_single_row_update_or_delete = YBCIsSingleRowUpdateOrDelete(node);
+	mtstate->k2pg_mt_is_single_row_update_or_delete = K2PgIsSingleRowUpdateOrDelete(node);
 
 	/* If modifying a partitioned table, initialize the root table info */
 	if (node->rootResultRelIndex >= 0)
@@ -2529,8 +2529,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		 * all of the INSERT, UPDATE, and DELETE statements. The ON CONFLICT UPDATE
 		 * execution also needs to process primary key index.
 		 */
-		if ((IsYBRelation(resultRelInfo->ri_RelationDesc) ?
-				 (YBRelHasSecondaryIndices(resultRelInfo->ri_RelationDesc) ||
+		if ((IsK2PgRelation(resultRelInfo->ri_RelationDesc) ?
+				 (K2PgRelHasSecondaryIndices(resultRelInfo->ri_RelationDesc) ||
 					node->onConflictAction != ONCONFLICT_NONE) :
 				 (resultRelInfo->ri_RelationDesc->rd_rel->relhasindex &&
 					operation != CMD_DELETE)) &&
@@ -2865,7 +2865,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 					char		relkind;
 
 					relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
-					if (IsYBRelation(rel))
+					if (IsK2PgRelation(rel))
 					{
 						j->jf_junkAttNo = ExecFindJunkAttribute(j, "ybctid");
 						if (!AttributeNumberIsValid(j->jf_junkAttNo)) {

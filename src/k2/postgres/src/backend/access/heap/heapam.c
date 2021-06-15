@@ -1466,9 +1466,9 @@ heap_beginscan_internal(Relation relation, Snapshot snapshot,
 	HeapScanDesc scan;
 
 	/* YB scan methods should only be used for tables that are handled by YugaByte. */
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	{
-		return ybc_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
+		return k2pg_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
 	}
 
 	/*
@@ -1585,9 +1585,9 @@ heap_endscan(HeapScanDesc scan)
 {
 	/* Note: no locking manipulations needed */
 
-	if (IsYBRelation(scan->rs_rd))
+	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return ybc_heap_endscan(scan);
+		return k2pg_heap_endscan(scan);
 	}
 
 	/*
@@ -1853,9 +1853,9 @@ heap_getnext(HeapScanDesc scan, ScanDirection direction)
 {
 	/* Note: no locking manipulations needed */
 
-	if (IsYBRelation(scan->rs_rd))
+	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return ybc_heap_getnext(scan);
+		return k2pg_heap_getnext(scan);
 	}
 
 	HEAPDEBUG_1;				/* heap_getnext( info ) */
@@ -2474,7 +2474,7 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	Buffer		vmbuffer = InvalidBuffer;
 	bool		all_visible_cleared = false;
 
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_INTERNAL_ERROR), errmsg(
@@ -2752,7 +2752,7 @@ heap_multi_insert(Relation relation, HeapTuple *tuples, int ntuples,
 	bool		need_tuple_data = RelationIsLogicallyLogged(relation);
 	bool		need_cids = RelationIsAccessibleInLogicalDecoding(relation);
 
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_INTERNAL_ERROR),
@@ -3116,9 +3116,9 @@ heap_delete(Relation relation, ItemPointer tid,
 	HeapTuple	old_key_tuple = NULL;	/* replica identity of the tuple */
 	bool		old_key_copied = false;
 
-	if (IsYBRelation(relation))
+	if (IsK2PgRelation(relation))
 	{
-		YBC_LOG_WARNING("Ignoring unsupported tuple delete for rel %s",
+		K2PG_LOG_WARNING("Ignoring unsupported tuple delete for rel %s",
 		                RelationGetRelationName(relation));
 		return HeapTupleMayBeUpdated;
 	}
@@ -6447,9 +6447,9 @@ heap_inplace_update(Relation relation, HeapTuple tuple)
 	uint32		oldlen;
 	uint32		newlen;
 
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		YBCUpdateSysCatalogTuple(relation, NULL /* oldtuple */, tuple);
+		K2PgUpdateSysCatalogTuple(relation, NULL /* oldtuple */, tuple);
 		return;
 	}
 

@@ -82,19 +82,19 @@
 
 #include "pg_k2pg_utils.h"
 
-Datum YBCDocdbToDatum(const uint8 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs);
-static const YBCPgTypeEntity YBCFixedLenByValTypeEntity;
-static const YBCPgTypeEntity YBCNullTermByRefTypeEntity;
-static const YBCPgTypeEntity YBCVarLenByRefTypeEntity;
-void YBCDatumToDocdb(Datum datum, uint8 **data, int64 *bytes);
+Datum K2SqlToDatum(const uint8 *data, int64 bytes, const K2PgTypeAttrs *type_attrs);
+static const K2PgTypeEntity K2SqlFixedLenByValTypeEntity;
+static const K2PgTypeEntity K2SqlNullTermByRefTypeEntity;
+static const K2PgTypeEntity K2SqlVarLenByRefTypeEntity;
+void DatumToK2Sql(Datum datum, uint8 **data, int64 *bytes);
 
 /***************************************************************************************************
  * Find YugaByte storage type for each PostgreSQL datatype.
  * NOTE: Because YugaByte network buffer can be deleted after it is processed, Postgres layer must
  *       allocate a buffer to keep the data in its slot.
  **************************************************************************************************/
-const YBCPgTypeEntity *
-YBCDataTypeFromOidMod(int attnum, Oid type_id)
+const K2PgTypeEntity *
+K2PgDataTypeFromOidMod(int attnum, Oid type_id)
 {
 	/* Find type for system column */
 	if (attnum < InvalidAttrNumber) {
@@ -128,8 +128,8 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 	}
 
 	/* Find the type mapping entry */
-	const YBCPgTypeEntity *type_entity = YBCPgFindTypeEntity(type_id);
-	YBCPgDataType k2pg_type = YBCPgGetType(type_entity);
+	const K2PgTypeEntity *type_entity = K2PgFindTypeEntity(type_id);
+	K2PgDataType k2pg_type = K2PgGetType(type_entity);
 
 	/* For non-primitive types, we need to look up the definition */
 	if (k2pg_type == K2SQL_DATA_TYPE_UNKNOWN_DATA) {
@@ -142,28 +142,28 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 			case TYPTYPE_BASE:
 				if (tp->typbyval) {
 					/* fixed-length, pass-by-value base type */
-					return &YBCFixedLenByValTypeEntity;
+					return &K2SqlFixedLenByValTypeEntity;
 				} else {
 					switch (tp->typlen) {
 						case -2:
 							/* null-terminated, pass-by-reference base type */
-							return &YBCNullTermByRefTypeEntity;
+							return &K2SqlNullTermByRefTypeEntity;
 							break;
 						case -1:
 							/* variable-length, pass-by-reference base type */
-							return &YBCVarLenByRefTypeEntity;
+							return &K2SqlVarLenByRefTypeEntity;
 							break;
 						default:;
 							/* fixed-length, pass-by-reference base type */
-							YBCPgTypeEntity *fixed_ref_type_entity = (YBCPgTypeEntity *)palloc(
-									sizeof(YBCPgTypeEntity));
+							K2PgTypeEntity *fixed_ref_type_entity = (K2PgTypeEntity *)palloc(
+									sizeof(K2PgTypeEntity));
 							fixed_ref_type_entity->type_oid = InvalidOid;
 							fixed_ref_type_entity->k2pg_type = K2SQL_DATA_TYPE_BINARY;
 							fixed_ref_type_entity->allow_for_primary_key = false;
 							fixed_ref_type_entity->datum_fixed_size = tp->typlen;
-							fixed_ref_type_entity->datum_to_yb = (YBCPgDatumToData)YBCDatumToDocdb;
+							fixed_ref_type_entity->datum_to_k2pg = (K2PgDatumToData)DatumToK2Sql;
 							fixed_ref_type_entity->k2pg_to_datum =
-								(YBCPgDatumFromData)YBCDocdbToDatum;
+								(K2PgDatumFromData)K2SqlToDatum;
 							return fixed_ref_type_entity;
 							break;
 					}
@@ -180,7 +180,7 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 				 * primary keys:
 				 *   basetp_oid = ANYENUMOID;
 				 */
-				return &YBCFixedLenByValTypeEntity;
+				return &K2SqlFixedLenByValTypeEntity;
 				break;
 			case TYPTYPE_RANGE:
 				basetp_oid = ANYRANGEOID;
@@ -189,7 +189,7 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 				K2PG_REPORT_TYPE_NOT_SUPPORTED(type_id);
 				break;
 		}
-		return YBCDataTypeFromOidMod(InvalidAttrNumber, basetp_oid);
+		return K2PgDataTypeFromOidMod(InvalidAttrNumber, basetp_oid);
 	}
 
 	/* Report error if type is not supported */
@@ -202,20 +202,20 @@ YBCDataTypeFromOidMod(int attnum, Oid type_id)
 }
 
 bool
-YBCDataTypeIsValidForKey(Oid type_id)
+K2PgDataTypeIsValidForKey(Oid type_id)
 {
-	const YBCPgTypeEntity *type_entity = YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
-	return YBCPgAllowForPrimaryKey(type_entity);
+	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(InvalidAttrNumber, type_id);
+	return K2PgAllowForPrimaryKey(type_entity);
 }
 
-const YBCPgTypeEntity *
-YBCDataTypeFromName(TypeName *typeName)
+const K2PgTypeEntity *
+K2PgDataTypeFromName(TypeName *typeName)
 {
 	Oid   type_id = 0;
 	int32 typmod  = 0;
 
 	typenameTypeIdAndMod(NULL /* parseState */ , typeName, &type_id, &typmod);
-	return YBCDataTypeFromOidMod(InvalidAttrNumber, type_id);
+	return K2PgDataTypeFromOidMod(InvalidAttrNumber, type_id);
 }
 
 /***************************************************************************************************
@@ -225,25 +225,25 @@ YBCDataTypeFromName(TypeName *typeName)
  * BOOL conversion.
  * Fixed size: Ignore the "bytes" data size.
  */
-void YBCDatumToBool(Datum datum, bool *data, int64 *bytes) {
+void K2SqlDatumToBool(Datum datum, bool *data, int64 *bytes) {
 	*data = DatumGetBool(datum);
 }
 
-Datum YBCBoolToDatum(const bool *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlBoolToDatum(const bool *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return BoolGetDatum(*data);
 }
 
 /*
  * BINARY conversion.
  */
-void YBCDatumToBinary(Datum datum, void **data, int64 *bytes) {
+void K2SqlDatumToBinary(Datum datum, void **data, int64 *bytes) {
 	*data = VARDATA_ANY(datum);
 	*bytes = VARSIZE_ANY_EXHDR(datum);
 }
 
-Datum YBCBinaryToDatum(const void *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlBinaryToDatum(const void *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* PostgreSQL can represent text strings up to 1 GB minus a four-byte header. */
-	if (bytes > kYBCMaxPostgresTextSizeBytes || bytes < 0) {
+	if (bytes > kMaxPostgresTextSizeBytes || bytes < 0) {
 		ereport(ERROR, (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("Invalid data size")));
 	}
@@ -253,12 +253,12 @@ Datum YBCBinaryToDatum(const void *data, int64 bytes, const YBCPgTypeAttrs *type
 /*
  * TEXT type conversion.
  */
-void YBCDatumToText(Datum datum, char **data, int64 *bytes) {
+void K2SqlDatumToText(Datum datum, char **data, int64 *bytes) {
 	*data = VARDATA_ANY(datum);
 	*bytes = VARSIZE_ANY_EXHDR(datum);
 }
 
-Datum YBCTextToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlTextToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* While reading back TEXT from storage, we don't need to check for data length. */
 	return PointerGetDatum(cstring_to_text_with_len(data, bytes));
 }
@@ -266,18 +266,18 @@ Datum YBCTextToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_a
 /*
  * CHAR type conversion.
  */
-void YBCDatumToChar(Datum datum, char *data, int64 *bytes) {
+void K2SqlDatumToChar(Datum datum, char *data, int64 *bytes) {
 	*data = DatumGetChar(datum);
 }
 
-Datum YBCCharToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlCharToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return CharGetDatum(*data);
 }
 
 /*
  * CHAR-based type conversion.
  */
-void YBCDatumToBPChar(Datum datum, char **data, int64 *bytes) {
+void K2SqlDatumToBPChar(Datum datum, char **data, int64 *bytes) {
 	int size;
 	*data = TextDatumGetCString(datum);
 
@@ -295,9 +295,9 @@ void YBCDatumToBPChar(Datum datum, char **data, int64 *bytes) {
 	*bytes = size;
 }
 
-Datum YBCBPCharToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlBPCharToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* PostgreSQL can represent text strings up to 1 GB minus a four-byte header. */
-	if (bytes > kYBCMaxPostgresTextSizeBytes || bytes < 0) {
+	if (bytes > kMaxPostgresTextSizeBytes || bytes < 0) {
 		ereport(ERROR, (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("Invalid data size")));
 	}
@@ -310,14 +310,14 @@ Datum YBCBPCharToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type
 	return bpcharin(fcinfo);
 }
 
-void YBCDatumToVarchar(Datum datum, char **data, int64 *bytes) {
+void K2SqlDatumToVarchar(Datum datum, char **data, int64 *bytes) {
 	*data = TextDatumGetCString(datum);
 	*bytes = strlen(*data);
 }
 
-Datum YBCVarcharToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlVarcharToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* PostgreSQL can represent text strings up to 1 GB minus a four-byte header. */
-	if (bytes > kYBCMaxPostgresTextSizeBytes || bytes < 0) {
+	if (bytes > kMaxPostgresTextSizeBytes || bytes < 0) {
 		ereport(ERROR, (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("Invalid data size")));
 	}
@@ -333,14 +333,14 @@ Datum YBCVarcharToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *typ
 /*
  * NAME conversion.
  */
-void YBCDatumToName(Datum datum, char **data, int64 *bytes) {
+void K2SqlDatumToName(Datum datum, char **data, int64 *bytes) {
 	*data = DatumGetCString(datum);
 	*bytes = strlen(*data);
 }
 
-Datum YBCNameToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlNameToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* PostgreSQL can represent text strings up to 1 GB minus a four-byte header. */
-	if (bytes > kYBCMaxPostgresTextSizeBytes || bytes < 0) {
+	if (bytes > kMaxPostgresTextSizeBytes || bytes < 0) {
 		ereport(ERROR, (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("Invalid data size")));
 	}
@@ -359,14 +359,14 @@ Datum YBCNameToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_a
  * PSEUDO-type cstring conversion.
  * Not a type that is used by users.
  */
-void YBCDatumToCStr(Datum datum, char **data, int64 *bytes) {
+void K2SqlDatumToCStr(Datum datum, char **data, int64 *bytes) {
 	*data = DatumGetCString(datum);
 	*bytes = strlen(*data);
 }
 
-Datum YBCCStrToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlCStrToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	/* PostgreSQL can represent text strings up to 1 GB minus a four-byte header. */
-	if (bytes > kYBCMaxPostgresTextSizeBytes || bytes < 0) {
+	if (bytes > kMaxPostgresTextSizeBytes || bytes < 0) {
 		ereport(ERROR, (errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
 						errmsg("Invalid data size")));
 	}
@@ -382,60 +382,60 @@ Datum YBCCStrToDatum(const char *data, int64 bytes, const YBCPgTypeAttrs *type_a
  * INTEGERs conversion.
  * Fixed size: Ignore the "bytes" data size.
  */
-void YBCDatumToInt16(Datum datum, int16 *data, int64 *bytes) {
+void K2SqlDatumToInt16(Datum datum, int16 *data, int64 *bytes) {
 	*data = DatumGetInt16(datum);
 }
 
-Datum YBCInt16ToDatum(const int16 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlInt16ToDatum(const int16 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return Int16GetDatum(*data);
 }
 
-void YBCDatumToInt32(Datum datum, int32 *data, int64 *bytes) {
+void K2SqlDatumToInt32(Datum datum, int32 *data, int64 *bytes) {
 	*data = DatumGetInt32(datum);
 }
 
-Datum YBCInt32ToDatum(const int32 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlInt32ToDatum(const int32 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return Int32GetDatum(*data);
 }
 
-void YBCDatumToInt64(Datum datum, int64 *data, int64 *bytes) {
+void K2SqlDatumToInt64(Datum datum, int64 *data, int64 *bytes) {
 	*data = DatumGetInt64(datum);
 }
 
-Datum YBCInt64ToDatum(const int64 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlInt64ToDatum(const int64 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return Int64GetDatum(*data);
 }
 
-void YBCDatumToUInt64(Datum datum, uint64 *data, uint64 *bytes) {
+void K2SqlDatumToUInt64(Datum datum, uint64 *data, uint64 *bytes) {
         *data = DatumGetUInt64(datum);
 }
 
-Datum YBCUInt64ToDatum(const uint64 *data, uint64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlUInt64ToDatum(const uint64 *data, uint64 bytes, const K2PgTypeAttrs *type_attrs) {
         return UInt64GetDatum(*data);
 }
 
-void YBCDatumToOid(Datum datum, Oid *data, int64 *bytes) {
+void K2SqlDatumToOid(Datum datum, Oid *data, int64 *bytes) {
 	*data = DatumGetObjectId(datum);
 }
 
-Datum YBCOidToDatum(const Oid *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlOidToDatum(const Oid *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return ObjectIdGetDatum(*data);
 }
 
-void YBCDatumToCommandId(Datum datum, CommandId *data, int64 *bytes) {
+void K2SqlDatumToCommandId(Datum datum, CommandId *data, int64 *bytes) {
 	*data = DatumGetCommandId(datum);
 }
 
-Datum YBCCommandIdToDatum(const CommandId *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlCommandIdToDatum(const CommandId *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return CommandIdGetDatum(*data);
 }
 
-void YBCDatumToTransactionId(Datum datum, TransactionId *data, int64 *bytes) {
+void K2SqlDatumToTransactionId(Datum datum, TransactionId *data, int64 *bytes) {
 	*data = DatumGetTransactionId(datum);
 }
 
-Datum YBCTransactionIdToDatum(const TransactionId *data, int64 bytes,
-							  const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlTransactionIdToDatum(const TransactionId *data, int64 bytes,
+							  const K2PgTypeAttrs *type_attrs) {
 	return TransactionIdGetDatum(*data);
 }
 
@@ -443,19 +443,19 @@ Datum YBCTransactionIdToDatum(const TransactionId *data, int64 bytes,
  * FLOATs conversion.
  * Fixed size: Ignore the "bytes" data size.
  */
-void YBCDatumToFloat4(Datum datum, float *data, int64 *bytes) {
+void K2SqlDatumToFloat4(Datum datum, float *data, int64 *bytes) {
 	*data = DatumGetFloat4(datum);
 }
 
-Datum YBCFloat4ToDatum(const float *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlFloat4ToDatum(const float *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return Float4GetDatum(*data);
 }
 
-void YBCDatumToFloat8(Datum datum, double *data, int64 *bytes) {
+void K2SqlDatumToFloat8(Datum datum, double *data, int64 *bytes) {
 	*data = DatumGetFloat8(datum);
 }
 
-Datum YBCFloat8ToDatum(const double *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlFloat8ToDatum(const double *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return Float8GetDatum(*data);
 }
 
@@ -463,7 +463,7 @@ Datum YBCFloat8ToDatum(const double *data, int64 bytes, const YBCPgTypeAttrs *ty
  * DECIMAL / NUMERIC conversion.
  * We're using plaintext c-string as an intermediate step between PG and YB numerics.
  */
-void YBCDatumToDecimalText(Datum datum, char *plaintext[], int64 *bytes) {
+void K2SqlDatumToDecimalText(Datum datum, char *plaintext[], int64 *bytes) {
 	Numeric num = DatumGetNumeric(datum);
 	*plaintext = numeric_normalize(num);
 	// NaN support will be added in ENG-4645
@@ -473,7 +473,7 @@ void YBCDatumToDecimalText(Datum datum, char *plaintext[], int64 *bytes) {
 	}
 }
 
-Datum YBCDecimalTextToDatum(const char plaintext[], int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlDecimalTextToDatum(const char plaintext[], int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	FunctionCallInfoData fargs;
 	FunctionCallInfo fcinfo = &fargs;
 	PG_GETARG_DATUM(0) = CStringGetDatum(plaintext);
@@ -485,24 +485,24 @@ Datum YBCDecimalTextToDatum(const char plaintext[], int64 bytes, const YBCPgType
  * MONEY conversion.
  * We're using int64 as a representation, just like Postgres does.
  */
-void YBCDatumToMoneyInt64(Datum datum, int64 *data, int64 *bytes) {
+void K2SqlDatumToMoneyInt64(Datum datum, int64 *data, int64 *bytes) {
 	*data = DatumGetCash(datum);
 }
 
-Datum YBCMoneyInt64ToDatum(const int64 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlMoneyInt64ToDatum(const int64 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return CashGetDatum(*data);
 }
 
 /*
  * UUID Datatype.
  */
-void YBCDatumToUuid(Datum datum, unsigned char **data, int64 *bytes) {
+void K2SqlDatumToUuid(Datum datum, unsigned char **data, int64 *bytes) {
 	// Postgres store uuid as hex string.
 	*data = (DatumGetUUIDP(datum))->data;
 	*bytes = UUID_LEN;
 }
 
-Datum YBCUuidToDatum(const unsigned char *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlUuidToDatum(const unsigned char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	// We have to make a copy for data because the "data" pointer belongs to YugaByte cache memory
 	// which can be cleared at any time.
 	pg_uuid_t *uuid;
@@ -521,11 +521,11 @@ Datum YBCUuidToDatum(const unsigned char *data, int64 bytes, const YBCPgTypeAttr
  * PG represents DATE as signed int32 number of days since 2000-01-01, we store it as-is
  */
 
-void YBCDatumToDate(Datum datum, int32 *data, int64 *bytes) {
+void K2SqlDatumToDate(Datum datum, int32 *data, int64 *bytes) {
 	*data = DatumGetDateADT(datum);
 }
 
-Datum YBCDateToDatum(const int32 *data, int64 bytes, const YBCPgTypeAttrs* type_attrs) {
+Datum K2SqlDateToDatum(const int32 *data, int64 bytes, const K2PgTypeAttrs* type_attrs) {
 	return DateADTGetDatum(*data);
 }
 
@@ -534,11 +534,11 @@ Datum YBCDateToDatum(const int32 *data, int64 bytes, const YBCPgTypeAttrs* type_
  * PG represents TIME as microseconds in int64, we store it as-is
  */
 
-void YBCDatumToTime(Datum datum, int64 *data, int64 *bytes) {
+void K2SqlDatumToTime(Datum datum, int64 *data, int64 *bytes) {
 	*data = DatumGetTimeADT(datum);
 }
 
-Datum YBCTimeToDatum(const int64 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlTimeToDatum(const int64 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	return TimeADTGetDatum(*data);
 }
 
@@ -546,12 +546,12 @@ Datum YBCTimeToDatum(const int64 *data, int64 bytes, const YBCPgTypeAttrs *type_
  * INTERVAL conversions.
  * PG represents INTERVAL as 128 bit structure, store it as binary
  */
-void YBCDatumToInterval(Datum datum, void **data, int64 *bytes) {
+void K2SqlDatumToInterval(Datum datum, void **data, int64 *bytes) {
 	*data = DatumGetIntervalP(datum);
 	*bytes = sizeof(Interval);
 }
 
-Datum YBCIntervalToDatum(const void *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlIntervalToDatum(const void *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	const size_t sz = sizeof(Interval);
 	if (bytes != sz) {
 		ereport(ERROR, (errcode(ERRCODE_DATA_CORRUPTED),
@@ -576,14 +576,14 @@ Datum YBCIntervalToDatum(const void *data, int64 bytes, const YBCPgTypeAttrs *ty
  *   Datum = (cached_in_place_datatype)(data)
  */
 
-void YBCDatumToDocdb(Datum datum, uint8 **data, int64 *bytes) {
+void DatumToK2Sql(Datum datum, uint8 **data, int64 *bytes) {
 	if (*bytes < 0) {
 		*bytes = VARSIZE_ANY(datum);
 	}
 	*data = (uint8 *)datum;
 }
 
-Datum YBCDocdbToDatum(const uint8 *data, int64 bytes, const YBCPgTypeAttrs *type_attrs) {
+Datum K2SqlToDatum(const uint8 *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
 	uint8 *result = palloc(bytes);
 	memcpy(result, data, bytes);
 	return PointerGetDatum(result);
@@ -601,684 +601,684 @@ Datum YBCDocdbToDatum(const uint8 *data, int64 bytes, const YBCPgTypeAttrs *type
  * - Change NOT_SUPPORTED to proper datatype.
  * - Turn ON or OFF certain type for KEY (true or false) when testing its support.
  **************************************************************************************************/
-static const YBCPgTypeEntity YBCTypeEntityTable[] = {
+static const K2PgTypeEntity K2SqlTypeEntityTable[] = {
 	{ BOOLOID, K2SQL_DATA_TYPE_BOOL, true, sizeof(bool),
-		(YBCPgDatumToData)YBCDatumToBool,
-		(YBCPgDatumFromData)YBCBoolToDatum },
+		(K2PgDatumToData)K2SqlDatumToBool,
+		(K2PgDatumFromData)K2SqlBoolToDatum },
 
 	{ BYTEAOID, K2SQL_DATA_TYPE_BINARY, true, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ CHAROID, K2SQL_DATA_TYPE_INT8, true, -1,
-		(YBCPgDatumToData)YBCDatumToChar,
-		(YBCPgDatumFromData)YBCCharToDatum },
+		(K2PgDatumToData)K2SqlDatumToChar,
+		(K2PgDatumFromData)K2SqlCharToDatum },
 
 	{ NAMEOID, K2SQL_DATA_TYPE_STRING, true, -1,
-		(YBCPgDatumToData)YBCDatumToName,
-		(YBCPgDatumFromData)YBCNameToDatum },
+		(K2PgDatumToData)K2SqlDatumToName,
+		(K2PgDatumFromData)K2SqlNameToDatum },
 
 	{ INT8OID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ INT2OID, K2SQL_DATA_TYPE_INT16, true, sizeof(int16),
-		(YBCPgDatumToData)YBCDatumToInt16,
-		(YBCPgDatumFromData)YBCInt16ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt16,
+		(K2PgDatumFromData)K2SqlInt16ToDatum },
 
 	{ INT2VECTOROID, K2SQL_DATA_TYPE_BINARY, true, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT4OID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ REGPROCOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ TEXTOID, K2SQL_DATA_TYPE_STRING, true, -1,
-		(YBCPgDatumToData)YBCDatumToText,
-		(YBCPgDatumFromData)YBCTextToDatum },
+		(K2PgDatumToData)K2SqlDatumToText,
+		(K2PgDatumFromData)K2SqlTextToDatum },
 
 	{ OIDOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ TIDOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(ItemPointerData),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ XIDOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(TransactionId),
-		(YBCPgDatumToData)YBCDatumToTransactionId,
-		(YBCPgDatumFromData)YBCTransactionIdToDatum },
+		(K2PgDatumToData)K2SqlDatumToTransactionId,
+		(K2PgDatumFromData)K2SqlTransactionIdToDatum },
 
 	{ CIDOID, K2SQL_DATA_TYPE_UINT32, false, sizeof(CommandId),
-		(YBCPgDatumToData)YBCDatumToCommandId,
-		(YBCPgDatumFromData)YBCCommandIdToDatum },
+		(K2PgDatumToData)K2SqlDatumToCommandId,
+		(K2PgDatumFromData)K2SqlCommandIdToDatum },
 
 	{ OIDVECTOROID, K2SQL_DATA_TYPE_BINARY, true, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ JSONOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ XMLOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ XMLARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ PGNODETREEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ PGNDISTINCTOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ PGDEPENDENCIESOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ PGDDLCOMMANDOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ SMGROID, K2SQL_DATA_TYPE_INT16, true, sizeof(int16),
-		(YBCPgDatumToData)YBCDatumToInt16,
-		(YBCPgDatumFromData)YBCInt16ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt16,
+		(K2PgDatumFromData)K2SqlInt16ToDatum },
 
 	{ POINTOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(Point),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ LSEGOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(LSEG),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ PATHOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ BOXOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(BOX),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ POLYGONOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ LINEOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(LINE),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ LINEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ FLOAT4OID, K2SQL_DATA_TYPE_FLOAT, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToFloat4,
-		(YBCPgDatumFromData)YBCFloat4ToDatum },
+		(K2PgDatumToData)K2SqlDatumToFloat4,
+		(K2PgDatumFromData)K2SqlFloat4ToDatum },
 
 	{ FLOAT8OID, K2SQL_DATA_TYPE_DOUBLE, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToFloat8,
-		(YBCPgDatumFromData)YBCFloat8ToDatum },
+		(K2PgDatumToData)K2SqlDatumToFloat8,
+		(K2PgDatumFromData)K2SqlFloat8ToDatum },
 
 	/* Deprecated datatype in postgres since 6.3 release */
 	{ ABSTIMEOID, K2SQL_DATA_TYPE_NOT_SUPPORTED, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	/* Deprecated datatype in postgres since 6.3 release */
 	{ RELTIMEOID, K2SQL_DATA_TYPE_NOT_SUPPORTED, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	/* Deprecated datatype in postgres since 6.3 release */
 	{ TINTERVALOID, K2SQL_DATA_TYPE_NOT_SUPPORTED, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	/* Deprecated datatype in postgres since 6.3 release */
 	{ UNKNOWNOID, K2SQL_DATA_TYPE_NOT_SUPPORTED, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ CIRCLEOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(CIRCLE),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ CIRCLEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	/* We're using int64 to represent monetary type, just like Postgres does. */
 	{ CASHOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToMoneyInt64,
-		(YBCPgDatumFromData)YBCMoneyInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToMoneyInt64,
+		(K2PgDatumFromData)K2SqlMoneyInt64ToDatum },
 
 	{ MONEYARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ MACADDROID, K2SQL_DATA_TYPE_BINARY, false, sizeof(macaddr),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ INETOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ CIDROID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ MACADDR8OID, K2SQL_DATA_TYPE_BINARY, false, sizeof(macaddr8),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ BOOLARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ BYTEAARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ CHARARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ NAMEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT2ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT2VECTORARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT4ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGPROCARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TEXTARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ OIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ XIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ CIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ OIDVECTORARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ BPCHARARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ VARCHARARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT8ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ POINTARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ LSEGARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ PATHARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ BOXARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ FLOAT4ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ FLOAT8ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ ABSTIMEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ RELTIMEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TINTERVALARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ POLYGONARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ ACLITEMOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(AclItem),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ ACLITEMARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ MACADDRARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ MACADDR8ARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INETARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ CIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ CSTRINGARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ BPCHAROID, K2SQL_DATA_TYPE_STRING, true, -1,
-		(YBCPgDatumToData)YBCDatumToBPChar,
-		(YBCPgDatumFromData)YBCBPCharToDatum },
+		(K2PgDatumToData)K2SqlDatumToBPChar,
+		(K2PgDatumFromData)K2SqlBPCharToDatum },
 
 	{ VARCHAROID, K2SQL_DATA_TYPE_STRING, true, -1,
-		(YBCPgDatumToData)YBCDatumToVarchar,
-		(YBCPgDatumFromData)YBCVarcharToDatum },
+		(K2PgDatumToData)K2SqlDatumToVarchar,
+		(K2PgDatumFromData)K2SqlVarcharToDatum },
 
 	{ DATEOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToDate,
-		(YBCPgDatumFromData)YBCDateToDatum },
+		(K2PgDatumToData)K2SqlDatumToDate,
+		(K2PgDatumFromData)K2SqlDateToDatum },
 
 	{ TIMEOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToTime,
-		(YBCPgDatumFromData)YBCTimeToDatum },
+		(K2PgDatumToData)K2SqlDatumToTime,
+		(K2PgDatumFromData)K2SqlTimeToDatum },
 
 	{ TIMESTAMPOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ TIMESTAMPARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ DATEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TIMEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TIMESTAMPTZOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ TIMESTAMPTZARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INTERVALOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(Interval),
-		(YBCPgDatumToData)YBCDatumToInterval,
-		(YBCPgDatumFromData)YBCIntervalToDatum },
+		(K2PgDatumToData)K2SqlDatumToInterval,
+		(K2PgDatumFromData)K2SqlIntervalToDatum },
 
 	{ INTERVALARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ NUMERICARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TIMETZOID, K2SQL_DATA_TYPE_BINARY, false, sizeof(TimeTzADT),
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ TIMETZARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ BITOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ BITARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ VARBITOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ VARBITARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ NUMERICOID, K2SQL_DATA_TYPE_DECIMAL, true, -1,
-		(YBCPgDatumToData)YBCDatumToDecimalText,
-		(YBCPgDatumFromData)YBCDecimalTextToDatum },
+		(K2PgDatumToData)K2SqlDatumToDecimalText,
+		(K2PgDatumFromData)K2SqlDecimalTextToDatum },
 
 	{ REFCURSOROID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ REGPROCEDUREOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGOPEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGOPERATOROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGCLASSOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGTYPEOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGROLEOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGNAMESPACEOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGPROCEDUREARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGOPERARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGOPERATORARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGCLASSARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGTYPEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGROLEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGNAMESPACEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ UUIDOID, K2SQL_DATA_TYPE_BINARY, true, -1,
-		(YBCPgDatumToData)YBCDatumToUuid,
-		(YBCPgDatumFromData)YBCUuidToDatum },
+		(K2PgDatumToData)K2SqlDatumToUuid,
+		(K2PgDatumFromData)K2SqlUuidToDatum },
 
 	{ UUIDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ LSNOID, K2SQL_DATA_TYPE_UINT64, true, sizeof(uint64),
-		(YBCPgDatumToData)YBCDatumToUInt64,
-		(YBCPgDatumFromData)YBCUInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToUInt64,
+		(K2PgDatumFromData)K2SqlUInt64ToDatum },
 
 	{ PG_LSNARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSVECTOROID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ GTSVECTOROID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ TSQUERYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ REGCONFIGOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ REGDICTIONARYOID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ TSVECTORARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ GTSVECTORARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSQUERYARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGCONFIGARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ REGDICTIONARYARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ JSONBOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ JSONBARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TXID_SNAPSHOTOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TXID_SNAPSHOTARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT4RANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT4RANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ NUMRANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ NUMRANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSRANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSRANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSTZRANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ TSTZRANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ DATERANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ DATERANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT8RANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ INT8RANGEARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ RECORDOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	{ RECORDARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 
 	/* Length(cstring) == -2 to be consistent with Postgres's 'typlen' attribute */
 	{ CSTRINGOID, K2SQL_DATA_TYPE_STRING, true, -2,
-		(YBCPgDatumToData)YBCDatumToCStr,
-		(YBCPgDatumFromData)YBCCStrToDatum },
+		(K2PgDatumToData)K2SqlDatumToCStr,
+		(K2PgDatumFromData)K2SqlCStrToDatum },
 
 	{ ANYOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ ANYARRAYOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum },
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum },
 
 	{ VOIDOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ TRIGGEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ EVTTRIGGEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ LANGUAGE_HANDLEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ INTERNALOID, K2SQL_DATA_TYPE_INT64, true, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum },
 
 	{ OPAQUEOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ ANYELEMENTOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ ANYNONARRAYOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ ANYENUMOID, K2SQL_DATA_TYPE_INT32, true, sizeof(int32),
-		(YBCPgDatumToData)YBCDatumToInt32,
-		(YBCPgDatumFromData)YBCInt32ToDatum },
+		(K2PgDatumToData)K2SqlDatumToInt32,
+		(K2PgDatumFromData)K2SqlInt32ToDatum },
 
 	{ FDW_HANDLEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ INDEX_AM_HANDLEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ TSM_HANDLEROID, K2SQL_DATA_TYPE_UINT32, true, sizeof(Oid),
-		(YBCPgDatumToData)YBCDatumToOid,
-		(YBCPgDatumFromData)YBCOidToDatum },
+		(K2PgDatumToData)K2SqlDatumToOid,
+		(K2PgDatumFromData)K2SqlOidToDatum },
 
 	{ ANYRANGEOID, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToDocdb,
-		(YBCPgDatumFromData)YBCDocdbToDatum },
+		(K2PgDatumToData)DatumToK2Sql,
+		(K2PgDatumFromData)K2SqlToDatum },
 };
 
 /* Special type entity used for fixed-length, pass-by-value user-defined types.
  * TODO(jason): When user-defined types as primary keys are supported, change the below `false` to
  * `true`.
  */
-static const YBCPgTypeEntity YBCFixedLenByValTypeEntity =
+static const K2PgTypeEntity K2SqlFixedLenByValTypeEntity =
 	{ InvalidOid, K2SQL_DATA_TYPE_INT64, false, sizeof(int64),
-		(YBCPgDatumToData)YBCDatumToInt64,
-		(YBCPgDatumFromData)YBCInt64ToDatum };
+		(K2PgDatumToData)K2SqlDatumToInt64,
+		(K2PgDatumFromData)K2SqlInt64ToDatum };
 /* Special type entity used for null-terminated, pass-by-reference user-defined types.
  * TODO(jason): When user-defined types as primary keys are supported, change the below `false` to
  * `true`.
  */
-static const YBCPgTypeEntity YBCNullTermByRefTypeEntity =
+static const K2PgTypeEntity K2SqlNullTermByRefTypeEntity =
 	{ InvalidOid, K2SQL_DATA_TYPE_BINARY, false, -2,
-		(YBCPgDatumToData)YBCDatumToCStr,
-		(YBCPgDatumFromData)YBCCStrToDatum };
+		(K2PgDatumToData)K2SqlDatumToCStr,
+		(K2PgDatumFromData)K2SqlCStrToDatum };
 /* Special type entity used for variable-length, pass-by-reference user-defined types.
  * TODO(jason): When user-defined types as primary keys are supported, change the below `false` to
  * `true`.
  */
-static const YBCPgTypeEntity YBCVarLenByRefTypeEntity =
+static const K2PgTypeEntity K2SqlVarLenByRefTypeEntity =
 	{ InvalidOid, K2SQL_DATA_TYPE_BINARY, false, -1,
-		(YBCPgDatumToData)YBCDatumToBinary,
-		(YBCPgDatumFromData)YBCBinaryToDatum };
+		(K2PgDatumToData)K2SqlDatumToBinary,
+		(K2PgDatumFromData)K2SqlBinaryToDatum };
 
-void YBCGetTypeTable(const YBCPgTypeEntity **type_table, int *count) {
-	*type_table = YBCTypeEntityTable;
-	*count = sizeof(YBCTypeEntityTable)/sizeof(YBCPgTypeEntity);
+void K2PgGetTypeTable(const K2PgTypeEntity **type_table, int *count) {
+	*type_table = K2SqlTypeEntityTable;
+	*count = sizeof(K2SqlTypeEntityTable)/sizeof(K2PgTypeEntity);
 }

@@ -2878,7 +2878,7 @@ final_cost_mergejoin(PlannerInfo *root, MergePath *path,
 	 * TODO: disable merge joins in Yugabyte mode until the needed functions
 	 *       'ammarkpos' and 'amrestrpos' are implemented in 'ybcin.c'.
 	 */
-	if (!enable_mergejoin || IsYugaByteEnabled())
+	if (!enable_mergejoin || IsK2PgEnabled())
 		startup_cost += disable_cost;
 
 	/*

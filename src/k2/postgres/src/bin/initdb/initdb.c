@@ -723,7 +723,7 @@ get_id(void)
 	const char *username;
 
 #ifndef WIN32
-	if (!YBShouldAllowRunningAsAnyUser() &&
+	if (!K2PgShouldAllowRunningAsAnyUser() &&
 		geteuid() == 0)			/* 0 is root's uid */
 	{
 		fprintf(stderr,
@@ -3224,7 +3224,7 @@ int
 main(int argc, char *argv[])
 {
 	if (IsYugaByteGlobalClusterInitdb() || IsYugaByteLocalNodeInitdb())
-		YBSetInitDbModeEnvVar();
+		K2PgSetInitDbModeEnvVar();
 
 	static struct option long_options[] = {
 		{"pgdata", required_argument, NULL, 'D'},

@@ -522,12 +522,12 @@ GetNewObjectId(void)
 	/* If we run out of logged for use oids then we must log more */
 	if (ShmemVariableCache->oidCount == 0)
 	{
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			Oid begin_oid = InvalidOid;
 			Oid end_oid   = InvalidOid;
 
-			YBCReserveOids(MyDatabaseId,
+			PgGate_ReserveOids(MyDatabaseId,
 			               ShmemVariableCache->nextOid,
 			               K2PG_OID_PREFETCH,
 			               &begin_oid,

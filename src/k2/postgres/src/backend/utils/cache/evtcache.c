@@ -127,7 +127,7 @@ BuildEventTriggerCache(void)
 	cache = hash_create("Event Trigger Cache", 32, &ctl,
 						HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
 
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 	{
 		/*
 		 * Prepare to scan pg_event_trigger in name order.

@@ -131,7 +131,7 @@ IndexNext(IndexScanState *node)
 	/*
 	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
 	 */
-	if (IsYugaByteEnabled()) {
+	if (IsK2PgEnabled()) {
 		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;
 		// Add row marks.
 		scandesc->k2pg_exec_params->rowmark = -1;

@@ -140,26 +140,26 @@ typedef struct ImportQual
 #define parser_yyerror(msg)  scanner_yyerror(msg, yyscanner)
 #define parser_errposition(pos)  scanner_errposition(pos, yyscanner)
 
-#define parser_ybc_not_support(pos, feature) \
-	ybc_not_support(pos, yyscanner, feature " not supported yet", -1)
+#define parser_k2pg_not_support(pos, feature) \
+	k2pg_not_support(pos, yyscanner, feature " not supported yet", -1)
 
-#define parser_ybc_warn_ignored(pos, feature) \
-	ybc_not_support_signal(pos, yyscanner, feature " not supported yet and will be ignored", -1, WARNING)
+#define parser_k2pg_warn_ignored(pos, feature) \
+	k2pg_not_support_signal(pos, yyscanner, feature " not supported yet and will be ignored", -1, WARNING)
 
-#define parser_ybc_signal_unsupported(pos, feature, issue) \
-	ybc_not_support(pos, yyscanner, feature " not supported yet", issue)
+#define parser_k2pg_signal_unsupported(pos, feature, issue) \
+	k2pg_not_support(pos, yyscanner, feature " not supported yet", issue)
 
-#define parser_ybc_not_support_in_templates(pos, feature) \
-	ybc_not_support_in_templates(pos, yyscanner, feature " not supported yet in template0/template1")
+#define parser_k2pg_not_support_in_templates(pos, feature) \
+	k2pg_not_support_in_templates(pos, yyscanner, feature " not supported yet in template0/template1")
 
-#define parser_ybc_beta_feature(pos, feature) \
+#define parser_k2pg_beta_feature(pos, feature) \
 	check_beta_feature(pos, yyscanner, "FLAGS_ysql_beta_feature_" feature, feature)
 
 static void base_yyerror(YYLTYPE *yylloc, core_yyscan_t yyscanner,
 						 const char *msg);
-static void ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int issue, int signal_level);
-static void ybc_not_support(int pos, core_yyscan_t yyscanner, const char *msg, int issue);
-static void ybc_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg);
+static void k2pg_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int issue, int signal_level);
+static void k2pg_not_support(int pos, core_yyscan_t yyscanner, const char *msg, int issue);
+static void k2pg_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg);
 static void check_beta_feature(int pos, core_yyscan_t yyscanner, const char* flag, const char* feature);
 
 static RawStmt *makeRawStmt(Node *stmt, int stmt_location);
@@ -931,89 +931,89 @@ stmt :
 			| ViewStmt
 
 			/* BETA features */
-			| AlterExtensionContentsStmt { parser_ybc_beta_feature(@1, "extension"); }
-			| AlterExtensionStmt { parser_ybc_beta_feature(@1, "extension"); }
-			| AnalyzeStmt { parser_ybc_beta_feature(@1, "analyze"); }
-			| BackfillIndexStmt { parser_ybc_beta_feature(@1, "backfill index"); }
-			| CreateFunctionStmt { parser_ybc_beta_feature(@1, "function"); }
-			| CreateOpClassStmt { parser_ybc_beta_feature(@1, "opclass"); }
-			| CreatePolicyStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| DoStmt { parser_ybc_beta_feature(@1, "function"); }
-			| DropOpClassStmt { parser_ybc_beta_feature(@1, "opclass"); }
-			| RemoveFuncStmt { parser_ybc_beta_feature(@1, "function"); }
-			| CreateTrigStmt { parser_ybc_beta_feature(@1, "trigger"); }
-			| CreateExtensionStmt { parser_ybc_beta_feature(@1, "extension"); }
-			| AlterDefaultPrivilegesStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| AlterGroupStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| AlterOwnerStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| AlterPolicyStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| AlterRoleSetStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| AlterRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| CreateGroupStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| CreateRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| DropOwnedStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| DropRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| GrantRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| ReassignOwnedStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| RevokeRoleStmt { parser_ybc_beta_feature(@1, "roles"); }
-			| VacuumStmt { parser_ybc_beta_feature(@1, "vacuum"); }
+			| AlterExtensionContentsStmt { parser_k2pg_beta_feature(@1, "extension"); }
+			| AlterExtensionStmt { parser_k2pg_beta_feature(@1, "extension"); }
+			| AnalyzeStmt { parser_k2pg_beta_feature(@1, "analyze"); }
+			| BackfillIndexStmt { parser_k2pg_beta_feature(@1, "backfill index"); }
+			| CreateFunctionStmt { parser_k2pg_beta_feature(@1, "function"); }
+			| CreateOpClassStmt { parser_k2pg_beta_feature(@1, "opclass"); }
+			| CreatePolicyStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| DoStmt { parser_k2pg_beta_feature(@1, "function"); }
+			| DropOpClassStmt { parser_k2pg_beta_feature(@1, "opclass"); }
+			| RemoveFuncStmt { parser_k2pg_beta_feature(@1, "function"); }
+			| CreateTrigStmt { parser_k2pg_beta_feature(@1, "trigger"); }
+			| CreateExtensionStmt { parser_k2pg_beta_feature(@1, "extension"); }
+			| AlterDefaultPrivilegesStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| AlterGroupStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| AlterOwnerStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| AlterPolicyStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| AlterRoleSetStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| AlterRoleStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| CreateGroupStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| CreateRoleStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| DropOwnedStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| DropRoleStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| GrantRoleStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| ReassignOwnedStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| RevokeRoleStmt { parser_k2pg_beta_feature(@1, "roles"); }
+			| VacuumStmt { parser_k2pg_beta_feature(@1, "vacuum"); }
 
 			/* Not supported in template0/template1 statements */
-			| CreateAsStmt { parser_ybc_not_support_in_templates(@1, "This statement"); }
-			| CreateSeqStmt { parser_ybc_not_support_in_templates(@1, "This statement"); }
-			| CreateStmt { parser_ybc_not_support_in_templates(@1, "This statement"); }
+			| CreateAsStmt { parser_k2pg_not_support_in_templates(@1, "This statement"); }
+			| CreateSeqStmt { parser_k2pg_not_support_in_templates(@1, "This statement"); }
+			| CreateStmt { parser_k2pg_not_support_in_templates(@1, "This statement"); }
 
 			/* Not supported statements */
-			| AlterEventTrigStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterCollationStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterEnumStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterFdwStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterForeignServerStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterForeignTableStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterFunctionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterObjectDependsStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterSystemStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterTblSpcStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterCompositeTypeStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterPublicationStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterTSConfigurationStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterTSDictionaryStmt { parser_ybc_not_support(@1, "This statement"); }
-			| AlterUserMappingStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CheckPointStmt { parser_ybc_not_support(@1, "This statement"); }
-			| ClosePortalStmt { parser_ybc_not_support(@1, "This statement"); }
-			| ClusterStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateAmStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateAssertStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateConversionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateFdwStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateForeignServerStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateForeignTableStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateMatViewStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreatePublicationStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreatePLangStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateStatsStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateTableSpaceStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateTransformStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateEventTrigStmt { parser_ybc_not_support(@1, "This statement"); }
-			| CreateUserMappingStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DeclareCursorStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropAssertStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropPLangStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropSubscriptionStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropTableSpaceStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropTransformStmt { parser_ybc_not_support(@1, "This statement"); }
-			| DropUserMappingStmt { parser_ybc_not_support(@1, "This statement"); }
-			| FetchStmt { parser_ybc_not_support(@1, "This statement"); }
-			| ImportForeignSchemaStmt { parser_ybc_not_support(@1, "This statement"); }
-			| ListenStmt { parser_ybc_warn_ignored(@1, "LISTEN"); }
-			| RefreshMatViewStmt { parser_ybc_not_support(@1, "This statement"); }
-			| LoadStmt { parser_ybc_not_support(@1, "This statement"); }
-			| NotifyStmt { parser_ybc_warn_ignored(@1, "NOTIFY"); }
-			| ReindexStmt { parser_ybc_not_support(@1, "This statement"); }
-			| SecLabelStmt { parser_ybc_not_support(@1, "This statement"); }
-			| UnlistenStmt { parser_ybc_warn_ignored(@1, "UNLISTEN"); }
+			| AlterEventTrigStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterCollationStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterEnumStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterFdwStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterForeignServerStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterForeignTableStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterFunctionStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterObjectDependsStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterSystemStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterTblSpcStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterCompositeTypeStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterPublicationStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterSubscriptionStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterTSConfigurationStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterTSDictionaryStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| AlterUserMappingStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CheckPointStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| ClosePortalStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| ClusterStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateAmStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateAssertStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateConversionStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateFdwStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateForeignServerStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateForeignTableStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateMatViewStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreatePublicationStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreatePLangStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateSubscriptionStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateStatsStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateTableSpaceStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateTransformStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateEventTrigStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| CreateUserMappingStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DeclareCursorStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropAssertStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropPLangStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropSubscriptionStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropTableSpaceStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropTransformStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| DropUserMappingStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| FetchStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| ImportForeignSchemaStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| ListenStmt { parser_k2pg_warn_ignored(@1, "LISTEN"); }
+			| RefreshMatViewStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| LoadStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| NotifyStmt { parser_k2pg_warn_ignored(@1, "NOTIFY"); }
+			| ReindexStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| SecLabelStmt { parser_k2pg_not_support(@1, "This statement"); }
+			| UnlistenStmt { parser_k2pg_warn_ignored(@1, "UNLISTEN"); }
 		;
 
 /*****************************************************************************
@@ -1039,7 +1039,7 @@ CallStmt:	CALL func_application
 CreateRoleStmt:
 			CREATE ROLE RoleId opt_with OptRoleList
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					CreateRoleStmt *n = makeNode(CreateRoleStmt);
 					n->stmt_type = ROLESTMT_ROLE;
 					n->role = $3;
@@ -1062,7 +1062,7 @@ opt_with:	WITH									{}
 OptRoleList:
 			OptRoleList CreateOptRoleElem
 				{
-					parser_ybc_beta_feature(@2, "roles");
+					parser_k2pg_beta_feature(@2, "roles");
 					$$ = lappend($1, $2);
 				}
 			| /* EMPTY */							{ $$ = NIL; }
@@ -1218,7 +1218,7 @@ CreateUserStmt:
 AlterRoleStmt:
 			ALTER ROLE RoleSpec opt_with AlterOptRoleList
 				 {
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleStmt *n = makeNode(AlterRoleStmt);
 					n->role = $3;
 					n->action = +1;	/* add, if there are members */
@@ -1227,7 +1227,7 @@ AlterRoleStmt:
 				 }
 			| ALTER USER RoleSpec opt_with AlterOptRoleList
 				 {
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleStmt *n = makeNode(AlterRoleStmt);
 					n->role = $3;
 					n->action = +1;	/* add, if there are members */
@@ -1244,7 +1244,7 @@ opt_in_database:
 AlterRoleSetStmt:
 			ALTER ROLE RoleSpec opt_in_database SetResetClause
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleSetStmt *n = makeNode(AlterRoleSetStmt);
 					n->role = $3;
 					n->database = $4;
@@ -1253,7 +1253,7 @@ AlterRoleSetStmt:
 				}
 			| ALTER ROLE ALL opt_in_database SetResetClause
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleSetStmt *n = makeNode(AlterRoleSetStmt);
 					n->role = NULL;
 					n->database = $4;
@@ -1262,7 +1262,7 @@ AlterRoleSetStmt:
 				}
 			| ALTER USER RoleSpec opt_in_database SetResetClause
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleSetStmt *n = makeNode(AlterRoleSetStmt);
 					n->role = $3;
 					n->database = $4;
@@ -1271,7 +1271,7 @@ AlterRoleSetStmt:
 				}
 			| ALTER USER ALL opt_in_database SetResetClause
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleSetStmt *n = makeNode(AlterRoleSetStmt);
 					n->role = NULL;
 					n->database = $4;
@@ -1293,7 +1293,7 @@ AlterRoleSetStmt:
 DropRoleStmt:
 			DROP ROLE role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
@@ -1301,7 +1301,7 @@ DropRoleStmt:
 				}
 			| DROP ROLE IF_P EXISTS role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
 					n->roles = $5;
@@ -1309,7 +1309,7 @@ DropRoleStmt:
 				}
 			| DROP USER role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
@@ -1317,7 +1317,7 @@ DropRoleStmt:
 				}
 			| DROP USER IF_P EXISTS role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->roles = $5;
 					n->missing_ok = true;
@@ -1325,7 +1325,7 @@ DropRoleStmt:
 				}
 			| DROP GROUP_P role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
 					n->roles = $3;
@@ -1333,7 +1333,7 @@ DropRoleStmt:
 				}
 			| DROP GROUP_P IF_P EXISTS role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
 					n->roles = $5;
@@ -1351,7 +1351,7 @@ DropRoleStmt:
 CreateGroupStmt:
 			CREATE GROUP_P RoleId opt_with OptRoleList
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					CreateRoleStmt *n = makeNode(CreateRoleStmt);
 					n->stmt_type = ROLESTMT_GROUP;
 					n->role = $3;
@@ -1370,7 +1370,7 @@ CreateGroupStmt:
 AlterGroupStmt:
 			ALTER GROUP_P RoleSpec add_drop USER role_list
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterRoleStmt *n = makeNode(AlterRoleStmt);
 					n->role = $3;
 					n->action = $4;
@@ -1394,7 +1394,7 @@ add_drop:	ADD_P									{ $$ = +1; }
 CreateSchemaStmt:
 			CREATE SCHEMA OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* One can omit the schema name or the authorization id. */
 					n->schemaname = $3;
@@ -1415,7 +1415,7 @@ CreateSchemaStmt:
 				}
 			| CREATE SCHEMA IF_P NOT EXISTS OptSchemaName AUTHORIZATION RoleSpec OptSchemaEltList
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
 					/* schema name can be omitted here, too */
 					n->schemaname = $6;
@@ -1454,7 +1454,7 @@ OptSchemaName:
 OptSchemaEltList:
 			OptSchemaEltList schema_stmt
 				{
-					parser_ybc_not_support(@2, "CREATE SCHEMA with elements");
+					parser_k2pg_not_support(@2, "CREATE SCHEMA with elements");
 					if (@$ < 0)			/* see comments for YYLLOC_DEFAULT */
 						@$ = @2;
 					$$ = lappend($1, $2);
@@ -1759,7 +1759,7 @@ reset_rest:
 				}
 			| SESSION AUTHORIZATION
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					VariableSetStmt *n = makeNode(VariableSetStmt);
 					n->kind = VAR_RESET;
 					n->name = "session_authorization";
@@ -1857,7 +1857,7 @@ constraints_set_mode:
 CheckPointStmt:
 			CHECKPOINT
 				{
-					parser_ybc_not_support(@1, "CHECKPOINT");
+					parser_k2pg_not_support(@1, "CHECKPOINT");
 					CheckPointStmt *n = makeNode(CheckPointStmt);
 					$$ = (Node *)n;
 				}
@@ -1934,7 +1934,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE relation_expr partition_cmd
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
+					parser_k2pg_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = list_make1($4);
@@ -1944,7 +1944,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE IF_P EXISTS relation_expr partition_cmd
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
+					parser_k2pg_not_support(@1, "ALTER TABLE WITH PARTITION COMMAND");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = list_make1($6);
@@ -1954,7 +1954,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -1966,7 +1966,7 @@ AlterTableStmt:
 				}
 		|	ALTER TABLE ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALL IN TABLESPACE");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -1978,7 +1978,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -1988,7 +1988,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -1998,7 +1998,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX qualified_name index_partition_cmd
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = list_make1($4);
@@ -2008,7 +2008,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -2020,7 +2020,7 @@ AlterTableStmt:
 				}
 		|	ALTER INDEX ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $6;
@@ -2032,7 +2032,7 @@ AlterTableStmt:
 				}
 		|	ALTER SEQUENCE qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -2042,7 +2042,7 @@ AlterTableStmt:
 				}
 		|	ALTER SEQUENCE IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -2052,7 +2052,7 @@ AlterTableStmt:
 				}
 		|	ALTER VIEW qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW");
+					parser_k2pg_not_support(@1, "ALTER VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $3;
 					n->cmds = $4;
@@ -2062,7 +2062,7 @@ AlterTableStmt:
 				}
 		|	ALTER VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW");
+					parser_k2pg_not_support(@1, "ALTER VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $5;
 					n->cmds = $6;
@@ -2072,7 +2072,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $4;
 					n->cmds = $5;
@@ -2082,7 +2082,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $6;
 					n->cmds = $7;
@@ -2092,7 +2092,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW ALL IN_P TABLESPACE name SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $7;
@@ -2104,7 +2104,7 @@ AlterTableStmt:
 				}
 		|	ALTER MATERIALIZED VIEW ALL IN_P TABLESPACE name OWNED BY role_list SET TABLESPACE name opt_nowait
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					AlterTableMoveAllStmt *n =
 						makeNode(AlterTableMoveAllStmt);
 					n->orig_tablespacename = $7;
@@ -2125,7 +2125,7 @@ partition_cmd:
 			/* ALTER TABLE <name> ATTACH PARTITION <table_name> FOR VALUES */
 			ATTACH PARTITION qualified_name PartitionBoundSpec
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ATTACH PARTITION");
+					parser_k2pg_not_support(@1, "ALTER TABLE ATTACH PARTITION");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
@@ -2139,7 +2139,7 @@ partition_cmd:
 			/* ALTER TABLE <name> DETACH PARTITION <partition_name> */
 			| DETACH PARTITION qualified_name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE DETACH PARTITION");
+					parser_k2pg_not_support(@1, "ALTER TABLE DETACH PARTITION");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					PartitionCmd *cmd = makeNode(PartitionCmd);
 
@@ -2233,7 +2233,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET STATISTICS <SignedIconst> */
 			| ALTER opt_column ColId SET STATISTICS SignedIconst
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetStatistics;
 					n->name = $3;
@@ -2259,7 +2259,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET ( column_parameter = value [, ... ] ) */
 			| ALTER opt_column ColId SET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetOptions;
 					n->name = $3;
@@ -2269,7 +2269,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> RESET ( column_parameter = value [, ... ] ) */
 			| ALTER opt_column ColId RESET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ResetOptions;
 					n->name = $3;
@@ -2279,7 +2279,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER [COLUMN] <colname> SET STORAGE <storagemode> */
 			| ALTER opt_column ColId SET STORAGE ColId
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetStorage;
 					n->name = $3;
@@ -2356,7 +2356,7 @@ alter_table_cmd:
 			 */
 			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_collate_clause alter_using
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
 					n->subtype = AT_AlterColumnType;
@@ -2372,7 +2372,7 @@ alter_table_cmd:
 			/* ALTER FOREIGN TABLE <name> ALTER [COLUMN] <colname> OPTIONS */
 			| ALTER opt_column ColId alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER column");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER column");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AlterColumnGenericOptions;
 					n->name = $3;
@@ -2390,7 +2390,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ALTER CONSTRAINT ... */
 			| ALTER CONSTRAINT name ConstraintAttributeSpec
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ALTER CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER TABLE ALTER CONSTRAINT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					Constraint *c = makeNode(Constraint);
 					n->subtype = AT_AlterConstraint;
@@ -2406,7 +2406,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> VALIDATE CONSTRAINT ... */
 			| VALIDATE CONSTRAINT name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE VALIDATE CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER TABLE VALIDATE CONSTRAINT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ValidateConstraint;
 					n->name = $3;
@@ -2435,7 +2435,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET WITH OIDS  */
 			| SET WITH OIDS
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET WITH OIDS");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET WITH OIDS");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddOids;
 					$$ = (Node *)n;
@@ -2450,7 +2450,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> CLUSTER ON <indexname> */
 			| CLUSTER ON name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE CLUSTER");
+					parser_k2pg_not_support(@1, "ALTER TABLE CLUSTER");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ClusterOn;
 					n->name = $3;
@@ -2459,7 +2459,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET WITHOUT CLUSTER */
 			| SET WITHOUT CLUSTER
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET WITHOUT CLUSTER");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET WITHOUT CLUSTER");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropCluster;
 					n->name = NULL;
@@ -2468,7 +2468,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET LOGGED  */
 			| SET LOGGED
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET LOGGED");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET LOGGED");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetLogged;
 					$$ = (Node *)n;
@@ -2476,7 +2476,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET UNLOGGED  */
 			| SET UNLOGGED
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET UNLOGGED");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET UNLOGGED");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetUnLogged;
 					$$ = (Node *)n;
@@ -2484,7 +2484,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE TRIGGER <trig> */
 			| ENABLE_P TRIGGER name
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableTrig;
 					n->name = $3;
@@ -2493,7 +2493,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE ALWAYS TRIGGER <trig> */
 			| ENABLE_P ALWAYS TRIGGER name
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableAlwaysTrig;
 					n->name = $4;
@@ -2502,7 +2502,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE REPLICA TRIGGER <trig> */
 			| ENABLE_P REPLICA TRIGGER name
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableReplicaTrig;
 					n->name = $4;
@@ -2511,7 +2511,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE TRIGGER ALL */
 			| ENABLE_P TRIGGER ALL
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableTrigAll;
 					$$ = (Node *)n;
@@ -2519,7 +2519,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE TRIGGER USER */
 			| ENABLE_P TRIGGER USER
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableTrigUser;
 					$$ = (Node *)n;
@@ -2527,7 +2527,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE TRIGGER <trig> */
 			| DISABLE_P TRIGGER name
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableTrig;
 					n->name = $3;
@@ -2536,7 +2536,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE TRIGGER ALL */
 			| DISABLE_P TRIGGER ALL
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableTrigAll;
 					$$ = (Node *)n;
@@ -2544,7 +2544,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE TRIGGER USER */
 			| DISABLE_P TRIGGER USER
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableTrigUser;
 					$$ = (Node *)n;
@@ -2552,7 +2552,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE RULE <rule> */
 			| ENABLE_P RULE name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
+					parser_k2pg_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableRule;
 					n->name = $3;
@@ -2561,7 +2561,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE ALWAYS RULE <rule> */
 			| ENABLE_P ALWAYS RULE name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
+					parser_k2pg_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableAlwaysRule;
 					n->name = $4;
@@ -2570,7 +2570,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE REPLICA RULE <rule> */
 			| ENABLE_P REPLICA RULE name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE ENABLE RULE");
+					parser_k2pg_not_support(@1, "ALTER TABLE ENABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableReplicaRule;
 					n->name = $4;
@@ -2579,7 +2579,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE RULE <rule> */
 			| DISABLE_P RULE name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE DISABLE RULE");
+					parser_k2pg_not_support(@1, "ALTER TABLE DISABLE RULE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableRule;
 					n->name = $3;
@@ -2588,7 +2588,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> INHERIT <parent> */
 			| INHERIT qualified_name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE INHERIT");
+					parser_k2pg_not_support(@1, "ALTER TABLE INHERIT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddInherit;
 					n->def = (Node *) $2;
@@ -2597,7 +2597,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> NO INHERIT <parent> */
 			| NO INHERIT qualified_name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE NO INHERIT");
+					parser_k2pg_not_support(@1, "ALTER TABLE NO INHERIT");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropInherit;
 					n->def = (Node *) $3;
@@ -2606,7 +2606,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> OF <type_name> */
 			| OF any_name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE OF name");
+					parser_k2pg_not_support(@1, "ALTER TABLE OF name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					TypeName *def = makeTypeNameFromNameList($2);
 					def->location = @2;
@@ -2617,7 +2617,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> NOT OF */
 			| NOT OF
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE NOT OF name");
+					parser_k2pg_not_support(@1, "ALTER TABLE NOT OF name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropOf;
 					$$ = (Node *)n;
@@ -2625,7 +2625,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> OWNER TO RoleSpec */
 			| OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ChangeOwner;
 					n->newowner = $3;
@@ -2634,7 +2634,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET TABLESPACE <tablespacename> */
 			| SET TABLESPACE name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET TABLESPACE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetTableSpace;
 					n->name = $3;
@@ -2643,7 +2643,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> SET (...) */
 			| SET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET name");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_SetRelOptions;
 					n->def = (Node *)$2;
@@ -2652,7 +2652,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> RESET (...) */
 			| RESET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE RESET name");
+					parser_k2pg_not_support(@1, "ALTER TABLE RESET name");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ResetRelOptions;
 					n->def = (Node *)$2;
@@ -2661,7 +2661,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> REPLICA IDENTITY  */
 			| REPLICA IDENTITY_P replica_identity
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE REPLICA IDENTITY");
+					parser_k2pg_not_support(@1, "ALTER TABLE REPLICA IDENTITY");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ReplicaIdentity;
 					n->def = $3;
@@ -2670,7 +2670,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> ENABLE ROW LEVEL SECURITY */
 			| ENABLE_P ROW LEVEL SECURITY
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_EnableRowSecurity;
 					$$ = (Node *)n;
@@ -2678,7 +2678,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> DISABLE ROW LEVEL SECURITY */
 			| DISABLE_P ROW LEVEL SECURITY
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DisableRowSecurity;
 					$$ = (Node *)n;
@@ -2686,7 +2686,7 @@ alter_table_cmd:
 			/* ALTER TABLE <name> FORCE ROW LEVEL SECURITY */
 			| FORCE ROW LEVEL SECURITY
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ForceRowSecurity;
 					$$ = (Node *)n;
@@ -2694,14 +2694,14 @@ alter_table_cmd:
 			/* ALTER TABLE <name> NO FORCE ROW LEVEL SECURITY */
 			| NO FORCE ROW LEVEL SECURITY
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_NoForceRowSecurity;
 					$$ = (Node *)n;
 				}
 			| alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE");
+					parser_k2pg_not_support(@1, "ALTER TABLE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_GenericOptions;
 					n->def = (Node *)$1;
@@ -2780,14 +2780,14 @@ reloption_list:
 			reloption_elem
 				{
 					if (strcmp($1->defname, "colocated") == 0) {
-						parser_ybc_beta_feature(@1, "colocated table");
+						parser_k2pg_beta_feature(@1, "colocated table");
 					}
 					$$ = list_make1($1);
 				}
 			| reloption_list ',' reloption_elem
 				{
 					if (strcmp($3->defname, "colocated") == 0) {
-						parser_ybc_beta_feature(@1, "colocated table");
+						parser_k2pg_beta_feature(@1, "colocated table");
 					}
 					$$ = lappend($1, $3);
 				}
@@ -2904,7 +2904,7 @@ PartitionBoundSpec:
 			/* a LIST partition */
 			| FOR VALUES IN_P '(' partbound_datum_list ')'
 				{
-					parser_ybc_not_support(@1, "LIST PARTITION");
+					parser_k2pg_not_support(@1, "LIST PARTITION");
 					PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
 
 					n->strategy = PARTITION_STRATEGY_LIST;
@@ -2918,7 +2918,7 @@ PartitionBoundSpec:
 			/* a RANGE partition */
 			| FOR VALUES FROM '(' range_datum_list ')' TO '(' range_datum_list ')'
 				{
-					parser_ybc_not_support(@1, "RANGE PARTITION");
+					parser_k2pg_not_support(@1, "RANGE PARTITION");
 					PartitionBoundSpec *n = makeNode(PartitionBoundSpec);
 
 					n->strategy = PARTITION_STRATEGY_RANGE;
@@ -3023,7 +3023,7 @@ PartitionRangeDatum:
 AlterCompositeTypeStmt:
 			ALTER TYPE_P any_name alter_type_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE");
+					parser_k2pg_not_support(@1, "ALTER TYPE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 
 					/* can't use qualified_name, sigh */
@@ -3043,7 +3043,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> ADD ATTRIBUTE <coldef> [RESTRICT|CASCADE] */
 			ADD_P ATTRIBUTE TableFuncElement opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE ADD ATTRIBUTE");
+					parser_k2pg_not_support(@1, "ALTER TYPE ADD ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
 					n->def = $3;
@@ -3053,7 +3053,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> DROP ATTRIBUTE IF EXISTS <attname> [RESTRICT|CASCADE] */
 			| DROP ATTRIBUTE IF_P EXISTS ColId opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
+					parser_k2pg_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropColumn;
 					n->name = $5;
@@ -3064,7 +3064,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> DROP ATTRIBUTE <attname> [RESTRICT|CASCADE] */
 			| DROP ATTRIBUTE ColId opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
+					parser_k2pg_not_support(@1, "ALTER TYPE DROP ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_DropColumn;
 					n->name = $3;
@@ -3075,7 +3075,7 @@ alter_type_cmd:
 			/* ALTER TYPE <name> ALTER ATTRIBUTE <attname> [SET DATA] TYPE <typename> [RESTRICT|CASCADE] */
 			| ALTER ATTRIBUTE ColId opt_set_data TYPE_P Typename opt_collate_clause opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE ALTER ATTRIBUTE");
+					parser_k2pg_not_support(@1, "ALTER TYPE ALTER ATTRIBUTE");
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
 					n->subtype = AT_AlterColumnType;
@@ -3102,14 +3102,14 @@ alter_type_cmd:
 ClosePortalStmt:
 			CLOSE cursor_name
 				{
-					parser_ybc_not_support(@1, "CLOSE cursor");
+					parser_k2pg_not_support(@1, "CLOSE cursor");
 					ClosePortalStmt *n = makeNode(ClosePortalStmt);
 					n->portalname = $2;
 					$$ = (Node *)n;
 				}
 			| CLOSE ALL
 				{
-					parser_ybc_not_support(@1, "CLOSE ALL cursor");
+					parser_k2pg_not_support(@1, "CLOSE ALL cursor");
 					ClosePortalStmt *n = makeNode(ClosePortalStmt);
 					n->portalname = NULL;
 					$$ = (Node *)n;
@@ -3537,7 +3537,7 @@ OptTemp:	TEMPORARY					{ $$ = RELPERSISTENCE_TEMP; }
 				}
 			| UNLOGGED
 				{
-					parser_ybc_not_support(@1, "UNLOGGED database object");
+					parser_k2pg_not_support(@1, "UNLOGGED database object");
 					$$ = RELPERSISTENCE_UNLOGGED;
 				}
 			| /*EMPTY*/					{ $$ = RELPERSISTENCE_PERMANENT; }
@@ -3662,7 +3662,7 @@ ColConstraint:
 			| ConstraintAttr						{ $$ = $1; }
 			| COLLATE any_name
 				{
-					parser_ybc_not_support(@1, "COLLATE");
+					parser_k2pg_not_support(@1, "COLLATE");
 					/*
 					 * Note: the CollateClause is momentarily included in
 					 * the list built by ColQualList, but we split it out
@@ -3830,7 +3830,7 @@ ConstraintAttr:
 TableLikeClause:
 			LIKE qualified_name TableLikeOptionList
 				{
-					parser_ybc_not_support(@1, "LIKE clause");
+					parser_k2pg_not_support(@1, "LIKE clause");
 					TableLikeClause *n = makeNode(TableLikeClause);
 					n->relation = $2;
 					n->options = $3;
@@ -3847,37 +3847,37 @@ TableLikeOptionList:
 TableLikeOption:
 			COMMENTS
 				{
-					parser_ybc_not_support(@1, "LIKE COMMENTS");
+					parser_k2pg_not_support(@1, "LIKE COMMENTS");
 					$$ = CREATE_TABLE_LIKE_COMMENTS;
 				}
 			| CONSTRAINTS
 				{
-					parser_ybc_not_support(@1, "LIKE CONSTRAINTS");
+					parser_k2pg_not_support(@1, "LIKE CONSTRAINTS");
 					$$ = CREATE_TABLE_LIKE_CONSTRAINTS;
 				}
 			| DEFAULTS
 				{
-					parser_ybc_not_support(@1, "LIKE DEFAULTS");
+					parser_k2pg_not_support(@1, "LIKE DEFAULTS");
 					$$ = CREATE_TABLE_LIKE_DEFAULTS;
 				}
 			| IDENTITY_P
 				{
-					parser_ybc_not_support(@1, "LIKE IDENTITY");
+					parser_k2pg_not_support(@1, "LIKE IDENTITY");
 					$$ = CREATE_TABLE_LIKE_IDENTITY;
 				}
 			| INDEXES
 				{
-					parser_ybc_not_support(@1, "LIKE INDEXES");
+					parser_k2pg_not_support(@1, "LIKE INDEXES");
 					$$ = CREATE_TABLE_LIKE_INDEXES;
 				}
 			| STATISTICS
 				{
-					parser_ybc_not_support(@1, "LIKE STATISTICS");
+					parser_k2pg_not_support(@1, "LIKE STATISTICS");
 					$$ = CREATE_TABLE_LIKE_STATISTICS;
 				}
 			| STORAGE
-				{ parser_ybc_not_support(@1, "LIKE STORAGE"); $$ = CREATE_TABLE_LIKE_STORAGE; }
-			| ALL { parser_ybc_not_support(@1, "LIKE ALL"); $$ = CREATE_TABLE_LIKE_ALL; }
+				{ parser_k2pg_not_support(@1, "LIKE STORAGE"); $$ = CREATE_TABLE_LIKE_STORAGE; }
+			| ALL { parser_k2pg_not_support(@1, "LIKE ALL"); $$ = CREATE_TABLE_LIKE_ALL; }
 		;
 
 
@@ -4001,7 +4001,7 @@ ConstraintElem:
 				opt_c_include opt_definition OptConsTableSpace  ExclusionWhereClause
 				ConstraintAttributeSpec
 				{
-					parser_ybc_not_support(@1, "EXCLUDE constraint");
+					parser_k2pg_not_support(@1, "EXCLUDE constraint");
 					Constraint *n = makeNode(Constraint);
 					n->contype = CONSTR_EXCLUSION;
 					n->location = @1;
@@ -4038,7 +4038,7 @@ ConstraintElem:
 				}
 		;
 
-opt_no_inherit:	NO INHERIT { parser_ybc_not_support(@1, "NO INHERIT"); $$ = true; }
+opt_no_inherit:	NO INHERIT { parser_k2pg_not_support(@1, "NO INHERIT"); $$ = true; }
 			| /* EMPTY */							{  $$ = false; }
 		;
 
@@ -4141,7 +4141,7 @@ key_action:
 
 OptInherit: INHERITS '(' qualified_name_list ')'
 				{
-					parser_ybc_not_support(@1, "INHERITS");
+					parser_k2pg_not_support(@1, "INHERITS");
 					$$ = $3;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -4154,7 +4154,7 @@ OptPartitionSpec: PartitionSpec	{ $$ = $1; }
 
 PartitionSpec: PARTITION BY part_strategy '(' part_params ')'
 				{
-					parser_ybc_not_support(@1, "PARTITION BY");
+					parser_k2pg_not_support(@1, "PARTITION BY");
  					PartitionSpec *n = makeNode(PartitionSpec);
 
 					n->strategy = $3;
@@ -4228,14 +4228,14 @@ OnCommitOption:  ON COMMIT DROP				{ $$ = ONCOMMIT_DROP; }
 		;
 
 OptTableSpace:
-			TABLESPACE name { parser_ybc_not_support(@1, "TABLESPACE"); $$ = $2; }
+			TABLESPACE name { parser_k2pg_not_support(@1, "TABLESPACE"); $$ = $2; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
 OptConsTableSpace:
 			USING INDEX TABLESPACE name
 				{
-					parser_ybc_not_support(@1, "USING INDEX TABLESPACE");
+					parser_k2pg_not_support(@1, "USING INDEX TABLESPACE");
 					$$ = $4;
 				}
 			| /*EMPTY*/								{ $$ = NULL; }
@@ -4262,7 +4262,7 @@ OptSplit:
 SplitClause:
         AT VALUES '(' k2pg_split_points ')'
         {
-          parser_ybc_beta_feature(@1, "split_at");
+          parser_k2pg_beta_feature(@1, "split_at");
       	  $$ = makeNode(OptSplit);
       	  $$->split_type = SPLIT_POINTS;
       	  $$->split_points = $4;
@@ -4296,7 +4296,7 @@ CreateStatsStmt:
 			CREATE STATISTICS any_name
 			opt_name_list ON expr_list FROM from_list
 				{
-					parser_ybc_not_support(@1, "CREATE STATISTICS");
+					parser_k2pg_not_support(@1, "CREATE STATISTICS");
 					CreateStatsStmt *n = makeNode(CreateStatsStmt);
 					n->defnames = $3;
 					n->stat_types = $4;
@@ -4309,7 +4309,7 @@ CreateStatsStmt:
 			| CREATE STATISTICS IF_P NOT EXISTS any_name
 			opt_name_list ON expr_list FROM from_list
 				{
-					parser_ybc_not_support(@1, "CREATE STATISTICS");
+					parser_k2pg_not_support(@1, "CREATE STATISTICS");
 					CreateStatsStmt *n = makeNode(CreateStatsStmt);
 					n->defnames = $6;
 					n->stat_types = $7;
@@ -4391,7 +4391,7 @@ opt_with_data:
 CreateMatViewStmt:
 		CREATE OptNoLog MATERIALIZED VIEW create_mv_target AS SelectStmt opt_with_data
 				{
-					parser_ybc_not_support(@1, "CREATE MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "CREATE MATERIALIZED VIEW");
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 					ctas->query = $7;
 					ctas->into = $5;
@@ -4405,7 +4405,7 @@ CreateMatViewStmt:
 				}
 		| CREATE OptNoLog MATERIALIZED VIEW IF_P NOT EXISTS create_mv_target AS SelectStmt opt_with_data
 				{
-					parser_ybc_not_support(@1, "CREATE MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "CREATE MATERIALIZED VIEW");
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 					ctas->query = $10;
 					ctas->into = $8;
@@ -4448,7 +4448,7 @@ OptNoLog:	UNLOGGED					{ $$ = RELPERSISTENCE_UNLOGGED; }
 RefreshMatViewStmt:
 			REFRESH MATERIALIZED VIEW opt_concurrently qualified_name opt_with_data
 				{
-					parser_ybc_not_support(@1, "REFRESH MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "REFRESH MATERIALIZED VIEW");
 					RefreshMatViewStmt *n = makeNode(RefreshMatViewStmt);
 					n->concurrent = $4;
 					n->relation = $5;
@@ -4610,7 +4610,7 @@ NumericOnly_list:	NumericOnly						{ $$ = list_make1($1); }
 CreatePLangStmt:
 			CREATE opt_or_replace opt_trusted opt_procedural LANGUAGE NonReservedWord_or_Sconst
 			{
-				parser_ybc_not_support(@1, "CREATE LANGUAGE");
+				parser_k2pg_not_support(@1, "CREATE LANGUAGE");
 				CreatePLangStmt *n = makeNode(CreatePLangStmt);
 				n->replace = $2;
 				n->plname = $6;
@@ -4624,7 +4624,7 @@ CreatePLangStmt:
 			| CREATE opt_or_replace opt_trusted opt_procedural LANGUAGE NonReservedWord_or_Sconst
 			  HANDLER handler_name opt_inline_handler opt_validator
 			{
-				parser_ybc_not_support(@1, "CREATE LANGUAGE");
+				parser_k2pg_not_support(@1, "CREATE LANGUAGE");
 				CreatePLangStmt *n = makeNode(CreatePLangStmt);
 				n->replace = $2;
 				n->plname = $6;
@@ -4668,7 +4668,7 @@ opt_validator:
 DropPLangStmt:
 			DROP opt_procedural LANGUAGE NonReservedWord_or_Sconst opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP LANGUAGE");
+					parser_k2pg_not_support(@1, "DROP LANGUAGE");
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_LANGUAGE;
 					n->objects = list_make1(makeString($4));
@@ -4679,7 +4679,7 @@ DropPLangStmt:
 				}
 			| DROP opt_procedural LANGUAGE IF_P EXISTS NonReservedWord_or_Sconst opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP LANGUAGE");
+					parser_k2pg_not_support(@1, "DROP LANGUAGE");
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_LANGUAGE;
 					n->objects = list_make1(makeString($6));
@@ -4704,7 +4704,7 @@ opt_procedural:
 
 CreateTableSpaceStmt: CREATE TABLESPACE name OptTableSpaceOwner LOCATION Sconst opt_reloptions
 				{
-					parser_ybc_not_support(@1, "CREATE TABLESPACE");
+					parser_k2pg_not_support(@1, "CREATE TABLESPACE");
 					CreateTableSpaceStmt *n = makeNode(CreateTableSpaceStmt);
 					n->tablespacename = $3;
 					n->owner = $4;
@@ -4730,7 +4730,7 @@ OptTableSpaceOwner: OWNER RoleSpec		{ $$ = $2; }
 
 DropTableSpaceStmt: DROP TABLESPACE name
 				{
-					parser_ybc_not_support(@1, "DROP TABLESPACE");
+					parser_k2pg_not_support(@1, "DROP TABLESPACE");
 					DropTableSpaceStmt *n = makeNode(DropTableSpaceStmt);
 					n->tablespacename = $3;
 					n->missing_ok = false;
@@ -4738,7 +4738,7 @@ DropTableSpaceStmt: DROP TABLESPACE name
 				}
 				|  DROP TABLESPACE IF_P EXISTS name
 				{
-					parser_ybc_not_support(@1, "DROP TABLESPACE");
+					parser_k2pg_not_support(@1, "DROP TABLESPACE");
 					DropTableSpaceStmt *n = makeNode(DropTableSpaceStmt);
 					n->tablespacename = $5;
 					n->missing_ok = true;
@@ -5098,7 +5098,7 @@ AlterExtensionContentsStmt:
 CreateFdwStmt: CREATE FOREIGN DATA_P WRAPPER name opt_fdw_options create_generic_options
 				{
 					// TODO(mikhail) Enable this if supported.
-					parser_ybc_not_support(@1, "CREATE FOREIGN DATA WRAPPER");
+					parser_k2pg_not_support(@1, "CREATE FOREIGN DATA WRAPPER");
 					CreateFdwStmt *n = makeNode(CreateFdwStmt);
 					n->fdwname = $5;
 					n->func_options = $6;
@@ -5133,7 +5133,7 @@ opt_fdw_options:
 
 AlterFdwStmt: ALTER FOREIGN DATA_P WRAPPER name opt_fdw_options alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
 					AlterFdwStmt *n = makeNode(AlterFdwStmt);
 					n->fdwname = $5;
 					n->func_options = $6;
@@ -5142,7 +5142,7 @@ AlterFdwStmt: ALTER FOREIGN DATA_P WRAPPER name opt_fdw_options alter_generic_op
 				}
 			| ALTER FOREIGN DATA_P WRAPPER name fdw_options
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
 					AlterFdwStmt *n = makeNode(AlterFdwStmt);
 					n->fdwname = $5;
 					n->func_options = $6;
@@ -5155,7 +5155,7 @@ AlterFdwStmt: ALTER FOREIGN DATA_P WRAPPER name opt_fdw_options alter_generic_op
 create_generic_options:
 			OPTIONS '(' generic_option_list ')'
 				{
-					parser_ybc_not_support(@1, "Generic OPTIONS");
+					parser_k2pg_not_support(@1, "Generic OPTIONS");
 					$$ = $3;
 				}
 			| /*EMPTY*/									{ $$ = NIL; }
@@ -5176,7 +5176,7 @@ generic_option_list:
 alter_generic_options:
 			OPTIONS	'(' alter_generic_option_list ')'
 				{
-					parser_ybc_not_support(@1, "Generic OPTIONS");
+					parser_k2pg_not_support(@1, "Generic OPTIONS");
 					$$ = $3;
 				}
 		;
@@ -5239,7 +5239,7 @@ generic_option_arg:
 CreateForeignServerStmt: CREATE SERVER name opt_type opt_foreign_server_version
 						 FOREIGN DATA_P WRAPPER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE SERVER");
+					parser_k2pg_not_support(@1, "CREATE SERVER");
 					CreateForeignServerStmt *n = makeNode(CreateForeignServerStmt);
 					n->servername = $3;
 					n->servertype = $4;
@@ -5252,7 +5252,7 @@ CreateForeignServerStmt: CREATE SERVER name opt_type opt_foreign_server_version
 				| CREATE SERVER IF_P NOT EXISTS name opt_type opt_foreign_server_version
 						 FOREIGN DATA_P WRAPPER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE SERVER");
+					parser_k2pg_not_support(@1, "CREATE SERVER");
 					CreateForeignServerStmt *n = makeNode(CreateForeignServerStmt);
 					n->servername = $6;
 					n->servertype = $7;
@@ -5289,7 +5289,7 @@ opt_foreign_server_version:
 
 AlterForeignServerStmt: ALTER SERVER name foreign_server_version alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER SERVER");
+					parser_k2pg_not_support(@1, "ALTER SERVER");
 					AlterForeignServerStmt *n = makeNode(AlterForeignServerStmt);
 					n->servername = $3;
 					n->version = $4;
@@ -5299,7 +5299,7 @@ AlterForeignServerStmt: ALTER SERVER name foreign_server_version alter_generic_o
 				}
 			| ALTER SERVER name foreign_server_version
 				{
-					parser_ybc_not_support(@1, "ALTER SERVER");
+					parser_k2pg_not_support(@1, "ALTER SERVER");
 					AlterForeignServerStmt *n = makeNode(AlterForeignServerStmt);
 					n->servername = $3;
 					n->version = $4;
@@ -5308,7 +5308,7 @@ AlterForeignServerStmt: ALTER SERVER name foreign_server_version alter_generic_o
 				}
 			| ALTER SERVER name alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER SERVER");
+					parser_k2pg_not_support(@1, "ALTER SERVER");
 					AlterForeignServerStmt *n = makeNode(AlterForeignServerStmt);
 					n->servername = $3;
 					n->options = $4;
@@ -5328,7 +5328,7 @@ CreateForeignTableStmt:
 			'(' OptTableElementList ')'
 			OptInherit SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "CREATE FOREIGN TABLE");
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
 					$4->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $4;
@@ -5349,7 +5349,7 @@ CreateForeignTableStmt:
 			'(' OptTableElementList ')'
 			OptInherit SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "CREATE FOREIGN TABLE");
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
 					$7->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $7;
@@ -5370,7 +5370,7 @@ CreateForeignTableStmt:
 			PARTITION OF qualified_name OptTypedTableElementList PartitionBoundSpec
 			SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "CREATE FOREIGN TABLE");
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
 					$4->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $4;
@@ -5392,7 +5392,7 @@ CreateForeignTableStmt:
 			PARTITION OF qualified_name OptTypedTableElementList PartitionBoundSpec
 			SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "CREATE FOREIGN TABLE");
 					CreateForeignTableStmt *n = makeNode(CreateForeignTableStmt);
 					$7->relpersistence = RELPERSISTENCE_PERMANENT;
 					n->base.relation = $7;
@@ -5422,7 +5422,7 @@ CreateForeignTableStmt:
 AlterForeignTableStmt:
 			ALTER FOREIGN TABLE relation_expr alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $4;
 					n->cmds = $5;
@@ -5432,7 +5432,7 @@ AlterForeignTableStmt:
 				}
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr alter_table_cmds
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					AlterTableStmt *n = makeNode(AlterTableStmt);
 					n->relation = $6;
 					n->cmds = $7;
@@ -5455,7 +5455,7 @@ ImportForeignSchemaStmt:
 		IMPORT_P FOREIGN SCHEMA name import_qualification
 		  FROM SERVER name INTO name create_generic_options
 			{
-				parser_ybc_not_support(@1, "IMPORT FOREIGN SCHEMA");
+				parser_k2pg_not_support(@1, "IMPORT FOREIGN SCHEMA");
 				ImportForeignSchemaStmt *n = makeNode(ImportForeignSchemaStmt);
 				n->server_name = $8;
 				n->remote_schema = $4;
@@ -5498,7 +5498,7 @@ import_qualification:
 
 CreateUserMappingStmt: CREATE USER MAPPING FOR auth_ident SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE USER MAPPING");
+					parser_k2pg_not_support(@1, "CREATE USER MAPPING");
 					CreateUserMappingStmt *n = makeNode(CreateUserMappingStmt);
 					n->user = $5;
 					n->servername = $7;
@@ -5508,7 +5508,7 @@ CreateUserMappingStmt: CREATE USER MAPPING FOR auth_ident SERVER name create_gen
 				}
 				| CREATE USER MAPPING IF_P NOT EXISTS FOR auth_ident SERVER name create_generic_options
 				{
-					parser_ybc_not_support(@1, "CREATE USER MAPPING");
+					parser_k2pg_not_support(@1, "CREATE USER MAPPING");
 					CreateUserMappingStmt *n = makeNode(CreateUserMappingStmt);
 					n->user = $8;
 					n->servername = $10;
@@ -5534,7 +5534,7 @@ auth_ident: RoleSpec			{ $$ = $1; }
 
 DropUserMappingStmt: DROP USER MAPPING FOR auth_ident SERVER name
 				{
-					parser_ybc_not_support(@1, "DROP USER MAPPING");
+					parser_k2pg_not_support(@1, "DROP USER MAPPING");
 					DropUserMappingStmt *n = makeNode(DropUserMappingStmt);
 					n->user = $5;
 					n->servername = $7;
@@ -5543,7 +5543,7 @@ DropUserMappingStmt: DROP USER MAPPING FOR auth_ident SERVER name
 				}
 				|  DROP USER MAPPING IF_P EXISTS FOR auth_ident SERVER name
 				{
-					parser_ybc_not_support(@1, "DROP USER MAPPING");
+					parser_k2pg_not_support(@1, "DROP USER MAPPING");
 					DropUserMappingStmt *n = makeNode(DropUserMappingStmt);
 					n->user = $7;
 					n->servername = $9;
@@ -5561,7 +5561,7 @@ DropUserMappingStmt: DROP USER MAPPING FOR auth_ident SERVER name
 
 AlterUserMappingStmt: ALTER USER MAPPING FOR auth_ident SERVER name alter_generic_options
 				{
-					parser_ybc_not_support(@1, "ALTER USER MAPPING");
+					parser_k2pg_not_support(@1, "ALTER USER MAPPING");
 					AlterUserMappingStmt *n = makeNode(AlterUserMappingStmt);
 					n->user = $5;
 					n->servername = $7;
@@ -5588,7 +5588,7 @@ CreatePolicyStmt:
 				RowSecurityDefaultForCmd RowSecurityDefaultToRole
 				RowSecurityOptionalExpr RowSecurityOptionalWithCheck
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					CreatePolicyStmt *n = makeNode(CreatePolicyStmt);
 					n->policy_name = $3;
 					n->table = $5;
@@ -5605,7 +5605,7 @@ AlterPolicyStmt:
 			ALTER POLICY name ON qualified_name RowSecurityOptionalToRole
 				RowSecurityOptionalExpr RowSecurityOptionalWithCheck
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterPolicyStmt *n = makeNode(AlterPolicyStmt);
 					n->policy_name = $3;
 					n->table = $5;
@@ -5676,7 +5676,7 @@ row_security_cmd:
 
 CreateAmStmt: CREATE ACCESS METHOD name TYPE_P INDEX HANDLER handler_name
 				{
-					parser_ybc_not_support(@1, "CREATE ACCESS METHOD");
+					parser_k2pg_not_support(@1, "CREATE ACCESS METHOD");
 					CreateAmStmt *n = makeNode(CreateAmStmt);
 					n->amname = $4;
 					n->handler_name = $8;
@@ -5719,7 +5719,7 @@ CreateTrigStmt:
 			FOR EACH ROW TriggerWhen
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' TriggerFuncArgs ')'
 				{
-					parser_ybc_not_support(@1, "CREATE CONSTRAINT TRIGGER");
+					parser_k2pg_not_support(@1, "CREATE CONSTRAINT TRIGGER");
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
 					n->trigname = $4;
 					n->relation = $8;
@@ -5786,7 +5786,7 @@ TriggerOneEvent:
 TriggerReferencing:
 			REFERENCING TriggerTransitions
 				{
-					parser_ybc_not_support(@1, "REFERENCING clause (transition tables)");
+					parser_k2pg_not_support(@1, "REFERENCING clause (transition tables)");
 					$$ = $2;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -5943,7 +5943,7 @@ CreateEventTrigStmt:
 			CREATE EVENT TRIGGER name ON ColLabel
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' ')'
 				{
-					parser_ybc_not_support(@1, "CREATE EVENT TRIGGER");
+					parser_k2pg_not_support(@1, "CREATE EVENT TRIGGER");
 					CreateEventTrigStmt *n = makeNode(CreateEventTrigStmt);
 					n->trigname = $4;
 					n->eventname = $6;
@@ -5955,7 +5955,7 @@ CreateEventTrigStmt:
 			WHEN event_trigger_when_list
 			EXECUTE FUNCTION_or_PROCEDURE func_name '(' ')'
 				{
-					parser_ybc_not_support(@1, "CREATE EVENT TRIGGER");
+					parser_k2pg_not_support(@1, "CREATE EVENT TRIGGER");
 					CreateEventTrigStmt *n = makeNode(CreateEventTrigStmt);
 					n->trigname = $4;
 					n->eventname = $6;
@@ -5987,7 +5987,7 @@ event_trigger_value_list:
 AlterEventTrigStmt:
 			ALTER EVENT TRIGGER name enable_trigger
 				{
-					parser_ybc_not_support(@1, "ALTER EVENT TRIGGER");
+					parser_k2pg_not_support(@1, "ALTER EVENT TRIGGER");
 					AlterEventTrigStmt *n = makeNode(AlterEventTrigStmt);
 					n->trigname = $4;
 					n->tgenabled = $5;
@@ -6014,7 +6014,7 @@ CreateAssertStmt:
 			CREATE ASSERTION name CHECK '(' a_expr ')'
 			ConstraintAttributeSpec
 				{
-					parser_ybc_not_support(@1, "CREATE ASSERTION");
+					parser_k2pg_not_support(@1, "CREATE ASSERTION");
 					CreateTrigStmt *n = makeNode(CreateTrigStmt);
 					n->trigname = $3;
 					n->args = list_make1($6);
@@ -6034,7 +6034,7 @@ CreateAssertStmt:
 DropAssertStmt:
 			DROP ASSERTION name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP ASSERTION");
+					parser_k2pg_not_support(@1, "DROP ASSERTION");
 					DropStmt *n = makeNode(DropStmt);
 					n->objects = NIL;
 					n->behavior = $4;
@@ -6132,7 +6132,7 @@ DefineStmt:
 				}
 			| CREATE TEXT_P SEARCH PARSER any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE TEXT SEARCH PARSER");
+					parser_k2pg_not_support(@1, "CREATE TEXT SEARCH PARSER");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_TSPARSER;
 					n->args = NIL;
@@ -6142,7 +6142,7 @@ DefineStmt:
 				}
 			| CREATE TEXT_P SEARCH DICTIONARY any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE TEXT SEARCH DICTIONARY");
+					parser_k2pg_not_support(@1, "CREATE TEXT SEARCH DICTIONARY");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_TSDICTIONARY;
 					n->args = NIL;
@@ -6152,7 +6152,7 @@ DefineStmt:
 				}
 			| CREATE TEXT_P SEARCH TEMPLATE any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE TEXT SEARCH TEMPLATE");
+					parser_k2pg_not_support(@1, "CREATE TEXT SEARCH TEMPLATE");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_TSTEMPLATE;
 					n->args = NIL;
@@ -6162,7 +6162,7 @@ DefineStmt:
 				}
 			| CREATE TEXT_P SEARCH CONFIGURATION any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "CREATE TEXT SEARCH CONFIGURATION");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_TSCONFIGURATION;
 					n->args = NIL;
@@ -6172,7 +6172,7 @@ DefineStmt:
 				}
 			| CREATE COLLATION any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE COLLATION");
+					parser_k2pg_not_support(@1, "CREATE COLLATION");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_COLLATION;
 					n->args = NIL;
@@ -6182,7 +6182,7 @@ DefineStmt:
 				}
 			| CREATE COLLATION IF_P NOT EXISTS any_name definition
 				{
-					parser_ybc_not_support(@1, "CREATE COLLATION");
+					parser_k2pg_not_support(@1, "CREATE COLLATION");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_COLLATION;
 					n->args = NIL;
@@ -6193,7 +6193,7 @@ DefineStmt:
 				}
 			| CREATE COLLATION any_name FROM any_name
 				{
-					parser_ybc_not_support(@1, "CREATE COLLATION");
+					parser_k2pg_not_support(@1, "CREATE COLLATION");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_COLLATION;
 					n->args = NIL;
@@ -6203,7 +6203,7 @@ DefineStmt:
 				}
 			| CREATE COLLATION IF_P NOT EXISTS any_name FROM any_name
 				{
-					parser_ybc_not_support(@1, "CREATE COLLATION");
+					parser_k2pg_not_support(@1, "CREATE COLLATION");
 					DefineStmt *n = makeNode(DefineStmt);
 					n->kind = OBJECT_COLLATION;
 					n->args = NIL;
@@ -6278,7 +6278,7 @@ enum_val_list:	Sconst
 AlterEnumStmt:
 		ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst
 			{
-				parser_ybc_not_support(@1, "ALTER TYPE");
+				parser_k2pg_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6290,7 +6290,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst BEFORE Sconst
 			{
-				parser_ybc_not_support(@1, "ALTER TYPE");
+				parser_k2pg_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6302,7 +6302,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name ADD_P VALUE_P opt_if_not_exists Sconst AFTER Sconst
 			{
-				parser_ybc_not_support(@1, "ALTER TYPE");
+				parser_k2pg_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = NULL;
@@ -6314,7 +6314,7 @@ AlterEnumStmt:
 			}
 		 | ALTER TYPE_P any_name RENAME VALUE_P Sconst TO Sconst
 			{
-				parser_ybc_not_support(@1, "ALTER TYPE");
+				parser_k2pg_not_support(@1, "ALTER TYPE");
 				AlterEnumStmt *n = makeNode(AlterEnumStmt);
 				n->typeName = $3;
 				n->oldVal = $6;
@@ -6556,7 +6556,7 @@ DropOpFamilyStmt:
 DropOwnedStmt:
 			DROP OWNED BY role_list opt_drop_behavior
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					DropOwnedStmt *n = makeNode(DropOwnedStmt);
 					n->roles = $4;
 					n->behavior = $5;
@@ -6567,7 +6567,7 @@ DropOwnedStmt:
 ReassignOwnedStmt:
 			REASSIGN OWNED BY role_list TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					ReassignOwnedStmt *n = makeNode(ReassignOwnedStmt);
 					n->roles = $4;
 					n->newrole = $6;
@@ -6591,7 +6591,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = true;
 					n->objects = $5;
           if (list_length($5) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_not_support(@5, "DROP multiple objects");
+            parser_k2pg_not_support(@5, "DROP multiple objects");
           }
 					n->behavior = $6;
 					n->concurrent = false;
@@ -6604,7 +6604,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = false;
 					n->objects = $3;
           if (list_length($3) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_not_support(@3, "DROP multiple objects");
+            parser_k2pg_not_support(@3, "DROP multiple objects");
           }
 					n->behavior = $4;
 					n->concurrent = false;
@@ -6617,7 +6617,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = true;
 					n->objects = $5;
           if (list_length($5) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_not_support(@5, "DROP multiple objects");
+            parser_k2pg_not_support(@5, "DROP multiple objects");
           }
 					n->behavior = $6;
 					n->concurrent = false;
@@ -6630,7 +6630,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = false;
 					n->objects = $3;
           if (list_length($3) > 1 && n->removeType != OBJECT_TABLE) {
-            parser_ybc_not_support(@3, "DROP multiple objects");
+            parser_k2pg_not_support(@3, "DROP multiple objects");
           }
 					n->behavior = $4;
 					n->concurrent = false;
@@ -6698,7 +6698,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 				}
 			| DROP INDEX CONCURRENTLY any_name_list opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP INDEX CONCURRENTLY");
+					parser_k2pg_not_support(@1, "DROP INDEX CONCURRENTLY");
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_INDEX;
 					n->missing_ok = false;
@@ -6709,7 +6709,7 @@ DropStmt:	DROP drop_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 				}
 			| DROP INDEX CONCURRENTLY IF_P EXISTS any_name_list opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP INDEX CONCURRENTLY");
+					parser_k2pg_not_support(@1, "DROP INDEX CONCURRENTLY");
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_INDEX;
 					n->missing_ok = true;
@@ -6727,68 +6727,68 @@ drop_type_any_name:
 			| VIEW									{ $$ = OBJECT_VIEW; }
 			| MATERIALIZED VIEW
 				{
-					parser_ybc_not_support(@1, "DROP MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "DROP MATERIALIZED VIEW");
 					$$ = OBJECT_MATVIEW;
 				}
 			| INDEX { $$ = OBJECT_INDEX; }
 			| FOREIGN TABLE
 				{
-					parser_ybc_not_support(@1, "DROP FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "DROP FOREIGN TABLE");
 					$$ = OBJECT_FOREIGN_TABLE;
 				}
-			| COLLATION	{ parser_ybc_not_support(@1, "DROP COLLATION"); $$ = OBJECT_COLLATION; }
-			| CONVERSION_P { parser_ybc_not_support(@1, "DROP CONVERSION"); $$ = OBJECT_CONVERSION; }
-			| STATISTICS { parser_ybc_not_support(@1, "DROP STATISTICS"); $$ = OBJECT_STATISTIC_EXT; }
+			| COLLATION	{ parser_k2pg_not_support(@1, "DROP COLLATION"); $$ = OBJECT_COLLATION; }
+			| CONVERSION_P { parser_k2pg_not_support(@1, "DROP CONVERSION"); $$ = OBJECT_CONVERSION; }
+			| STATISTICS { parser_k2pg_not_support(@1, "DROP STATISTICS"); $$ = OBJECT_STATISTIC_EXT; }
 			| TEXT_P SEARCH PARSER
 				{
-					parser_ybc_not_support(@1, "DROP TEXT SEARCH PARSER");
+					parser_k2pg_not_support(@1, "DROP TEXT SEARCH PARSER");
 					$$ = OBJECT_TSPARSER;
 				}
 			| TEXT_P SEARCH DICTIONARY
 				{
-					parser_ybc_not_support(@1, "DROP TEXT SEARCH DICTIONARY");
+					parser_k2pg_not_support(@1, "DROP TEXT SEARCH DICTIONARY");
 					$$ = OBJECT_TSDICTIONARY;
 				}
 			| TEXT_P SEARCH TEMPLATE
 				{
-					parser_ybc_not_support(@1, "DROP TEXT SEARCH TEMPLATE");
+					parser_k2pg_not_support(@1, "DROP TEXT SEARCH TEMPLATE");
 					$$ = OBJECT_TSTEMPLATE;
 				}
 			| TEXT_P SEARCH CONFIGURATION
 				{
-					parser_ybc_not_support(@1, "DROP TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "DROP TEXT SEARCH CONFIGURATION");
 					$$ = OBJECT_TSCONFIGURATION;
 				}
 		;
 
 /* object types taking name_list */
 drop_type_name:
-			ACCESS METHOD	{ parser_ybc_not_support(@1, "DROP ACCESS METHOD"); $$ = OBJECT_ACCESS_METHOD; }
+			ACCESS METHOD	{ parser_k2pg_not_support(@1, "DROP ACCESS METHOD"); $$ = OBJECT_ACCESS_METHOD; }
 			| EVENT TRIGGER
 				{
-					parser_ybc_not_support(@1, "DROP EVENT TRIGGER");
+					parser_k2pg_not_support(@1, "DROP EVENT TRIGGER");
 					$$ = OBJECT_EVENT_TRIGGER;
 				}
 			| EXTENSION
 				{
-					parser_ybc_beta_feature(@1, "extension");
+					parser_k2pg_beta_feature(@1, "extension");
 					$$ = OBJECT_EXTENSION;
 				}
 			| FOREIGN DATA_P WRAPPER
 				{
-					parser_ybc_not_support(@1, "DROP FOREIGN DATA_P WRAPPER");
+					parser_k2pg_not_support(@1, "DROP FOREIGN DATA_P WRAPPER");
 					$$ = OBJECT_FDW;
 				}
-			| PUBLICATION	{ parser_ybc_not_support(@1, "DROP PUBLICATION"); $$ = OBJECT_PUBLICATION; }
+			| PUBLICATION	{ parser_k2pg_not_support(@1, "DROP PUBLICATION"); $$ = OBJECT_PUBLICATION; }
 			| SCHEMA { $$ = OBJECT_SCHEMA; }
-			| SERVER { parser_ybc_not_support(@1, "DROP SERVER"); $$ = OBJECT_FOREIGN_SERVER; }
+			| SERVER { parser_k2pg_not_support(@1, "DROP SERVER"); $$ = OBJECT_FOREIGN_SERVER; }
 		;
 
 /* object types attached to a table */
 drop_type_name_on_any_name:
-			POLICY { parser_ybc_beta_feature(@1, "roles"); $$ = OBJECT_POLICY; }
+			POLICY { parser_k2pg_beta_feature(@1, "roles"); $$ = OBJECT_POLICY; }
 			| RULE { $$ = OBJECT_RULE; }
-			| TRIGGER { parser_ybc_beta_feature(@1, "trigger"); $$ = OBJECT_TRIGGER; }
+			| TRIGGER { parser_k2pg_beta_feature(@1, "trigger"); $$ = OBJECT_TRIGGER; }
 		;
 
 any_name_list:
@@ -6829,8 +6829,8 @@ TruncateStmt:
 		;
 
 opt_restart_seqs:
-			CONTINUE_P IDENTITY_P		{ $$ = false; parser_ybc_not_support(@1, "sequences"); }
-			| RESTART IDENTITY_P		{ $$ = true; parser_ybc_not_support(@1, "sequences"); }
+			CONTINUE_P IDENTITY_P		{ $$ = false; parser_k2pg_not_support(@1, "sequences"); }
+			| RESTART IDENTITY_P		{ $$ = true; parser_k2pg_not_support(@1, "sequences"); }
 			| /* EMPTY */				{ $$ = false; }
 		;
 
@@ -7076,7 +7076,7 @@ SecLabelStmt:
 			SECURITY LABEL opt_provider ON security_label_type_any_name any_name
 			IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = $5;
@@ -7087,7 +7087,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON security_label_type_name name
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = $5;
@@ -7098,7 +7098,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON TYPE_P Typename
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_TYPE;
@@ -7109,7 +7109,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON DOMAIN_P Typename
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_DOMAIN;
@@ -7120,7 +7120,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON AGGREGATE aggregate_with_argtypes
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_AGGREGATE;
@@ -7131,7 +7131,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON FUNCTION function_with_argtypes
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_FUNCTION;
@@ -7142,7 +7142,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON LARGE_P OBJECT_P NumericOnly
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_LARGEOBJECT;
@@ -7153,7 +7153,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON PROCEDURE function_with_argtypes
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_PROCEDURE;
@@ -7164,7 +7164,7 @@ SecLabelStmt:
 			| SECURITY LABEL opt_provider ON ROUTINE function_with_argtypes
 			  IS security_label
 				{
-					parser_ybc_not_support(@1, "SECURITY LABEL");
+					parser_k2pg_not_support(@1, "SECURITY LABEL");
 					SecLabelStmt *n = makeNode(SecLabelStmt);
 					n->provider = $3;
 					n->objtype = OBJECT_ROUTINE;
@@ -7213,14 +7213,14 @@ security_label:	Sconst				{ $$ = $1; }
 
 FetchStmt:	FETCH fetch_args
 				{
-					parser_ybc_not_support(@1, "FETCH");
+					parser_k2pg_not_support(@1, "FETCH");
 					FetchStmt *n = (FetchStmt *) $2;
 					n->ismove = false;
 					$$ = (Node *)n;
 				}
 			| MOVE fetch_args
 				{
-					parser_ybc_not_support(@1, "MOVE");
+					parser_k2pg_not_support(@1, "MOVE");
 					FetchStmt *n = (FetchStmt *) $2;
 					n->ismove = true;
 					$$ = (Node *)n;
@@ -7677,7 +7677,7 @@ opt_grant_grant_option:
 GrantRoleStmt:
 			GRANT privilege_list TO role_list opt_grant_admin_option opt_granted_by
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					GrantRoleStmt *n = makeNode(GrantRoleStmt);
 					n->is_grant = true;
 					n->granted_roles = $2;
@@ -7691,7 +7691,7 @@ GrantRoleStmt:
 RevokeRoleStmt:
 			REVOKE privilege_list FROM role_list opt_granted_by opt_drop_behavior
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					GrantRoleStmt *n = makeNode(GrantRoleStmt);
 					n->is_grant = false;
 					n->admin_opt = false;
@@ -7702,7 +7702,7 @@ RevokeRoleStmt:
 				}
 			| REVOKE ADMIN OPTION FOR privilege_list FROM role_list opt_granted_by opt_drop_behavior
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					GrantRoleStmt *n = makeNode(GrantRoleStmt);
 					n->is_grant = false;
 					n->admin_opt = true;
@@ -7730,7 +7730,7 @@ opt_granted_by: GRANTED BY RoleSpec						{ $$ = $3; }
 AlterDefaultPrivilegesStmt:
 			ALTER DEFAULT PRIVILEGES DefACLOptionList DefACLAction
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterDefaultPrivilegesStmt *n = makeNode(AlterDefaultPrivilegesStmt);
 					n->options = $4;
 					n->action = (GrantStmt *) $5;
@@ -7891,7 +7891,7 @@ opt_unique:
 
 opt_concurrently:
 			CONCURRENTLY							{
-					parser_ybc_not_support(@1, "CREATE INDEX CONCURRENTLY");
+					parser_k2pg_not_support(@1, "CREATE INDEX CONCURRENTLY");
                                                       $$ = true; }
 			| /*EMPTY*/								{ $$ = false; }
 		;
@@ -7903,7 +7903,7 @@ opt_index_name:
 
 access_method_clause:
 			USING access_method						{ $$ = $2; }
-			| /*EMPTY*/								{ $$ = IsYugaByteEnabled() ?
+			| /*EMPTY*/								{ $$ = IsK2PgEnabled() ?
 															 NULL : DEFAULT_INDEX_TYPE;	}
 		;
 
@@ -8036,7 +8036,7 @@ index_including_params:	index_elem						{ $$ = list_make1($1); }
 		;
 
 opt_collate: COLLATE any_name						{
-					parser_ybc_not_support(@1, "CREATE INDEX COLLATE");
+					parser_k2pg_not_support(@1, "CREATE INDEX COLLATE");
                                                       $$ = $2; }
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
@@ -8632,7 +8632,7 @@ table_func_column_list:
 AlterFunctionStmt:
 			ALTER FUNCTION function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_not_support(@1, "ALTER FUNCTION");
+					parser_k2pg_not_support(@1, "ALTER FUNCTION");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_FUNCTION;
 					n->func = $3;
@@ -8641,7 +8641,7 @@ AlterFunctionStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_not_support(@1, "ALTER PROCEDURE");
+					parser_k2pg_not_support(@1, "ALTER PROCEDURE");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_PROCEDURE;
 					n->func = $3;
@@ -8650,7 +8650,7 @@ AlterFunctionStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes alterfunc_opt_list opt_restrict
 				{
-					parser_ybc_not_support(@1, "ALTER ROUTINE");
+					parser_k2pg_not_support(@1, "ALTER ROUTINE");
 					AlterFunctionStmt *n = makeNode(AlterFunctionStmt);
 					n->objtype = OBJECT_ROUTINE;
 					n->func = $3;
@@ -8938,7 +8938,7 @@ opt_if_exists: IF_P EXISTS						{ $$ = true; }
 
 CreateTransformStmt: CREATE opt_or_replace TRANSFORM FOR Typename LANGUAGE name '(' transform_element_list ')'
 				{
-					parser_ybc_not_support(@1, "CREATE TRANSFORM");
+					parser_k2pg_not_support(@1, "CREATE TRANSFORM");
 					CreateTransformStmt *n = makeNode(CreateTransformStmt);
 					n->replace = $2;
 					n->type_name = $5;
@@ -8970,7 +8970,7 @@ transform_element_list: FROM SQL_P WITH FUNCTION function_with_argtypes ',' TO S
 
 DropTransformStmt: DROP TRANSFORM opt_if_exists FOR Typename LANGUAGE name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP TRANSFORM");
+					parser_k2pg_not_support(@1, "DROP TRANSFORM");
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TRANSFORM;
 					n->objects = list_make1(list_make2($5, makeString($7)));
@@ -8991,7 +8991,7 @@ DropTransformStmt: DROP TRANSFORM opt_if_exists FOR Typename LANGUAGE name opt_d
 ReindexStmt:
 			REINDEX reindex_target_type qualified_name
 				{
-					parser_ybc_not_support(@1, "REINDEX");
+					parser_k2pg_not_support(@1, "REINDEX");
 					ReindexStmt *n = makeNode(ReindexStmt);
 					n->kind = $2;
 					n->relation = $3;
@@ -9001,7 +9001,7 @@ ReindexStmt:
 				}
 			| REINDEX reindex_target_multitable name
 				{
-					parser_ybc_not_support(@1, "REINDEX");
+					parser_k2pg_not_support(@1, "REINDEX");
 					ReindexStmt *n = makeNode(ReindexStmt);
 					n->kind = $2;
 					n->name = $3;
@@ -9011,7 +9011,7 @@ ReindexStmt:
 				}
 			| REINDEX '(' reindex_option_list ')' reindex_target_type qualified_name
 				{
-					parser_ybc_not_support(@1, "REINDEX");
+					parser_k2pg_not_support(@1, "REINDEX");
 					ReindexStmt *n = makeNode(ReindexStmt);
 					n->kind = $5;
 					n->relation = $6;
@@ -9021,7 +9021,7 @@ ReindexStmt:
 				}
 			| REINDEX '(' reindex_option_list ')' reindex_target_multitable name
 				{
-					parser_ybc_not_support(@1, "REINDEX");
+					parser_k2pg_not_support(@1, "REINDEX");
 					ReindexStmt *n = makeNode(ReindexStmt);
 					n->kind = $5;
 					n->name = $6;
@@ -9056,7 +9056,7 @@ reindex_option_elem:
 AlterTblSpcStmt:
 			ALTER TABLESPACE name SET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLESPACE");
 					AlterTableSpaceOptionsStmt *n =
 						makeNode(AlterTableSpaceOptionsStmt);
 					n->tablespacename = $3;
@@ -9066,7 +9066,7 @@ AlterTblSpcStmt:
 				}
 			| ALTER TABLESPACE name RESET reloptions
 				{
-					parser_ybc_not_support(@1, "ALTER TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLESPACE");
 					AlterTableSpaceOptionsStmt *n =
 						makeNode(AlterTableSpaceOptionsStmt);
 					n->tablespacename = $3;
@@ -9084,7 +9084,7 @@ AlterTblSpcStmt:
 
 RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER AGGREGATE");
+					parser_k2pg_not_support(@1, "ALTER AGGREGATE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
@@ -9094,7 +9094,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER COLLATION any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER COLLATION");
+					parser_k2pg_not_support(@1, "ALTER COLLATION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
@@ -9104,7 +9104,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER CONVERSION_P any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER CONVERSION");
+					parser_k2pg_not_support(@1, "ALTER CONVERSION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
@@ -9132,7 +9132,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER DOMAIN_P any_name RENAME CONSTRAINT name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN RENAME CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN RENAME CONSTRAINT");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_DOMCONSTRAINT;
 					n->object = (Node *) $3;
@@ -9142,7 +9142,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN DATA_P WRAPPER name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN DATA WRAPPER");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FDW;
 					n->object = (Node *) makeString($5);
@@ -9152,7 +9152,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FUNCTION function_with_argtypes RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FUNCTION");
+					parser_k2pg_not_support(@1, "ALTER FUNCTION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9162,7 +9162,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER GROUP_P RoleId RENAME TO RoleId
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ROLE;
 					n->subname = $3;
@@ -9172,7 +9172,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER opt_procedural LANGUAGE name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER LANGUAGE");
+					parser_k2pg_not_support(@1, "ALTER LANGUAGE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_LANGUAGE;
 					n->object = (Node *) makeString($4);
@@ -9182,7 +9182,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER OPERATOR CLASS any_name USING access_method RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER OPERATOR CLASS");
+					parser_k2pg_not_support(@1, "ALTER OPERATOR CLASS");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
@@ -9201,7 +9201,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER POLICY name ON qualified_name RENAME TO name
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_POLICY;
 					n->relation = $5;
@@ -9212,7 +9212,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER POLICY IF_P EXISTS name ON qualified_name RENAME TO name
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_POLICY;
 					n->relation = $7;
@@ -9223,7 +9223,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER PROCEDURE function_with_argtypes RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER PROCEDURE");
+					parser_k2pg_not_support(@1, "ALTER PROCEDURE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9233,7 +9233,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER PUBLICATION name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER PUBLICATION");
+					parser_k2pg_not_support(@1, "ALTER PUBLICATION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_PUBLICATION;
 					n->object = (Node *) makeString($3);
@@ -9243,7 +9243,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER ROUTINE function_with_argtypes RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER ROUTINE");
+					parser_k2pg_not_support(@1, "ALTER ROUTINE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9253,7 +9253,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SCHEMA name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER SCHEMA");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SCHEMA;
 					n->subname = $3;
@@ -9263,7 +9263,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SERVER name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER SERVER");
+					parser_k2pg_not_support(@1, "ALTER SERVER");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FOREIGN_SERVER;
 					n->object = (Node *) makeString($3);
@@ -9273,7 +9273,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SUBSCRIPTION name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SUBSCRIPTION;
 					n->object = (Node *) makeString($3);
@@ -9303,7 +9303,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SEQUENCE qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $3;
@@ -9314,7 +9314,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER SEQUENCE IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_SEQUENCE;
 					n->relation = $5;
@@ -9325,7 +9325,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER VIEW qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW");
+					parser_k2pg_not_support(@1, "ALTER VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_VIEW;
 					n->relation = $3;
@@ -9336,7 +9336,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW");
+					parser_k2pg_not_support(@1, "ALTER VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_VIEW;
 					n->relation = $5;
@@ -9347,7 +9347,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9358,7 +9358,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_MATVIEW;
 					n->relation = $6;
@@ -9369,7 +9369,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER INDEX qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_INDEX;
 					n->relation = $3;
@@ -9380,7 +9380,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER INDEX IF_P EXISTS qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX");
+					parser_k2pg_not_support(@1, "ALTER INDEX");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_INDEX;
 					n->relation = $5;
@@ -9391,7 +9391,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE relation_expr RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
@@ -9402,7 +9402,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
@@ -9424,7 +9424,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE IF EXISTS");
+					parser_k2pg_not_support(@1, "ALTER TABLE IF EXISTS");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_TABLE;
@@ -9436,7 +9436,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW qualified_name RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
@@ -9448,7 +9448,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_MATVIEW;
@@ -9460,7 +9460,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TABLE relation_expr RENAME CONSTRAINT name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE RENAME CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER TABLE RENAME CONSTRAINT");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TABCONSTRAINT;
 					n->relation = $3;
@@ -9471,7 +9471,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TABLE IF_P EXISTS relation_expr RENAME CONSTRAINT name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE RENAME CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER TABLE RENAME CONSTRAINT");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TABCONSTRAINT;
 					n->relation = $5;
@@ -9482,7 +9482,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE relation_expr RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
@@ -9494,7 +9494,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr RENAME opt_column name TO name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_COLUMN;
 					n->relationType = OBJECT_FOREIGN_TABLE;
@@ -9506,7 +9506,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER RULE name ON qualified_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER RULE");
+					parser_k2pg_not_support(@1, "ALTER RULE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_RULE;
 					n->relation = $5;
@@ -9517,7 +9517,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TRIGGER name ON qualified_name RENAME TO name
 				{
-					parser_ybc_beta_feature(@1, "trigger");
+					parser_k2pg_beta_feature(@1, "trigger");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TRIGGER;
 					n->relation = $5;
@@ -9528,7 +9528,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER EVENT TRIGGER name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER EVENT TRIGGER");
+					parser_k2pg_not_support(@1, "ALTER EVENT TRIGGER");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_EVENT_TRIGGER;
 					n->object = (Node *) makeString($4);
@@ -9537,7 +9537,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER ROLE RoleId RENAME TO RoleId
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ROLE;
 					n->subname = $3;
@@ -9547,7 +9547,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER USER RoleId RENAME TO RoleId
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ROLE;
 					n->subname = $3;
@@ -9557,7 +9557,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TABLESPACE name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER TABLESPACE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TABLESPACE;
 					n->subname = $3;
@@ -9567,7 +9567,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER STATISTICS any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER STATISTICS");
+					parser_k2pg_not_support(@1, "ALTER STATISTICS");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
@@ -9577,7 +9577,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TEXT_P SEARCH PARSER any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH PARSER");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH PARSER");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TSPARSER;
 					n->object = (Node *) $5;
@@ -9587,7 +9587,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TEXT_P SEARCH DICTIONARY any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH DICTIONARY");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH DICTIONARY");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
@@ -9597,7 +9597,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TEXT_P SEARCH TEMPLATE any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH TEMPLATE");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH TEMPLATE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TSTEMPLATE;
 					n->object = (Node *) $5;
@@ -9607,7 +9607,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
@@ -9617,7 +9617,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TYPE_P any_name RENAME TO name
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE");
+					parser_k2pg_not_support(@1, "ALTER TYPE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_TYPE;
 					n->object = (Node *) $3;
@@ -9627,7 +9627,7 @@ RenameStmt: ALTER AGGREGATE aggregate_with_argtypes RENAME TO name
 				}
 			| ALTER TYPE_P any_name RENAME ATTRIBUTE name TO name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE");
+					parser_k2pg_not_support(@1, "ALTER TYPE");
 					RenameStmt *n = makeNode(RenameStmt);
 					n->renameType = OBJECT_ATTRIBUTE;
 					n->relationType = OBJECT_TYPE;
@@ -9657,7 +9657,7 @@ opt_set_data: SET DATA_P							{ $$ = 1; }
 AlterObjectDependsStmt:
 			ALTER FUNCTION function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER FUNCTION DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER FUNCTION DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9666,7 +9666,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER PROCEDURE DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER PROCEDURE DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9675,7 +9675,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER ROUTINE DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER ROUTINE DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9684,7 +9684,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER TRIGGER name ON qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER TRIGGER DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER TRIGGER DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_TRIGGER;
 					n->relation = $5;
@@ -9694,7 +9694,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER MATERIALIZED VIEW qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9703,7 +9703,7 @@ AlterObjectDependsStmt:
 				}
 			| ALTER INDEX qualified_name DEPENDS ON EXTENSION name
 				{
-					parser_ybc_not_support(@1, "ALTER INDEX DEPENDS ON EXTENSION");
+					parser_k2pg_not_support(@1, "ALTER INDEX DEPENDS ON EXTENSION");
 					AlterObjectDependsStmt *n = makeNode(AlterObjectDependsStmt);
 					n->objectType = OBJECT_INDEX;
 					n->relation = $3;
@@ -9721,7 +9721,7 @@ AlterObjectDependsStmt:
 AlterObjectSchemaStmt:
 			ALTER AGGREGATE aggregate_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER AGGREGATE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER AGGREGATE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
@@ -9731,7 +9731,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER COLLATION any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER COLLATION SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER COLLATION SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
@@ -9741,7 +9741,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER CONVERSION_P any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER CONVERSION SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER CONVERSION SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
@@ -9751,7 +9751,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER DOMAIN_P any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_DOMAIN;
 					n->object = (Node *) $3;
@@ -9770,7 +9770,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER FUNCTION function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER FUNCTION SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER FUNCTION SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -9789,7 +9789,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER OPERATOR CLASS any_name USING access_method SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER OPERATOR CLASS SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER OPERATOR CLASS SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
@@ -9808,7 +9808,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER PROCEDURE function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER PROCEDURE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER PROCEDURE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -9818,7 +9818,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER ROUTINE function_with_argtypes SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER ROUTINE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER ROUTINE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -9828,7 +9828,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TABLE relation_expr SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TABLE;
 					n->relation = $3;
@@ -9838,7 +9838,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TABLE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TABLE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TABLE;
 					n->relation = $5;
@@ -9848,7 +9848,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER STATISTICS any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER STATISTICS SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER STATISTICS SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
@@ -9858,7 +9858,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TEXT_P SEARCH PARSER any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH PARSER SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH PARSER SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TSPARSER;
 					n->object = (Node *) $5;
@@ -9868,7 +9868,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TEXT_P SEARCH DICTIONARY any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH DICTIONARY SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH DICTIONARY SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
@@ -9878,7 +9878,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TEXT_P SEARCH TEMPLATE any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH TEMPLATE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH TEMPLATE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TSTEMPLATE;
 					n->object = (Node *) $5;
@@ -9888,7 +9888,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
@@ -9898,7 +9898,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER SEQUENCE qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $3;
@@ -9908,7 +9908,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER SEQUENCE IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER SEQUENCE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_SEQUENCE;
 					n->relation = $5;
@@ -9918,7 +9918,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER VIEW qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_VIEW;
 					n->relation = $3;
@@ -9928,7 +9928,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER VIEW SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_VIEW;
 					n->relation = $5;
@@ -9938,7 +9938,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER MATERIALIZED VIEW qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $4;
@@ -9948,7 +9948,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER MATERIALIZED VIEW IF_P EXISTS qualified_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER MATERIALIZED VIEW SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_MATVIEW;
 					n->relation = $6;
@@ -9958,7 +9958,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER FOREIGN TABLE relation_expr SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $4;
@@ -9968,7 +9968,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER FOREIGN TABLE IF_P EXISTS relation_expr SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER FOREIGN TABLE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER FOREIGN TABLE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_FOREIGN_TABLE;
 					n->relation = $6;
@@ -9978,7 +9978,7 @@ AlterObjectSchemaStmt:
 				}
 			| ALTER TYPE_P any_name SET SCHEMA name
 				{
-					parser_ybc_not_support(@1, "ALTER TYPE SET SCHEMA");
+					parser_k2pg_not_support(@1, "ALTER TYPE SET SCHEMA");
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
@@ -10031,7 +10031,7 @@ operator_def_arg:
 
 AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_AGGREGATE;
 					n->object = (Node *) $3;
@@ -10040,7 +10040,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER COLLATION any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_COLLATION;
 					n->object = (Node *) $3;
@@ -10049,7 +10049,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER CONVERSION_P any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_CONVERSION;
 					n->object = (Node *) $3;
@@ -10058,7 +10058,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER DATABASE database_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_DATABASE;
 					n->object = (Node *) makeString($3);
@@ -10067,7 +10067,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER DOMAIN_P any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_DOMAIN;
 					n->object = (Node *) $3;
@@ -10076,7 +10076,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER FUNCTION function_with_argtypes OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_FUNCTION;
 					n->object = (Node *) $3;
@@ -10085,7 +10085,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER opt_procedural LANGUAGE name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_LANGUAGE;
 					n->object = (Node *) makeString($4);
@@ -10094,7 +10094,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER LARGE_P OBJECT_P NumericOnly OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_LARGEOBJECT;
 					n->object = (Node *) $4;
@@ -10111,7 +10111,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER OPERATOR CLASS any_name USING access_method OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_OPCLASS;
 					n->object = (Node *) lcons(makeString($6), $4);
@@ -10120,7 +10120,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER OPERATOR FAMILY any_name USING access_method OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_OPFAMILY;
 					n->object = (Node *) lcons(makeString($6), $4);
@@ -10129,7 +10129,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER PROCEDURE function_with_argtypes OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
@@ -10138,7 +10138,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER ROUTINE function_with_argtypes OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_ROUTINE;
 					n->object = (Node *) $3;
@@ -10147,7 +10147,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER SCHEMA name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_SCHEMA;
 					n->object = (Node *) makeString($3);
@@ -10156,7 +10156,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER TYPE_P any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_TYPE;
 					n->object = (Node *) $3;
@@ -10165,7 +10165,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER TABLESPACE name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_TABLESPACE;
 					n->object = (Node *) makeString($3);
@@ -10174,7 +10174,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER STATISTICS any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_STATISTIC_EXT;
 					n->object = (Node *) $3;
@@ -10183,7 +10183,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER TEXT_P SEARCH DICTIONARY any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_TSDICTIONARY;
 					n->object = (Node *) $5;
@@ -10192,7 +10192,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_TSCONFIGURATION;
 					n->object = (Node *) $5;
@@ -10201,7 +10201,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER FOREIGN DATA_P WRAPPER name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_FDW;
 					n->object = (Node *) makeString($5);
@@ -10210,7 +10210,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER SERVER name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_FOREIGN_SERVER;
 					n->object = (Node *) makeString($3);
@@ -10219,7 +10219,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER EVENT TRIGGER name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_EVENT_TRIGGER;
 					n->object = (Node *) makeString($4);
@@ -10228,7 +10228,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER PUBLICATION name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_PUBLICATION;
 					n->object = (Node *) makeString($3);
@@ -10237,7 +10237,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 				}
 			| ALTER SUBSCRIPTION name OWNER TO RoleSpec
 				{
-					parser_ybc_beta_feature(@1, "roles");
+					parser_k2pg_beta_feature(@1, "roles");
 					AlterOwnerStmt *n = makeNode(AlterOwnerStmt);
 					n->objectType = OBJECT_SUBSCRIPTION;
 					n->object = (Node *) makeString($3);
@@ -10256,7 +10256,7 @@ AlterOwnerStmt: ALTER AGGREGATE aggregate_with_argtypes OWNER TO RoleSpec
 CreatePublicationStmt:
 			CREATE PUBLICATION name opt_publication_for_tables opt_definition
 				{
-					parser_ybc_not_support(@1, "CREATE PUBLICATION");
+					parser_k2pg_not_support(@1, "CREATE PUBLICATION");
 					CreatePublicationStmt *n = makeNode(CreatePublicationStmt);
 					n->pubname = $3;
 					n->options = $5;
@@ -10305,7 +10305,7 @@ publication_for_tables:
 AlterPublicationStmt:
 			ALTER PUBLICATION name SET definition
 				{
-					parser_ybc_not_support(@1, "ALTER PUBLICATION <name>");
+					parser_k2pg_not_support(@1, "ALTER PUBLICATION <name>");
 					AlterPublicationStmt *n = makeNode(AlterPublicationStmt);
 					n->pubname = $3;
 					n->options = $5;
@@ -10313,7 +10313,7 @@ AlterPublicationStmt:
 				}
 			| ALTER PUBLICATION name ADD_P TABLE relation_expr_list
 				{
-					parser_ybc_not_support(@1, "ALTER PUBLICATION ADD TABLE");
+					parser_k2pg_not_support(@1, "ALTER PUBLICATION ADD TABLE");
 					AlterPublicationStmt *n = makeNode(AlterPublicationStmt);
 					n->pubname = $3;
 					n->tables = $6;
@@ -10322,7 +10322,7 @@ AlterPublicationStmt:
 				}
 			| ALTER PUBLICATION name SET TABLE relation_expr_list
 				{
-					parser_ybc_not_support(@1, "ALTER PUBLICATION SET TABLE");
+					parser_k2pg_not_support(@1, "ALTER PUBLICATION SET TABLE");
 					AlterPublicationStmt *n = makeNode(AlterPublicationStmt);
 					n->pubname = $3;
 					n->tables = $6;
@@ -10331,7 +10331,7 @@ AlterPublicationStmt:
 				}
 			| ALTER PUBLICATION name DROP TABLE relation_expr_list
 				{
-					parser_ybc_not_support(@1, "ALTER PUBLICATION DROP TABLE");
+					parser_k2pg_not_support(@1, "ALTER PUBLICATION DROP TABLE");
 					AlterPublicationStmt *n = makeNode(AlterPublicationStmt);
 					n->pubname = $3;
 					n->tables = $6;
@@ -10349,7 +10349,7 @@ AlterPublicationStmt:
 CreateSubscriptionStmt:
 			CREATE SUBSCRIPTION name CONNECTION Sconst PUBLICATION publication_name_list opt_definition
 				{
-					parser_ybc_not_support(@1, "CREATE SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "CREATE SUBSCRIPTION");
 					CreateSubscriptionStmt *n =
 						makeNode(CreateSubscriptionStmt);
 					n->subname = $3;
@@ -10383,7 +10383,7 @@ publication_name_item:
 AlterSubscriptionStmt:
 			ALTER SUBSCRIPTION name SET definition
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_OPTIONS;
@@ -10393,7 +10393,7 @@ AlterSubscriptionStmt:
 				}
 			| ALTER SUBSCRIPTION name CONNECTION Sconst
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_CONNECTION;
@@ -10403,7 +10403,7 @@ AlterSubscriptionStmt:
 				}
 			| ALTER SUBSCRIPTION name REFRESH PUBLICATION opt_definition
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_REFRESH;
@@ -10413,7 +10413,7 @@ AlterSubscriptionStmt:
 				}
 			| ALTER SUBSCRIPTION name SET PUBLICATION publication_name_list opt_definition
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_PUBLICATION;
@@ -10424,7 +10424,7 @@ AlterSubscriptionStmt:
 				}
 			| ALTER SUBSCRIPTION name ENABLE_P
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_ENABLED;
@@ -10435,7 +10435,7 @@ AlterSubscriptionStmt:
 				}
 			| ALTER SUBSCRIPTION name DISABLE_P
 				{
-					parser_ybc_not_support(@1, "ALTER SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "ALTER SUBSCRIPTION");
 					AlterSubscriptionStmt *n =
 						makeNode(AlterSubscriptionStmt);
 					n->kind = ALTER_SUBSCRIPTION_ENABLED;
@@ -10454,7 +10454,7 @@ AlterSubscriptionStmt:
 
 DropSubscriptionStmt: DROP SUBSCRIPTION name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "DROP SUBSCRIPTION");
 					DropSubscriptionStmt *n = makeNode(DropSubscriptionStmt);
 					n->subname = $3;
 					n->missing_ok = false;
@@ -10463,7 +10463,7 @@ DropSubscriptionStmt: DROP SUBSCRIPTION name opt_drop_behavior
 				}
 				|  DROP SUBSCRIPTION IF_P EXISTS name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "DROP SUBSCRIPTION");
+					parser_k2pg_not_support(@1, "DROP SUBSCRIPTION");
 					DropSubscriptionStmt *n = makeNode(DropSubscriptionStmt);
 					n->subname = $5;
 					n->missing_ok = true;
@@ -10642,7 +10642,7 @@ TransactionStmt:
 				}
 			| SAVEPOINT ColId
 				{
-					parser_ybc_not_support(@1, "SAVEPOINT <transaction>");
+					parser_k2pg_not_support(@1, "SAVEPOINT <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_SAVEPOINT;
 					n->savepoint_name = $2;
@@ -10650,7 +10650,7 @@ TransactionStmt:
 				}
 			| RELEASE SAVEPOINT ColId
 				{
-					parser_ybc_not_support(@1, "RELEASE SAVEPOINT <transaction>");
+					parser_k2pg_not_support(@1, "RELEASE SAVEPOINT <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_RELEASE;
 					n->savepoint_name = $3;
@@ -10658,7 +10658,7 @@ TransactionStmt:
 				}
 			| RELEASE ColId
 				{
-					parser_ybc_not_support(@1, "RELEASE <transaction>");
+					parser_k2pg_not_support(@1, "RELEASE <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_RELEASE;
 					n->savepoint_name = $2;
@@ -10666,7 +10666,7 @@ TransactionStmt:
 				}
 			| ROLLBACK opt_transaction TO SAVEPOINT ColId
 				{
-					parser_ybc_not_support(@1, "ROLLBACK <transaction>");
+					parser_k2pg_not_support(@1, "ROLLBACK <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_TO;
 					n->savepoint_name = $5;
@@ -10674,7 +10674,7 @@ TransactionStmt:
 				}
 			| ROLLBACK opt_transaction TO ColId
 				{
-					parser_ybc_not_support(@1, "ROLLBACK <transaction>");
+					parser_k2pg_not_support(@1, "ROLLBACK <transaction>");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_TO;
 					n->savepoint_name = $4;
@@ -10682,7 +10682,7 @@ TransactionStmt:
 				}
 			| PREPARE TRANSACTION Sconst
 				{
-					parser_ybc_not_support(@1, "PREPARE TRANSACTION");
+					parser_k2pg_not_support(@1, "PREPARE TRANSACTION");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_PREPARE;
 					n->gid = $3;
@@ -10690,7 +10690,7 @@ TransactionStmt:
 				}
 			| COMMIT PREPARED Sconst
 				{
-					parser_ybc_not_support(@1, "COMMIT PREPARED");
+					parser_k2pg_not_support(@1, "COMMIT PREPARED");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_COMMIT_PREPARED;
 					n->gid = $3;
@@ -10698,7 +10698,7 @@ TransactionStmt:
 				}
 			| ROLLBACK PREPARED Sconst
 				{
-					parser_ybc_not_support(@1, "ROLLBACK PREPARED");
+					parser_k2pg_not_support(@1, "ROLLBACK PREPARED");
 					TransactionStmt *n = makeNode(TransactionStmt);
 					n->kind = TRANS_STMT_ROLLBACK_PREPARED;
 					n->gid = $3;
@@ -10787,7 +10787,7 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 		| CREATE OptTemp RECURSIVE VIEW qualified_name '(' columnList ')' opt_reloptions
 				AS SelectStmt opt_check_option
 				{
-					parser_ybc_not_support(@1, "CREATE RECURSIVE VIEW");
+					parser_k2pg_not_support(@1, "CREATE RECURSIVE VIEW");
 					ViewStmt *n = makeNode(ViewStmt);
 					n->view = $5;
 					n->view->relpersistence = $2;
@@ -10806,7 +10806,7 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 		| CREATE OR REPLACE OptTemp RECURSIVE VIEW qualified_name '(' columnList ')' opt_reloptions
 				AS SelectStmt opt_check_option
 				{
-					parser_ybc_not_support(@1, "CREATE RECURSIVE VIEW");
+					parser_k2pg_not_support(@1, "CREATE RECURSIVE VIEW");
 					ViewStmt *n = makeNode(ViewStmt);
 					n->view = $7;
 					n->view->relpersistence = $4;
@@ -10827,17 +10827,17 @@ ViewStmt: CREATE OptTemp VIEW qualified_name opt_column_list opt_reloptions
 opt_check_option:
 		WITH CHECK OPTION
 			{
-				parser_ybc_not_support(@1, "VIEW WITH CHECK OPTION");
+				parser_k2pg_not_support(@1, "VIEW WITH CHECK OPTION");
 				$$ = CASCADED_CHECK_OPTION;
 			}
 		| WITH CASCADED CHECK OPTION
 			{
-				parser_ybc_not_support(@1, "VIEW WITH CASCADED CHECK OPTION");
+				parser_k2pg_not_support(@1, "VIEW WITH CASCADED CHECK OPTION");
 				$$ = CASCADED_CHECK_OPTION;
 			}
 		| WITH LOCAL CHECK OPTION
 			{
-				parser_ybc_not_support(@1, "VIEW WITH LOCAL CHECK OPTION");
+				parser_k2pg_not_support(@1, "VIEW WITH LOCAL CHECK OPTION");
 				$$ = LOCAL_CHECK_OPTION;
 			}
 		| /* EMPTY */					{ $$ = NO_CHECK_OPTION; }
@@ -10852,7 +10852,7 @@ opt_check_option:
 
 LoadStmt:	LOAD file_name
 				{
-					parser_ybc_not_support(@1, "LOAD");
+					parser_k2pg_not_support(@1, "LOAD");
 					LoadStmt *n = makeNode(LoadStmt);
 					n->filename = $2;
 					$$ = (Node *)n;
@@ -10922,7 +10922,7 @@ createdb_opt_name:
 			| TEMPLATE						{ $$ = pstrdup($1); }
 			| COLOCATED
 				{
-					parser_ybc_beta_feature(@1, "colocated database");
+					parser_k2pg_beta_feature(@1, "colocated database");
 					$$ = pstrdup($1);
 				}
 		;
@@ -10959,7 +10959,7 @@ AlterDatabaseStmt:
 				 }
 			| ALTER DATABASE database_name SET TABLESPACE name
 				 {
-					parser_ybc_not_support(@1, "ALTER DATABASE SET TABLESPACE");
+					parser_k2pg_not_support(@1, "ALTER DATABASE SET TABLESPACE");
 					AlterDatabaseStmt *n = makeNode(AlterDatabaseStmt);
 					n->dbname = $3;
 					n->options = list_make1(makeDefElem("tablespace",
@@ -11011,7 +11011,7 @@ DropdbStmt: DROP DATABASE database_name
 
 AlterCollationStmt: ALTER COLLATION any_name REFRESH VERSION_P
 				{
-					parser_ybc_not_support(@1, "ALTER COLLATION");
+					parser_k2pg_not_support(@1, "ALTER COLLATION");
 					AlterCollationStmt *n = makeNode(AlterCollationStmt);
 					n->collname = $3;
 					$$ = (Node *)n;
@@ -11029,14 +11029,14 @@ AlterCollationStmt: ALTER COLLATION any_name REFRESH VERSION_P
 AlterSystemStmt:
 			ALTER SYSTEM_P SET generic_set
 				{
-					parser_ybc_not_support(@1, "ALTER SYSTEM");
+					parser_k2pg_not_support(@1, "ALTER SYSTEM");
 					AlterSystemStmt *n = makeNode(AlterSystemStmt);
 					n->setstmt = $4;
 					$$ = (Node *)n;
 				}
 			| ALTER SYSTEM_P RESET generic_reset
 				{
-					parser_ybc_not_support(@1, "ALTER SYSTEM RESET");
+					parser_k2pg_not_support(@1, "ALTER SYSTEM RESET");
 					AlterSystemStmt *n = makeNode(AlterSystemStmt);
 					n->setstmt = $4;
 					$$ = (Node *)n;
@@ -11075,7 +11075,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> DROP NOT NULL */
 			| ALTER DOMAIN_P any_name DROP NOT NULL_P
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN DROP NOT NULL");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN DROP NOT NULL");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'N';
 					n->typeName = $3;
@@ -11084,7 +11084,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> SET NOT NULL */
 			| ALTER DOMAIN_P any_name SET NOT NULL_P
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN SET NOT NULL");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN SET NOT NULL");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'O';
 					n->typeName = $3;
@@ -11093,7 +11093,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> ADD CONSTRAINT ... */
 			| ALTER DOMAIN_P any_name ADD_P TableConstraint
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN ADD CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN ADD CONSTRAINT");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'C';
 					n->typeName = $3;
@@ -11103,7 +11103,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> DROP CONSTRAINT <name> [RESTRICT|CASCADE] */
 			| ALTER DOMAIN_P any_name DROP CONSTRAINT name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN DROP CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN DROP CONSTRAINT");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'X';
 					n->typeName = $3;
@@ -11115,7 +11115,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> DROP CONSTRAINT IF EXISTS <name> [RESTRICT|CASCADE] */
 			| ALTER DOMAIN_P any_name DROP CONSTRAINT IF_P EXISTS name opt_drop_behavior
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN DROP CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN DROP CONSTRAINT");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'X';
 					n->typeName = $3;
@@ -11127,7 +11127,7 @@ AlterDomainStmt:
 			/* ALTER DOMAIN <domain> VALIDATE CONSTRAINT <name> */
 			| ALTER DOMAIN_P any_name VALIDATE CONSTRAINT name
 				{
-					parser_ybc_not_support(@1, "ALTER DOMAIN VALIDATE CONSTRAINT");
+					parser_k2pg_not_support(@1, "ALTER DOMAIN VALIDATE CONSTRAINT");
 					AlterDomainStmt *n = makeNode(AlterDomainStmt);
 					n->subtype = 'V';
 					n->typeName = $3;
@@ -11150,7 +11150,7 @@ opt_as:		AS										{}
 AlterTSDictionaryStmt:
 			ALTER TEXT_P SEARCH DICTIONARY any_name definition
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH DICTIONARY");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH DICTIONARY");
 					AlterTSDictionaryStmt *n = makeNode(AlterTSDictionaryStmt);
 					n->dictname = $5;
 					n->options = $6;
@@ -11161,7 +11161,7 @@ AlterTSDictionaryStmt:
 AlterTSConfigurationStmt:
 			ALTER TEXT_P SEARCH CONFIGURATION any_name ADD_P MAPPING FOR name_list any_with any_name_list
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_ADD_MAPPING;
 					n->cfgname = $5;
@@ -11173,7 +11173,7 @@ AlterTSConfigurationStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name ALTER MAPPING FOR name_list any_with any_name_list
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_ALTER_MAPPING_FOR_TOKEN;
 					n->cfgname = $5;
@@ -11185,7 +11185,7 @@ AlterTSConfigurationStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name ALTER MAPPING REPLACE any_name any_with any_name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_REPLACE_DICT;
 					n->cfgname = $5;
@@ -11197,7 +11197,7 @@ AlterTSConfigurationStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name ALTER MAPPING FOR name_list REPLACE any_name any_with any_name
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_REPLACE_DICT_FOR_TOKEN;
 					n->cfgname = $5;
@@ -11209,7 +11209,7 @@ AlterTSConfigurationStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name DROP MAPPING FOR name_list
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_DROP_MAPPING;
 					n->cfgname = $5;
@@ -11219,7 +11219,7 @@ AlterTSConfigurationStmt:
 				}
 			| ALTER TEXT_P SEARCH CONFIGURATION any_name DROP MAPPING IF_P EXISTS FOR name_list
 				{
-					parser_ybc_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
+					parser_k2pg_not_support(@1, "ALTER TEXT SEARCH CONFIGURATION");
 					AlterTSConfigurationStmt *n = makeNode(AlterTSConfigurationStmt);
 					n->kind = ALTER_TSCONFIG_DROP_MAPPING;
 					n->cfgname = $5;
@@ -11248,7 +11248,7 @@ CreateConversionStmt:
 			CREATE opt_default CONVERSION_P any_name FOR Sconst
 			TO Sconst FROM any_name
 			{
-				parser_ybc_not_support(@1, "CREATE CONVERSION");
+				parser_k2pg_not_support(@1, "CREATE CONVERSION");
 				CreateConversionStmt *n = makeNode(CreateConversionStmt);
 				n->conversion_name = $4;
 				n->for_encoding_name = $6;
@@ -11271,7 +11271,7 @@ CreateConversionStmt:
 ClusterStmt:
 			CLUSTER opt_verbose qualified_name cluster_index_specification
 				{
-					parser_ybc_not_support(@1, "CLUSTER");
+					parser_k2pg_not_support(@1, "CLUSTER");
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = $3;
 					n->indexname = $4;
@@ -11280,7 +11280,7 @@ ClusterStmt:
 				}
 			| CLUSTER opt_verbose
 				{
-					parser_ybc_not_support(@1, "CLUSTER");
+					parser_k2pg_not_support(@1, "CLUSTER");
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = NULL;
 					n->indexname = NULL;
@@ -11290,7 +11290,7 @@ ClusterStmt:
 			/* kept for pre-8.3 compatibility */
 			| CLUSTER opt_verbose index_name ON qualified_name
 				{
-					parser_ybc_not_support(@1, "CLUSTER");
+					parser_k2pg_not_support(@1, "CLUSTER");
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = $5;
 					n->indexname = $3;
@@ -11562,7 +11562,7 @@ ExecuteStmt: EXECUTE name execute_param_clause
 			| CREATE OptTemp TABLE create_as_target AS
 				EXECUTE name execute_param_clause opt_with_data
 				{
-					parser_ybc_not_support(@1, "CREATE TABLE AS EXECUTE");
+					parser_k2pg_not_support(@1, "CREATE TABLE AS EXECUTE");
 					CreateTableAsStmt *ctas = makeNode(CreateTableAsStmt);
 					ExecuteStmt *n = makeNode(ExecuteStmt);
 					n->name = $7;
@@ -11783,7 +11783,7 @@ DeleteStmt: opt_with_clause DELETE_P FROM relation_expr_opt_alias
 					n->returningList = $7;
 					n->withClause = $1;
 					if (n->withClause != NULL) {
-						parser_ybc_not_support(@1, "WITH clause");
+						parser_k2pg_not_support(@1, "WITH clause");
 					}
 					$$ = (Node *)n;
 				}
@@ -11792,7 +11792,7 @@ DeleteStmt: opt_with_clause DELETE_P FROM relation_expr_opt_alias
 using_clause:
 			USING from_list
 				{
-					parser_ybc_not_support(@1, "USING clause in DELETE");
+					parser_k2pg_not_support(@1, "USING clause in DELETE");
 					$$ = $2;
 				}
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -11820,44 +11820,44 @@ LockStmt:	LOCK_P opt_table relation_expr_list opt_lock opt_nowait
 opt_lock:	IN_P lock_type MODE				{ $$ = $2; }
 			| /*EMPTY*/
 			  {
-			    parser_ybc_not_support(@0, "ACCESS EXCLUSIVE lock mode");
+			    parser_k2pg_not_support(@0, "ACCESS EXCLUSIVE lock mode");
 			    $$ = AccessExclusiveLock;
 			  }
 		;
 
 lock_type:	ACCESS SHARE					{ $$ = AccessShareLock; }
 			| ROW SHARE
-			  { parser_ybc_not_support(@1, "ROW SHARE");
+			  { parser_k2pg_not_support(@1, "ROW SHARE");
 			    $$ = RowShareLock;
 			  }
 			| ROW EXCLUSIVE
 			  {
-			    parser_ybc_not_support(@1, "ROW EXCLUSIVE");
+			    parser_k2pg_not_support(@1, "ROW EXCLUSIVE");
 			    $$ = RowExclusiveLock;
 			  }
 			| SHARE UPDATE EXCLUSIVE
 			  {
-			    parser_ybc_not_support(@1, "SHARE UPDATE EXCLUSIVE");
+			    parser_k2pg_not_support(@1, "SHARE UPDATE EXCLUSIVE");
 			    $$ = ShareUpdateExclusiveLock;
 			  }
 			| SHARE
 			  {
-			    parser_ybc_not_support(@1, "SHARE");
+			    parser_k2pg_not_support(@1, "SHARE");
 			    $$ = ShareLock;
 			  }
 			| SHARE ROW EXCLUSIVE
 				{
-				  parser_ybc_not_support(@1, "SHARE ROW EXCLUSIVE");
+				  parser_k2pg_not_support(@1, "SHARE ROW EXCLUSIVE");
 				  $$ = ShareRowExclusiveLock;
 				}
 			| EXCLUSIVE
 			  {
-			    parser_ybc_not_support(@1, "EXCLUSIVE");
+			    parser_k2pg_not_support(@1, "EXCLUSIVE");
 			    $$ = ExclusiveLock;
 			  }
 			| ACCESS EXCLUSIVE
 			  {
-			    parser_ybc_not_support(@1, "ACCESS EXCLUSIVE");
+			    parser_k2pg_not_support(@1, "ACCESS EXCLUSIVE");
 			    $$ = AccessExclusiveLock;
 			  }
 		;
@@ -11891,7 +11891,7 @@ UpdateStmt: opt_with_clause UPDATE relation_expr_opt_alias
 					n->targetList = $5;
 					n->fromClause = $6;
 					if (n->fromClause != NULL) {
-						parser_ybc_not_support(@1, "FROM clause in UPDATE");
+						parser_k2pg_not_support(@1, "FROM clause in UPDATE");
 					}
 					n->whereClause = $7;
 					n->returningList = $8;
@@ -11959,7 +11959,7 @@ set_target_list:
  *****************************************************************************/
 DeclareCursorStmt: DECLARE cursor_name cursor_options CURSOR opt_hold FOR SelectStmt
 				{
-					parser_ybc_not_support(@1, "DECLARE CURSOR");
+					parser_k2pg_not_support(@1, "DECLARE CURSOR");
 					DeclareCursorStmt *n = makeNode(DeclareCursorStmt);
 					n->portalname = $2;
 					/* currently we always set FAST_PLAN option */
@@ -13079,7 +13079,7 @@ where_or_current_clause:
 			WHERE a_expr							{ $$ = $2; }
 			| WHERE CURRENT_P OF cursor_name
 				{
-					parser_ybc_not_support(@1, "WHERE CURRENT OF");
+					parser_k2pg_not_support(@1, "WHERE CURRENT OF");
 					CurrentOfExpr *n = makeNode(CurrentOfExpr);
 					/* cvarno is filled in by parse analysis */
 					n->cursor_name = $4;
@@ -17208,16 +17208,16 @@ raise_feature_not_supported_signal(int pos, core_yyscan_t yyscanner, const char 
 static void
 raise_feature_not_supported(int pos, core_yyscan_t yyscanner, const char *msg, int issue)
 {
-	raise_feature_not_supported_signal(pos, yyscanner, msg, issue, YBUnsupportedFeatureSignalLevel());
+	raise_feature_not_supported_signal(pos, yyscanner, msg, issue, K2PgUnsupportedFeatureSignalLevel());
 }
 
 static void
-ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int issue, int signal_level)
+k2pg_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int issue, int signal_level)
 {
 	static int use_k2pg_parser = -1;
 	if (use_k2pg_parser == -1)
 	{
-		use_k2pg_parser = YBIsUsingYBParser();
+		use_k2pg_parser = K2PgIsUsingYBParser();
 	}
 
 	if (use_k2pg_parser)
@@ -17227,18 +17227,18 @@ ybc_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int is
 }
 
 static void
-ybc_not_support(int pos, core_yyscan_t yyscanner, const char *msg, int issue)
+k2pg_not_support(int pos, core_yyscan_t yyscanner, const char *msg, int issue)
 {
-	ybc_not_support_signal(pos, yyscanner, msg, issue, YBUnsupportedFeatureSignalLevel());
+	k2pg_not_support_signal(pos, yyscanner, msg, issue, K2PgUnsupportedFeatureSignalLevel());
 }
 
 static void
-ybc_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg)
+k2pg_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg)
 {
 	static int restricted = -1;
 	if (restricted == -1)
 	{
-		restricted = YBIsUsingYBParser() && YBIsPreparingTemplates();
+		restricted = K2PgIsUsingYBParser() && K2PgIsPreparingTemplates();
 	}
 
 	if (restricted)
@@ -17253,7 +17253,7 @@ beta_features_enabled()
 	static int beta_enabled = -1;
 	if (beta_enabled == -1)
 	{
-		beta_enabled = YBCIsEnvVarTrueWithDefault("FLAGS_ysql_beta_features", true);
+		beta_enabled = K2PgIsEnvVarTrueWithDefault("FLAGS_ysql_beta_features", true);
 	}
 	return beta_enabled;
 }
@@ -17261,9 +17261,9 @@ beta_features_enabled()
 static void
 check_beta_feature(int pos, core_yyscan_t yyscanner, const char *flag, const char *feature)
 {
-	if (YBIsUsingYBParser() && !(beta_features_enabled() || YBCIsEnvVarTrue(flag)))
+	if (K2PgIsUsingYBParser() && !(beta_features_enabled() || K2PgIsEnvVarTrue(flag)))
 	{
-		int signal_level = YBUnsupportedFeatureSignalLevel();
+		int signal_level = K2PgUnsupportedFeatureSignalLevel();
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("'%s' is a beta feature and beta features are disabled.", feature),

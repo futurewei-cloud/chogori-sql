@@ -198,7 +198,7 @@ add_paths_to_joinrel(PlannerInfo *root,
 	 *       'ammarkpos' and 'amrestrpos' are implemented in 'ybcin.c'.
 	 *       (tracked in #4519).
 	 */
-	if ((enable_mergejoin && !IsYugaByteEnabled()) || jointype == JOIN_FULL)
+	if ((enable_mergejoin && !IsK2PgEnabled()) || jointype == JOIN_FULL)
 		extra.mergeclause_list = select_mergejoin_clauses(root,
 														  joinrel,
 														  outerrel,

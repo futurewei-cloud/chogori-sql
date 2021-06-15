@@ -164,7 +164,7 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
   //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
   expr_binds_[bind_var] = attr_value;
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-    // YBC logic uses a virtual column ybctid as a row id in a string format
+    // K2PG logic uses a virtual column ybctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
     CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
     K2LOG_D(log::pg, "kYBTupleId was bound and ybctid_bind_ is set as true");

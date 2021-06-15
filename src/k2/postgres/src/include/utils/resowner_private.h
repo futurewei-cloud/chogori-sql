@@ -100,9 +100,9 @@ extern void ResourceOwnerForgetJIT(ResourceOwner owner,
 extern void ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner);
 extern void ResourceOwnerRememberYugaByteStmt(
 	ResourceOwner owner,
-	YBCPgStatement k2pg_stmt);
+	K2PgStatement k2pg_stmt);
 extern void ResourceOwnerForgetYugaByteStmt(
 	ResourceOwner owner,
-	YBCPgStatement k2pg_stmt);
+	K2PgStatement k2pg_stmt);
 
 #endif							/* RESOWNER_PRIVATE_H */

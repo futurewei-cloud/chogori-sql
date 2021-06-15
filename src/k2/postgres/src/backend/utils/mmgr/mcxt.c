@@ -41,29 +41,29 @@ MemoryContext CurrentMemoryContext = NULL;
 
 MemoryContext GetThreadLocalCurrentMemoryContext()
 {
-	return (MemoryContext) YBCPgGetThreadLocalCurrentMemoryContext();
+	return (MemoryContext) PgGate_GetThreadLocalCurrentMemoryContext();
 }
 
 MemoryContext SetThreadLocalCurrentMemoryContext(MemoryContext memctx)
 {
-	return (MemoryContext) YBCPgSetThreadLocalCurrentMemoryContext(memctx);
+	return (MemoryContext) PgGate_SetThreadLocalCurrentMemoryContext(memctx);
 }
 
 void PrepareThreadLocalCurrentMemoryContext()
 {
-	if (YBCPgGetThreadLocalCurrentMemoryContext() == NULL)
+	if (PgGate_GetThreadLocalCurrentMemoryContext() == NULL)
 	{
 		MemoryContext memctx = AllocSetContextCreate((MemoryContext) NULL,
 		                                             "DocDBExprMemoryContext",
 		                                             ALLOCSET_SMALL_SIZES);
-		YBCPgSetThreadLocalCurrentMemoryContext(memctx);
+		PgGate_SetThreadLocalCurrentMemoryContext(memctx);
 	}
 }
 
 void ResetThreadLocalCurrentMemoryContext()
 {
-	MemoryContext memctx = (MemoryContext) YBCPgGetThreadLocalCurrentMemoryContext();
-	YBCPgResetCurrentMemCtxThreadLocalVars();
+	MemoryContext memctx = (MemoryContext) PgGate_GetThreadLocalCurrentMemoryContext();
+	PgGate_ResetCurrentMemCtxThreadLocalVars();
 	MemoryContextReset(memctx);
 }
 
@@ -196,7 +196,7 @@ MemoryContextResetOnly(MemoryContext context)
 	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
 	 */
 	if (context->k2pg_memctx) {
-		HandleYBStatus(YBCPgResetMemctx(context->k2pg_memctx));
+		HandleK2PgStatus(PgGate_ResetMemctx(context->k2pg_memctx));
 	}
 
 	/* Nothing to do if no pallocs since startup or last reset */
@@ -291,7 +291,7 @@ MemoryContextDelete(MemoryContext context)
 	/*
 	 * Destroy YugaByte memory context.
 	 */
-	HandleYBStatus(YBCPgDestroyMemctx(context->k2pg_memctx));
+	HandleK2PgStatus(PgGate_DestroyMemctx(context->k2pg_memctx));
 	context->k2pg_memctx = NULL;
 
 	VALGRIND_DESTROY_MEMPOOL(context);
@@ -1252,14 +1252,14 @@ pchomp(const char *in)
 /*
  * Get the YugaByte current memory context.
  */
-YBCPgMemctx GetCurrentYbMemctx() {
+K2PgMemctx GetCurrentYbMemctx() {
 	MemoryContext context = GetCurrentMemoryContext();
 	AssertArg(MemoryContextIsValid(context));
 	AssertNotInCriticalSection(context);
 
 	if (context->k2pg_memctx == NULL) {
 		// Create the yugabyte context if this is the first time it is used.
-		context->k2pg_memctx = YBCPgCreateMemctx();
+		context->k2pg_memctx = PgGate_CreateMemctx();
 	}
 
 	return context->k2pg_memctx;

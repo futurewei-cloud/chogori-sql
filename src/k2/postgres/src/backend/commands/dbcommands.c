@@ -164,7 +164,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	createdb_failure_params fparms;
 
 	if (dbname != NULL && (strcmp(dbname, "template0") == 0 || strcmp(dbname, "template1") == 0)) {
-		YBSetPreparingTemplates();
+		K2PgSetPreparingTemplates();
 	}
 
 	/* Extract options from the statement node tree */
@@ -361,13 +361,13 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 		dbtemplate = "template1";	/* Default template database name */
 
 	/* Check YB options support */
-	if (YBIsUsingYBParser())
+	if (K2PgIsUsingYBParser())
 	{
 		for (int i = lengthof(default_options); i > 0; --i)
 		{
 			DefElem *option = *default_options[i - 1];
 			if (option != NULL && option->arg != NULL)
-				ereport(YBUnsupportedFeatureSignalLevel(),
+				ereport(K2PgUnsupportedFeatureSignalLevel(),
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("Value other than default for %s option is "
 								"not yet supported", option->defname),
@@ -379,7 +379,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 
 		if (strcmp(dbtemplate, "template0") != 0 &&
 			strcmp(dbtemplate, "template1") != 0)
-			ereport(YBUnsupportedFeatureSignalLevel(),
+			ereport(K2PgUnsupportedFeatureSignalLevel(),
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("Value other than default, template0 or template1 "
 							"for template option is not yet supported"),
@@ -388,7 +388,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 parser_errposition(pstate, dtemplate->location)));
 
 		if (dbistemplate)
-			ereport(YBUnsupportedFeatureSignalLevel(),
+			ereport(K2PgUnsupportedFeatureSignalLevel(),
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("Value other than default or false for "
 							"is_template option is not yet supported"),
@@ -397,7 +397,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 parser_errposition(pstate, distemplate->location)));
 
 		if (encoding >= 0 && encoding != PG_UTF8)
-			ereport(YBUnsupportedFeatureSignalLevel(),
+			ereport(K2PgUnsupportedFeatureSignalLevel(),
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("Value other than unicode or utf8 for encoding "
 							"option is not yet supported"),
@@ -406,7 +406,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 parser_errposition(pstate, dencoding->location)));
 
 		if (dcollate && dbcollate && strcmp(dbcollate, "C") != 0)
-			ereport(YBUnsupportedFeatureSignalLevel(),
+			ereport(K2PgUnsupportedFeatureSignalLevel(),
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("Value other than 'C' for lc_collate "
 							"option is not yet supported"),
@@ -415,7 +415,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 					 parser_errposition(pstate, dcollate->location)));
 
 		if (dctype && dbctype && strcmp(dbctype, "en_US.UTF-8") != 0)
-			ereport(YBUnsupportedFeatureSignalLevel(),
+			ereport(K2PgUnsupportedFeatureSignalLevel(),
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("Value other than 'en_US.UTF-8' for lc_ctype "
 							"option is not yet supported"),
@@ -633,8 +633,8 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	new_record[Anum_pg_database_datminmxid - 1] = TransactionIdGetDatum(src_minmxid);
 	new_record[Anum_pg_database_dattablespace - 1] = ObjectIdGetDatum(dst_deftablespace);
 
-	if (IsYugaByteEnabled())
-		YBCCreateDatabase(dboid, dbname, src_dboid, InvalidOid, dbcolocated);
+	if (IsK2PgEnabled())
+		K2PgCreateDatabase(dboid, dbname, src_dboid, InvalidOid, dbcolocated);
 
 	/*
 	 * We deliberately set datacl to default (NULL), rather than copying it
@@ -688,7 +688,7 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	PG_ENSURE_ERROR_CLEANUP(createdb_failure_callback,
 	                        PointerGetDatum(&fparms));
 	{
-		if (!IsYugaByteEnabled())
+		if (!IsK2PgEnabled())
 		{
 			/*
 			 * Iterate through all tablespaces of the template database, and copy
@@ -955,7 +955,7 @@ dropdb(const char *dbname, bool missing_ok)
 	 * YugaByte allows dropping a database even when multiple sessions are dependent on that database.
 	 * Skip the following checks.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		goto removing_database_from_system;
 
 	/*
@@ -1049,7 +1049,7 @@ removing_database_from_system:
 	 */
 	pgstat_drop_database(db_id);
 
-	if (!IsYugaByteEnabled()) {
+	if (!IsK2PgEnabled()) {
         /*
          * Tell checkpointer to forget any pending fsync and unlink requests for
          * files in the database; else the fsyncs will fail at next checkpoint, or
@@ -1088,9 +1088,9 @@ removing_database_from_system:
 	/*
 	 * Call YugaByte to delete the entries ourselves.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
-		YBCDropDatabase(db_id, dbname);
+		K2PgDropDatabase(db_id, dbname);
 	}
 }
 
@@ -1171,11 +1171,11 @@ RenameDatabase(const char *oldname, const char *newname)
 	namestrcpy(&(((Form_pg_database) GETSTRUCT(newtup))->datname), newname);
 	CatalogTupleUpdate(rel, &newtup->t_self, newtup);
 
-	if (IsYugaByteEnabled()) {
-		YBCPgStatement handle = NULL;
-		HandleYBStatus(YBCPgNewAlterDatabase(oldname, db_id, &handle));
-		HandleYBStatus(YBCPgAlterDatabaseRenameDatabase(handle, newname));
-		HandleYBStatus(YBCPgExecAlterDatabase(handle));
+	if (IsK2PgEnabled()) {
+		K2PgStatement handle = NULL;
+		HandleK2PgStatus(PgGate_NewAlterDatabase(oldname, db_id, &handle));
+		HandleK2PgStatus(PgGate_AlterDatabaseRenameDatabase(handle, newname));
+		HandleK2PgStatus(PgGate_ExecAlterDatabase(handle));
 	}
 
 	InvokeObjectPostAlterHook(DatabaseRelationId, db_id, 0);
@@ -1596,11 +1596,11 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 	}
 
 	/* Check YB options support */
-	if (YBIsUsingYBParser()) {
+	if (K2PgIsUsingYBParser()) {
 		for (int i = lengthof(unsupported_options); i > 0; --i) {
 			DefElem *option = *unsupported_options[i - 1];
 			if (option != NULL && option->arg != NULL) {
-				ereport(YBUnsupportedFeatureSignalLevel(),
+				ereport(K2PgUnsupportedFeatureSignalLevel(),
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 						 errmsg("Altering %s option is not yet supported",
 								option->defname),

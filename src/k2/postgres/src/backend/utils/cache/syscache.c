@@ -1161,7 +1161,7 @@ YBPreloadCatalogCache(int cache_id, int idx_cache_id)
 
 			if (is_null)
 			{
-				YBC_LOG_WARNING("Ignoring unexpected null "
+				K2PG_LOG_WARNING("Ignoring unexpected null "
 				                "entry while initializing proc "
 				                "cache list");
 				continue;

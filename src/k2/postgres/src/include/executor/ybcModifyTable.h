@@ -33,7 +33,7 @@
  * Insert data into YugaByte table.
  * This function is equivalent to "heap_insert", but it sends data to DocDB (YugaByte storage).
  */
-extern Oid YBCHeapInsert(TupleTableSlot *slot,
+extern Oid K2PgHeapInsert(TupleTableSlot *slot,
 												 HeapTuple tuple,
 												 EState *estate);
 
@@ -41,7 +41,7 @@ extern Oid YBCHeapInsert(TupleTableSlot *slot,
  * Insert a tuple into a YugaByte table. Will execute within a distributed
  * transaction if the table is transactional (YSQL default).
  */
-extern Oid YBCExecuteInsert(Relation rel,
+extern Oid K2PgExecuteInsert(Relation rel,
                             TupleDesc tupleDesc,
                             HeapTuple tuple);
 
@@ -49,14 +49,14 @@ extern Oid YBCExecuteInsert(Relation rel,
  * Execute the insert outside of a transaction.
  * Assumes the caller checked that it is safe to do so.
  */
-extern Oid YBCExecuteNonTxnInsert(Relation rel,
+extern Oid K2PgExecuteNonTxnInsert(Relation rel,
 								  TupleDesc tupleDesc,
 								  HeapTuple tuple);
 
 /*
  * Insert a tuple into the an index's backing YugaByte index table.
  */
-extern void YBCExecuteInsertIndex(Relation rel,
+extern void K2PgExecuteInsertIndex(Relation rel,
 								  Datum *values,
 								  bool *isnull,
 								  Datum ybctid,
@@ -68,7 +68,7 @@ extern void YBCExecuteInsertIndex(Relation rel,
  * no row to delete. This can occur because we do not first perform a scan if
  * it is a single row op.
  */
-extern bool YBCExecuteDelete(Relation rel,
+extern bool K2PgExecuteDelete(Relation rel,
 							 TupleTableSlot *slot,
 							 EState *estate,
 							 ModifyTableState *mtstate);
@@ -76,7 +76,7 @@ extern bool YBCExecuteDelete(Relation rel,
  * Delete a tuple (identified by index columns and base table ybctid) from an
  * index's backing YugaByte index table.
  */
-extern void YBCExecuteDeleteIndex(Relation index,
+extern void K2PgExecuteDeleteIndex(Relation index,
                                   Datum *values,
                                   bool *isnull,
                                   Datum ybctid);
@@ -87,7 +87,7 @@ extern void YBCExecuteDeleteIndex(Relation index,
  * no row to update. This can occur because we do not first perform a scan if
  * it is a single row op.
  */
-extern bool YBCExecuteUpdate(Relation rel,
+extern bool K2PgExecuteUpdate(Relation rel,
 							 TupleTableSlot *slot,
 							 HeapTuple tuple,
 							 EState *estate,
@@ -100,20 +100,20 @@ extern bool YBCExecuteUpdate(Relation rel,
 // and execute them directly (rather than needing to read ybctid first).
 // TODO This should be used for regular tables whenever possible.
 
-extern void YBCDeleteSysCatalogTuple(Relation rel, HeapTuple tuple);
+extern void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple);
 
-extern void YBCUpdateSysCatalogTuple(Relation rel,
+extern void K2PgUpdateSysCatalogTuple(Relation rel,
 									 HeapTuple oldtuple,
 									 HeapTuple tuple);
 
 //------------------------------------------------------------------------------
 // Utility methods.
 
-extern bool YBCIsSingleRowTxnCapableRel(ResultRelInfo *resultRelInfo);
+extern bool K2PgIsSingleRowTxnCapableRel(ResultRelInfo *resultRelInfo);
 
-extern Datum YBCGetYBTupleIdFromSlot(TupleTableSlot *slot);
+extern Datum K2PgGetPgTupleIdFromSlot(TupleTableSlot *slot);
 
-extern Datum YBCGetYBTupleIdFromTuple(YBCPgStatement pg_stmt,
+extern Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 									  Relation rel,
 									  HeapTuple tuple,
 									  TupleDesc tupleDesc);
@@ -121,16 +121,16 @@ extern Datum YBCGetYBTupleIdFromTuple(YBCPgStatement pg_stmt,
 /*
  * Returns if a table has secondary indices.
  */
-extern bool YBCRelInfoHasSecondaryIndices(ResultRelInfo *resultRelInfo);
+extern bool K2PgRelInfoHasSecondaryIndices(ResultRelInfo *resultRelInfo);
 
 /*
  * Get primary key columns as bitmap of a table for real and system YB columns.
  */
-extern Bitmapset *GetFullYBTablePrimaryKey(Relation rel);
+extern Bitmapset *GetFullK2PgTablePrimaryKey(Relation rel);
 
 /*
  * Get primary key columns as bitmap of a table for real columns.
  */
-extern Bitmapset *GetYBTablePrimaryKey(Relation rel);
+extern Bitmapset *GetK2PgTablePrimaryKey(Relation rel);
 
 #endif							/* YBCMODIFYTABLE_H */

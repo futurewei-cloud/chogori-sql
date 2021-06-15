@@ -115,7 +115,7 @@ class PgSession {
             std::shared_ptr<K2Adapter> k2_adapter,
             const string& database_name,
             std::shared_ptr<PgTxnHandler> pg_txn_handler,
-            const YBCPgCallbacks& pg_callbacks);
+            const K2PgCallbacks& pg_callbacks);
 
   virtual ~PgSession();
 
@@ -314,7 +314,7 @@ class PgSession {
   std::unordered_map<TableId, std::shared_ptr<TableInfo>> table_cache_;
   std::unordered_set<PgForeignKeyReference, boost::hash<PgForeignKeyReference>> fk_reference_cache_;
 
-  const YBCPgCallbacks& pg_callbacks_;
+  const K2PgCallbacks& pg_callbacks_;
 
   std::string client_id_;
 

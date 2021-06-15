@@ -406,9 +406,9 @@ DefineIndex(Oid relationId,
 	 * - indexes in nested DDL
 	 * - unique indexes
 	 */
-	stmt->concurrent = (!YBCGetDisableIndexBackfill()
+	stmt->concurrent = (!PgGate_GetDisableIndexBackfill()
 						&& !stmt->primary
-						&& IsYBRelationById(relationId));
+						&& IsK2PgRelationById(relationId));
 	/* Use fast path create index when in nested DDL.  This is desired
 	 * when there would be no concurrency issues (e.g. `CREATE TABLE
 	 * ... (... UNIQUE (...))`).  However, there may be cases where it
@@ -417,7 +417,7 @@ DefineIndex(Oid relationId,
 	 * TODO(jason): support backfill for nested DDL, and use the online
 	 * path for the appropriate statements (issue #4786).
 	 */
-	if (stmt->concurrent && YBGetDdlNestingLevel() != 1)
+	if (stmt->concurrent && K2PgGetDdlNestingLevel() != 1)
 		stmt->concurrent = false;
 	/*
 	 * Backfilling unique indexes is currently not supported.  This is desired
@@ -601,13 +601,13 @@ DefineIndex(Oid relationId,
 	 * In Yugabyte mode, switch index method from "btree" or "hash" to "lsm" depending on whether
 	 * the table is stored in Yugabyte storage or not (such as temporary tables).
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		if (accessMethodName == NULL)
 		{
-			accessMethodName = IsYBRelation(rel) ? DEFAULT_K2PG_INDEX_TYPE : DEFAULT_INDEX_TYPE;
+			accessMethodName = IsK2PgRelation(rel) ? DEFAULT_K2PG_INDEX_TYPE : DEFAULT_INDEX_TYPE;
 		}
-		else if (IsYBRelation(rel))
+		else if (IsK2PgRelation(rel))
 		{
 			if (strcmp(accessMethodName, "btree") == 0 || strcmp(accessMethodName, "hash") == 0)
 			{
@@ -642,7 +642,7 @@ DefineIndex(Oid relationId,
 	}
 	accessMethodId = HeapTupleGetOid(tuple);
 
-	if (IsYBRelation(rel) && accessMethodId != LSM_AM_OID)
+	if (IsK2PgRelation(rel) && accessMethodId != LSM_AM_OID)
 		ereport(ERROR,
 				(errmsg("index method \"%s\" not supported yet",
 						accessMethodName),
@@ -1182,10 +1182,10 @@ DefineIndex(Oid relationId,
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
 	elog(LOG, "waiting for K2PG_INDEX_PERM_DELETE_ONLY");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_DELETE_ONLY,
@@ -1198,17 +1198,17 @@ DefineIndex(Oid relationId,
 	CommitTransactionCommand();
 	/* TODO(jason): handle nested CREATE INDEX (this assumes we're at nest
 	 * level 1). */
-	YBDecrementDdlNestingLevel(true /* success */);
-	YBIncrementDdlNestingLevel();
+	K2PgDecrementDdlNestingLevel(true /* success */);
+	K2PgIncrementDdlNestingLevel();
 	StartTransactionCommand();
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
-	HandleYBStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for K2PG_INDEX_PERM_WRITE_AND_DELETE");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_WRITE_AND_DELETE,
@@ -1231,19 +1231,19 @@ DefineIndex(Oid relationId,
 	CommitTransactionCommand();
 	/* TODO(jason): handle nested CREATE INDEX (this assumes we're at nest
 	 * level 1). */
-	YBDecrementDdlNestingLevel(true /* success */);
-	YBIncrementDdlNestingLevel();
+	K2PgDecrementDdlNestingLevel(true /* success */);
+	K2PgIncrementDdlNestingLevel();
 	StartTransactionCommand();
 
 	/* TODO(jason): handle exclusion constraints, possibly not here. */
 
 	/*
 	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleYBStatus.
+	 * through HandleK2PgStatus.
 	 */
-	HandleYBStatus(YBCPgAsyncUpdateIndexPermissions(MyDatabaseId, relationId));
+	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for Yugabyte index read permission");
-	HandleYBStatus(YBCPgWaitUntilIndexPermissionsAtLeast(MyDatabaseId,
+	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_READ_WRITE_AND_DELETE,
@@ -1377,14 +1377,14 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 	 * indexed table, so just figure out whether the indexed table is
 	 * colocated.
 	 */
-	if (IsYugaByteEnabled() &&
+	if (IsK2PgEnabled() &&
 		!IsBootstrapProcessingMode() &&
-		!YBIsPreparingTemplates())
+		!K2PgIsPreparingTemplates())
 	{
 		Relation rel = RelationIdGetRelation(relId);
-		use_k2pg_ordering = IsYBRelation(rel) && !IsSystemRelation(rel);
-		if (IsYBRelation(rel))
-			HandleYBStatus(YBCPgIsTableColocated(MyDatabaseId,
+		use_k2pg_ordering = IsK2PgRelation(rel) && !IsSystemRelation(rel);
+		if (IsK2PgRelation(rel))
+			HandleK2PgStatus(PgGate_IsTableColocated(MyDatabaseId,
 												 relId,
 												 &colocated));
 		RelationClose(rel);
@@ -1402,7 +1402,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		Oid			atttype;
 		Oid			attcollation;
 
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			if (use_k2pg_ordering)
 			{
@@ -1682,7 +1682,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 			/* default ordering is ASC */
 			if (attribute->ordering == SORTBY_DESC)
 				colOptionP[attn] |= INDOPTION_DESC;
-			if (IsYugaByteEnabled() &&
+			if (IsK2PgEnabled() &&
 				attribute->ordering == SORTBY_HASH)
 				colOptionP[attn] |= INDOPTION_HASH;
 
@@ -2681,7 +2681,7 @@ BackfillIndex(BackfillIndexStmt *stmt)
 	Relation	heapRel;
 	Relation	indexRel;
 
-	if (YBCGetDisableIndexBackfill())
+	if (PgGate_GetDisableIndexBackfill())
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("backfill is not enabled")));

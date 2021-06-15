@@ -2436,10 +2436,10 @@ static bool has_applicable_triggers(Relation rel, CmdType operation, Bitmapset *
 	AttrNumber confkey[INDEX_MAX_KEYS];
 	int numfks = 0;
 	int relid = RelationGetRelid(rel);
-	AttrNumber attr_offset = YBGetFirstLowInvalidAttributeNumber(rel);
+	AttrNumber attr_offset = K2PgGetFirstLowInvalidAttributeNumber(rel);
 
 	/* If there no triggers we are done. */
-	if (!YBRelHasOldRowTriggers(rel, operation))
+	if (!K2PgRelHasOldRowTriggers(rel, operation))
 	{
 		return false;
 	}
@@ -2539,7 +2539,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	Bitmapset *pushdown_update_attrs = NULL;
 
 	/* Verify YB is enabled. */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return false;
 
 	/*
@@ -2573,12 +2573,12 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	relid = root->simple_rte_array[1]->relid;
 
 	/* Verify we're a YB relation. */
-	if (!IsYBRelationById(relid))
+	if (!IsK2PgRelationById(relid))
 		return false;
 
 	/* Ensure we close the relation before returning. */
 	relation = RelationIdGetRelation(relid);
-	attr_offset = YBGetFirstLowInvalidAttributeNumber(relation);
+	attr_offset = K2PgGetFirstLowInvalidAttributeNumber(relation);
 
 	/*
 	 * Cannot allow check constraints for single-row update as we will need
@@ -2647,7 +2647,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 
 			/* Verify expression is supported. */
 			bool needs_pushdown = false;
-			if (!YBCIsSupportedSingleRowModifyAssignExpr(tle->expr, tle->resno, &needs_pushdown))
+			if (!K2PgIsSupportedSingleRowModifyAssignExpr(tle->expr, tle->resno, &needs_pushdown))
 			{
 				RelationClose(relation);
 				return false;
@@ -2761,7 +2761,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 		var = castNode(Var, get_leftop(clause));
 
 		/* Verify expression is supported. */
-		if (!YBCIsSupportedSingleRowModifyWhereExpr(expr))
+		if (!K2PgIsSupportedSingleRowModifyWhereExpr(expr))
 		{
 			return false;
 		}
@@ -2808,7 +2808,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	/*
 	 * Verify all YB primary keys are specified in the WHERE clause.
 	 */
-	if (!YBCAllPrimaryKeysProvided(relid, primary_key_attrs))
+	if (!K2PgAllPrimaryKeysProvided(relid, primary_key_attrs))
 	{
 		return false;
 	}

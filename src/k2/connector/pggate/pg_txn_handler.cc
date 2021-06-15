@@ -77,7 +77,7 @@ Status PgTxnHandler::CommitTransaction() {
      K2LOG_D(log::pg, "Transaction commit succeeded");
   }
 
-  return K2Adapter::K2StatusToYBStatus(result.status);
+  return K2Adapter::K2StatusToK2PgStatus(result.status);
 }
 
 Status PgTxnHandler::AbortTransaction() {
@@ -99,7 +99,7 @@ Status PgTxnHandler::AbortTransaction() {
     K2LOG_E(log::pg, "Transaction abort failed due to: {}", result.status);
   }
 
-  return K2Adapter::K2StatusToYBStatus(result.status);
+  return K2Adapter::K2StatusToK2PgStatus(result.status);
 }
 
 Status PgTxnHandler::RestartTransaction() {

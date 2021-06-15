@@ -132,7 +132,7 @@ static int num_columns_read = 0;
 %token <kw> XDECLARE YBDECLARE INDEX ON USING XBUILD INDICES PRIMARY UNIQUE XTOAST
 %token <kw> OBJ_ID XBOOTSTRAP XSHARED_RELATION XWITHOUT_OIDS XROWTYPE_OID
 %token <kw> XFORCE XNOT XNULL
-%token <kw> YBCHECKINITDBDONE
+%token <kw> K2PGCHECKINITDBDONE
 
 %start TopLevel
 
@@ -301,9 +301,9 @@ Boot_CreateStmt:
 						elog(DEBUG4, "relation created with OID %u", id);
 					}
 
-					if (IsYugaByteEnabled())
+					if (IsK2PgEnabled())
 					{
-						YBCCreateSysCatalogTable($2, $3, tupdesc, shared_relation, $13);
+						K2PgCreateSysCatalogTable($2, $3, tupdesc, shared_relation, $13);
 					}
 
                     do_end();
@@ -581,9 +581,9 @@ boot_column_val:
 		;
 
 Boot_CheckInitDbDone:
-      YBCHECKINITDBDONE
+      K2PGCHECKINITDBDONE
       {
-				if (YBIsInitDbAlreadyDone())
+				if (K2PgIsInitDbAlreadyDone())
 					exit(K2PG_INITDB_ALREADY_DONE_EXIT_CODE);
 			}
 
@@ -610,7 +610,7 @@ boot_ident:
 		| XFORCE		{ $$ = pstrdup($1); }
 		| XNOT			{ $$ = pstrdup($1); }
 		| XNULL			{ $$ = pstrdup($1); }
-		| YBCHECKINITDBDONE { $$ = pstrdup($1); }
+		| K2PGCHECKINITDBDONE { $$ = pstrdup($1); }
 		;
 %%
 

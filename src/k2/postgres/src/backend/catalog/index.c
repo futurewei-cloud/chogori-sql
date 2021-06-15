@@ -875,7 +875,7 @@ index_create(Relation heapRelation,
 	 * and slow because secondary indexes are not available yet. So we will skip this
 	 * duplicate name check as it will error later anyway when the indexes are created.
 	 */
-	if (!IsYugaByteEnabled() || !IsBootstrapProcessingMode())
+	if (!IsK2PgEnabled() || !IsBootstrapProcessingMode())
 	{
 		/*
 		 * Check for duplicate name (both as to the index, and as to the
@@ -975,9 +975,9 @@ index_create(Relation heapRelation,
 	 * Create index in YugaByte only if it is a secondary index. Primary key is
 	 * an implicit part of the base table in YugaByte and doesn't need to be created.
 	 */
-	if (IsYBRelation(indexRelation) && !isprimary)
+	if (IsK2PgRelation(indexRelation) && !isprimary)
 	{
-		YBCCreateIndex(indexRelationName,
+		K2PgCreateIndex(indexRelationName,
 					   indexInfo,
 					   indexTupDesc,
 					   coloptions,
@@ -1223,7 +1223,7 @@ index_create(Relation heapRelation,
 	 * relcache entry has already been rebuilt thanks to sinval update during
 	 * CommandCounterIncrement.
 	 */
-	if (IsBootstrapProcessingMode() || IsYugaByteEnabled())
+	if (IsBootstrapProcessingMode() || IsK2PgEnabled())
 		RelationInitIndexAccessInfo(indexRelation);
 	else
 		Assert(indexRelation->rd_indexcxt != NULL);
@@ -1725,7 +1725,7 @@ index_drop(Oid indexId, bool concurrent)
 	 * Schedule physical removal of the files (if any)
 	 * If YugaByte is enabled, there aren't any physical files to remove.
 	 */
-	if (!IsYugaByteEnabled() &&
+	if (!IsK2PgEnabled() &&
 		userIndexRelation->rd_rel->relkind != RELKIND_PARTITIONED_INDEX)
 		RelationDropStorage(userIndexRelation);
 
@@ -2237,7 +2237,7 @@ index_update_stats(Relation rel,
 
 	if (reltuples >= 0)
 	{
-		BlockNumber relpages = IsYugaByteEnabled() ? 0 : RelationGetNumberOfBlocks(rel);
+		BlockNumber relpages = IsK2PgEnabled() ? 0 : RelationGetNumberOfBlocks(rel);
 		BlockNumber relallvisible;
 
 		if (rd_rel->relkind != RELKIND_INDEX)
@@ -2707,7 +2707,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 	/*
 	 * Set some exec params.
 	 */
-	YBCPgExecParameters *exec_params = &estate->k2pg_exec_params;
+	K2PgExecParameters *exec_params = &estate->k2pg_exec_params;
 	if (read_time)
 		exec_params->read_time = *read_time;
 	if (row_bounds)
@@ -2754,7 +2754,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 									NULL,	/* scan key */
 									true,	/* buffer access strategy OK */
 									allow_sync);	/* syncscan OK? */
-		if (IsYBRelation(heapRelation))
+		if (IsK2PgRelation(heapRelation))
 			scan->ybscan->exec_params = exec_params;
 	}
 	else
@@ -2807,7 +2807,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 		 * Skip handling of HOT-chained tuples which does not apply to YugaByte-based
 		 * tables.
 		 */
-		if (!IsYugaByteEnabled())
+		if (!IsK2PgEnabled())
 		{
 			/*
 			 * When dealing with a HOT-chain of updated tuples, we want to index
@@ -3117,7 +3117,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 		 * This is not needed and should be skipped for YugaByte enabled tables.
 		 */
 
-		if (!IsYugaByteEnabled() && HeapTupleIsHeapOnly(heapTuple))
+		if (!IsK2PgEnabled() && HeapTupleIsHeapOnly(heapTuple))
 		{
 			/*
 			 * For a heap-only tuple, pretend its TID is that of the root. See
@@ -3559,7 +3559,7 @@ validate_index_heapscan(Relation heapRelation,
 		 * For YugaByte tables, there is no need to find the root tuple. Just
 		 * insert the fetched tuple.
 		 */
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			MemoryContextReset(econtext->ecxt_per_tuple_memory);
 

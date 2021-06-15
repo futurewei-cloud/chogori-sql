@@ -36,12 +36,12 @@
 
 /*  Table Functions ----------------------------------------------------------------------------- */
 
-extern void YBCCreateSysCatalogTable(const char *table_name,
+extern void K2PgCreateSysCatalogTable(const char *table_name,
                                      Oid table_oid,
                                      TupleDesc tupDecs,
                                      bool is_shared_relation,
                                      IndexStmt *pkey_idx);
-extern Oid YBCExecSysCatalogInsert(Relation rel,
+extern Oid K2PgExecSysCatalogInsert(Relation rel,
                                    TupleDesc tupleDesc,
                                    HeapTuple tuple);
 

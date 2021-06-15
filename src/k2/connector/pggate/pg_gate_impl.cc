@@ -59,7 +59,7 @@ namespace gate {
 
 using k2pg::sql::kPgByteArrayOid;
 
-PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count, YBCPgCallbacks callbacks)
+PgGateApiImpl::PgGateApiImpl(const K2PgTypeEntity *k2PgDataTypeArray, int count, K2PgCallbacks callbacks)
     : k2_adapter_(CreateK2Adapter()),
       catalog_manager_(CreateCatalogManager()),
       catalog_client_(CreateCatalogClient()),
@@ -67,7 +67,7 @@ PgGateApiImpl::PgGateApiImpl(const YBCPgTypeEntity *YBCDataTypeArray, int count,
       pg_txn_handler_(new PgTxnHandler(k2_adapter_)) {
   // Setup type mapping.
   for (int idx = 0; idx < count; idx++) {
-    const YBCPgTypeEntity *type_entity = &YBCDataTypeArray[idx];
+    const K2PgTypeEntity *type_entity = &k2PgDataTypeArray[idx];
     type_map_[type_entity->type_oid] = type_entity;
   }
   k2_adapter_->Init();
@@ -96,7 +96,7 @@ PgGateApiImpl::~PgGateApiImpl() {
   k2_adapter_->Shutdown();
 }
 
-const YBCPgTypeEntity *PgGateApiImpl::FindTypeEntity(int type_oid) {
+const K2PgTypeEntity *PgGateApiImpl::FindTypeEntity(int type_oid) {
   const auto iter = type_map_.find(type_oid);
   if (iter != type_map_.end()) {
     return iter->second;
@@ -105,7 +105,7 @@ const YBCPgTypeEntity *PgGateApiImpl::FindTypeEntity(int type_oid) {
 }
 
 Status AddColumn(PgCreateTable* pg_stmt, const char *attr_name, int attr_num,
-                         const YBCPgTypeEntity *attr_type, bool is_hash, bool is_range,
+                         const K2PgTypeEntity *attr_type, bool is_hash, bool is_range,
                          bool is_desc, bool is_nulls_first) {
   using SortingType = ColumnSchema::SortingType;
   SortingType sorting_type = SortingType::kNotSpecified;
@@ -336,7 +336,7 @@ Status PgGateApiImpl::NewCreateTable(const char *database_name,
 }
 
 Status PgGateApiImpl::CreateTableAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
-                                       const YBCPgTypeEntity *attr_type,
+                                       const K2PgTypeEntity *attr_type,
                                        bool is_hash, bool is_range,
                                        bool is_desc, bool is_nulls_first) {
   if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_TABLE)) {
@@ -363,7 +363,7 @@ Status PgGateApiImpl::NewAlterTable(const PgObjectId& table_object_id,
 }
 
 Status PgGateApiImpl::AlterTableAddColumn(PgStatement *handle, const char *name,
-                                      int order, const YBCPgTypeEntity *attr_type,
+                                      int order, const K2PgTypeEntity *attr_type,
                                       bool is_not_null) {
   if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_ALTER_TABLE)) {
     // Invalid handle.
@@ -532,7 +532,7 @@ Status PgGateApiImpl::NewCreateIndex(const char *database_name,
 }
 
 Status PgGateApiImpl::CreateIndexAddColumn(PgStatement *handle, const char *attr_name, int attr_num,
-                                       const YBCPgTypeEntity *attr_type,
+                                       const K2PgTypeEntity *attr_type,
                                        bool is_hash, bool is_range,
                                        bool is_desc, bool is_nulls_first) {
   if (!PgStatement::IsValidStmt(handle, StmtOp::STMT_CREATE_INDEX)) {
@@ -681,7 +681,7 @@ Status PgGateApiImpl::DmlFetch(PgStatement *handle, int32_t natts, uint64_t *val
 Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                     int32_t nattrs, uint64_t *ybctid) {
   const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
-  const YBCPgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
+  const K2PgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
   *ybctid = type_entity->k2pg_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();
 }
@@ -706,15 +706,15 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 
-bool PgGateApiImpl::ForeignKeyReferenceExists(YBCPgOid table_oid, std::string&& ybctid) {
+bool PgGateApiImpl::ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& ybctid) {
   return pg_session_->ForeignKeyReferenceExists(table_oid, std::move(ybctid));
 }
 
-Status PgGateApiImpl::CacheForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid) {
+Status PgGateApiImpl::CacheForeignKeyReference(K2PgOid table_oid, std::string&& ybctid) {
   return pg_session_->CacheForeignKeyReference(table_oid, std::move(ybctid));
 }
 
-Status PgGateApiImpl::DeleteForeignKeyReference(YBCPgOid table_oid, std::string&& ybctid) {
+Status PgGateApiImpl::DeleteForeignKeyReference(K2PgOid table_oid, std::string&& ybctid) {
   return pg_session_->DeleteForeignKeyReference(table_oid, std::move(ybctid));
 }
 
@@ -743,7 +743,7 @@ Status PgGateApiImpl::NewColumnRef(PgStatement *stmt, int attr_num, const PgType
 
 // Constant ----------------------------------------------------------------------------------------
 
-Status PgGateApiImpl::NewConstant(PgStatement *stmt, const YBCPgTypeEntity *type_entity,
+Status PgGateApiImpl::NewConstant(PgStatement *stmt, const K2PgTypeEntity *type_entity,
                               uint64_t datum, bool is_null, PgExpr **expr_handle) {
   if (!stmt) {
     // Invalid handle.
@@ -756,7 +756,7 @@ Status PgGateApiImpl::NewConstant(PgStatement *stmt, const YBCPgTypeEntity *type
   return Status::OK();
 }
 
-Status PgGateApiImpl::NewConstantOp(PgStatement *stmt, const YBCPgTypeEntity *type_entity,
+Status PgGateApiImpl::NewConstantOp(PgStatement *stmt, const K2PgTypeEntity *type_entity,
                               uint64_t datum, bool is_null, PgExpr **expr_handle, bool is_gt) {
   if (!stmt) {
     // Invalid handle.
@@ -793,7 +793,7 @@ Status PgGateApiImpl::UpdateConstant(PgExpr *expr, const char *value, int64_t by
 // Text constant -----------------------------------------------------------------------------------
 
 Status PgGateApiImpl::NewOperator(PgStatement *stmt, const char *opname,
-                              const YBCPgTypeEntity *type_entity,
+                              const K2PgTypeEntity *type_entity,
                               PgExpr **op_handle) {
   if (!stmt) {
     // Invalid handle.

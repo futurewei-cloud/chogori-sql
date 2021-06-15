@@ -45,7 +45,7 @@
 
 #include "parser/parser.h"
 
-static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
+static void K2PgAddSysCatalogColumn(K2PgStatement k2pg_stmt,
 								   IndexStmt *pkey_idx,
 								   const char *attname,
 								   int attnum,
@@ -56,7 +56,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 
 	ListCell      *lc;
 	bool          is_key    = false;
-	const YBCPgTypeEntity *col_type  = YBCDataTypeFromOidMod(attnum, type_id);
+	const K2PgTypeEntity *col_type  = K2PgDataTypeFromOidMod(attnum, type_id);
 
 	if (pkey_idx)
 	{
@@ -76,7 +76,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 	 */
 	if (key == is_key)
 	{
-		HandleYBStatus(YBCPgCreateTableAddColumn(k2pg_stmt,
+		HandleK2PgStatus(PgGate_CreateTableAddColumn(k2pg_stmt,
 																						 attname,
 																						 attnum,
 																						 col_type,
@@ -87,7 +87,7 @@ static void YBCAddSysCatalogColumn(YBCPgStatement k2pg_stmt,
 	}
 }
 
-static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
+static void K2PgAddSysCatalogColumns(K2PgStatement k2pg_stmt,
 									TupleDesc tupdesc,
 									IndexStmt *pkey_idx,
 									const bool key)
@@ -95,7 +95,7 @@ static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
 	if (tupdesc->tdhasoid)
 	{
 		/* Add the OID column if the table was declared with OIDs. */
-		YBCAddSysCatalogColumn(k2pg_stmt,
+		K2PgAddSysCatalogColumn(k2pg_stmt,
 							   pkey_idx,
 							   "oid",
 							   ObjectIdAttributeNumber,
@@ -108,7 +108,7 @@ static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
 	for (int attno = 0; attno < tupdesc->natts; attno++)
 	{
 		Form_pg_attribute attr = TupleDescAttr(tupdesc, attno);
-		YBCAddSysCatalogColumn(k2pg_stmt,
+		K2PgAddSysCatalogColumn(k2pg_stmt,
 							   pkey_idx,
 							   attr->attname.data,
 							   attr->attnum,
@@ -118,7 +118,7 @@ static void YBCAddSysCatalogColumns(YBCPgStatement k2pg_stmt,
 	}
 }
 
-void YBCCreateSysCatalogTable(const char *table_name,
+void K2PgCreateSysCatalogTable(const char *table_name,
                               Oid table_oid,
                               TupleDesc tupdesc,
                               bool is_shared_relation,
@@ -128,9 +128,9 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	Assert(IsBootstrapProcessingMode());
 	char           *db_name     = "template1";
 	char           *schema_name = "pg_catalog";
-	YBCPgStatement k2pg_stmt      = NULL;
+	K2PgStatement k2pg_stmt      = NULL;
 
-	HandleYBStatus(YBCPgNewCreateTable(db_name,
+	HandleK2PgStatus(PgGate_NewCreateTable(db_name,
 	                                   schema_name,
 	                                   table_name,
 	                                   TemplateDbOid,
@@ -144,9 +144,9 @@ void YBCCreateSysCatalogTable(const char *table_name,
 	/* Add all key columns first, then the regular columns */
 	if (pkey_idx != NULL)
 	{
-		YBCAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ true);
+		K2PgAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ true);
 	}
-	YBCAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ false);
+	K2PgAddSysCatalogColumns(k2pg_stmt, tupdesc, pkey_idx, /* key */ false);
 
-	HandleYBStatus(YBCPgExecCreateTable(k2pg_stmt));
+	HandleK2PgStatus(PgGate_ExecCreateTable(k2pg_stmt));
 }

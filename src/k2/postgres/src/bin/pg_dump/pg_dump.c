@@ -295,11 +295,11 @@ static char *get_synchronized_snapshot(Archive *fout);
 static void setupDumpWorker(Archive *AHX);
 static TableInfo *getRootTableInfo(TableInfo *tbinfo);
 
-static void HandleYBStatus(YBCStatus status) {
+static void HandleK2PgStatus(K2PgStatus status) {
 	if (status) {
-		/* Copy the message to the current memory context and free the YBCStatus. */
-		const char* msg_buf = DupYBStatusMessage(status, false);
-		YBCFreeStatus(status);
+		/* Copy the message to the current memory context and free the K2PgStatus. */
+		const char* msg_buf = DupK2PgStatusMessage(status, false);
+		K2PgFreeStatus(status);
 		exit_horribly(NULL, "%s\n", msg_buf);
 	}
 }
@@ -362,7 +362,6 @@ main(int argc, char **argv)
 		{"encoding", required_argument, NULL, 'E'},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
-		{"masters", required_argument, NULL, 'm'},
 
 		/*
 		 * the following options don't have an equivalent short option letter
@@ -473,10 +472,6 @@ main(int argc, char **argv)
 
 			case 'h':			/* server host */
 				dopt.pghost = pg_strdup(optarg);
-				break;
-
-			case 'm':			/* YB master hosts */
-				dopt.master_hosts = pg_strdup(optarg);
 				break;
 
 			case 'j':			/* number of dump jobs */
@@ -715,13 +710,8 @@ main(int argc, char **argv)
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
 	{
-		if (dopt.master_hosts)
-			YBCSetMasterAddresses(dopt.master_hosts);
-		else
-			YBCSetMasterAddresses(dopt.pghost);
-
-		HandleYBStatus(YBCInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
-		HandleYBStatus(YBCInitPgGateBackend());
+		HandleK2PgStatus(K2PgInit(progname, palloc, /* cstring_to_text_with_len_fn */ NULL));
+		HandleK2PgStatus(PgGate_InitPgGateBackend());
 	}
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
@@ -972,7 +962,7 @@ main(int argc, char **argv)
 
 #ifndef DISABLE_K2PG_EXTENTIONS
 	if (dopt.include_k2pg_metadata)
-		YBCShutdownPgGateBackend();
+		PgGate_ShutdownPgGateBackend();
 #endif  /* DISABLE_K2PG_EXTENTIONS */
 
 	exit_nicely(0);
@@ -15872,10 +15862,10 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
 			/* Get the table properties from YugaByte. */
-			YBCPgTableDesc ybc_tabledesc = NULL;
-			YBCPgTableProperties properties;
-			HandleYBStatus(YBCPgGetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
-			HandleYBStatus(YBCPgGetTableProperties(ybc_tabledesc, &properties));
+			K2PgTableDesc k2pg_tabledesc = NULL;
+			K2PgTableProperties properties;
+			HandleK2PgStatus(PgGate_GetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &k2pg_tabledesc));
+			HandleK2PgStatus(PgGate_GetTableProperties(k2pg_tabledesc, &properties));
 
 			if(properties.is_colocated)
 			{

@@ -337,19 +337,19 @@ Status::Status(StatePtr state)
     : state_(std::move(state)) {
 }
 
-Status::Status(YBCStatusStruct* state, bool add_ref)
+Status::Status(K2PgStatusStruct* state, bool add_ref)
     : state_(reinterpret_cast<State*>(state), add_ref) {
 }
 
-YBCStatusStruct* Status::RetainStruct() const {
+K2PgStatusStruct* Status::RetainStruct() const {
   if (state_) {
     intrusive_ptr_add_ref(state_.get());
   }
-  return reinterpret_cast<YBCStatusStruct*>(state_.get());
+  return reinterpret_cast<K2PgStatusStruct*>(state_.get());
 }
 
-YBCStatusStruct* Status::DetachStruct() {
-  return reinterpret_cast<YBCStatusStruct*>(state_.detach());
+K2PgStatusStruct* Status::DetachStruct() {
+  return reinterpret_cast<K2PgStatusStruct*>(state_.detach());
 }
 
 #define K2PG_STATUS_RETURN_MESSAGE(name, pb_name, value, message) \

@@ -1152,7 +1152,7 @@ SetCatCacheList(CatCache *cache,
 				if (ct->hash_value != hashValue)
 					continue;    /* quickly skip entry if wrong hash val */
 
-				if (IsYugaByteEnabled())
+				if (IsK2PgEnabled())
 					continue; /* Cannot rely on ctid comparison in YB mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self),
@@ -1279,7 +1279,7 @@ InitCatCachePhase2(CatCache *cache, bool touch_index)
 	 * TODO(mihnea/robert) This could be enabled if we handle
 	 * "primary key as index" so that PG can open the primary indexes by id.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		return;
 	}
@@ -1379,7 +1379,7 @@ IndexScanOK(CatCache *cache, ScanKey cur_skey)
 
 /*
  * Utility to add a Tuple entry to the cache only if it does not exist.
- * Used only when IsYugaByteEnabled() is true.
+ * Used only when IsK2PgEnabled() is true.
  * Currently used in two cases:
  *  1. When initializing the caches (i.e. on backend start).
  *  2. When inserting a new entry to the sys catalog (i.e. on DDL create).
@@ -1752,13 +1752,13 @@ SearchCatCacheMiss(CatCache *cache,
 		 * was added by (running a command on) another node.
 		 * We also don't support tuple update as of 14/12/2018.
 		 */
-		if (IsYugaByteEnabled())
+		if (IsK2PgEnabled())
 		{
 			bool allow_negative_entries = cache->id == CASTSOURCETARGET ||
 			                              (cache->id == RELNAMENSP &&
 			                               DatumGetObjectId(cur_skey[1].sk_argument) ==
 			                               PG_CATALOG_NAMESPACE &&
-			                               !YBIsPreparingTemplates());
+			                               !K2PgIsPreparingTemplates());
 			if (!allow_negative_entries)
 			{
 				return NULL;
@@ -2033,7 +2033,7 @@ SearchCatCacheList(CatCache *cache,
 				if (ct->hash_value != hashValue)
 					continue;	/* quickly skip entry if wrong hash val */
 
-				if (IsYugaByteEnabled())
+				if (IsK2PgEnabled())
 					continue; /* Cannot rely on ctid comparison in YB mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self), &(ntp->t_self)))

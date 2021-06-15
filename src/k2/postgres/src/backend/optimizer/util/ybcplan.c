@@ -47,7 +47,7 @@
  * Note: As enhance pushdown support in DocDB (e.g. expr evaluation) this
  * can be expanded.
  */
-bool YBCIsSupportedSingleRowModifyWhereExpr(Expr *expr)
+bool K2PgIsSupportedSingleRowModifyWhereExpr(Expr *expr)
 {
 	switch (nodeTag(expr))
 	{
@@ -66,7 +66,7 @@ bool YBCIsSupportedSingleRowModifyWhereExpr(Expr *expr)
 			 * compatible datatypes so we just recurse into its argument.
 			 */
 			RelabelType *rt = castNode(RelabelType, expr);
-			return YBCIsSupportedSingleRowModifyWhereExpr(rt->arg);
+			return K2PgIsSupportedSingleRowModifyWhereExpr(rt->arg);
 		}
 		case T_FuncExpr:
 		case T_OpExpr:
@@ -107,7 +107,7 @@ bool YBCIsSupportedSingleRowModifyWhereExpr(Expr *expr)
 			/* Checking all arguments are valid (stable). */
 			foreach (lc, args) {
 				Expr* expr = (Expr *) lfirst(lc);
-				if (!YBCIsSupportedSingleRowModifyWhereExpr(expr)) {
+				if (!K2PgIsSupportedSingleRowModifyWhereExpr(expr)) {
 					return false;
 				}
 			}
@@ -120,7 +120,7 @@ bool YBCIsSupportedSingleRowModifyWhereExpr(Expr *expr)
 	return false;
 }
 
-static void YBCExprInstantiateParamsInternal(Expr* expr,
+static void K2PgExprInstantiateParamsInternal(Expr* expr,
                                              ParamListInfo paramLI,
                                              Expr** parent_var)
 {
@@ -178,7 +178,7 @@ static void YBCExprInstantiateParamsInternal(Expr* expr,
 			 * compatible datatypes so we just recurse into its argument.
 			 */
 			RelabelType *rt = castNode(RelabelType, expr);
-			YBCExprInstantiateParamsInternal(rt->arg, paramLI, &rt->arg);
+			K2PgExprInstantiateParamsInternal(rt->arg, paramLI, &rt->arg);
 			return;
 		}
 		case T_FuncExpr:
@@ -188,7 +188,7 @@ static void YBCExprInstantiateParamsInternal(Expr* expr,
 			foreach(lc, func_expr->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
-				YBCExprInstantiateParamsInternal(arg,
+				K2PgExprInstantiateParamsInternal(arg,
 				                                 paramLI,
 				                                 (Expr **)&lc->data.ptr_value);
 			}
@@ -201,7 +201,7 @@ static void YBCExprInstantiateParamsInternal(Expr* expr,
 			foreach(lc, op_expr->args)
 			{
 				Expr *arg = (Expr *) lfirst(lc);
-				YBCExprInstantiateParamsInternal(arg,
+				K2PgExprInstantiateParamsInternal(arg,
 				                                 paramLI,
 				                                 (Expr **)&lc->data.ptr_value);
 			}
@@ -216,13 +216,13 @@ static void YBCExprInstantiateParamsInternal(Expr* expr,
 }
 
 
-void YBCExprInstantiateParams(Expr* expr, ParamListInfo paramLI)
+void K2PgExprInstantiateParams(Expr* expr, ParamListInfo paramLI)
 {
 	/* Fast-path if there are no params. */
 	if (paramLI == NULL)
 		return;
 
-	YBCExprInstantiateParamsInternal(expr, paramLI, NULL);
+	K2PgExprInstantiateParamsInternal(expr, paramLI, NULL);
 }
 
 /*
@@ -241,7 +241,7 @@ static bool IsSupportedK2FunctionId(Oid funcid, Form_pg_proc pg_proc) {
 	return false;
 }
 
-static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has_vars, bool *has_docdb_unsupported_funcs) {
+static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has_vars, bool *has_docdb_unsupported_funcs) {
 	switch (nodeTag(expr))
 	{
 		case T_Const:
@@ -266,7 +266,7 @@ static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has
 			 * compatible datatypes so we just recurse into its argument.
 			 */
 			RelabelType *rt = castNode(RelabelType, expr);
-			return YBCAnalyzeExpression(rt->arg, target_attnum, has_vars, has_docdb_unsupported_funcs);
+			return K2PgAnalyzeExpression(rt->arg, target_attnum, has_vars, has_docdb_unsupported_funcs);
 		}
 		case T_FuncExpr:
 		case T_OpExpr:
@@ -313,7 +313,7 @@ static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has
 			/* Checking all arguments are valid (stable). */
 			foreach (lc, args) {
 				Expr* expr = (Expr *) lfirst(lc);
-				if (!YBCAnalyzeExpression(expr, target_attnum, has_vars, has_docdb_unsupported_funcs)) {
+				if (!K2PgAnalyzeExpression(expr, target_attnum, has_vars, has_docdb_unsupported_funcs)) {
 				    return false;
 				}
 			}
@@ -331,10 +331,10 @@ static bool YBCAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has
  * Eventually any immutable expression whose only variables are column references.
  * Currently, limit to the case where the only referenced column is the target column.
  */
-bool YBCIsSupportedSingleRowModifyAssignExpr(Expr *expr, AttrNumber target_attnum, bool *needs_pushdown) {
+bool K2PgIsSupportedSingleRowModifyAssignExpr(Expr *expr, AttrNumber target_attnum, bool *needs_pushdown) {
 	bool has_vars = false;
 	bool has_docdb_unsupported_funcs = false;
-	bool is_basic_expr = YBCAnalyzeExpression(expr, target_attnum, &has_vars, &has_docdb_unsupported_funcs);
+	bool is_basic_expr = K2PgAnalyzeExpression(expr, target_attnum, &has_vars, &has_docdb_unsupported_funcs);
 
 	/* default, will set to true below if needed. */
 	*needs_pushdown = false;
@@ -412,7 +412,7 @@ static bool ModifyTableIsSingleRowWrite(ModifyTable *modifyTable)
 			{
 				TargetEntry *target = (TargetEntry *) lfirst(lc);
 				bool needs_pushdown = false;
-				if (!YBCIsSupportedSingleRowModifyAssignExpr(target->expr,
+				if (!K2PgIsSupportedSingleRowModifyAssignExpr(target->expr,
 				                                             target->resno,
 				                                             &needs_pushdown))
 				{
@@ -440,7 +440,7 @@ static bool ModifyTableIsSingleRowWrite(ModifyTable *modifyTable)
 	return true;
 }
 
-bool YBCIsSingleRowModify(PlannedStmt *pstmt)
+bool K2PgIsSingleRowModify(PlannedStmt *pstmt)
 {
 	if (pstmt->planTree && IsA(pstmt->planTree, ModifyTable))
 	{
@@ -457,7 +457,7 @@ bool YBCIsSingleRowModify(PlannedStmt *pstmt)
  *  - source data is a Result node (meaning we are skipping scan and thus
  *    are single row).
  */
-bool YBCIsSingleRowUpdateOrDelete(ModifyTable *modifyTable)
+bool K2PgIsSingleRowUpdateOrDelete(ModifyTable *modifyTable)
 {
 	/* Support UPDATE and DELETE. */
 	if (modifyTable->operation != CMD_UPDATE &&
@@ -479,7 +479,7 @@ bool YBCIsSingleRowUpdateOrDelete(ModifyTable *modifyTable)
  * Returns true if provided Bitmapset of attribute numbers
  * matches the primary key attribute numbers of the relation.
  */
-bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
+bool K2PgAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 {
 	if (bms_is_empty(attrs))
 	{
@@ -496,21 +496,21 @@ bool YBCAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	}
 
 	Relation        rel                = RelationIdGetRelation(relid);
-	Oid             dboid              = YBCGetDatabaseOid(rel);
+	Oid             dboid              = K2PgGetDatabaseOid(rel);
 	AttrNumber      natts              = RelationGetNumberOfAttributes(rel);
-	YBCPgTableDesc  ybc_tabledesc      = NULL;
+	K2PgTableDesc  k2pg_tabledesc      = NULL;
 	Bitmapset      *primary_key_attrs  = NULL;
 
 	/* Get primary key columns from YB table desc. */
-	HandleYBStatus(YBCPgGetTableDesc(dboid, relid, &ybc_tabledesc));
+	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = 1; attnum <= natts; attnum++)
 	{
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleYBTableDescStatus(YBCPgGetColumnInfo(ybc_tabledesc,
+		HandleK2PgTableDescStatus(PgGate_GetColumnInfo(k2pg_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
-		                                           &is_hash), ybc_tabledesc);
+		                                           &is_hash), k2pg_tabledesc);
 
 		if (is_primary)
 		{

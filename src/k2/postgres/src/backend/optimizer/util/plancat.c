@@ -127,7 +127,7 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("cannot access temporary or unlogged relations during recovery")));
 
-	rel->min_attr = YBGetFirstLowInvalidAttributeNumber(relation) + 1;
+	rel->min_attr = K2PgGetFirstLowInvalidAttributeNumber(relation) + 1;
 	rel->max_attr = RelationGetNumberOfAttributes(relation);
 	rel->reltablespace = RelationGetForm(relation)->reltablespace;
 
@@ -329,7 +329,7 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 					Oid			btopcintype;
 					int16		btstrategy;
 
-					if (IsYBRelation(relation) && (opt & INDOPTION_HASH) != 0)
+					if (IsK2PgRelation(relation) && (opt & INDOPTION_HASH) != 0)
 					{
 						info->nhashcolumns++;
 						info->reverse_sort[i] = false;
@@ -400,7 +400,7 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 			 * a table, except we can be sure that the index is not larger
 			 * than the table.
 			 */
-			if (info->indpred == NIL && !IsYBRelation(indexRelation))
+			if (info->indpred == NIL && !IsK2PgRelation(indexRelation))
 			{
 				info->pages = RelationGetNumberOfBlocks(indexRelation);
 				info->tuples = rel->tuples;
@@ -958,7 +958,7 @@ estimate_rel_size(Relation rel, int32 *attr_widths,
 	 * TODO We don't support forwarding size estimates to postgres yet.
 	 * Use whatever is in pg_class.
 	 */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 	{
 		*pages = rel->rd_rel->relpages;
 		*tuples = rel->rd_rel->reltuples;
@@ -1337,7 +1337,7 @@ get_relation_statistics(RelOptInfo *rel, Relation relation)
 	ListCell   *l;
 
 	/* YugaByte does not support forwarding statistics to Postgres yet */
-	if (IsYugaByteEnabled())
+	if (IsK2PgEnabled())
 		return NIL;
 
 	statoidlist = RelationGetStatExtList(relation);

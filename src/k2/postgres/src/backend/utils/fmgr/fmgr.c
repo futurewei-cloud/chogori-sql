@@ -551,7 +551,7 @@ lookup_C_func(HeapTuple procedureTuple)
 	if (entry == NULL)
 		return NULL;			/* no such entry */
 
-	if (IsYugaByteEnabled() ? entry->k2pg_catalog_version == k2pg_catalog_cache_version :
+	if (IsK2PgEnabled() ? entry->k2pg_catalog_version == k2pg_catalog_cache_version :
 		entry->fn_xmin == HeapTupleHeaderGetRawXmin(procedureTuple->t_data) &&
 		ItemPointerEquals(&entry->fn_tid, &procedureTuple->t_self))
 		return entry;			/* OK */

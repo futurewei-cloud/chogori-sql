@@ -43,16 +43,16 @@ DatabaseInfoHandler::~DatabaseInfoHandler() {
 // Called only once in sql_catalog_manager::InitPrimaryCluster()
 InitDatabaseTableResult DatabaseInfoHandler::InitDatabasTable() {
     InitDatabaseTableResult response;
-    
+
     // check to make sure the schema doesn't exists
     auto result = k2_adapter_->GetSchema(collection_name_, schema_name_, 1).get();
     if (result.status.code != 404) {  // expect NotFound
         if (result.status.is2xxOK()) {
             K2LOG_E(log::catalog, "Unexpected DatabaseInfo SKV schema already exists during init.");
-            response.status = STATUS(InternalError, "Unexpected DatabaseInfo SKV schema already exists during init.");            
-        } else {  // other read error 
+            response.status = STATUS(InternalError, "Unexpected DatabaseInfo SKV schema already exists during init.");
+        } else {  // other read error
             K2LOG_E(log::catalog, "Unexpected DatabaseInfo SKV schema read error during init.{}", result.status);
-            response.status = K2Adapter::K2StatusToYBStatus(result.status);
+            response.status = K2Adapter::K2StatusToK2PgStatus(result.status);
         }
         return response;
     }
@@ -61,7 +61,7 @@ InitDatabaseTableResult DatabaseInfoHandler::InitDatabasTable() {
     auto createResult = k2_adapter_->CreateSchema(collection_name_, schema_ptr_).get();
     if (!createResult.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create schema for {} in {}, due to {}", schema_ptr_->name, collection_name_, result.status);
-        response.status = K2Adapter::K2StatusToYBStatus(createResult.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(createResult.status);
         return response;
     }
 
@@ -83,11 +83,11 @@ AddOrUpdateDatabaseResult DatabaseInfoHandler::UpsertDatabase(std::shared_ptr<Pg
     if (!upsertRes.status.is2xxOK())
     {
         K2LOG_E(log::catalog, "Failed to upsert databaseinfo record {} due to {}", database_info->GetDatabaseId(), upsertRes.status);
-        response.status = K2Adapter::K2StatusToYBStatus(upsertRes.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(upsertRes.status);
         return response;
     }
 
-    response.status = Status();  // OK    
+    response.status = Status();  // OK
     return response;
 }
 
@@ -99,7 +99,7 @@ GetDatabaseResult DatabaseInfoHandler::GetDatabase(std::shared_ptr<PgTxnHandler>
     auto result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
     if (!result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to read SKV record due to {}", result.status);
-        response.status = K2Adapter::K2StatusToYBStatus(result.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(result.status);
         return response;
     }
 
@@ -118,7 +118,7 @@ ListDatabaseResult DatabaseInfoHandler::ListDatabases(std::shared_ptr<PgTxnHandl
     auto create_result = k2_adapter_->CreateScanRead(collection_name_, schema_name_).get();
     if (!create_result.status.is2xxOK()) {
         K2LOG_E(log::catalog, "Failed to create scan read for ListDatabases due to {} in collection {}.", create_result.status, collection_name_);
-        response.status = K2Adapter::K2StatusToYBStatus(create_result.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(create_result.status);
         return response;
     }
 
@@ -130,7 +130,7 @@ ListDatabaseResult DatabaseInfoHandler::ListDatabases(std::shared_ptr<PgTxnHandl
         auto query_result = k2_adapter_->ScanRead(txnHandler->GetTxn(), query).get();
         if (!query_result.status.is2xxOK()) {
             K2LOG_E(log::catalog, "Failed to run scan read due to {}", query_result.status);
-            response.status = K2Adapter::K2StatusToYBStatus(query_result.status);
+            response.status = K2Adapter::K2StatusToK2PgStatus(query_result.status);
             return response;
         }
 
@@ -145,7 +145,7 @@ ListDatabaseResult DatabaseInfoHandler::ListDatabases(std::shared_ptr<PgTxnHandl
         }
         // if the query is not done, the query itself is updated with the pagination token for the next call
     } while (!query->isDone());
-    response.status = Status::OK(); 
+    response.status = Status::OK();
     return response;
 }
 
@@ -160,9 +160,9 @@ DeleteDataseResult DatabaseInfoHandler::DeleteDatabase(std::shared_ptr<PgTxnHand
 
     auto delResponse = k2_adapter_->DeleteRecord(txnHandler->GetTxn(), record).get();
     if (!delResponse.status.is2xxOK()) {
-        K2LOG_E(log::catalog, "Failed to delete database ID {} in Collection {}, due to {}", 
+        K2LOG_E(log::catalog, "Failed to delete database ID {} in Collection {}, due to {}",
             database_info->GetDatabaseId(), collection_name_, delResponse.status);
-        response.status = K2Adapter::K2StatusToYBStatus(delResponse.status);
+        response.status = K2Adapter::K2StatusToK2PgStatus(delResponse.status);
         return response;
     }
 

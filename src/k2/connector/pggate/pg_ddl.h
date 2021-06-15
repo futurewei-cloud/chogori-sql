@@ -175,7 +175,7 @@ class PgCreateTable : public PgDdl {
 
   CHECKED_STATUS AddColumn(const std::string& attr_name,
                            int attr_num,
-                           const YBCPgTypeEntity *attr_type,
+                           const K2PgTypeEntity *attr_type,
                            bool is_hash,
                            bool is_range,
                            ColumnSchema::SortingType sorting_type =
@@ -237,7 +237,7 @@ class PgAlterTable : public PgDdl {
                const PgObjectId& table_object_id);
 
   CHECKED_STATUS AddColumn(const std::string& name,
-                           const YBCPgTypeEntity *attr_type,
+                           const K2PgTypeEntity *attr_type,
                            int order,
                            bool is_not_null);
 

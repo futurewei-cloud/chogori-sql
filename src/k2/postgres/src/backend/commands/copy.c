@@ -844,7 +844,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 						  (is_from ? RowExclusiveLock : AccessShareLock));
 
 		if (rel->rd_rel->relpersistence == RELPERSISTENCE_TEMP &&
-				IsYugaByteEnabled()) {
+				IsK2PgEnabled()) {
 			SetTxnWithPGRel();
 		}
 
@@ -857,7 +857,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 		attnums = CopyGetAttnums(tupDesc, rel, stmt->attlist);
 		foreach(cur, attnums)
 		{
-			int attno = lfirst_int(cur) - YBGetFirstLowInvalidAttributeNumber(rel);
+			int attno = lfirst_int(cur) - K2PgGetFirstLowInvalidAttributeNumber(rel);
 
 			if (is_from)
 				rte->insertedCols = bms_add_member(rte->insertedCols, attno);
@@ -2603,8 +2603,8 @@ CopyFrom(CopyState cstate)
 		useMultiInsert = true;
 	}
 
-	useYBMultiInsert = useMultiInsert && IsYBRelation(resultRelInfo->ri_RelationDesc);
-	useHeapMultiInsert = useMultiInsert && !IsYBRelation(resultRelInfo->ri_RelationDesc);
+	useYBMultiInsert = useMultiInsert && IsK2PgRelation(resultRelInfo->ri_RelationDesc);
+	useHeapMultiInsert = useMultiInsert && !IsK2PgRelation(resultRelInfo->ri_RelationDesc);
 	if (useHeapMultiInsert)
 	{
 		bufferedTuples = palloc(MAX_BUFFERED_TUPLES * sizeof(HeapTuple));
@@ -2614,9 +2614,9 @@ CopyFrom(CopyState cstate)
 	 * Only use non-txn insert if it's explicitly enabled, the relation meets criteria for
 	 * multi insert (e.g. no triggers), and the relation does not have secondary indices.
 	 */
-	if (YBIsNonTxnCopyEnabled() &&
+	if (K2PgIsNonTxnCopyEnabled() &&
 		useYBMultiInsert &&
-		!YBCRelInfoHasSecondaryIndices(resultRelInfo))
+		!K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 	{
 		useNonTxnInsert = true;
 	}
@@ -2646,7 +2646,7 @@ CopyFrom(CopyState cstate)
 	error_context_stack = &errcallback;
 
 	/* Warn if non-txn COPY enabled and relation does not meet non-txn criteria. */
-	if (YBIsNonTxnCopyEnabled() && !useNonTxnInsert)
+	if (K2PgIsNonTxnCopyEnabled() && !useNonTxnInsert)
 		ereport(WARNING,
 				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				 errmsg("non-transactional COPY is not supported on this relation; "
@@ -2865,15 +2865,15 @@ CopyFrom(CopyState cstate)
 					List	   *recheckIndexes = NIL;
 
 					/* OK, store the tuple and create index entries for it */
-					if (IsYBRelation(resultRelInfo->ri_RelationDesc))
+					if (IsK2PgRelation(resultRelInfo->ri_RelationDesc))
 					{
 						if (useNonTxnInsert)
 						{
-							YBCExecuteNonTxnInsert(cstate->rel, tupDesc, tuple);
+							K2PgExecuteNonTxnInsert(cstate->rel, tupDesc, tuple);
 						}
 						else
 						{
-							YBCExecuteInsert(cstate->rel, tupDesc, tuple);
+							K2PgExecuteInsert(cstate->rel, tupDesc, tuple);
 						}
 					}
 					else if (resultRelInfo->ri_FdwRoutine != NULL)

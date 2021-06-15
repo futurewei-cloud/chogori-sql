@@ -745,7 +745,7 @@ pg_analyze_and_rewrite_params(RawStmt *parsetree,
 
 	if (pstate->p_target_relation &&
 		pstate->p_target_relation->rd_rel->relpersistence == RELPERSISTENCE_TEMP
-		&& IsYugaByteEnabled())
+		&& IsK2PgEnabled())
 	{
 		SetTxnWithPGRel();
 	}
@@ -2686,8 +2686,8 @@ quickdie(SIGNAL_ARGS)
 			 errhint("In a moment you should be able to reconnect to the"
 					 " database and repeat your command.")));
 
-	if (IsYugaByteEnabled()) {
-		YBOnPostgresBackendShutdown();
+	if (IsK2PgEnabled()) {
+		K2PgOnPostgresBackendShutdown();
 	}
 
 	/*
@@ -3693,7 +3693,7 @@ static void YBRefreshCache()
 
 	/* Get the latest syscatalog version from the master */
 	uint64_t catalog_master_version = 0;
-	YBCPgGetCatalogMasterVersion(&catalog_master_version);
+	PgGate_GetCatalogMasterVersion(&catalog_master_version);
 
 	/* Need to execute some (read) queries internally so start a local txn. */
 	start_xact_command();
@@ -3704,7 +3704,7 @@ static void YBRefreshCache()
 	YBPreloadRelCache();
 
 	/* Also invalidate the pggate cache. */
-	YBCPgInvalidateCache();
+	PgGate_InvalidateCache();
 
 	/* Set the new ysql cache version. */
 	k2pg_catalog_cache_version = catalog_master_version;
@@ -3728,14 +3728,14 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	/*
 	 * A retry is only required if the transaction is handled by YugaByte.
 	 */
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return;
 
 	/* Get error data */
 	ErrorData *edata;
 	MemoryContextSwitchTo(oldcontext);
 	edata = CopyErrorData();
-	bool is_retryable_err = YBNeedRetryAfterCacheRefresh(edata);
+	bool is_retryable_err = K2PgNeedRetryAfterCacheRefresh(edata);
 	if ((table_to_refresh = strstr(edata->message,
 								   table_cache_refresh_search_str)) != NULL)
 	{
@@ -3762,7 +3762,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	 * to refresh the cache.
 	 */
 	uint64_t catalog_master_version = 0;
-	YBCPgGetCatalogMasterVersion(&catalog_master_version);
+	PgGate_GetCatalogMasterVersion(&catalog_master_version);
 	need_global_cache_refresh =
 		k2pg_catalog_cache_version != catalog_master_version;
 	if (!(need_global_cache_refresh || need_table_cache_refresh))
@@ -3821,7 +3821,7 @@ static void YBPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 				ereport(LOG,
 						(errmsg("invalidating table cache entry %s",
 								table_to_refresh)));
-				HandleYBStatus(YBCPgInvalidateTableCacheByTableId(table_to_refresh));
+				HandleK2PgStatus(PgGate_InvalidateTableCacheByTableId(table_to_refresh));
 			}
 
 			*need_retry = true;
@@ -3919,7 +3919,7 @@ static bool k2pg_check_retry_allowed(const char *query_string)
 	        strncmp(command_tag, "UPDATE", 6) == 0);
 }
 
-static void YBCheckSharedCatalogCacheVersion() {
+static void K2PgCheckSharedCatalogCacheVersion() {
 	/*
 	 * We cannot refresh the cache if we are already inside a transaction, so don't
 	 * bother checking shared memory.
@@ -3931,11 +3931,11 @@ static void YBCheckSharedCatalogCacheVersion() {
 	 * Don't check shared memory if we are in initdb. E.g. during initial system
 	 * catalog snapshot creation, tablet servers may not be running.
 	 */
-	if (YBCIsInitDbModeEnvVarSet())
+	if (K2PgIsInitDbModeEnvVarSet())
 		return;
 
 	uint64_t shared_catalog_version;
-	HandleYBStatus(YBCGetSharedCatalogVersion(&shared_catalog_version));
+	HandleK2PgStatus(PgGate_GetSharedCatalogVersion(&shared_catalog_version));
 
 	if (k2pg_catalog_cache_version < shared_catalog_version) {
 		YBRefreshCache();
@@ -3946,10 +3946,10 @@ static void YBCheckSharedCatalogCacheVersion() {
 static bool
 k2pg_is_read_restart_nedeed(const ErrorData* edata)
 {
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return false;
 
-	return YBCIsRestartReadError(edata->k2pg_txn_errcode);
+	return K2PgIsRestartReadError(edata->k2pg_txn_errcode);
 }
 
 /*
@@ -3969,13 +3969,13 @@ typedef struct YBQueryRestartData
 static bool
 k2pg_is_read_restart_possible(int attempt, const YBQueryRestartData* restart_data)
 {
-	if (!IsYugaByteEnabled())
+	if (!IsK2PgEnabled())
 		return false;
 
 	if (YBIsDataSent())
 		return false;
 
-	if (attempt >= YBCGetMaxReadRestartAttempts())
+	if (attempt >= PgGate_GetMaxReadRestartAttempts())
 		return false;
 
 	if (!restart_data)
@@ -4211,7 +4211,7 @@ k2pg_attempt_to_restart_on_error(int attempt,
 			k2pg_restart_portal(restart_data->portal_name);
 		}
 		YBRestoreOutputBufferPosition();
-		YBCRestartTransaction();
+		K2PgRestartTransaction();
 	} else {
 		/* if we shouldn't restart - propagate the error */
 		MemoryContextSwitchTo(error_context);
@@ -4292,16 +4292,16 @@ PostgresMain(int argc, char *argv[],
 	// It is a hack to help us getting by for now.
 	for (int i = 0; i < argc; i++) {
 		if (strcmp(argv[i], "template0") == 0 || strcmp(argv[i], "template1") == 0) {
-			YBSetPreparingTemplates();
+			K2PgSetPreparingTemplates();
 		}
 	}
 	if (dbname) {
 		if (strcmp(dbname, "template0") == 0 || strcmp(dbname, "template1") == 0) {
-			YBSetPreparingTemplates();
+			K2PgSetPreparingTemplates();
 		}
 	} else if (username) {
 		if (strcmp(username, "template0") == 0 || strcmp(username, "template1") == 0) {
-			YBSetPreparingTemplates();
+			K2PgSetPreparingTemplates();
 		}
 	}
 
@@ -4750,7 +4750,7 @@ PostgresMain(int argc, char *argv[],
 			}
 			else
 			{
-				if (IsYugaByteEnabled() && k2pg_need_cache_refresh)
+				if (IsK2PgEnabled() && k2pg_need_cache_refresh)
 				{
 					YBRefreshCache();
 				}
@@ -4817,8 +4817,8 @@ PostgresMain(int argc, char *argv[],
 		if (ignore_till_sync && firstchar != EOF)
 			continue;
 
-		if (IsYugaByteEnabled()) {
-			YBCheckSharedCatalogCacheVersion();
+		if (IsK2PgEnabled()) {
+			K2PgCheckSharedCatalogCacheVersion();
 		}
 
 		switch (firstchar)
@@ -4954,7 +4954,7 @@ PostgresMain(int argc, char *argv[],
 					PG_CATCH();
 					{
 						bool can_retry =
-						    IsYugaByteEnabled() &&
+						    IsK2PgEnabled() &&
 						    unnamed_stmt_psrc &&
 						    k2pg_check_retry_allowed(unnamed_stmt_psrc->query_string);
 

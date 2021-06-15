@@ -24,85 +24,85 @@ struct varlena;
 
 #endif
 
-typedef struct YBCStatusStruct* YBCStatus;
-extern YBCStatus YBCStatusOK();
-bool YBCStatusIsOK(YBCStatus s);
-bool YBCStatusIsNotFound(YBCStatus s);
-bool YBCStatusIsDuplicateKey(YBCStatus s);
-uint32_t YBCStatusPgsqlError(YBCStatus s);
-uint16_t YBCStatusTransactionError(YBCStatus s);
-void YBCFreeStatus(YBCStatus s);
+typedef struct K2PgStatusStruct* K2PgStatus;
+extern K2PgStatus K2PgStatusOK();
+bool K2PgStatusIsOK(K2PgStatus s);
+bool K2PgStatusIsNotFound(K2PgStatus s);
+bool K2PgStatusIsDuplicateKey(K2PgStatus s);
+uint32_t K2PgStatusPgsqlError(K2PgStatus s);
+uint16_t K2PgStatusTransactionError(K2PgStatus s);
+void K2PgFreeStatus(K2PgStatus s);
 
-size_t YBCStatusMessageLen(YBCStatus s);
-const char* YBCStatusMessageBegin(YBCStatus s);
-const char* YBCStatusCodeAsCString(YBCStatus s);
-char* DupYBStatusMessage(YBCStatus status, bool message_only);
+size_t K2PgStatusMessageLen(K2PgStatus s);
+const char* K2PgStatusMessageBegin(K2PgStatus s);
+const char* K2PgStatusCodeAsCString(K2PgStatus s);
+char* DupK2PgStatusMessage(K2PgStatus status, bool message_only);
 
-bool YBCIsRestartReadError(uint16_t txn_errcode);
+bool K2PgIsRestartReadError(uint16_t txn_errcode);
 
-void YBCResolveHostname();
+void K2PgResolveHostname();
 
-#define CHECKED_YBCSTATUS __attribute__ ((warn_unused_result)) YBCStatus
+#define CHECKED_K2PGSTATUS __attribute__ ((warn_unused_result)) K2PgStatus
 
-typedef void* (*YBCPAllocFn)(size_t size);
+typedef void* (*K2PgPAllocFn)(size_t size);
 
-typedef struct varlena* (*YBCCStringToTextWithLenFn)(const char* c, int size);
+typedef struct varlena* (*K2PgCStringToTextWithLenFn)(const char* c, int size);
 
 // Global initialization of the YugaByte subsystem.
-CHECKED_YBCSTATUS YBCInit(
+CHECKED_K2PGSTATUS K2PgInit(
     const char* argv0,
-    YBCPAllocFn palloc_fn,
-    YBCCStringToTextWithLenFn cstring_to_text_with_len_fn);
+    K2PgPAllocFn palloc_fn,
+    K2PgCStringToTextWithLenFn cstring_to_text_with_len_fn);
 
-CHECKED_YBCSTATUS YBCInitGFlags(const char* argv0);
+CHECKED_K2PGSTATUS K2PgInitGFlags(const char* argv0);
 
 // From glog's log_severity.h:
 // const int GLOG_INFO = 0, GLOG_WARNING = 1, GLOG_ERROR = 2, GLOG_FATAL = 3;
 
 // Logging macros with printf-like formatting capabilities.
-#define YBC_LOG_INFO(...) \
-    YBCLogImpl(/* severity */ 0, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
-#define YBC_LOG_WARNING(...) \
-    YBCLogImpl(/* severity */ 1, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
-#define YBC_LOG_ERROR(...) \
-    YBCLogImpl(/* severity */ 2, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
-#define YBC_LOG_FATAL(...) \
-    YBCLogImpl(/* severity */ 3, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
+#define K2PG_LOG_INFO(...) \
+    K2PgLogImpl(/* severity */ 0, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
+#define K2PG_LOG_WARNING(...) \
+    K2PgLogImpl(/* severity */ 1, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
+#define K2PG_LOG_ERROR(...) \
+    K2PgLogImpl(/* severity */ 2, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
+#define K2PG_LOG_FATAL(...) \
+    K2PgLogImpl(/* severity */ 3, __FILE__, __LINE__, /* stack_trace */ false, __VA_ARGS__)
 
 // Versions of these warnings that do nothing in debug mode. The fatal version logs a warning
 // in release mode but does not crash.
 #ifndef NDEBUG
 // Logging macros with printf-like formatting capabilities.
-#define YBC_DEBUG_LOG_INFO(...) YBC_LOG_INFO(__VA_ARGS__)
-#define YBC_DEBUG_LOG_WARNING(...) YBC_LOG_WARNING(__VA_ARGS__)
-#define YBC_DEBUG_LOG_ERROR(...) YBC_LOG_ERROR(__VA_ARGS__)
-#define YBC_DEBUG_LOG_FATAL(...) YBC_LOG_FATAL(__VA_ARGS__)
+#define K2PG_DEBUG_LOG_INFO(...) K2PG_LOG_INFO(__VA_ARGS__)
+#define K2PG_DEBUG_LOG_WARNING(...) K2PG_LOG_WARNING(__VA_ARGS__)
+#define K2PG_DEBUG_LOG_ERROR(...) K2PG_LOG_ERROR(__VA_ARGS__)
+#define K2PG_DEBUG_LOG_FATAL(...) K2PG_LOG_FATAL(__VA_ARGS__)
 #else
-#define YBC_DEBUG_LOG_INFO(...)
-#define YBC_DEBUG_LOG_WARNING(...)
-#define YBC_DEBUG_LOG_ERROR(...)
-#define YBC_DEBUG_LOG_FATAL(...) YBC_LOG_ERROR(__VA_ARGS__)
+#define K2PG_DEBUG_LOG_INFO(...)
+#define K2PG_DEBUG_LOG_WARNING(...)
+#define K2PG_DEBUG_LOG_ERROR(...)
+#define K2PG_DEBUG_LOG_FATAL(...) K2PG_LOG_ERROR(__VA_ARGS__)
 #endif
 
 // The following functions log the given message formatted similarly to printf followed by a stack
 // trace.
 
-#define YBC_LOG_INFO_STACK_TRACE(...) \
-    YBCLogImpl(/* severity */ 0, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
-#define YBC_LOG_WARNING_STACK_TRACE(...) \
-    YBCLogImpl(/* severity */ 1, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
-#define YBC_LOG_ERROR_STACK_TRACE(...) \
-    YBCLogImpl(/* severity */ 2, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
+#define K2PG_LOG_INFO_STACK_TRACE(...) \
+    K2PgLogImpl(/* severity */ 0, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
+#define K2PG_LOG_WARNING_STACK_TRACE(...) \
+    K2PgLogImpl(/* severity */ 1, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
+#define K2PG_LOG_ERROR_STACK_TRACE(...) \
+    K2PgLogImpl(/* severity */ 2, __FILE__, __LINE__, /* stack_trace */ true, __VA_ARGS__)
 
 // 5 is the index of the format string, 6 is the index of the first printf argument to check.
-void YBCLogImpl(int severity,
+void K2PgLogImpl(int severity,
                 const char* file_name,
                 int line_number,
                 bool stack_trace,
                 const char* format,
                 ...) __attribute__((format(printf, 5, 6)));
 
-const char* YBCGetStackTrace();
+const char* K2PgGetStackTrace();
 
 #ifdef __cplusplus
 } // extern "C"
