@@ -3664,7 +3664,7 @@ typedef struct AfterTriggerSharedData
 	Oid			ats_relid;		/* the relation it's on */
 	CommandId	ats_firing_id;	/* ID for firing cycle */
 	struct AfterTriggersTableData *ats_table;	/* transition table access */
-	Tuplestorestate *ybc_txn_fdw_tuplestore; /* tuplestore for deferred triggers */
+	Tuplestorestate *k2pg_txn_fdw_tuplestore; /* tuplestore for deferred triggers */
 } AfterTriggerSharedData;
 
 typedef struct AfterTriggerEventData *AfterTriggerEvent;
@@ -3839,7 +3839,7 @@ typedef struct AfterTriggersData
 	/* per-subtransaction-level data: */
 	AfterTriggersTransData *trans_stack;	/* array of structs shown below */
 	int			maxtransdepth;	/* allocated len of above array */
-	List *ybc_txn_fdw_tuplestores; /* list of transaction level tuplestores */
+	List *k2pg_txn_fdw_tuplestores; /* list of transaction level tuplestores */
 } AfterTriggersData;
 
 struct AfterTriggersQueryData
@@ -3847,7 +3847,7 @@ struct AfterTriggersQueryData
 	AfterTriggerEventList events;	/* events pending from this query */
 	Tuplestorestate *fdw_tuplestore;	/* foreign tuples for said events */
 	List	   *tables;			/* list of AfterTriggersTableData, see below */
-	Tuplestorestate *ybc_txn_fdw_tuplestore; /* tuplestore for deferred triggers */
+	Tuplestorestate *k2pg_txn_fdw_tuplestore; /* tuplestore for deferred triggers */
 };
 
 struct AfterTriggersTransData
@@ -3903,13 +3903,13 @@ GetCurrentFDWTuplestore(AfterTriggerShared evtshared)
 	Tuplestorestate *ret;
 
 	/* Check trigger has subtransaction level tuplestore (deferred trigger). */
-	if (evtshared->ybc_txn_fdw_tuplestore)
-		return evtshared->ybc_txn_fdw_tuplestore;
+	if (evtshared->k2pg_txn_fdw_tuplestore)
+		return evtshared->k2pg_txn_fdw_tuplestore;
 
 	Assert(afterTriggers.query_depth > -1);
 	AfterTriggersQueryData* trigger_data = &afterTriggers.query_stack[afterTriggers.query_depth];
 	const bool is_deferred = IsK2PgEnabled() && afterTriggerCheckState(evtshared);
-	ret = is_deferred ? trigger_data->ybc_txn_fdw_tuplestore : trigger_data->fdw_tuplestore;
+	ret = is_deferred ? trigger_data->k2pg_txn_fdw_tuplestore : trigger_data->fdw_tuplestore;
 	if (ret == NULL)
 	{
 		/*
@@ -3926,8 +3926,8 @@ GetCurrentFDWTuplestore(AfterTriggerShared evtshared)
 
 		if (is_deferred)
 		{
-			trigger_data->ybc_txn_fdw_tuplestore = ret;
-			afterTriggers.ybc_txn_fdw_tuplestores = lappend(afterTriggers.ybc_txn_fdw_tuplestores, ret);
+			trigger_data->k2pg_txn_fdw_tuplestore = ret;
+			afterTriggers.k2pg_txn_fdw_tuplestores = lappend(afterTriggers.k2pg_txn_fdw_tuplestores, ret);
 		}
 		else
 			trigger_data->fdw_tuplestore = ret;
@@ -3937,7 +3937,7 @@ GetCurrentFDWTuplestore(AfterTriggerShared evtshared)
 	}
 
 	if (is_deferred)
-		evtshared->ybc_txn_fdw_tuplestore = ret;
+		evtshared->k2pg_txn_fdw_tuplestore = ret;
 
 	return ret;
 }
@@ -4083,18 +4083,18 @@ afterTriggerAddEvent(AfterTriggerEventList *events,
 		 * Deferred event migrates from one AfterTriggerEventList to another.
 		 * Tuple is written into tuplestore when event is stored in one list, and read when
 		 * event is migrated to another. This list may already have same AfterTriggerShared data,
-		 * but with different ybc_txn_fdw_tuplestore.
-		 * So ybc_txn_fdw_tuplestore must be checked before reuse existing AfterTriggerShared data,
+		 * but with different k2pg_txn_fdw_tuplestore.
+		 * So k2pg_txn_fdw_tuplestore must be checked before reuse existing AfterTriggerShared data,
 		 * in other case tuple will be read from wrong tuplestore.
 		 *
-		 * Due to checking of the ybc_txn_fdw_tuplestore field postgres in YB mode will reuse
+		 * Due to checking of the k2pg_txn_fdw_tuplestore field postgres in YB mode will reuse
 		 * AfterTriggerShared objects less often than vanilla postgres.
 		 */
 		if (newshared->ats_tgoid == evtshared->ats_tgoid &&
 			newshared->ats_relid == evtshared->ats_relid &&
 			newshared->ats_event == evtshared->ats_event &&
 			newshared->ats_table == evtshared->ats_table &&
-			newshared->ybc_txn_fdw_tuplestore == evtshared->ybc_txn_fdw_tuplestore &&
+			newshared->k2pg_txn_fdw_tuplestore == evtshared->k2pg_txn_fdw_tuplestore &&
 			newshared->ats_firing_id == 0)
 			break;
 	}
@@ -4818,7 +4818,7 @@ AfterTriggerBeginXact(void)
 	Assert(afterTriggers.events.head == NULL);
 	Assert(afterTriggers.trans_stack == NULL);
 	Assert(afterTriggers.maxtransdepth == 0);
-	Assert(afterTriggers.ybc_txn_fdw_tuplestores == NULL);
+	Assert(afterTriggers.k2pg_txn_fdw_tuplestores == NULL);
 }
 
 
@@ -4957,11 +4957,11 @@ AfterTriggerFreeQuery(AfterTriggersQueryData *qs)
 	if (ts)
 		tuplestore_end(ts);
 	/*
-	 * Tuplestore pointed by ybc_txn_fdw_tuplestore is registered in
-	 * AfterTriggersData::ybc_txn_fdw_tuplestores list and will be closed at transaction end,
+	 * Tuplestore pointed by k2pg_txn_fdw_tuplestore is registered in
+	 * AfterTriggersData::k2pg_txn_fdw_tuplestores list and will be closed at transaction end,
 	 * no need to do it here.
 	 */
-	qs->ybc_txn_fdw_tuplestore = NULL;
+	qs->k2pg_txn_fdw_tuplestore = NULL;
 	/* Release per-table subsidiary storage */
 	tables = qs->tables;
 	foreach(lc, tables)
@@ -5101,15 +5101,15 @@ AfterTriggerEndXact(bool isCommit)
 	{
 		/* Close all transaction level tuplestores. */
 		ListCell *lc;
-		foreach(lc, afterTriggers.ybc_txn_fdw_tuplestores)
+		foreach(lc, afterTriggers.k2pg_txn_fdw_tuplestores)
 		{
 			Tuplestorestate *tuplestore  = (Tuplestorestate *) lfirst(lc);
 			tuplestore_end(tuplestore);
 		}
-		afterTriggers.ybc_txn_fdw_tuplestores = NULL;
+		afterTriggers.k2pg_txn_fdw_tuplestores = NULL;
 	}
 	else
-		Assert(afterTriggers.ybc_txn_fdw_tuplestores == NULL);
+		Assert(afterTriggers.k2pg_txn_fdw_tuplestores == NULL);
 }
 
 /*
@@ -5306,7 +5306,7 @@ AfterTriggerEnlargeQueryState(void)
 		qs->events.tailfree = NULL;
 		qs->fdw_tuplestore = NULL;
 		qs->tables = NIL;
-		qs->ybc_txn_fdw_tuplestore = NULL;
+		qs->k2pg_txn_fdw_tuplestore = NULL;
 
 		++init_depth;
 	}
@@ -5799,7 +5799,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 	int			tgtype_level;
 	int			i;
 	Tuplestorestate *fdw_tuplestore = NULL;
-	Tuplestorestate *ybc_txn_fdw_tuplestore = NULL;
+	Tuplestorestate *k2pg_txn_fdw_tuplestore = NULL;
 
 	/*
 	 * Check state.  We use a normal test not Assert because it is possible to
@@ -6078,13 +6078,13 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		else
 			new_shared.ats_table = NULL;
 		/*
-		 * Set current ybc_txn_fdw_tuplestore (if any) to new_shared field
+		 * Set current k2pg_txn_fdw_tuplestore (if any) to new_shared field
 		 * to reuse existing AfterTriggerShared object (is any)
-		 * because ybc_txn_fdw_tuplestore is checked.
-		 * In vanilla postgres ybc_txn_fdw_tuplestore is always NULL so reuse strategy of
+		 * because k2pg_txn_fdw_tuplestore is checked.
+		 * In vanilla postgres k2pg_txn_fdw_tuplestore is always NULL so reuse strategy of
 		 * AfterTriggerShared object will not be changed.
 		 */
-		new_shared.ybc_txn_fdw_tuplestore = NULL;
+		new_shared.k2pg_txn_fdw_tuplestore = NULL;
 		/*
 		 * In YugaByte mode we also use the tuplestore to store/pass tuples
 		 * within a query execution.
@@ -6094,14 +6094,14 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 			if (IsK2PgEnabled() && afterTriggerCheckState(&new_shared))
 			{
 				/* deferred trigger case */
-				if (!ybc_txn_fdw_tuplestore)
+				if (!k2pg_txn_fdw_tuplestore)
 				{
 					new_event.ate_flags |= AFTER_TRIGGER_FDW_FETCH;
-					ybc_txn_fdw_tuplestore = GetCurrentFDWTuplestore(&new_shared);
-					Assert(new_shared.ybc_txn_fdw_tuplestore == ybc_txn_fdw_tuplestore);
+					k2pg_txn_fdw_tuplestore = GetCurrentFDWTuplestore(&new_shared);
+					Assert(new_shared.k2pg_txn_fdw_tuplestore == k2pg_txn_fdw_tuplestore);
 				}
 				else
-					new_shared.ybc_txn_fdw_tuplestore = ybc_txn_fdw_tuplestore;
+					new_shared.k2pg_txn_fdw_tuplestore = k2pg_txn_fdw_tuplestore;
 			}
 			else if (!fdw_tuplestore)
 			{
@@ -6120,10 +6120,10 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 	 * those columns before us, for an unrelated reason, so this is fine.
 	 *
 	 * In case table has more than one trigger one can be deferred and another non-deferred.
-	 * In this case both fdw_tuplestore and ybc_txn_fdw_tuplestore will be non NULL.
+	 * In this case both fdw_tuplestore and k2pg_txn_fdw_tuplestore will be non NULL.
 	 * Value should be written into both tuplestores.
 	 */
-	Tuplestorestate * tuplestores[2] = {fdw_tuplestore, ybc_txn_fdw_tuplestore};
+	Tuplestorestate * tuplestores[2] = {fdw_tuplestore, k2pg_txn_fdw_tuplestore};
 	for (Tuplestorestate **tuplestore = tuplestores, **end = tuplestores + 2;
 	     tuplestore != end; ++tuplestore)
 	{

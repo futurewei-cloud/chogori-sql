@@ -6098,7 +6098,7 @@ load_relcache_init_file(bool shared)
 				nailed_indexes,
 				magic;
 	int			i;
-	uint64      ybc_stored_cache_version = 0;
+	uint64      k2pg_stored_cache_version = 0;
 
 	RelCacheInitFileName(initfilename, shared);
 
@@ -6125,10 +6125,10 @@ load_relcache_init_file(bool shared)
 	if (IsK2PgEnabled())
 	{
 		/* Read the stored catalog version number */
-		if (fread(&ybc_stored_cache_version,
+		if (fread(&k2pg_stored_cache_version,
 		          1,
-		          sizeof(ybc_stored_cache_version),
-		          fp) != sizeof(ybc_stored_cache_version))
+		          sizeof(k2pg_stored_cache_version),
+		          fp) != sizeof(k2pg_stored_cache_version))
 		{
 			goto read_failed;
 		}
@@ -6137,7 +6137,7 @@ load_relcache_init_file(bool shared)
 		 * If we already have a newer cache version (e.g. from reading the
 		 * shared init file) then this file is too old.
 		 */
-		if (k2pg_catalog_cache_version > ybc_stored_cache_version)
+		if (k2pg_catalog_cache_version > k2pg_stored_cache_version)
 		{
 			unlink_initfile(initfilename, ERROR);
 			goto read_failed;
@@ -6148,7 +6148,7 @@ load_relcache_init_file(bool shared)
 		PgGate_GetCatalogMasterVersion(&catalog_master_version);
 
 		/* File version does not match actual master version (i.e. too old) */
-		if (ybc_stored_cache_version != catalog_master_version)
+		if (k2pg_stored_cache_version != catalog_master_version)
 		{
 			unlink_initfile(initfilename, ERROR);
 			goto read_failed;
@@ -6504,7 +6504,7 @@ load_relcache_init_file(bool shared)
 		 */
 		if (k2pg_catalog_cache_version == K2PG_CATCACHE_VERSION_UNINITIALIZED)
 		{
-			k2pg_catalog_cache_version = ybc_stored_cache_version;
+			k2pg_catalog_cache_version = k2pg_stored_cache_version;
 		}
 	}
 

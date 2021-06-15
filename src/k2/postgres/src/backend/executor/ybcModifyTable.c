@@ -253,9 +253,9 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
  * Bind ybctid to the statement.
  */
 static void K2PgBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
-	K2PgExpr ybc_expr = K2PgNewConstant(pg_stmt, BYTEAOID, tuple_id,
+	K2PgExpr k2pg_expr = K2PgNewConstant(pg_stmt, BYTEAOID, tuple_id,
 										false /* is_null */);
-	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, ybc_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, k2pg_expr));
 }
 
 /*
@@ -272,11 +272,11 @@ static bool IsSystemCatalogChange(Relation rel)
  * Will handle the case if the write changes the system catalogs meaning
  * we need to increment the catalog versions accordingly.
  */
-static void K2PgExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_affected_count)
+static void K2PgExecWriteStmt(K2PgStatement k2pg_stmt, Relation rel, int *rows_affected_count)
 {
 	bool is_syscatalog_change = IsSystemCatalogChange(rel);
 	bool modifies_row = false;
-	HandleK2PgStatus(PgGate_DmlModifiesRow(ybc_stmt, &modifies_row));
+	HandleK2PgStatus(PgGate_DmlModifiesRow(k2pg_stmt, &modifies_row));
 
 	/*
 	 * If this write may invalidate catalog cache tuples (i.e. UPDATE or DELETE),
@@ -291,13 +291,13 @@ static void K2PgExecWriteStmt(K2PgStatement ybc_stmt, Relation rel, int *rows_af
 	/* Let the master know if this should increment the catalog version. */
 	if (is_syscatalog_version_change)
 	{
-		HandleK2PgStatus(PgGate_SetIsSysCatalogVersionChange(ybc_stmt));
+		HandleK2PgStatus(PgGate_SetIsSysCatalogVersionChange(k2pg_stmt));
 	}
 
-	HandleK2PgStatus(PgGate_SetCatalogCacheVersion(ybc_stmt, k2pg_catalog_cache_version));
+	HandleK2PgStatus(PgGate_SetCatalogCacheVersion(k2pg_stmt, k2pg_catalog_cache_version));
 
 	/* Execute the insert. */
-	HandleK2PgStatus(PgGate_DmlExecWriteOp(ybc_stmt, rows_affected_count));
+	HandleK2PgStatus(PgGate_DmlExecWriteOp(k2pg_stmt, rows_affected_count));
 
 	/*
 	 * Optimization to increment the catalog version for the local cache as
@@ -369,8 +369,8 @@ static Oid K2PgExecuteInsertInternal(Relation rel,
 		}
 
 		/* Add the column value to the insert request */
-		K2PgExpr ybc_expr = K2PgNewConstant(insert_stmt, type_id, datum, is_null);
-		HandleK2PgStatus(PgGate_DmlBindColumn(insert_stmt, attnum, ybc_expr));
+		K2PgExpr k2pg_expr = K2PgNewConstant(insert_stmt, type_id, datum, is_null);
+		HandleK2PgStatus(PgGate_DmlBindColumn(insert_stmt, attnum, k2pg_expr));
 	}
 
 	/*
@@ -721,9 +721,9 @@ bool K2PgExecuteUpdate(Relation rel,
 			Expr *expr = copyObject(tle->expr);
 			K2PgExprInstantiateParams(expr, estate->es_param_list_info);
 
-			K2PgExpr ybc_expr = K2PgNewEvalExprCall(update_stmt, expr, attnum, type_id, type_mod);
+			K2PgExpr k2pg_expr = K2PgNewEvalExprCall(update_stmt, expr, attnum, type_id, type_mod);
 
-			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
+			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, k2pg_expr));
 
 			pushdown_lc = lnext(pushdown_lc);
 		}
@@ -731,10 +731,10 @@ bool K2PgExecuteUpdate(Relation rel,
 		{
 			bool is_null = false;
 			Datum d = heap_getattr(tuple, attnum, tupleDesc, &is_null);
-			K2PgExpr ybc_expr = K2PgNewConstant(update_stmt, type_id,
+			K2PgExpr k2pg_expr = K2PgNewConstant(update_stmt, type_id,
 												d, is_null);
 
-			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
+			HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, k2pg_expr));
 		}
 	}
 
@@ -829,9 +829,9 @@ void K2PgUpdateSysCatalogTuple(Relation rel, HeapTuple oldtuple, HeapTuple tuple
 
 		bool is_null = false;
 		Datum d = heap_getattr(tuple, attnum, tupleDesc, &is_null);
-		K2PgExpr ybc_expr = K2PgNewConstant(update_stmt, TupleDescAttr(tupleDesc, idx)->atttypid,
+		K2PgExpr k2pg_expr = K2PgNewConstant(update_stmt, TupleDescAttr(tupleDesc, idx)->atttypid,
 											d, is_null);
-		HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, ybc_expr));
+		HandleK2PgStatus(PgGate_DmlAssignColumn(update_stmt, attnum, k2pg_expr));
 	}
 
 	/*

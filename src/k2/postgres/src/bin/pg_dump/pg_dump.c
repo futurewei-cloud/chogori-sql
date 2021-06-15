@@ -15862,10 +15862,10 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
 			/* Get the table properties from YugaByte. */
-			K2PgTableDesc ybc_tabledesc = NULL;
+			K2PgTableDesc k2pg_tabledesc = NULL;
 			K2PgTableProperties properties;
-			HandleK2PgStatus(PgGate_GetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &ybc_tabledesc));
-			HandleK2PgStatus(PgGate_GetTableProperties(ybc_tabledesc, &properties));
+			HandleK2PgStatus(PgGate_GetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &k2pg_tabledesc));
+			HandleK2PgStatus(PgGate_GetTableProperties(k2pg_tabledesc, &properties));
 
 			if(properties.is_colocated)
 			{

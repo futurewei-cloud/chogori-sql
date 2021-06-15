@@ -1007,7 +1007,7 @@ static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
  * the scan plan.
  */
 static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
-										K2PgTableDesc  ybc_table_desc,
+										K2PgTableDesc  k2pg_table_desc,
 										AttrNumber      attnum)
 {
 	bool is_primary = false;
@@ -1019,10 +1019,10 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
 	 * - Number of all columns: IndexRelation->rd_index->indnatts
 	 * - Hash, range, etc: IndexRelation->rd_indoption (Bits INDOPTION_HASH, RANGE, etc)
 	 */
-	HandleK2PgTableDescStatus(PgGate_GetColumnInfo(ybc_table_desc,
+	HandleK2PgTableDescStatus(PgGate_GetColumnInfo(k2pg_table_desc,
 											   attnum,
 											   &is_primary,
-											   &is_hash), ybc_table_desc);
+											   &is_hash), k2pg_table_desc);
 
 	int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
@@ -1046,21 +1046,21 @@ static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
 {
 	Oid            dboid          = K2PgGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
-	K2PgTableDesc ybc_table_desc = NULL;
+	K2PgTableDesc k2pg_table_desc = NULL;
 
-	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &ybc_table_desc));
+	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_table_desc));
 
 	scan_plan->nkeys = 0;
 	scan_plan->nNonKeys = 0;
 	// number of attributes in the relation tuple
 	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
 	{
-		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, attnum);
+		pgCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, attnum);
 	}
 	// we generate OIDs for rows of relation
 	if (relation->rd_rel->relhasoids)
 	{
-		pgCheckPrimaryKeyAttribute(scan_plan, ybc_table_desc, ObjectIdAttributeNumber);
+		pgCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, ObjectIdAttributeNumber);
 	}
 }
 
@@ -1475,45 +1475,45 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	Relation    relation     = node->ss.ss_currentRelation;
 	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 
-	YbFdwExecState *ybc_state = NULL;
+	YbFdwExecState *k2pg_state = NULL;
 
 	/* Do nothing in EXPLAIN (no ANALYZE) case.  node->fdw_state stays NULL. */
 	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
 		return;
 
 	/* Allocate and initialize YB scan state. */
-	ybc_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
+	k2pg_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
 
-	node->fdw_state = (void *) ybc_state;
+	node->fdw_state = (void *) k2pg_state;
 	HandleK2PgStatus(PgGate_NewSelect(K2PgGetDatabaseOid(relation),
 				   RelationGetRelid(relation),
 				   NULL /* prepare_params */,
-				   &ybc_state->handle));
+				   &k2pg_state->handle));
 	ResourceOwnerEnlargeYugaByteStmts(CurrentResourceOwner);
-	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, ybc_state->handle);
-	ybc_state->stmt_owner = CurrentResourceOwner;
-	ybc_state->exec_params = &estate->k2pg_exec_params;
-	ybc_state->remote_exprs = foreignScan->fdw_exprs;
+	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, k2pg_state->handle);
+	k2pg_state->stmt_owner = CurrentResourceOwner;
+	k2pg_state->exec_params = &estate->k2pg_exec_params;
+	k2pg_state->remote_exprs = foreignScan->fdw_exprs;
 	elog(DEBUG4, "FDW: foreign_scan for relation %d, fdw_exprs: %d", relation->rd_id, list_length(foreignScan->fdw_exprs));
 
-	ybc_state->exec_params->rowmark = -1;
+	k2pg_state->exec_params->rowmark = -1;
 	ListCell   *l;
 	foreach(l, estate->es_rowMarks) {
 		ExecRowMark *erm = (ExecRowMark *) lfirst(l);
 		// Do not propogate non-row-locking row marks.
 		if (erm->markType != ROW_MARK_REFERENCE &&
 			erm->markType != ROW_MARK_COPY)
-			ybc_state->exec_params->rowmark = erm->markType;
+			k2pg_state->exec_params->rowmark = erm->markType;
 		break;
 	}
 
-	ybc_state->is_exec_done = false;
+	k2pg_state->is_exec_done = false;
 
 	/* Set the current syscatalog version (will check that we are up to date) */
-	HandleK2PgStatusWithOwner(PgGate_SetCatalogCacheVersion(ybc_state->handle,
+	HandleK2PgStatusWithOwner(PgGate_SetCatalogCacheVersion(k2pg_state->handle,
 														k2pg_catalog_cache_version),
-														ybc_state->handle,
-														ybc_state->stmt_owner);
+														k2pg_state->handle,
+														k2pg_state->stmt_owner);
 }
 
 /*
@@ -1525,7 +1525,7 @@ ybcSetupScanTargets(ForeignScanState *node)
 	EState *estate = node->ss.ps.state;
 	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 	Relation relation = node->ss.ss_currentRelation;
-	YbFdwExecState *ybc_state = (YbFdwExecState *) node->fdw_state;
+	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
 	TupleDesc tupdesc = RelationGetDescr(relation);
 	ListCell *lc;
 
@@ -1561,14 +1561,14 @@ ybcSetupScanTargets(ForeignScanState *node)
 			}
 
 			K2PgTypeAttrs type_attrs = {attr_typmod};
-			K2PgExpr      expr       = K2PgNewColumnRef(ybc_state->handle,
+			K2PgExpr      expr       = K2PgNewColumnRef(k2pg_state->handle,
 														target->resno,
 														attr_typid,
 														&type_attrs);
-			HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(ybc_state->handle,
+			HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(k2pg_state->handle,
 																									 expr),
-															ybc_state->handle,
-															ybc_state->stmt_owner);
+															k2pg_state->handle,
+															k2pg_state->stmt_owner);
 			has_targets = true;
 		}
 
@@ -1588,14 +1588,14 @@ ybcSetupScanTargets(ForeignScanState *node)
 				}
 
 				K2PgTypeAttrs type_attrs = { TupleDescAttr(tupdesc, i)->atttypmod };
-				K2PgExpr      expr       = K2PgNewColumnRef(ybc_state->handle,
+				K2PgExpr      expr       = K2PgNewColumnRef(k2pg_state->handle,
 															i + 1,
 															TupleDescAttr(tupdesc, i)->atttypid,
 															&type_attrs);
-				HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(ybc_state->handle,
+				HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(k2pg_state->handle,
 																 expr),
-											ybc_state->handle,
-											ybc_state->stmt_owner);
+											k2pg_state->handle,
+											k2pg_state->stmt_owner);
 				break;
 			}
 		}
@@ -1615,12 +1615,12 @@ ybcSetupScanTargets(ForeignScanState *node)
 			type_entity = K2PgFindTypeEntity(aggref->aggtranstype);
 
 			/* Create operator. */
-			HandleK2PgStatusWithOwner(PgGate_NewOperator(ybc_state->handle,
+			HandleK2PgStatusWithOwner(PgGate_NewOperator(k2pg_state->handle,
 													 func_name,
 													 type_entity,
 													 &op_handle),
-									ybc_state->handle,
-									ybc_state->stmt_owner);
+									k2pg_state->handle,
+									k2pg_state->stmt_owner);
 
 			/* Handle arguments. */
 			if (aggref->aggstar) {
@@ -1630,14 +1630,14 @@ ybcSetupScanTargets(ForeignScanState *node)
 				 * even if all column values are NULL.
 				 */
 				K2PgExpr const_handle;
-				PgGate_NewConstant(ybc_state->handle,
+				PgGate_NewConstant(k2pg_state->handle,
 								 type_entity,
 								 0 /* datum */,
 								 false /* is_null */,
 								 &const_handle);
 				HandleK2PgStatusWithOwner(PgGate_OperatorAppendArg(op_handle, const_handle),
-										ybc_state->handle,
-										ybc_state->stmt_owner);
+										k2pg_state->handle,
+										k2pg_state->stmt_owner);
 			} else {
 				/* Add aggregate arguments to operator. */
 				foreach(lc_arg, aggref->args)
@@ -1650,14 +1650,14 @@ ybcSetupScanTargets(ForeignScanState *node)
 						Assert(const_node->constisnull || const_node->constbyval);
 
 						K2PgExpr const_handle;
-						PgGate_NewConstant(ybc_state->handle,
+						PgGate_NewConstant(k2pg_state->handle,
 										 type_entity,
 										 const_node->constvalue,
 										 const_node->constisnull,
 										 &const_handle);
 						HandleK2PgStatusWithOwner(PgGate_OperatorAppendArg(op_handle, const_handle),
-												ybc_state->handle,
-												ybc_state->stmt_owner);
+												k2pg_state->handle,
+												k2pg_state->stmt_owner);
 					}
 					else if (IsA(tle->expr, Var))
 					{
@@ -1669,13 +1669,13 @@ ybcSetupScanTargets(ForeignScanState *node)
 						Form_pg_attribute attr = TupleDescAttr(tupdesc, attno - 1);
 						K2PgTypeAttrs type_attrs = {attr->atttypmod};
 
-						K2PgExpr arg = K2PgNewColumnRef(ybc_state->handle,
+						K2PgExpr arg = K2PgNewColumnRef(k2pg_state->handle,
 														attno,
 														attr->atttypid,
 														&type_attrs);
 						HandleK2PgStatusWithOwner(PgGate_OperatorAppendArg(op_handle, arg),
-												ybc_state->handle,
-												ybc_state->stmt_owner);
+												k2pg_state->handle,
+												k2pg_state->stmt_owner);
 					}
 					else
 					{
@@ -1688,10 +1688,10 @@ ybcSetupScanTargets(ForeignScanState *node)
 			}
 
 			/* Add aggregate operator as scan target. */
-			HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(ybc_state->handle,
+			HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(k2pg_state->handle,
 														 op_handle),
-														 ybc_state->handle,
-														 ybc_state->stmt_owner);
+														 k2pg_state->handle,
+														 k2pg_state->stmt_owner);
 		}
 
 		/*
@@ -1715,7 +1715,7 @@ static TupleTableSlot *
 ybcIterateForeignScan(ForeignScanState *node)
 {
 	TupleTableSlot *slot;
-	YbFdwExecState *ybc_state = (YbFdwExecState *) node->fdw_state;
+	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
 	bool           has_data   = false;
 
 	/* Execute the select statement one time.
@@ -1724,7 +1724,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 	 *   operators and protobufs. These operations are done by PgGate_ExecSelect() function.
 	 * - The subsequent fetches don't need to setup the query with these operations again.
 	 */
-	if (!ybc_state->is_exec_done) {
+	if (!k2pg_state->is_exec_done) {
 		PgFdwScanPlanData scan_plan;
 		memset(&scan_plan, 0, sizeof(scan_plan));
 
@@ -1733,13 +1733,13 @@ ybcIterateForeignScan(ForeignScanState *node)
 		scan_plan.paramLI = node->ss.ps.state->es_param_list_info;
 		pgLoadTableInfo(relation, &scan_plan);
 		scan_plan.bind_desc = RelationGetDescr(relation);
-		pgBindScanKeys(relation, ybc_state, &scan_plan);
+		pgBindScanKeys(relation, k2pg_state, &scan_plan);
 
 		ybcSetupScanTargets(node);
-		HandleK2PgStatusWithOwner(PgGate_ExecSelect(ybc_state->handle, ybc_state->exec_params),
-								ybc_state->handle,
-								ybc_state->stmt_owner);
-		ybc_state->is_exec_done = true;
+		HandleK2PgStatusWithOwner(PgGate_ExecSelect(k2pg_state->handle, k2pg_state->exec_params),
+								k2pg_state->handle,
+								k2pg_state->stmt_owner);
+		k2pg_state->is_exec_done = true;
 	}
 
 	/* Clear tuple slot before starting */
@@ -1752,14 +1752,14 @@ ybcIterateForeignScan(ForeignScanState *node)
 	K2PgSysColumns syscols;
 
 	/* Fetch one row. */
-	HandleK2PgStatusWithOwner(PgGate_DmlFetch(ybc_state->handle,
+	HandleK2PgStatusWithOwner(PgGate_DmlFetch(k2pg_state->handle,
 	                                      tupdesc->natts,
 	                                      (uint64_t *) values,
 	                                      isnull,
 	                                      &syscols,
 	                                      &has_data),
-	                        ybc_state->handle,
-	                        ybc_state->stmt_owner);
+	                        k2pg_state->handle,
+	                        k2pg_state->stmt_owner);
 
 	/* If we have result(s) update the tuple slot. */
 	if (has_data)
@@ -1813,10 +1813,10 @@ ybcFreeStatementObject(YbFdwExecState* k2pg_fdw_exec_state)
 static void
 ybcReScanForeignScan(ForeignScanState *node)
 {
-	YbFdwExecState *ybc_state = (YbFdwExecState *) node->fdw_state;
+	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
 
 	/* Clear (delete) the previous select */
-	ybcFreeStatementObject(ybc_state);
+	ybcFreeStatementObject(k2pg_state);
 
 	/* Re-allocate and execute the select. */
 	ybcBeginForeignScan(node, 0 /* eflags */);
@@ -1829,8 +1829,8 @@ ybcReScanForeignScan(ForeignScanState *node)
 static void
 ybcEndForeignScan(ForeignScanState *node)
 {
-	YbFdwExecState *ybc_state = (YbFdwExecState *) node->fdw_state;
-	ybcFreeStatementObject(ybc_state);
+	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
+	ybcFreeStatementObject(k2pg_state);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1841,7 +1841,7 @@ ybcEndForeignScan(ForeignScanState *node)
  * to YugaByte callback routines.
  */
 Datum
-ybc_fdw_handler()
+k2pg_fdw_handler()
 {
 	FdwRoutine *fdwroutine = makeNode(FdwRoutine);
 

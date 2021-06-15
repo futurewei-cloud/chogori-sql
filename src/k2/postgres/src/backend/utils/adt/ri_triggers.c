@@ -2695,7 +2695,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 				const RI_ConstraintInfo *riinfo, HeapTuple tup,
 				void **value, int64_t *bytes)
 {
-	K2PgStatement ybc_stmt;
+	K2PgStatement k2pg_stmt;
 	K2PgPrepareParameters prepare_params;
 
 	prepare_params.index_oid = RelationGetRelid(idx_rel);
@@ -2704,7 +2704,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 			false : true;
 
 	HandleK2PgStatus(PgGate_NewSelect(
-		K2PgGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &ybc_stmt));
+		K2PgGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &k2pg_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
 	const int16 *attnums = riinfo->fk_attnums;
@@ -2748,7 +2748,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		next_attr->is_null = true;
 	}
 
-	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(ybc_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(k2pg_stmt, attrs, nattrs, &tuple_id));
 
 	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
 	type_entity->datum_to_k2pg(tuple_id, value, bytes);

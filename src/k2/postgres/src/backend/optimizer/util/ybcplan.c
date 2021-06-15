@@ -498,19 +498,19 @@ bool K2PgAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	Relation        rel                = RelationIdGetRelation(relid);
 	Oid             dboid              = K2PgGetDatabaseOid(rel);
 	AttrNumber      natts              = RelationGetNumberOfAttributes(rel);
-	K2PgTableDesc  ybc_tabledesc      = NULL;
+	K2PgTableDesc  k2pg_tabledesc      = NULL;
 	Bitmapset      *primary_key_attrs  = NULL;
 
 	/* Get primary key columns from YB table desc. */
-	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &ybc_tabledesc));
+	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = 1; attnum <= natts; attnum++)
 	{
 		bool is_primary = false;
 		bool is_hash    = false;
-		HandleK2PgTableDescStatus(PgGate_GetColumnInfo(ybc_tabledesc,
+		HandleK2PgTableDescStatus(PgGate_GetColumnInfo(k2pg_tabledesc,
 		                                           attnum,
 		                                           &is_primary,
-		                                           &is_hash), ybc_tabledesc);
+		                                           &is_hash), k2pg_tabledesc);
 
 		if (is_primary)
 		{

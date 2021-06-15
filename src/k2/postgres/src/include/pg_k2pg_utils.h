@@ -137,7 +137,7 @@ extern void HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found);
  * the given YugaByte statement.
  */
 extern void HandleK2PgStatusWithOwner(K2PgStatus status,
-																		K2PgStatement ybc_stmt,
+																		K2PgStatement k2pg_stmt,
 																		ResourceOwner owner);
 
 /*
