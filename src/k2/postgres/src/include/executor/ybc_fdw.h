@@ -25,6 +25,6 @@
 
 #include "postgres.h"
 
-extern Datum k2pg_fdw_handler();
+extern Datum k2_fdw_handler();
 
 #endif							/* YBC_FDW_H */

@@ -205,7 +205,7 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 					 * Set the YugaByte FDW routine because we will use the foreign
 					 * scan API below.
 					 */
-					relation->fdwroutine = (FdwRoutine *) k2pg_fdw_handler();
+					relation->fdwroutine = (FdwRoutine *) k2_fdw_handler();
 				}
 			}
 		}
