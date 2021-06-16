@@ -79,13 +79,13 @@ namespace sql {
         kTableOid             = -7, // tableoid
 
         // YugaByte system columns.
-        kYBTupleId            = -8, // k2pgtid: virtual column representing DocDB-encoded key.
+        kYBTupleId            = -8, // k2pgctid: virtual column representing DocDB-encoded key.
                               // YB analogue of Postgres's SelfItemPointer/ctid column.
 
         // The following attribute numbers are stored persistently in the table schema. For this reason,
         // they are chosen to avoid potential conflict with Postgres' own sys attributes now and future.
         kYBRowId              = -100, // ybrowid: auto-generated key-column for tables without pkey.
-        kYBIdxBaseTupleId     = -101, // ybidxbasectid: for indexes k2pgtid of the indexed table row.
+        kYBIdxBaseTupleId     = -101, // ybidxbasectid: for indexes k2pgctid of the indexed table row.
         kYBUniqueIdxKeySuffix = -102, // ybuniqueidxkeysuffix: extra key column for unique indexes, used
                                       // to ensure SQL semantics for null (null != null) in DocDB
                                       // (where null == null). For each index row will be set to:

@@ -109,7 +109,7 @@ ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isn
 		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
-							  heapTuple->t_k2pgtid,
+							  heapTuple->t_k2pgctid,
 							  buildstate->is_backfill);
 
 	buildstate->index_tuples += 1;
@@ -175,25 +175,25 @@ ybcinbuildempty(Relation index)
 }
 
 bool
-ybcininsert(Relation index, Datum *values, bool *isnull, Datum k2pgtid, Relation heap,
+ybcininsert(Relation index, Datum *values, bool *isnull, Datum k2pgctid, Relation heap,
 			IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
 		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
-							  k2pgtid,
+							  k2pgctid,
 							  false /* is_backfill */);
 
 	return index->rd_index->indisunique ? true : false;
 }
 
 void
-ybcindelete(Relation index, Datum *values, bool *isnull, Datum k2pgtid, Relation heap,
+ybcindelete(Relation index, Datum *values, bool *isnull, Datum k2pgctid, Relation heap,
 			struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		K2PgExecuteDeleteIndex(index, values, isnull, k2pgtid);
+		K2PgExecuteDeleteIndex(index, values, isnull, k2pgctid);
 }
 
 IndexBulkDeleteResult *
@@ -308,13 +308,13 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	/*
 	 * IndexScan(SysTable, Index) --> HeapTuple.
 	 */
-	scan->xs_ctup.t_k2pgtid = 0;
+	scan->xs_ctup.t_k2pgctid = 0;
 	if (ybscan->prepare_params.index_only_scan)
 	{
 		IndexTuple tuple = k2pg_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
-			scan->xs_ctup.t_k2pgtid = tuple->t_k2pgtid;
+			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
 			scan->xs_itup = tuple;
 			scan->xs_itupdesc = RelationGetDescr(scan->indexRelation);
 		}
@@ -324,13 +324,13 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 		HeapTuple tuple = k2pg_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
-			scan->xs_ctup.t_k2pgtid = tuple->t_k2pgtid;
+			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
 			scan->xs_hitup = tuple;
 			scan->xs_hitupdesc = RelationGetDescr(scan->heapRelation);
 		}
 	}
 
-	return scan->xs_ctup.t_k2pgtid != 0;
+	return scan->xs_ctup.t_k2pgctid != 0;
 }
 
 void

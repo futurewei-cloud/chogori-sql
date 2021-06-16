@@ -225,7 +225,7 @@ index_insert(Relation indexRelation,
 	{
 		CHECK_REL_PROCEDURE(k2pg_aminsert);
 		return indexRelation->rd_amroutine->k2pg_aminsert(indexRelation, values, isnull,
-														heapTuple->t_k2pgtid, heapRelation,
+														heapTuple->t_k2pgctid, heapRelation,
 														checkUnique, indexInfo);
 	}
 	else
@@ -242,7 +242,7 @@ index_insert(Relation indexRelation,
  *      This is used only for indexes backed by YugabyteDB. For Postgres, when a tuple is updated,
  *      the ctid of the original tuple will be invalid (except for heap-only tuple (HOT)). Because
  *      of this, index entries of the original tuple do not need to be deleted in UPDATE. For
- *      YugaByte-based tables, the k2pgtid is the primary key of the tuple and will remain valid
+ *      YugaByte-based tables, the k2pgctid is the primary key of the tuple and will remain valid
  *      after UPDATE. So when a tuple is updated, we need to delete all index entries associated
  *      explicitly.
  * ----------------
@@ -251,7 +251,7 @@ void
 index_delete(Relation indexRelation,
 			 Datum *values,
 			 bool *isnull,
-			 Datum k2pgtid,
+			 Datum k2pgctid,
 			 Relation heapRelation,
 			 IndexInfo *indexInfo)
 {
@@ -259,7 +259,7 @@ index_delete(Relation indexRelation,
 	CHECK_REL_PROCEDURE(k2pg_amdelete);
 
 	indexRelation->rd_amroutine->k2pg_amdelete(indexRelation, values, isnull,
-											 k2pgtid, heapRelation,
+											 k2pgctid, heapRelation,
 											 indexInfo);
 }
 
@@ -635,14 +635,14 @@ index_fetch_heap(IndexScanDesc scan)
 {
 	/*
 	 * For YugaByte secondary indexes, there are two scenarios.
-	 * - If YugaByte returns an index-tuple, the returned k2pgtid value should be used to query data.
+	 * - If YugaByte returns an index-tuple, the returned k2pgctid value should be used to query data.
 	 * - If YugaByte returns a heap_tuple, all requested data was already selected in the tuple.
 	 */
 	if (IsK2PgEnabled())
 	{
 		if (scan->xs_hitup != 0)
 			return scan->xs_hitup;
-		return K2PgFetchTuple(scan->heapRelation, scan->xs_ctup.t_k2pgtid);
+		return K2PgFetchTuple(scan->heapRelation, scan->xs_ctup.t_k2pgctid);
 	}
 
 	ItemPointer tid = &scan->xs_ctup.t_self;

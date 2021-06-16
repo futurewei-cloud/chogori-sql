@@ -679,10 +679,10 @@ Status PgGateApiImpl::DmlFetch(PgStatement *handle, int32_t natts, uint64_t *val
 }
 
 Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
-                                    int32_t nattrs, uint64_t *k2pgtid) {
+                                    int32_t nattrs, uint64_t *k2pgctid) {
   const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
   const K2PgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
-  *k2pgtid = type_entity->k2pg_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
+  *k2pgctid = type_entity->k2pg_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();
 }
 
@@ -706,16 +706,16 @@ Status PgGateApiImpl::DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected
   return STATUS(InvalidArgument, "Invalid statement handle");
 }
 
-bool PgGateApiImpl::ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& k2pgtid) {
-  return pg_session_->ForeignKeyReferenceExists(table_oid, std::move(k2pgtid));
+bool PgGateApiImpl::ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& k2pgctid) {
+  return pg_session_->ForeignKeyReferenceExists(table_oid, std::move(k2pgctid));
 }
 
-Status PgGateApiImpl::CacheForeignKeyReference(K2PgOid table_oid, std::string&& k2pgtid) {
-  return pg_session_->CacheForeignKeyReference(table_oid, std::move(k2pgtid));
+Status PgGateApiImpl::CacheForeignKeyReference(K2PgOid table_oid, std::string&& k2pgctid) {
+  return pg_session_->CacheForeignKeyReference(table_oid, std::move(k2pgctid));
 }
 
-Status PgGateApiImpl::DeleteForeignKeyReference(K2PgOid table_oid, std::string&& k2pgtid) {
-  return pg_session_->DeleteForeignKeyReference(table_oid, std::move(k2pgtid));
+Status PgGateApiImpl::DeleteForeignKeyReference(K2PgOid table_oid, std::string&& k2pgctid) {
+  return pg_session_->DeleteForeignKeyReference(table_oid, std::move(k2pgctid));
 }
 
 void PgGateApiImpl::ClearForeignKeyReferenceCache() {

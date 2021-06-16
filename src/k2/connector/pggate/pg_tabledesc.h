@@ -150,7 +150,7 @@ class PgTableDesc {
   std::unordered_map<int, size_t> attr_num_map_; // Attr number to column index map.
 
   // Hidden columns.
-  PgColumn column_k2pgtid_;
+  PgColumn column_k2pgctid_;
 
   // k2 collection name
   std::string collection_name_;

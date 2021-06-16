@@ -68,7 +68,7 @@ ForeignNext(ForeignScanState *node)
 
 		tup->t_tableOid = RelationGetRelid(node->ss.ss_currentRelation);
 		if (IsK2PgEnabled()) {
-			tup->t_k2pgtid = slot->tts_k2pgtid;
+			tup->t_k2pgctid = slot->tts_k2pgctid;
 		}
 	}
 

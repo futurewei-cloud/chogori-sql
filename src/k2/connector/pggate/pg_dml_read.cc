@@ -151,9 +151,9 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
   }
 
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-    CHECK(attr_value->is_constant()) << "Column k2pgtid must be bound to constant";
-    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgtid_bind_ is set as true");
-    k2pgtid_bind_ = true;
+    CHECK(attr_value->is_constant()) << "Column k2pgctid must be bound to constant";
+    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgctid_bind_ is set as true");
+    k2pgctid_bind_ = true;
   }
 
   return Status::OK();
@@ -283,10 +283,10 @@ Status PgDmlRead::Exec(const PgExecParameters *exec_params) {
   RETURN_NOT_OK(SetUnboundPrimaryBinds());
 
   // First, process the secondary index request.
-  bool has_k2pgtid = VERIFY_RESULT(ProcessSecondaryIndexRequest(exec_params));
+  bool has_k2pgctid = VERIFY_RESULT(ProcessSecondaryIndexRequest(exec_params));
 
-  if (!has_k2pgtid && secondary_index_query_ && secondary_index_query_->has_sql_op()) {
-    // No k2pgtid is found from the IndexScan. Instruct "sql_op_" to abandon the execution and not
+  if (!has_k2pgctid && secondary_index_query_ && secondary_index_query_->has_sql_op()) {
+    // No k2pgctid is found from the IndexScan. Instruct "sql_op_" to abandon the execution and not
     // querying any data from storage server.
     sql_op_->AbandonExecution();
   } else {

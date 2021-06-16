@@ -205,7 +205,7 @@ Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field
     switch (attr_num) {
         case static_cast<int>(PgSystemAttrNum::kYBTupleId): {
             k2::String& val = field.value();
-            pg_tuple->Write(&pg_tuple->syscols()->k2pgtid, (const uint8_t*)val.c_str(), val.size());
+            pg_tuple->Write(&pg_tuple->syscols()->k2pgctid, (const uint8_t*)val.c_str(), val.size());
             break;
         }
         case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId): {
@@ -283,17 +283,17 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
     K2ASSERT(log::pg, syscol_processed_, "System columns have not been processed yet");
     int32_t num = 0;
     FOR_EACH_RECORD_FIELD(data_[nextToConsume_], FieldParser, targets_by_name, pg_tuple, result, &num);
-     if (targets_by_name.find("k2pgtid") != targets_by_name.end()) {
-        // k2pgtid is a virtual column and won't be in the SKV record
+     if (targets_by_name.find("k2pgctid") != targets_by_name.end()) {
+        // k2pgctid is a virtual column and won't be in the SKV record
         num++;
     }
     K2ASSERT(log::pg, num == targets_by_name.size(), "All target columns should be processed: {} != {}", num, targets_by_name.size());
 
     if (pg_tuple->syscols()) {
-        auto& k2pgtid_str = k2pgtid_strings_[nextToConsume_];
-        pg_tuple->syscols()->k2pgtid = (uint8_t*)k2pg::K2PgCStringToTextWithLen(k2pgtid_str.data(), k2pgtid_str.size());
+        auto& k2pgctid_str = k2pgctid_strings_[nextToConsume_];
+        pg_tuple->syscols()->k2pgctid = (uint8_t*)k2pg::K2PgCStringToTextWithLen(k2pgctid_str.data(), k2pgctid_str.size());
     }
-    K2LOG_D(log::pg, "wrote tuple k2pgtid={}", k2pgtid_strings_[nextToConsume_]);
+    K2LOG_D(log::pg, "wrote tuple k2pgctid={}", k2pgctid_strings_[nextToConsume_]);
     if (row_orders_.size()) {
         *row_order = row_orders_.front();
         row_orders_.pop_front();
@@ -305,17 +305,17 @@ Status PgOpResult::WritePgTuple(const std::vector<PgExpr *> &targets, const std:
     return result;
 }
 
-// For secondary index read result, where the caller need to get all base row's k2pgtid
+// For secondary index read result, where the caller need to get all base row's k2pgctid
 void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
     if (!is_eof())
     {
         for (k2::dto::SKVRecord& record : data_) {
-            std::optional<k2::String> basek2pgtid = record.deserializeField<k2::String>("ybidxbasectid");
+            std::optional<k2::String> basek2pgctid = record.deserializeField<k2::String>("ybidxbasectid");
 
-            if (!basek2pgtid.has_value()) {
-                CHECK(basek2pgtid.has_value()) << "ybidxbasectid for index row was null";
+            if (!basek2pgctid.has_value()) {
+                CHECK(basek2pgctid.has_value()) << "ybidxbasectid for index row was null";
             }
-            baseRowIds.emplace_back(*basek2pgtid);
+            baseRowIds.emplace_back(*basek2pgctid);
             ++nextToConsume_;
         }
     }
@@ -326,15 +326,15 @@ void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
 }
 
 // Get system columns' values from this batch.
-// Currently, we only have k2pgtids, but there could be more.
+// Currently, we only have k2pgctids, but there could be more.
 Status PgOpResult::ProcessSystemColumns() {
     if (syscol_processed_) {
         return Status::OK();
     }
     syscol_processed_ = true;
     for (auto& rec: data_) {
-        k2pgtid_strings_.push_back(K2Adapter::GetRowIdFromReadRecord(rec));
-        k2pgtids_.emplace_back(k2pgtid_strings_.back().c_str(), k2pgtid_strings_.back().size());
+        k2pgctid_strings_.push_back(K2Adapter::GetRowIdFromReadRecord(rec));
+        k2pgctids_.emplace_back(k2pgctid_strings_.back().c_str(), k2pgctid_strings_.back().size());
     }
     return Status::OK();
 }
@@ -587,18 +587,18 @@ Status PgReadOp::InitializeRowIdOperators() {
     } else {
         // Second and later batches: Reuse all state variables.
         // - Clear row orders for this batch to be set later.
-        // - Clear protobuf fields k2pgtids and others before reusing them in this batch.
+        // - Clear protobuf fields k2pgctids and others before reusing them in this batch.
         RETURN_NOT_OK(ResetInactivePgsqlOps());
     }
     return Status::OK();
 }
 
-Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgtids) {
-    // This function is called only when k2pgtids were returned from INDEX, for example,
-    //    SELECT xxx FROM <table> WHERE k2pgtid IN (SELECT k2pgtid FROM INDEX);
+Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgctids) {
+    // This function is called only when k2pgctids were returned from INDEX, for example,
+    //    SELECT xxx FROM <table> WHERE k2pgctid IN (SELECT k2pgctid FROM INDEX);
 
     RETURN_NOT_OK(InitializeRowIdOperators());
-    // Begin a batch of k2pgtids.
+    // Begin a batch of k2pgctids.
     end_of_data_ = false;
 
     // we only have one partition so far
@@ -606,17 +606,17 @@ Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgtids)
     read_op->set_active(true);
     std::shared_ptr<SqlOpReadRequest> request = read_op->request();
     const K2PgTypeEntity *string_type = K2PgFindTypeEntity(STRING_TYPE_OID);
-    // populate k2pgtid values.
-    request->k2pgtid_column_values.clear();
-    for (const std::string& k2pgtid : k2pgtids) {
-        std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(k2pgtid));
+    // populate k2pgctid values.
+    request->k2pgctid_column_values.clear();
+    for (const std::string& k2pgctid : k2pgctids) {
+        std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(k2pgctid));
         // use one batch for now, could split into multiple batches later for optimization
-        request->k2pgtid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const.get()));
+        request->k2pgctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const.get()));
         // add to the expr list so that it could be released once PgOP is out of scope
         AddExpr(std::move(pg_const));
     }
-    K2LOG_D(log::pg, "Populated {} k2pgtids in op read request for table {}",
-            request->k2pgtid_column_values.size(), request->table_id);
+    K2LOG_D(log::pg, "Populated {} k2pgctids in op read request for table {}",
+            request->k2pgctid_column_values.size(), request->table_id);
 
     // Done creating request
     MoveInactiveOpsOutside();
@@ -716,7 +716,7 @@ Status PgReadOp::ResetInactivePgsqlOps() {
     // Clear the existing requests.
     for (int op_index = active_op_count_; op_index < pgsql_ops_.size(); op_index++) {
         std::shared_ptr<SqlOpReadRequest> read_req = GetReadOp(op_index)->request();
-        read_req->k2pgtid_column_values.clear();
+        read_req->k2pgctid_column_values.clear();
         read_req->paging_state = nullptr;
     }
 
@@ -750,7 +750,7 @@ Result<std::list<PgOpResult>> PgWriteOp::ProcessResponseImpl() {
     return result;
 }
 
-Status PgWriteOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgtids) {
+Status PgWriteOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgctids) {
     return STATUS(NotSupported, "PopulateDmlByRowIdOps() is not supported for PgWriteOp");
 }
 

@@ -87,7 +87,7 @@ PgTableDesc::PgTableDesc(std::shared_ptr<TableInfo> pg_table) : is_index_(false)
   }
 
   // Create virtual columns.
-  column_k2pgtid_.Init(PgSystemAttrNum::kYBTupleId);
+  column_k2pgctid_.Init(PgSystemAttrNum::kYBTupleId);
 
   collection_name_ = CatalogConsts::physical_collection(database_id_, pg_table->is_shared());
 
@@ -122,7 +122,7 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& databas
   }
 
   // Create virtual columns.
-  column_k2pgtid_.Init(PgSystemAttrNum::kYBTupleId);
+  column_k2pgctid_.Init(PgSystemAttrNum::kYBTupleId);
 
   collection_name_ = CatalogConsts::physical_collection(database_id_, index_info.is_shared());
 
@@ -133,7 +133,7 @@ PgTableDesc::PgTableDesc(const IndexInfo& index_info, const std::string& databas
 Result<PgColumn *> PgTableDesc::FindColumn(int attr_num) {
   // Find virtual columns.
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-    return &column_k2pgtid_;
+    return &column_k2pgctid_;
   }
 
   // Find physical column.

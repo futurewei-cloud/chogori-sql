@@ -286,7 +286,7 @@ K2PgStatus PgGate_DmlAppendTarget(K2PgStatement handle, K2PgExpr target);
 // - For Sequential Scan, the target columns of the bind are those in the main table.
 // - For Primary Scan, the target columns of the bind are those in the main table.
 // - For Index Scan, the target columns of the bind are those in the index table.
-//   The index-scan will use the bind to find base-k2pgtid which is then use to read data from
+//   The index-scan will use the bind to find base-k2pgctid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
 K2PgStatus PgGate_DmlBindColumn(K2PgStatement handle, int attr_num, K2PgExpr attr_value);
 K2PgStatus PgGate_DmlBindColumnCondEq(K2PgStatement handle, int attr_num, K2PgExpr attr_value);
@@ -317,9 +317,9 @@ K2PgStatus PgGate_DmlFetch(K2PgStatement handle, int32_t natts, uint64_t *values
 // Utility method that checks stmt type and calls either exec insert, update, or delete internally.
 K2PgStatus PgGate_DmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_count);
 
-// This function returns the tuple id (k2pgtid) of a Postgres tuple.
+// This function returns the tuple id (k2pgctid) of a Postgres tuple.
 K2PgStatus PgGate_DmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
-                                 int32_t nattrs, uint64_t *k2pgtid);
+                                 int32_t nattrs, uint64_t *k2pgctid);
 
 // DB Operations: WHERE(partially supported by K2-SKV)
 // TODO: ORDER_BY, GROUP_BY, etc.
@@ -413,13 +413,13 @@ K2PgStatus PgGate_OperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg);
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
-bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* k2pgtid, int64_t k2pgtid_size);
+bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* k2pgctid, int64_t k2pgctid_size);
 
 // Add an entry to foreign key reference cache.
-K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* k2pgtid, int64_t k2pgtid_size);
+K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* k2pgctid, int64_t k2pgctid_size);
 
 // Delete an entry from foreign key reference cache.
-K2PgStatus PgGate_DeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t k2pgtid);
+K2PgStatus PgGate_DeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t k2pgctid);
 
 void PgGate_ClearForeignKeyReferenceCache();
 

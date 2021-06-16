@@ -341,14 +341,14 @@ class PgGateApiImpl {
   // Utility method that checks stmt type and calls exec insert, update, or delete internally.
   CHECKED_STATUS DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected_count);
 
-  // This function adds a primary column to be used in the construction of the tuple id (k2pgtid).
+  // This function adds a primary column to be used in the construction of the tuple id (k2pgctid).
   CHECKED_STATUS DmlAddYBTupleIdColumn(PgStatement *handle, int attr_num, uint64_t datum,
                                        bool is_null, const K2PgTypeEntity *type_entity);
 
 
-  // This function returns the tuple id (k2pgtid) of a Postgres tuple.
+  // This function returns the tuple id (k2pgctid) of a Postgres tuple.
   CHECKED_STATUS DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
-                                   int32_t nattrs, uint64_t *k2pgtid);
+                                   int32_t nattrs, uint64_t *k2pgctid);
 
   // DB Operations: WHERE(partially supported by K2-SKV)
   //------------------------------------------------------------------------------------------------
@@ -426,11 +426,11 @@ class PgGateApiImpl {
   CHECKED_STATUS OperatorAppendArg(PgExpr *op_handle, PgExpr *arg);
 
   // Foreign key reference caching.
-  bool ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& k2pgtid);
+  bool ForeignKeyReferenceExists(K2PgOid table_oid, std::string&& k2pgctid);
 
-  CHECKED_STATUS CacheForeignKeyReference(K2PgOid table_oid, std::string&& k2pgtid);
+  CHECKED_STATUS CacheForeignKeyReference(K2PgOid table_oid, std::string&& k2pgctid);
 
-  CHECKED_STATUS DeleteForeignKeyReference(K2PgOid table_oid, std::string&& k2pgtid);
+  CHECKED_STATUS DeleteForeignKeyReference(K2PgOid table_oid, std::string&& k2pgctid);
 
   void ClearForeignKeyReferenceCache();
 

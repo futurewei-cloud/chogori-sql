@@ -127,7 +127,7 @@ public:
 
   Status HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr *>& leftover_exprs, k2::dto::SKVRecord& start, k2::dto::SKVRecord& end);
 
-  // Helper funcxtion for handleReadOp when k2pgtid is set in the request
+  // Helper funcxtion for handleReadOp when k2pgctid is set in the request
   void handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                            std::shared_ptr<PgReadOpTemplate> op,
                            std::shared_ptr<std::promise<Status>> prom);
@@ -139,11 +139,11 @@ public:
   std::vector<uint32_t> SerializeSKVValueFields(k2::dto::SKVRecord& record,
                                                 std::vector<std::shared_ptr<BindVariable>>& values);
 
-  static std::string K2PGTIDToString(std::shared_ptr<BindVariable> k2pgtid_column_value);
+  static std::string K2PGTIDToString(std::shared_ptr<BindVariable> k2pgctid_column_value);
   static std::string SerializeSKVRecordToString(k2::dto::SKVRecord& record);
   static k2::dto::SKVRecord K2PGTIDToRecord(const std::string& collection,
                                       std::shared_ptr<k2::dto::Schema> schema,
-                                      std::shared_ptr<BindVariable> k2pgtid_column_value);
+                                      std::shared_ptr<BindVariable> k2pgctid_column_value);
 
   // Column ID of the virtual column which is not stored in k2 data
   static constexpr int32_t VIRTUAL_COLUMN = -8;

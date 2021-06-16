@@ -119,7 +119,7 @@ class PgDml : public PgStatement {
   // Returns TRUE if desired row is found.
   Result<bool> GetNextRow(PgTuple *pg_tuple);
 
-  // Build tuple id (k2pgtid) of the given Postgres tuple.
+  // Build tuple id (k2pgctid) of the given Postgres tuple.
   Result<std::string> BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs);
 
   virtual void SetCatalogCacheVersion(uint64_t catalog_cache_version) = 0;
@@ -171,13 +171,13 @@ class PgDml : public PgStatement {
   //
   // Example for query on table_object_id_ using index_object_id_.
   //   SELECT FROM "table_object_id_"
-  //     WHERE k2pgtid IN (SELECT base_k2pgtid FROM "index_object_id_" WHERE matched-index-binds)
+  //     WHERE k2pgctid IN (SELECT base_k2pgctid FROM "index_object_id_" WHERE matched-index-binds)
   //
   // - Postgres will create PgSelect(table_object_id_) { nested PgSelectIndex (index_object_id_) }
   // - When bind functions are called, it bind user-values to columns in PgSelectIndex as these
-  //   binds will be used to find base_k2pgtid from the IndexTable.
+  //   binds will be used to find base_k2pgctid from the IndexTable.
   // - When AddTargets() is called, the target is added to PgSelect as data will be reading from
-  //   table_object_id_ using the found base_k2pgtid from index_object_id_.
+  //   table_object_id_ using the found base_k2pgctid from index_object_id_.
   PgObjectId table_object_id_;
   PgObjectId index_object_id_;
 
@@ -202,7 +202,7 @@ class PgDml : public PgStatement {
   // - For primary key binding, "bind_desc_" is the descriptor of the main table as we don't have
   //   a separated primary-index table.
   // - For secondary key binding, "bind_desc_" is the descriptor of the secondary index table.
-  //   The bound values will be used to read base_k2pgtid which is then used to read actual data
+  //   The bound values will be used to read base_k2pgctid which is then used to read actual data
   //   from the main table.
   std::shared_ptr<PgTableDesc> bind_desc_;
 
@@ -226,7 +226,7 @@ class PgDml : public PgStatement {
   //
   // * Bind values are used to identify the selected rows to be operated on.
   // * Set values are used to hold columns' new values in the selected rows.
-  bool k2pgtid_bind_ = false;
+  bool k2pgctid_bind_ = false;
   std::unordered_map<std::shared_ptr<BindVariable>, PgExpr*> expr_binds_;
   std::unordered_map<std::shared_ptr<BindVariable>, PgExpr*> expr_assigns_;
   std::optional<std::shared_ptr<BindVariable>> row_id_bind_ = std::nullopt;
@@ -247,8 +247,8 @@ class PgDml : public PgStatement {
   // Data members for nested query: This is used for an optimization in PgGate.
   //
   // - Each DML operation can be understood as
-  //     Read / Write TABLE WHERE k2pgtid IN (SELECT k2pgtid from INDEX).
-  // - In most cases, the Postgres layer processes the subquery "SELECT k2pgtid from INDEX".
+  //     Read / Write TABLE WHERE k2pgctid IN (SELECT k2pgctid from INDEX).
+  // - In most cases, the Postgres layer processes the subquery "SELECT k2pgctid from INDEX".
   // - Under certain conditions, to optimize the performance, the PgGate layer might operate on
   //   the INDEX subquery itself.
   std::shared_ptr<PgSelectIndex> secondary_index_query_;

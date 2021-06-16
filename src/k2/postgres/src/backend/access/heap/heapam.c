@@ -306,7 +306,7 @@ initscan(HeapScanDesc scan, ScanKey key, bool keep_startblock)
 	scan->rs_inited = false;
 	scan->rs_ctup.t_data = NULL;
 	ItemPointerSetInvalid(&scan->rs_ctup.t_self);
-	scan->rs_ctup.t_k2pgtid = (Datum) 0;
+	scan->rs_ctup.t_k2pgctid = (Datum) 0;
 	scan->rs_cbuf = InvalidBuffer;
 	scan->rs_cblock = InvalidBlockNumber;
 
@@ -4773,9 +4773,9 @@ heap_lock_tuple(Relation relation, HeapTuple tuple,
 
 	/*
 	 * This will only be used for non-YB tuples (e.g. Temp tables) so we just
-	 * need to set the k2pgtid to 0 (NULL) here.
+	 * need to set the k2pgctid to 0 (NULL) here.
 	 */
-	tuple->t_k2pgtid = (Datum) 0;
+	tuple->t_k2pgctid = (Datum) 0;
 
 l3:
 	result = HeapTupleSatisfiesUpdate(tuple, cid, *buffer);

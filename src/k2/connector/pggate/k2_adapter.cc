@@ -489,7 +489,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
     return Status::OK();
 }
 
-// Helper function for handleReadOp when a vector of k2pgtids are set in the request
+// Helper function for handleReadOp when a vector of k2pgctids are set in the request
 void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
                                     std::shared_ptr<PgReadOpTemplate> op,
                                     std::shared_ptr<std::promise<Status>> prom) {
@@ -498,7 +498,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
 
     k2::Status status;
     std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
-    for (auto& k2pgtid_column_value : request->k2pgtid_column_values) {
+    for (auto& k2pgctid_column_value : request->k2pgctid_column_values) {
         k2::GetSchemaResult schema_result = k23si_->getSchema(request->collection_name,
                                                     request->table_id, k2::K23SIClient::ANY_VERSION).get();
 
@@ -508,7 +508,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
         }
         k2::dto::SKVRecord key_record = K2PGTIDToRecord(request->collection_name,
                                                              schema_result.schema,
-                                                             k2pgtid_column_value);
+                                                             k2pgctid_column_value);
         result_futures.push_back(k23SITxn->read(std::move(key_record)));
     }
 
@@ -522,7 +522,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
             idx++;
         } else {
             // If any read failed, abort and fail the batch
-            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", k2::String(K2PGTIDToString(request->k2pgtid_column_values[idx])), read.status.message);
+            K2LOG_E(log::k2Adapter, "Failed to read for {}, due to {}", k2::String(K2PGTIDToString(request->k2pgctid_column_values[idx])), read.status.message);
             status = std::move(read.status);
             break;
         }
@@ -546,8 +546,8 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         SqlOpResponse& response = op->response();
         response.skipped = false;
 
-        if (request->k2pgtid_column_values.size() > 0) {
-            // TODO SKV doesn't support k2pgtid_column_value on query yet so no projection or filtering
+        if (request->k2pgctid_column_values.size() > 0) {
+            // TODO SKV doesn't support k2pgctid_column_value on query yet so no projection or filtering
             return handleReadByRowIds(k23SITxn, op, prom);
         }
 
@@ -569,7 +569,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
             scan->setReverseDirection(!request->is_forward_scan);
 
             std::shared_ptr<k2::dto::Schema> schema = scan->startScanRecord.schema;
-            // Projections must include key fields so that k2pgtid/rowid can be created from the resulting
+            // Projections must include key fields so that k2pgctid/rowid can be created from the resulting
             // record
             if (request->targets.size()) {
                 for (uint32_t keyIdx : schema->partitionKeyFields) {
@@ -707,16 +707,16 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         }
 
         bool ignoreK2PGTID = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
-        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, writeRequest->k2pgtid_column_value != nullptr, ignoreK2PGTID);
+        auto [record, status] = MakeSKVRecordWithKeysSerialized(*writeRequest, writeRequest->k2pgctid_column_value != nullptr, ignoreK2PGTID);
         if (!status.ok()) {
             response.status = SqlOpResponse::RequestStatus::PGSQL_STATUS_RUNTIME_ERROR;
             response.rows_affected_count = 0;
             prom->set_value(std::move(status));
             return;
         }
-        bool useK2PGTID = !ignoreK2PGTID && writeRequest->k2pgtid_column_value;
+        bool useK2PGTID = !ignoreK2PGTID && writeRequest->k2pgctid_column_value;
 
-        K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, k2pgtid={}, record={}", ignoreK2PGTID, writeRequest->k2pgtid_column_value, record);
+        K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, k2pgctid={}, record={}", ignoreK2PGTID, writeRequest->k2pgctid_column_value, record);
 
         // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
@@ -725,7 +725,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
         // UDPATE and DELETE only, get the cached key record
         k2::dto::SKVRecord keyRecord{};
         if (useK2PGTID) {
-            keyRecord = K2PGTIDToRecord(record.collectionName, record.schema, writeRequest->k2pgtid_column_value);
+            keyRecord = K2PGTIDToRecord(record.collectionName, record.schema, writeRequest->k2pgctid_column_value);
         }
 
         // populate the data, fieldsForUpdate is only relevant for UPDATE
@@ -735,7 +735,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         k2::Status writeStatus;
 
-        // For DELETE we need to use the key record we got from k2pgtid if it exists,
+        // For DELETE we need to use the key record we got from k2pgctid if it exists,
         // not the record generated from column values
         if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE &&
             useK2PGTID) {
@@ -908,30 +908,30 @@ std::string K2Adapter::SerializeSKVRecordToString(k2::dto::SKVRecord& record) {
 
 k2::dto::SKVRecord K2Adapter::K2PGTIDToRecord(const std::string& collection,
                                       std::shared_ptr<k2::dto::Schema> schema,
-                                      std::shared_ptr<BindVariable> k2pgtid_column_value) {
-    if (k2pgtid_column_value == nullptr || k2pgtid_column_value->expr == nullptr) {
+                                      std::shared_ptr<BindVariable> k2pgctid_column_value) {
+    if (k2pgctid_column_value == nullptr || k2pgctid_column_value->expr == nullptr) {
         return k2::dto::SKVRecord();
     }
 
-    if (!k2pgtid_column_value->expr->is_constant()) {
-        K2LOG_W(log::k2Adapter, "k2pgtid_column_value value is not a constant: {}", *k2pgtid_column_value->expr);
-        throw std::invalid_argument("Non value type in k2pgtid_column_value");
+    if (!k2pgctid_column_value->expr->is_constant()) {
+        K2LOG_W(log::k2Adapter, "k2pgctid_column_value value is not a constant: {}", *k2pgctid_column_value->expr);
+        throw std::invalid_argument("Non value type in k2pgctid_column_value");
     }
 
-    PgConstant *pg_const = static_cast<PgConstant *>(k2pgtid_column_value->expr);
+    PgConstant *pg_const = static_cast<PgConstant *>(k2pgctid_column_value->expr);
     SqlValue *value = pg_const->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
-        K2LOG_W(log::k2Adapter, "k2pgtid_column_value value is not a Slice");
-        throw std::invalid_argument("k2pgtid_column_value value is not a Slice");
+        K2LOG_W(log::k2Adapter, "k2pgctid_column_value value is not a Slice");
+        throw std::invalid_argument("k2pgctid_column_value value is not a Slice");
     }
 
-    std::string& k2pgtid = value->data_.slice_val_;
+    std::string& k2pgctid = value->data_.slice_val_;
 
     k2::dto::SKVRecord::Storage storage{};
     // Wrap the string we will return in a non-owning Binary, so we can read into it without
     // an extra copy. We are using the payload's serialization mechanism without giving the
     // payload ownership of the data.
-    k2::Binary binary(k2pgtid.data(), k2pgtid.size(), seastar::deleter());
+    k2::Binary binary(k2pgctid.data(), k2pgctid.size(), seastar::deleter());
     k2::Payload payload{};
     payload.appendBinary(std::move(binary));
     payload.seek(0);
@@ -947,12 +947,12 @@ k2::dto::SKVRecord K2Adapter::K2PGTIDToRecord(const std::string& collection,
 
 std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
     auto start = k2::Clock::now();
-    // either use the virtual row id defined in k2pgtid_column_value field
+    // either use the virtual row id defined in k2pgctid_column_value field
     // if it has been set or calculate the row id based on primary key values
     // in key_column_values in the request
 
-    if (request->k2pgtid_column_value) {
-        return K2PGTIDToString(request->k2pgtid_column_value);
+    if (request->k2pgctid_column_value) {
+        return K2PGTIDToString(request->k2pgctid_column_value);
     }
 
     auto [record, status] = MakeSKVRecordWithKeysSerialized(*request, false);
@@ -1060,7 +1060,7 @@ std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized
     k2::dto::SKVRecord record(request.collection_name, schema);
 
     if (existYbctids && !ignoreK2PGTID) {
-        K2LOG_V(log::k2Adapter, "Serializing for k2pgtid");
+        K2LOG_V(log::k2Adapter, "Serializing for k2pgctid");
         // Using a pre-stored and pre-serialized key, just need to skip key fields
         // Note, not using range keys for SQL
         for (size_t i=0; i < schema->partitionKeyFields.size(); ++i) {
@@ -1131,21 +1131,21 @@ std::vector<uint32_t> K2Adapter::SerializeSKVValueFields(k2::dto::SKVRecord& rec
     return fieldsForUpdate;
 }
 
-std::string K2Adapter::K2PGTIDToString(std::shared_ptr<BindVariable> k2pgtid_column_value) {
-    if (k2pgtid_column_value == nullptr || k2pgtid_column_value->expr == nullptr) {
+std::string K2Adapter::K2PGTIDToString(std::shared_ptr<BindVariable> k2pgctid_column_value) {
+    if (k2pgctid_column_value == nullptr || k2pgctid_column_value->expr == nullptr) {
         return "";
     }
 
-    if (!k2pgtid_column_value->expr->is_constant()) {
-        K2LOG_W(log::k2Adapter, "k2pgtid_column_value value is not a constant");
-        throw std::invalid_argument("Non value type in k2pgtid_column_value");
+    if (!k2pgctid_column_value->expr->is_constant()) {
+        K2LOG_W(log::k2Adapter, "k2pgctid_column_value value is not a constant");
+        throw std::invalid_argument("Non value type in k2pgctid_column_value");
     }
 
-    PgConstant *pg_const = static_cast<PgConstant *>(k2pgtid_column_value->expr);
+    PgConstant *pg_const = static_cast<PgConstant *>(k2pgctid_column_value->expr);
     SqlValue *value = pg_const->getValue();
     if (value->type_ != SqlValue::ValueType::SLICE) {
-        K2LOG_W(log::k2Adapter, "k2pgtid_column_value value is not a Slice");
-        throw std::invalid_argument("k2pgtid_column_value value is not a Slice");
+        K2LOG_W(log::k2Adapter, "k2pgctid_column_value value is not a Slice");
+        throw std::invalid_argument("k2pgctid_column_value value is not a Slice");
     }
 
     return value->data_.slice_val_;

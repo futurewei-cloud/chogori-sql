@@ -64,7 +64,7 @@ typedef struct HeapTupleData
 	uint32		t_len;			/* length of *t_data */
 	ItemPointerData t_self;		/* SelfItemPointer */
 	Oid			t_tableOid;		/* table the tuple came from */
-	Datum 		t_k2pgtid;		/* virtual column k2pgtid */
+	Datum 		t_k2pgctid;		/* virtual column k2pgctid */
 #define FIELDNO_HEAPTUPLEDATA_DATA 3
 	HeapTupleHeader t_data;		/* -> tuple header and data */
 } HeapTupleData;
@@ -87,7 +87,7 @@ extern void HeapTupleHeaderAdjustCmax(HeapTupleHeader tup,
 /* Prototype for HeapTupleHeader accessors in heapam.c */
 extern TransactionId HeapTupleGetUpdateXid(HeapTupleHeader tuple);
 
-/* Copy k2pgtid from a source tuple to a new / destination tuple */
+/* Copy k2pgctid from a source tuple to a new / destination tuple */
 #define HEAPTUPLE_COPY_K2PGTID(src, dest)                            \
     do {                                                            \
         if (IsK2PgEnabled()) {                                  \

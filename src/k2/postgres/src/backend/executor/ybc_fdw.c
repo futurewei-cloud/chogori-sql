@@ -1775,7 +1775,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 			slot = ExecStoreTuple(tuple, slot, InvalidBuffer, false);
 
 			/* Setup special columns in the slot */
-			slot->tts_k2pgtid = PointerGetDatum(syscols.k2pgtid);
+			slot->tts_k2pgctid = PointerGetDatum(syscols.k2pgctid);
 		}
 		else
 		{

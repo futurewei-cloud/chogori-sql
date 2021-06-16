@@ -114,7 +114,7 @@ K2PgDataTypeFromOidMod(int attnum, Oid type_id)
 			case MaxTransactionIdAttributeNumber: /* xmax */
 				type_id = XIDOID;
 				break;
-			case YBTupleIdAttributeNumber:            /* k2pgtid */
+			case YBTupleIdAttributeNumber:            /* k2pgctid */
 			case YBIdxBaseTupleIdAttributeNumber:     /* ybidxbasectid */
 			case YBUniqueIdxKeySuffixAttributeNumber: /* ybuniqueidxkeysuffix */
 				type_id = BYTEAOID;

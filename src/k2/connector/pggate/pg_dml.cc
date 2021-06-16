@@ -164,11 +164,11 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
   //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
   expr_binds_[bind_var] = attr_value;
   if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-    // K2PG logic uses a virtual column k2pgtid as a row id in a string format
+    // K2PG logic uses a virtual column k2pgctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
-    CHECK(attr_value->is_constant()) << "Column k2pgtid must be bound to constant";
-    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgtid_bind_ is set as true");
-    k2pgtid_bind_ = true;
+    CHECK(attr_value->is_constant()) << "Column k2pgctid must be bound to constant";
+    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgctid_bind_ is set as true");
+    k2pgctid_bind_ = true;
   }
 
   return Status::OK();
@@ -275,7 +275,7 @@ Result<bool> PgDml::FetchDataFromServer() {
   if (rowsets_.empty()) {
     K2LOG_D(log::pg, "Result set is empty");
     // Process the secondary index to find the next WHERE condition.
-    //   DML(Table) WHERE k2pgtid IN (SELECT base_k2pgtid FROM IndexTable),
+    //   DML(Table) WHERE k2pgctid IN (SELECT base_k2pgctid FROM IndexTable),
     //   The nested query would return many rows each of which yields different result-set.
     if (!VERIFY_RESULT(ProcessSecondaryIndexRequest(nullptr))) {
       // Return EOF as the nested subquery does not have any more data.
@@ -308,16 +308,16 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
     RETURN_NOT_OK(secondary_index_query_->Exec(exec_params));
   }
 
-  // When INDEX has its own sql_op_, execute it to fetch next batch of k2pgtids which is then used
+  // When INDEX has its own sql_op_, execute it to fetch next batch of k2pgctids which is then used
   // to read data from the main table.
-  std::vector<std::string> k2pgtids;
-  if (!VERIFY_RESULT(secondary_index_query_->FetchBaseRowIdBatch(k2pgtids))) {
-    // No more rows of k2pgtids.
+  std::vector<std::string> k2pgctids;
+  if (!VERIFY_RESULT(secondary_index_query_->FetchBaseRowIdBatch(k2pgctids))) {
+    // No more rows of k2pgctids.
     return false;
   }
 
-  // Update request with the new batch of k2pgtids to fetch the next batch of rows.
-  RETURN_NOT_OK(sql_op_->PopulateDmlByRowIdOps(k2pgtids));
+  // Update request with the new batch of k2pgctids to fetch the next batch of rows.
+  RETURN_NOT_OK(sql_op_->PopulateDmlByRowIdOps(k2pgctids));
   return true;
 }
 
