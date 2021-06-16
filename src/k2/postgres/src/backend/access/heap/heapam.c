@@ -1465,7 +1465,7 @@ heap_beginscan_internal(Relation relation, Snapshot snapshot,
 {
 	HeapScanDesc scan;
 
-	/* YB scan methods should only be used for tables that are handled by YugaByte. */
+	/* K2PG scan methods should only be used for tables that are handled by K2 PgGate. */
 	if (IsK2PgRelation(relation))
 	{
 		return k2pg_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
@@ -4772,7 +4772,7 @@ heap_lock_tuple(Relation relation, HeapTuple tuple,
 	tuple->t_tableOid = RelationGetRelid(relation);
 
 	/*
-	 * This will only be used for non-YB tuples (e.g. Temp tables) so we just
+	 * This will only be used for non-K2PG tuples (e.g. Temp tables) so we just
 	 * need to set the k2pgctid to 0 (NULL) here.
 	 */
 	tuple->t_k2pgctid = (Datum) 0;

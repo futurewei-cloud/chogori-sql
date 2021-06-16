@@ -41,7 +41,7 @@
 #include "pg_k2pg_utils.h"
 
 /*
- * Theoretically, any expression that evaluates to a constant before YB
+ * Theoretically, any expression that evaluates to a constant before K2PG
  * execution.
  * Currently restrict this to a subset of expressions.
  * Note: As enhance pushdown support in DocDB (e.g. expr evaluation) this
@@ -488,9 +488,9 @@ bool K2PgAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 		 * for this function to improperly return true. This is because in the
 		 * case where a table does not have any primary key attributes we will
 		 * use a hidden RowId column which is not exposed to the PG side, so
-		 * both the YB primary key attributes and the input attributes would
+		 * both the K2PG primary key attributes and the input attributes would
 		 * appear empty and would be equal, even though this is incorrect as
-		 * the YB table has the hidden RowId primary key column.
+		 * the K2PG table has the hidden RowId primary key column.
 		 */
 		return false;
 	}
@@ -501,7 +501,7 @@ bool K2PgAllPrimaryKeysProvided(Oid relid, Bitmapset *attrs)
 	K2PgTableDesc  k2pg_tabledesc      = NULL;
 	Bitmapset      *primary_key_attrs  = NULL;
 
-	/* Get primary key columns from YB table desc. */
+	/* Get primary key columns from K2PG table desc. */
 	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = 1; attnum <= natts; attnum++)
 	{

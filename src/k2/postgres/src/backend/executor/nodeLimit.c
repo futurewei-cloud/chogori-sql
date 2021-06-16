@@ -26,7 +26,7 @@
 #include "miscadmin.h"
 #include "nodes/nodeFuncs.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 
 static void recompute_limits(LimitState *node);

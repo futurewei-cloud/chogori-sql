@@ -2343,7 +2343,7 @@ CopyFrom(CopyState cstate)
 	BulkInsertState bistate;
 	uint64		processed = 0;
 	bool		useMultiInsert;
-	bool		useYBMultiInsert;
+	bool		useK2PGMultiInsert;
 	bool		useHeapMultiInsert;
 	int			nBufferedTuples = 0;
 	int			prev_leaf_part_index = -1;
@@ -2603,7 +2603,7 @@ CopyFrom(CopyState cstate)
 		useMultiInsert = true;
 	}
 
-	useYBMultiInsert = useMultiInsert && IsK2PgRelation(resultRelInfo->ri_RelationDesc);
+	useK2PGMultiInsert = useMultiInsert && IsK2PgRelation(resultRelInfo->ri_RelationDesc);
 	useHeapMultiInsert = useMultiInsert && !IsK2PgRelation(resultRelInfo->ri_RelationDesc);
 	if (useHeapMultiInsert)
 	{
@@ -2615,7 +2615,7 @@ CopyFrom(CopyState cstate)
 	 * multi insert (e.g. no triggers), and the relation does not have secondary indices.
 	 */
 	if (K2PgIsNonTxnCopyEnabled() &&
-		useYBMultiInsert &&
+		useK2PGMultiInsert &&
 		!K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 	{
 		useNonTxnInsert = true;

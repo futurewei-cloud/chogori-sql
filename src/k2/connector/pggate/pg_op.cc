@@ -203,12 +203,12 @@ Status TranslateSysCol<int64_t>(int attr_num, std::optional<int64_t> field, PgTu
 template <>
 Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field, PgTuple* pg_tuple) {
     switch (attr_num) {
-        case static_cast<int>(PgSystemAttrNum::kYBTupleId): {
+        case static_cast<int>(PgSystemAttrNum::kPgTupleId): {
             k2::String& val = field.value();
             pg_tuple->Write(&pg_tuple->syscols()->k2pgctid, (const uint8_t*)val.c_str(), val.size());
             break;
         }
-        case static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId): {
+        case static_cast<int>(PgSystemAttrNum::kPgIdxBaseTupleId): {
             k2::String& val = field.value();
             pg_tuple->Write(&pg_tuple->syscols()->ybbasectid, (const uint8_t*)val.c_str(), val.size());
             break;
@@ -310,10 +310,10 @@ void PgOpResult::GetBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
     if (!is_eof())
     {
         for (k2::dto::SKVRecord& record : data_) {
-            std::optional<k2::String> basek2pgctid = record.deserializeField<k2::String>("ybidxbasectid");
+            std::optional<k2::String> basek2pgctid = record.deserializeField<k2::String>("k2pgidxbasectid");
 
             if (!basek2pgctid.has_value()) {
-                CHECK(basek2pgctid.has_value()) << "ybidxbasectid for index row was null";
+                CHECK(basek2pgctid.has_value()) << "k2pgidxbasectid for index row was null";
             }
             baseRowIds.emplace_back(*basek2pgctid);
             ++nextToConsume_;
@@ -611,7 +611,7 @@ Status PgReadOp::PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgctids
     for (const std::string& k2pgctid : k2pgctids) {
         std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(k2pgctid));
         // use one batch for now, could split into multiple batches later for optimization
-        request->k2pgctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kYBTupleId), pg_const.get()));
+        request->k2pgctid_column_values.push_back(std::make_shared<BindVariable>(static_cast<int32_t>(PgSystemAttrNum::kPgTupleId), pg_const.get()));
         // add to the expr list so that it could be released once PgOP is out of scope
         AddExpr(std::move(pg_const));
     }

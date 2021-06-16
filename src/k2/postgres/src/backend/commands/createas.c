@@ -49,7 +49,7 @@
 #include "utils/rls.h"
 #include "utils/snapmgr.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "executor/ybcModifyTable.h"
 #include "pg_k2pg_utils.h"
 

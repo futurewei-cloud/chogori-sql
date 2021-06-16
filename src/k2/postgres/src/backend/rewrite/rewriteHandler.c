@@ -1347,7 +1347,7 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 		 * Emit k2pgctid so that executor can find the row to update or delete from YugaByte tables.
 		 */
 		var = makeVar(parsetree->resultRelation,
-					  YBTupleIdAttributeNumber,
+					  K2PgTupleIdAttributeNumber,
 					  BYTEAOID,
 					  -1,
 					  InvalidOid,

@@ -151,9 +151,9 @@ preprocess_targetlist(PlannerInfo *root)
 
 			if (is_k2pg_relation)
 			{
-				/* Need to fetch YB TID */
+				/* Need to fetch K2PG TID */
 				var = makeVar(rc->rti,
-								YBTupleIdAttributeNumber,
+								K2PgTupleIdAttributeNumber,
 								BYTEAOID,
 								-1,
 								InvalidOid,

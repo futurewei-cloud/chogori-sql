@@ -68,14 +68,14 @@ namespace k2pg
       case PgSystemAttrNum::kMaxTransactionId:
       case PgSystemAttrNum::kMaxCommandId:
       case PgSystemAttrNum::kTableOid:
-      case PgSystemAttrNum::kYBRowId:
-      case PgSystemAttrNum::kYBIdxBaseTupleId:
-      case PgSystemAttrNum::kYBUniqueIdxKeySuffix:
+      case PgSystemAttrNum::kPgRowId:
+      case PgSystemAttrNum::kPgIdxBaseTupleId:
+      case PgSystemAttrNum::kPgUniqueIdxKeySuffix:
         break;
 
-      case PgSystemAttrNum::kYBTupleId:
+      case PgSystemAttrNum::kPgTupleId:
       {
-        int idx = static_cast<int>(PgSystemAttrNum::kYBTupleId);
+        int idx = static_cast<int>(PgSystemAttrNum::kPgTupleId);
         desc_.Init(idx,
                    idx,
                    "k2pgctid",
@@ -93,7 +93,7 @@ namespace k2pg
     bool PgColumn::is_virtual_column()
     {
       // Currently only k2pgctid is a virtual column.
-      return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
+      return attr_num() == static_cast<int>(PgSystemAttrNum::kPgTupleId);
     }
 
     std::shared_ptr<BindVariable> PgColumn::AllocKeyBind(std::shared_ptr<SqlOpWriteRequest> write_req)
@@ -109,7 +109,7 @@ namespace k2pg
     }
 
     std::shared_ptr<BindVariable> PgColumn::AllocKeyBindForRowId(PgStatement *stmt, std::shared_ptr<SqlOpWriteRequest> write_req, std::string row_id) {
-      if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kYBRowId)) {
+      if (is_primary() && attr_num() == static_cast<int>(PgSystemAttrNum::kPgRowId)) {
         const K2PgTypeEntity *string_type = K2PgFindTypeEntity(STRING_TYPE_OID);
         std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(string_type, SqlValue(row_id));
         bind_var_ = std::make_shared<BindVariable>(index(), pg_const.get());
@@ -130,7 +130,7 @@ namespace k2pg
             "Binds for primary columns should have already been allocated by AllocKeyBind()");
 
         K2LOG_V(log::pg, "Allocating binding variable for column name: {}, order: {}, for write request", attr_name(), attr_num());
-        if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
+        if (id() == static_cast<int>(PgSystemAttrNum::kPgTupleId))
         {
           if (write_req->k2pgctid_column_value == nullptr)
           {
@@ -181,7 +181,7 @@ namespace k2pg
             "Binds for primary columns should have already been allocated by AllocKeyBind()");
 
         K2LOG_V(log::pg, "Allocating binding variable for column name: {}, order: {}, for read request", attr_name(), attr_num());
-        if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+        if (id() == static_cast<int>(PgSystemAttrNum::kPgTupleId)) {
           bind_var_ = std::make_shared<BindVariable>(index());
           read_req->k2pgctid_column_values.push_back(bind_var_);
         } else {

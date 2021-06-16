@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------------------------------
  *
  * ybccmds.c
- *        YB commands for creating and altering table structures and settings
+ *        K2PG commands for creating and altering table structures and settings
  *
  * Copyright (c) YugaByte, Inc.
  *
@@ -152,7 +152,7 @@ static void CreateTableAddColumn(K2PgStatement handle,
 																					 is_nulls_first));
 }
 
-/* Utility function to add columns to the YB create statement
+/* Utility function to add columns to the K2PG create statement
  * Columns need to be sent in order first hash columns, then rest of primary
  * key columns, then regular columns.
  */
@@ -181,7 +181,7 @@ static void CreateTableAddColumns(K2PgStatement handle,
 										" '%s' not yet supported",
 										K2PgTypeOidToStr(att->atttypid))));
 					SortByDir order = index_elem->ordering;
-					/* In YB mode, the first column defaults to HASH if it is
+					/* In K2PG mode, the first column defaults to HASH if it is
 					 * not set and its table is not colocated */
 					const bool is_first_key =
 						cell == list_head(primary_key->k2pg_index_params);
@@ -591,7 +591,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 
 	ListCell *lcmd;
 	int col = 1;
-	bool needsYBAlter = false;
+	bool needsK2PgAlter = false;
 
 	foreach(lcmd, stmt->cmds)
 	{
@@ -626,7 +626,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 																										colDef->is_not_null));
 				++col;
 				ReleaseSysCache(typeTuple);
-				needsYBAlter = true;
+				needsK2PgAlter = true;
 
 				break;
 			}
@@ -642,7 +642,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 				}
 
 				HandleK2PgStatus(PgGate_AlterTableDropColumn(handle, cmd->name));
-				needsYBAlter = true;
+				needsK2PgAlter = true;
 
 				break;
 			}
@@ -693,7 +693,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 		}
 	}
 
-	if (!needsYBAlter)
+	if (!needsK2PgAlter)
 	{
 		return NULL;
 	}

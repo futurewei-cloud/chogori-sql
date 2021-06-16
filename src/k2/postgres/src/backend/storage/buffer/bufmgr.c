@@ -598,7 +598,7 @@ ReadBuffer(Relation reln, BlockNumber blockNum)
 }
 
 /* Only here for sequence support */
-extern HeapTuple YBReadSequenceTuple(Relation seqrel);
+extern HeapTuple K2PgReadSequenceTuple(Relation seqrel);
 
 /*
  * ReadBufferExtended -- returns a buffer containing the requested
@@ -664,7 +664,7 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
   if (RelationGetForm(reln)->relkind == RELKIND_SEQUENCE)
   {
     /* Get a sequence tuple */
-    HeapTuple seqtuple = YBReadSequenceTuple(reln);
+    HeapTuple seqtuple = K2PgReadSequenceTuple(reln);
 
     /* Create an empty buffer to initialize with the sequence data */
     buf = ReadBuffer_common(reln->rd_smgr, reln->rd_rel->relpersistence,

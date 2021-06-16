@@ -69,7 +69,7 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 
-// YB includes
+// K2PG includes
 #include "pg_k2pg_utils.h"
 
 /* State shared by transformCreateStmt and its subroutines */
@@ -384,7 +384,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	stmt->constraints = cxt.ckconstraints;
 
 	/*
-	 * If YB is enabled, add the index constraints to the statement as they
+	 * If K2PG is enabled, add the index constraints to the statement as they
 	 * might be passed down to YugaByte (e.g. as primary key).
 	 */
 	if (IsK2PgEnabled())
@@ -3116,7 +3116,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					ColumnDef  *def = castNode(ColumnDef, cmd->def);
 
 					/*
-					 * Report an error for constraint types which YB does not yet support in
+					 * Report an error for constraint types which K2PG does not yet support in
 					 * ALTER TABLE ... ADD COLUMN statements.
 					 */
 					ListCell *clist;

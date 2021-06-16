@@ -248,7 +248,7 @@ static void ri_ReportViolation(const RI_ConstraintInfo *riinfo,
 				   HeapTuple violator, TupleDesc tupdesc,
 				   int queryno) pg_attribute_noreturn();
 
-static void BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx,
+static void BuildPgTupleId(Relation pk_rel, Relation fk_rel, Relation idx,
 					const RI_ConstraintInfo *riinfo, HeapTuple tup, void **data, int64_t *bytes);
 
 
@@ -290,7 +290,7 @@ RI_FKey_check(TriggerData *trigdata)
 		new_row_buf = trigdata->tg_trigtuplebuf;
 	}
 
-	/* For YB relations visibility will be handled by DocDB (storage layer). */
+	/* For K2PG relations visibility will be handled by K2 Platform (storage layer). */
 	if (!IsK2PgRelation(trigdata->tg_relation))
 	{
 		/*
@@ -399,7 +399,7 @@ RI_FKey_check(TriggerData *trigdata)
 	}
 
 	/*
-	 * Skip foreign key check if referenced row is present in YB cache.
+	 * Skip foreign key check if referenced row is present in K2PG cache.
 	 */
 	if (IsK2PgRelation(pk_rel))
 	{
@@ -414,7 +414,7 @@ RI_FKey_check(TriggerData *trigdata)
 					idx_rel->rd_index->indrelid : riinfo->conindid;
 		}
 
-		BuildYBTupleId(
+		BuildPgTupleId(
 			pk_rel /* Primary table */,
 			fk_rel /* Reference table */,
 			ref_table_id == pk_rel->rd_id ? pk_rel : idx_rel /* Reference index */,
@@ -2691,7 +2691,7 @@ ri_PerformCheck(const RI_ConstraintInfo *riinfo,
 }
 
 static void
-BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
+BuildPgTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 				const RI_ConstraintInfo *riinfo, HeapTuple tup,
 				void **value, int64_t *bytes)
 {
@@ -2708,7 +2708,7 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
 	const int16 *attnums = riinfo->fk_attnums;
-	AttrNumber minattr = YBSystemFirstLowInvalidAttributeNumber + 1;
+	AttrNumber minattr = K2PgSystemFirstLowInvalidAttributeNumber + 1;
 
 	Bitmapset *pkey = GetFullK2PgTablePrimaryKey(idx_rel);
 	const int nattrs = bms_num_members(pkey);
@@ -2736,21 +2736,21 @@ BuildYBTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 
 	if (RelationGetRelid(idx_rel) != RelationGetRelid(pk_rel))
 	{
-		/* Reference key is based on unique index, fill in YBUniqueIdxKeySuffixAttributeNumber */
+		/* Reference key is based on unique index, fill in K2PgUniqueIdxKeySuffixAttributeNumber */
 		col = bms_next_member(pkey, col);
 		next_attr->attr_num = col + minattr;
-		next_attr->type_entity = K2PgDataTypeFromOidMod(YBUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
+		next_attr->type_entity = K2PgDataTypeFromOidMod(K2PgUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
 
 		/*
 		 * Since foreign key checks are only done for non-null columns,
-		 * YBUniqueIdx will always be NULL.
+		 * K2PgUniqueIdx will always be NULL.
 		 */
 		next_attr->is_null = true;
 	}
 
-	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(k2pg_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(PgGate_DmlBuildPgTupleId(k2pg_stmt, attrs, nattrs, &tuple_id));
 
-	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(YBTupleIdAttributeNumber, BYTEAOID);
+	const K2PgTypeEntity *type_entity = K2PgDataTypeFromOidMod(K2PgTupleIdAttributeNumber, BYTEAOID);
 	type_entity->datum_to_k2pg(tuple_id, value, bytes);
 
 	pfree(attrs);

@@ -18,7 +18,7 @@
 #ifndef K2PG_PQCOMM_EXTENSIONS_H
 #define K2PG_PQCOMM_EXTENSIONS_H
 
-extern void YBSaveOutputBufferPosition(bool sending_non_restartable_data);
-extern void YBRestoreOutputBufferPosition(void);
+extern void K2PgSaveOutputBufferPosition(bool sending_non_restartable_data);
+extern void K2PgRestoreOutputBufferPosition(void);
 
 #endif // K2PG_PQCOMM_EXTENSIONS_H

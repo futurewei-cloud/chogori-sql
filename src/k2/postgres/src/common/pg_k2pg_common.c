@@ -102,7 +102,7 @@ void K2PgSetInitDbModeEnvVar()
 }
 
 bool
-K2PgIsUsingYBParser()
+IsUsingK2PGParser()
 {
 	static int cached_value = -1;
 	if (cached_value == -1) {

@@ -114,12 +114,12 @@ enum SysCacheIdentifier
 #define SysCacheSize (USERMAPPINGUSERSERVER + 1)
 };
 
-extern Bitmapset *YBSysTablePrimaryKey(Oid relid);
+extern Bitmapset *K2PgSysTablePrimaryKey(Oid relid);
 
 /* Used in IsK2PgEnabled() mode only */
-extern void YBSetSysCacheTuple(Relation rel, HeapTuple tup);
-extern void YBPreloadCatalogCaches(void);
-extern void YBPreloadCatalogCache(int cache_id, int idx_cache_id);
+extern void K2PgSetSysCacheTuple(Relation rel, HeapTuple tup);
+extern void K2PgPreloadCatalogCaches(void);
+extern void K2PgPreloadCatalogCache(int cache_id, int idx_cache_id);
 
 extern void InitCatalogCache(void);
 extern void InitCatalogCachePhase2(void);

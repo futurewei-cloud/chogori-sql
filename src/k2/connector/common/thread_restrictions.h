@@ -61,7 +61,7 @@ namespace k2pg {
 // if you put them as close to the disk access as possible, at the
 // lowest level.  This rule is simple to follow and helps catch all
 // callers.  For example, if your function GoDoSomeBlockingDiskCall()
-// only calls other functions in YB and doesn't access the underlying
+// only calls other functions in K2PG and doesn't access the underlying
 // disk, you should go add the AssertIOAllowed checks in the helper functions.
 class ThreadRestrictions {
  public:

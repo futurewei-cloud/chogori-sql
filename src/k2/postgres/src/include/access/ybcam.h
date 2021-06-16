@@ -60,7 +60,7 @@ typedef struct K2PgScanDescData
 {
 #define K2PG_MAX_SCAN_KEYS (INDEX_MAX_KEYS * 2) /* A pair of lower/upper bounds per column max */
 
-	/* The handle for the internal YB Select statement. */
+	/* The handle for the internal K2PG Select statement. */
 	K2PgStatement handle;
 	ResourceOwner stmt_owner;
 	bool is_exec_done;
@@ -85,7 +85,7 @@ typedef struct K2PgScanDescData
 	 *   "k2pg_exec_params" from Postgres IndexScan and kept the info in this attribute.
 	 *
 	 * - K2PG-index-scan in-turn will passes this attribute to PgGate to control the index-scan
-	 *   execution in YB tablet server.
+	 *   execution in K2 node.
 	 */
 	K2PgExecParameters *exec_params;
 } K2PgScanDescData;
@@ -93,8 +93,8 @@ typedef struct K2PgScanDescData
 typedef struct K2PgScanDescData *K2PgScanDesc;
 
 /*
- * Access to YB-stored system catalogs (mirroring API from genam.c)
- * We ignore the index id and always do a regular YugaByte scan (Postgres
+ * Access to K2-stored system catalogs (mirroring API from genam.c)
+ * We ignore the index id and always do a regular K2PG scan (Postgres
  * would do either heap scan or index scan depending on the params).
  */
 extern SysScanDesc k2pg_systable_beginscan(Relation relation,
@@ -134,7 +134,7 @@ IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bo
 
 void k2pgEndScan(K2PgScanDesc ybScan);
 
-/* Number of rows assumed for a YB table if no size estimates exist */
+/* Number of rows assumed for a K2PG table if no size estimates exist */
 #define K2PG_DEFAULT_NUM_ROWS  1000
 
 #define K2PG_SINGLE_ROW_SELECTIVITY	(1.0 / K2PG_DEFAULT_NUM_ROWS)

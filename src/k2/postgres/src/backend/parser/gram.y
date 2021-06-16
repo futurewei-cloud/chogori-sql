@@ -210,7 +210,7 @@ static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *no_inherit, core_yyscan_t yyscanner);
 static Node *makeRecursiveViewSelect(char *relname, List *aliases, Node *query);
 
-#define YBINDEXELEM_EXPR_TO_COLREF(idxelem, expr, parserloc) \
+#define K2PG_INDEXELEM_EXPR_TO_COLREF(idxelem, expr, parserloc) \
 	do { \
 		ColumnRef *col = (ColumnRef *)(expr); \
 		if (col->type != T_ColumnRef || list_length(col->fields) != 1) \
@@ -8007,7 +8007,7 @@ k2pg_index_elem: index_elem
 					$$ = $1;
 					if ($$->expr && $$->expr->type == T_ColumnRef)
 					{
-						YBINDEXELEM_EXPR_TO_COLREF($$, $$->expr, @1);
+						K2PG_INDEXELEM_EXPR_TO_COLREF($$, $$->expr, @1);
 					}
 				}
 			| '(' expr_list ')' opt_collate opt_class opt_k2pg_index_sort_order opt_nulls_order
@@ -8017,7 +8017,7 @@ k2pg_index_elem: index_elem
 					ListCell *lc;
 					foreach(lc, $2)
 					{
-						YBINDEXELEM_EXPR_TO_COLREF($$, lfirst(lc), @2);
+						K2PG_INDEXELEM_EXPR_TO_COLREF($$, lfirst(lc), @2);
 					}
 					$$->indexcolname = NULL;
 					$$->collation = $4;
@@ -17217,7 +17217,7 @@ k2pg_not_support_signal(int pos, core_yyscan_t yyscanner, const char *msg, int i
 	static int use_k2pg_parser = -1;
 	if (use_k2pg_parser == -1)
 	{
-		use_k2pg_parser = K2PgIsUsingYBParser();
+		use_k2pg_parser = IsUsingK2PGParser();
 	}
 
 	if (use_k2pg_parser)
@@ -17238,7 +17238,7 @@ k2pg_not_support_in_templates(int pos, core_yyscan_t yyscanner, const char *msg)
 	static int restricted = -1;
 	if (restricted == -1)
 	{
-		restricted = K2PgIsUsingYBParser() && K2PgIsPreparingTemplates();
+		restricted = IsUsingK2PGParser() && K2PgIsPreparingTemplates();
 	}
 
 	if (restricted)
@@ -17261,7 +17261,7 @@ beta_features_enabled()
 static void
 check_beta_feature(int pos, core_yyscan_t yyscanner, const char *flag, const char *feature)
 {
-	if (K2PgIsUsingYBParser() && !(beta_features_enabled() || K2PgIsEnvVarTrue(flag)))
+	if (IsUsingK2PGParser() && !(beta_features_enabled() || K2PgIsEnvVarTrue(flag)))
 	{
 		int signal_level = K2PgUnsupportedFeatureSignalLevel();
 		ereport(signal_level,

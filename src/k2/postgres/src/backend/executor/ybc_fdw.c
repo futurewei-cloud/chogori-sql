@@ -56,7 +56,7 @@
 #include "utils/typcache.h"
 #include "utils/fmgroids.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "commands/dbcommands.h"
 #include "catalog/pg_operator.h"
 #include "catalog/ybctype.h"
@@ -79,7 +79,7 @@
 
 typedef struct YbFdwPlanState
 {
-	/* Bitmap of attribute (column) numbers that we need to fetch from YB. */
+	/* Bitmap of attribute (column) numbers that we need to fetch from K2. */
 	Bitmapset *target_attrs;
 	/*
 	 * Restriction clauses, divided into safe and unsafe to pushdown subsets.
@@ -157,7 +157,7 @@ typedef struct foreign_expr_cxt {
  */
 typedef struct YbFdwExecState
 {
-	/* The handle for the internal YB Select statement. */
+	/* The handle for the internal K2PG Select statement. */
 	K2PgStatement	handle;
 	ResourceOwner	stmt_owner;
 
@@ -1439,7 +1439,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 					/* Nothing to do in YugaByte: Postgres will handle this. */
 					break;
 				case ObjectIdAttributeNumber:
-				case YBTupleIdAttributeNumber:
+				case K2PgTupleIdAttributeNumber:
 				default: /* Regular column: attrNum > 0*/
 				{
 					TargetEntry *target = makeNode(TargetEntry);
@@ -1454,10 +1454,10 @@ ybcGetForeignPlan(PlannerInfo *root,
 	return make_foreignscan(tlist,  /* target list */
 	                        scan_clauses,  /* ideally we should use local_exprs here, still use the whole list in case the FDW cannot process some remote exprs*/
 	                        scan_relid,
-	                        remote_exprs,    /* expressions YB may evaluate */
-	                        target_attrs,  /* fdw_private data for YB */
-	                        NIL,    /* custom YB target list (none for now) */
-	                        NIL,    /* custom YB target list (none for now) */
+	                        remote_exprs,    /* expressions K2 may evaluate */
+	                        target_attrs,  /* fdw_private data for K2 */
+	                        NIL,    /* custom K2 target list (none for now) */
+	                        NIL,    /* custom K2 target list (none for now) */
 	                        outer_plan);
 }
 
@@ -1466,7 +1466,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 
 /*
  * ybcBeginForeignScan
- *		Initiate access to the Yugabyte by allocating a Select handle.
+ *		Initiate access to the K2PG by allocating a Select handle.
  */
 static void
 ybcBeginForeignScan(ForeignScanState *node, int eflags)
@@ -1481,7 +1481,7 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
 	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
 		return;
 
-	/* Allocate and initialize YB scan state. */
+	/* Allocate and initialize K2PG scan state. */
 	k2pg_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
 
 	node->fdw_state = (void *) k2pg_state;

@@ -150,9 +150,9 @@ Status PgDmlRead::BindColumnCondEq(int attr_num, PgExpr *attr_value) {
     AddExpr(std::move(eq_opr));
   }
 
-  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kPgTupleId)) {
     CHECK(attr_value->is_constant()) << "Column k2pgctid must be bound to constant";
-    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgctid_bind_ is set as true");
+    K2LOG_D(log::pg, "kPgTupleId was bound and k2pgctid_bind_ is set as true");
     k2pgctid_bind_ = true;
   }
 
@@ -166,7 +166,7 @@ Status PgDmlRead::BindColumnCondBetween(int attr_num, PgExpr *attr_value, PgExpr
     return secondary_index_query_->BindColumnCondBetween(attr_num, attr_value, attr_value_end);
   }
 
-  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kYBTupleId))
+  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kPgTupleId))
     << "Operator BETWEEN cannot be applied to ROWID";
 
   // Find column.
@@ -224,7 +224,7 @@ Status PgDmlRead::BindColumnCondIn(int attr_num, int n_attr_values, PgExpr **att
     return secondary_index_query_->BindColumnCondIn(attr_num, n_attr_values, attr_values);
   }
 
-  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kYBTupleId))
+  DCHECK(attr_num != static_cast<int>(PgSystemAttrNum::kPgTupleId))
     << "Operator IN cannot be applied to ROWID";
 
   throw std::logic_error("K2 does not support set operator yet");
@@ -234,7 +234,7 @@ Status PgDmlRead::PopulateAttrName(PgExpr *pg_expr) {
   switch(pg_expr->opcode()) {
     case PgExpr::Opcode::PG_EXPR_COLREF: {
       PgColumnRef* col_ref = (PgColumnRef *)(pg_expr);
-      DCHECK(col_ref->attr_num() != static_cast<int>(PgSystemAttrNum::kYBTupleId)) << "PgColumnRef cannot be applied to ROWID";
+      DCHECK(col_ref->attr_num() != static_cast<int>(PgSystemAttrNum::kPgTupleId)) << "PgColumnRef cannot be applied to ROWID";
       PgColumn *col = VERIFY_RESULT(bind_desc_->FindColumn(col_ref->attr_num()));
       col_ref->set_attr_name(col->attr_name());
       K2LOG_D(log::pg, "Set column name as {} for {}", col_ref->attr_name(), col_ref->attr_num());

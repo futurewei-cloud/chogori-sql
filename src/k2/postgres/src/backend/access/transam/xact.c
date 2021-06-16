@@ -190,9 +190,9 @@ typedef struct TransactionStateData
 	bool		didLogXid;		/* has xid been included in WAL record? */
 	int			parallelModeLevel;	/* Enter/ExitParallelMode counter */
 	struct TransactionStateData *parent;	/* back link to parent */
-	bool		ybDataSent; /* Whether some tuples have been transmitted to
+	bool		k2pgDataSent; /* Whether some tuples have been transmitted to
 				             * frontend as part of this execution */
-	bool		isYBTxnWithPostgresRel; /* does the current transaction
+	bool		isK2PgTxnWithPostgresRel; /* does the current transaction
 				                         * operate on a postgres table? */
 } TransactionStateData;
 
@@ -225,8 +225,8 @@ static TransactionStateData TopTransactionStateData = {
 	false,						/* didLogXid */
 	0,							/* parallelModeLevel */
 	NULL,						/* link to parent state block */
-	false,						/* ybDataSent */
-	false						/* isYBTxnWithPostgresRel */
+	false,						/* k2pgDataSent */
+	false						/* isK2PgTxnWithPostgresRel */
 };
 
 /*
@@ -997,22 +997,22 @@ ForceSyncCommit(void)
  * Mark current transaction as having sent some data back to the client.
  * This prevents automatic transaction restart.
  */
-void YBMarkDataSent(void)
+void K2PgMarkDataSent(void)
 {
 	TransactionState s = CurrentTransactionState;
-	s->ybDataSent = true;
+	s->k2pgDataSent = true;
 }
 
 /*
  * Whether some data has been transmitted to frontend as part of this transaction.
  */
-bool YBIsDataSent(void)
+bool K2PgIsDataSent(void)
 {
 	// Note: we don't support nested transactions (savepoints) yet,
 	// but once we do - we have to make sure this works as intended.
 	TransactionState s = CurrentTransactionState;
 	// Ignoring "idle" transaction state, a leftover from a previous transaction
-	return s->blockState != TBLOCK_DEFAULT && s->ybDataSent;
+	return s->blockState != TBLOCK_DEFAULT && s->k2pgDataSent;
 }
 
 /* ----------------------------------------------------------------
@@ -1843,14 +1843,14 @@ AtSubCleanup_Memory(void)
  */
 
 /*
- * Do a Yugabyte-specific initialization of transaction when it starts,
+ * Do a K2PG-specific initialization of transaction when it starts,
  * called as a part of StartTransaction
  */
 static void
-YBStartTransaction(TransactionState s)
+K2PgStartTransaction(TransactionState s)
 {
-	s->isYBTxnWithPostgresRel = !IsK2PgEnabled();
-	s->ybDataSent             = false;
+	s->isK2PgTxnWithPostgresRel = !IsK2PgEnabled();
+	s->k2pgDataSent             = false;
 
 	if (K2PgTransactionsEnabled())
 	{
@@ -2009,7 +2009,7 @@ StartTransaction(void)
 	 */
 	s->state = TRANS_INPROGRESS;
 
-	YBStartTransaction(s);
+	K2PgStartTransaction(s);
 
 	ShowTransactionState("StartTransaction");
 }
@@ -2068,7 +2068,7 @@ CommitTransaction(void)
 	/*
 	 * Firing the triggers may abort current transaction.
 	 * At this point all the them has been fired already.
-	 * It is time to commit YB transaction.
+	 * It is time to commit K2PG transaction.
 	 * Postgres transaction can be aborted at this point without an issue
 	 * in case of K2PgCommitTransaction failure.
 	 */
@@ -2863,13 +2863,13 @@ void
 SetTxnWithPGRel(void)
 {
 	TransactionState s = CurrentTransactionState;
-	s->isYBTxnWithPostgresRel = true;
+	s->isK2PgTxnWithPostgresRel = true;
 }
 
 bool
 IsCurrentTxnWithPGRel(void)
 {
-	return CurrentTransactionState->isYBTxnWithPostgresRel;
+	return CurrentTransactionState->isK2PgTxnWithPostgresRel;
 }
 
 /*
@@ -5241,12 +5241,12 @@ ShowTransactionStateRec(const char *str, TransactionState s)
 	/* use ereport to suppress computation if msg will not be printed */
 	ereport(DEBUG5,
 			(errmsg_internal("%s(%d) name: %s; blockState: %s; "
-							 "state: %s, ybDataSent: %s, xid/subid/cid: %u/%u/%u%s%s",
+							 "state: %s, k2pgDataSent: %s, xid/subid/cid: %u/%u/%u%s%s",
 							 str, s->nestingLevel,
 							 PointerIsValid(s->name) ? s->name : "unnamed",
 							 BlockStateAsString(s->blockState),
 							 TransStateAsString(s->state),
-							 s->ybDataSent ? "Y" : "N",
+							 s->k2pgDataSent ? "Y" : "N",
 							 (unsigned int) s->transactionId,
 							 (unsigned int) s->subTransactionId,
 							 (unsigned int) currentCommandId,

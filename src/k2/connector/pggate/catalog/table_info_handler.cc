@@ -935,8 +935,8 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table
         }
         const ColumnSchema& col_schema = index_schema.column(col_idx);
         int32_t base_column_id = -1;
-        if (col_schema.name().compare("ybuniqueidxkeysuffix") != 0 && col_schema.name().compare("ybidxbasectid") != 0) {
-            // skip checking "ybuniqueidxkeysuffix" and "ybidxbasectid" on base table, which only exist on index table
+        if (col_schema.name().compare("k2pguniqueidxkeysuffix") != 0 && col_schema.name().compare("k2pgidxbasectid") != 0) {
+            // skip checking "k2pguniqueidxkeysuffix" and "k2pgidxbasectid" on base table, which only exist on index table
             std::pair<bool, ColumnId> pair = base_table_info->schema().FindColumnIdByName(col_schema.name());
             if (!pair.first) {
                 throw std::runtime_error("Cannot find column id in base table with name " + col_schema.name());

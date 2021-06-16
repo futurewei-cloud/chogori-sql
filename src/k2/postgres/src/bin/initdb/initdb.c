@@ -334,7 +334,7 @@ static bool IsEnvSet(const char* name)
 	return env_var_value != NULL && strcmp(env_var_value, "1") == 0;
 }
 
-static bool IsYugaByteGlobalClusterInitdb()
+static bool IsK2PgGlobalClusterInitdb()
 {
 	return IsEnvSet("K2PG_ENABLED_IN_POSTGRES");
 }
@@ -1330,7 +1330,7 @@ setup_config(void)
 	free(conflines);
 
 	/* Do not create pg_hba.conf in chogori-sql */
-	if (!IsYugaByteGlobalClusterInitdb() && !IsYugaByteLocalNodeInitdb()) {
+	if (!IsK2PgGlobalClusterInitdb() && !IsYugaByteLocalNodeInitdb()) {
 		/* pg_hba.conf */
 
 		conflines = readfile(hba_file);
@@ -1726,7 +1726,7 @@ setup_depend(FILE *cmdfd)
 	for (line = pg_depend_setup; *line != NULL; line++)
 	{
 		/* Skip VACUUM commands in YugaByte mode */
-		if (IsYugaByteGlobalClusterInitdb() && strncmp(*line, "VACUUM", 6) == 0)
+		if (IsK2PgGlobalClusterInitdb() && strncmp(*line, "VACUUM", 6) == 0)
 			continue;
 		PG_CMD_PUTS(*line);
 	}
@@ -1824,7 +1824,7 @@ setup_collation(FILE *cmdfd)
 				   BOOTSTRAP_SUPERUSERID, COLLPROVIDER_LIBC, PG_UTF8);
 
 	/* Now import all collations we can find in the operating system */
-	if (!IsYugaByteGlobalClusterInitdb())
+	if (!IsK2PgGlobalClusterInitdb())
 		PG_CMD_PUTS("SELECT pg_import_system_collations('pg_catalog');\n\n");
 }
 
@@ -2150,11 +2150,10 @@ make_template0(FILE *cmdfd)
 	};
 
 	/*
-	 * Skip some commands in YB mode as we do not need/support them as of
-	 * 14/12/2018.
+	 * Skip some commands in K2PG mode as we do not need/support them
 	 * TODO revert this change when we do support it.
 	 */
-	if (IsYugaByteGlobalClusterInitdb())
+	if (IsK2PgGlobalClusterInitdb())
 	{
 		PG_CMD_PUTS(template0_setup[0]);
 		PG_CMD_PUTS(template0_setup[2]);
@@ -2425,15 +2424,15 @@ setlocales(void)
 {
 	char	   *canonname;
 
-	/* Use LC_COLLATE=C with everything else as en_US.UTF-8 as default locale in YB mode. */
+	/* Use LC_COLLATE=C with everything else as en_US.UTF-8 as default locale in K2PG mode. */
 	/* This is because as of 06/15/2019 we don't support collation-aware string comparisons, */
 	/* but we still want to support storing UTF-8 strings. */
-	if (!locale && (IsYugaByteLocalNodeInitdb() || IsYugaByteGlobalClusterInitdb())) {
-		const char *kYBDefaultLocaleForSortOrder = "C";
-		const char *kYBDefaultLocaleForEncoding = "en_US.UTF-8";
+	if (!locale && (IsYugaByteLocalNodeInitdb() || IsK2PgGlobalClusterInitdb())) {
+		const char *kPgDefaultLocaleForSortOrder = "C";
+		const char *kPgDefaultLocaleForEncoding = "en_US.UTF-8";
 
-		locale = pg_strdup(kYBDefaultLocaleForEncoding);
-		lc_collate = pg_strdup(kYBDefaultLocaleForSortOrder);
+		locale = pg_strdup(kPgDefaultLocaleForEncoding);
+		lc_collate = pg_strdup(kPgDefaultLocaleForSortOrder);
 		fprintf(
 			stderr,
 			_("In YugabyteDB, setting LC_COLLATE to %s and all other locale settings to %s "
@@ -2759,7 +2758,7 @@ setup_locale_encoding(void)
 void
 setup_data_file_paths(void)
 {
-  if (IsYugaByteGlobalClusterInitdb())
+  if (IsK2PgGlobalClusterInitdb())
     set_input(&bki_file, "k2pg_postgres.bki");
   else
     set_input(&bki_file, "postgres.bki");
@@ -2772,7 +2771,7 @@ setup_data_file_paths(void)
 	set_input(&dictionary_file, "snowball_create.sql");
 	set_input(&info_schema_file, "information_schema.sql");
 	set_input(&features_file, "sql_features.txt");
-	if (IsYugaByteGlobalClusterInitdb())
+	if (IsK2PgGlobalClusterInitdb())
 		set_input(&system_views_file, "k2pg_system_views.sql");
 	else
 		set_input(&system_views_file, "system_views.sql");
@@ -3167,15 +3166,15 @@ initialize_data_directory(void)
 	fflush(stdout);
 	setup_sysviews(cmdfd);
 
-	/* Do not support copy in YB yet */
-	if (!IsYugaByteGlobalClusterInitdb())
+	/* Do not support copy in K2PG yet */
+	if (!IsK2PgGlobalClusterInitdb())
 		setup_description(cmdfd);
 
 	fputs(_("setup_collation ...\n "), stdout);
 	fflush(stdout);
 	setup_collation(cmdfd);
 
-	if (!IsYugaByteGlobalClusterInitdb())
+	if (!IsK2PgGlobalClusterInitdb())
 	{
 		setup_conversion(cmdfd);
 
@@ -3194,9 +3193,9 @@ initialize_data_directory(void)
 	fflush(stdout);
 	load_plpgsql(cmdfd);
 
-	if (!IsYugaByteGlobalClusterInitdb())
+	if (!IsK2PgGlobalClusterInitdb())
 	{
-		/* Do not need to vacuum in YB */
+		/* Do not need to vacuum in K2PG */
 		vacuum_db(cmdfd);
 	}
 
@@ -3223,7 +3222,7 @@ initialize_data_directory(void)
 int
 main(int argc, char *argv[])
 {
-	if (IsYugaByteGlobalClusterInitdb() || IsYugaByteLocalNodeInitdb())
+	if (IsK2PgGlobalClusterInitdb() || IsYugaByteLocalNodeInitdb())
 		K2PgSetInitDbModeEnvVar();
 
 	static struct option long_options[] = {
@@ -3540,11 +3539,11 @@ main(int argc, char *argv[])
 	if (IsYugaByteLocalNodeInitdb())
 		return 0;
 
-	if (authwarning != NULL && !IsYugaByteGlobalClusterInitdb())
+	if (authwarning != NULL && !IsK2PgGlobalClusterInitdb())
 		fprintf(stderr, "%s", authwarning);
 
 	/* In YugaByte mode we only call this indirectly and manage starting the server automatically */
-	if (!IsYugaByteGlobalClusterInitdb())
+	if (!IsK2PgGlobalClusterInitdb())
 	{
 
 		/*

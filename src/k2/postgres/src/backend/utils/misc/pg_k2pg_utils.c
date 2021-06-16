@@ -98,7 +98,7 @@ IsK2PgRelation(Relation relation)
 	CheckIsK2PgSupportedRelationByKind(relkind);
 
 	/* Currently only support regular tables and indexes.
-	 * Temp tables and views are supported, but they are not YB relations. */
+	 * Temp tables and views are supported, but they are not K2PG relations. */
 	return (relkind == RELKIND_RELATION || relkind == RELKIND_INDEX)
 				 && relation->rd_rel->relpersistence != RELPERSISTENCE_TEMP;
 }
@@ -130,7 +130,7 @@ K2PgNeedRetryAfterCacheRefresh(ErrorData *edata)
 AttrNumber K2PgGetFirstLowInvalidAttributeNumber(Relation relation)
 {
 	return IsK2PgRelation(relation)
-	       ? YBFirstLowInvalidAttributeNumber
+	       ? K2PgFirstLowInvalidAttributeNumber
 	       : FirstLowInvalidHeapAttributeNumber;
 }
 
@@ -320,7 +320,7 @@ K2PgInitPostgresBackend(
 	HandleK2PgStatus(K2PgInit(program_name, palloc, cstring_to_text_with_len));
 
 	/*
-	 * Enable "YB mode" for PostgreSQL so that we will initiate a connection
+	 * Enable "K2PG mode" for PostgreSQL so that we will initiate a connection
 	 * to the YugaByte cluster right away from every backend process. We only
 
 	 * do this if this env variable is set, so we can still run the regular
@@ -595,8 +595,8 @@ K2PgGetDatabaseName(Oid relid)
 	 * be initialized during initdb (bootstrap mode).
 	 * For shared rels (e.g. pg_database) we may not have a database id yet,
 	 * so assuming template1 in that case since that's where shared tables are
-	 * stored in YB.
-	 * TODO Eventually YB should switch to using oid's everywhere so
+	 * stored in K2.
+	 * TODO Eventually K2PG should switch to using oid's everywhere so
 	 * that dbname and schemaname should not be needed at all.
 	 */
 	if (MyDatabaseId == TemplateDbOid || IsSharedRelation(relid))
@@ -611,7 +611,7 @@ K2PgGetSchemaName(Oid schemaoid)
 	/*
 	 * Hardcode the names for system namespaces since the cache might not
 	 * be initialized during initdb (bootstrap mode).
-	 * TODO Eventually YB should switch to using oid's everywhere so
+	 * TODO Eventually K2PG should switch to using oid's everywhere so
 	 * that dbname and schemaname should not be needed at all.
 	 */
 	if (IsSystemNamespace(schemaoid))

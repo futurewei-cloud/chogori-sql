@@ -124,7 +124,7 @@ extern Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 extern bool K2PgRelInfoHasSecondaryIndices(ResultRelInfo *resultRelInfo);
 
 /*
- * Get primary key columns as bitmap of a table for real and system YB columns.
+ * Get primary key columns as bitmap of a table for real and system K2PG columns.
  */
 extern Bitmapset *GetFullK2PgTablePrimaryKey(Relation rel);
 

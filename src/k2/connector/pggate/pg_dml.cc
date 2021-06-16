@@ -163,11 +163,11 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
   // - Bind values for a column in INSERT statement.
   //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
   expr_binds_[bind_var] = attr_value;
-  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kPgTupleId)) {
     // K2PG logic uses a virtual column k2pgctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
     CHECK(attr_value->is_constant()) << "Column k2pgctid must be bound to constant";
-    K2LOG_D(log::pg, "kYBTupleId was bound and k2pgctid_bind_ is set as true");
+    K2LOG_D(log::pg, "kPgTupleId was bound and k2pgctid_bind_ is set as true");
     k2pgctid_bind_ = true;
   }
 
@@ -351,7 +351,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
   return false;
 }
 
-Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
+Result<string> PgDml::BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
   std::vector<SqlValue *> values;
   auto attrs_end = attrs + nattrs;
   for (auto& c : target_desc_->columns()) {
@@ -362,11 +362,11 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
                                    attr->attr_num);
         }
 
-        if (attr->attr_num == k2pg::sql::to_underlying(PgSystemAttrNum::kYBRowId)) {
-          // get the pre-bound kYBRowId column and its value
+        if (attr->attr_num == k2pg::sql::to_underlying(PgSystemAttrNum::kPgRowId)) {
+          // get the pre-bound kPgRowId column and its value
           std::shared_ptr<BindVariable> bind_var = c.bind_var();
           PgConstant * pg_const = static_cast<PgConstant *>(bind_var->expr);
-          K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kYBRowId column must be pre-bound");
+          K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kPgRowId column must be pre-bound");
           SqlValue *value = pg_const->getValue();
           values.push_back(value);
         } else {

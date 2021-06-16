@@ -120,7 +120,7 @@ class PgDml : public PgStatement {
   Result<bool> GetNextRow(PgTuple *pg_tuple);
 
   // Build tuple id (k2pgctid) of the given Postgres tuple.
-  Result<std::string> BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs);
+  Result<std::string> BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs);
 
   virtual void SetCatalogCacheVersion(uint64_t catalog_cache_version) = 0;
 

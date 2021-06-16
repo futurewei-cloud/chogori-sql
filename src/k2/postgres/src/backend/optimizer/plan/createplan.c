@@ -2497,7 +2497,7 @@ static bool has_applicable_triggers(Relation rel, CmdType operation, Bitmapset *
 }
 
 /*
- * Returns whether a path can support a YB single row modify. This will be
+ * Returns whether a path can support a K2PG single row modify. This will be
  * non-transactional if execution time criteria are met, otherwise it just
  * avoids an unnecessary scan.
  *
@@ -2538,7 +2538,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	/* For update, SET clause attrs whose RHS value to be evaluated by DocDB */
 	Bitmapset *pushdown_update_attrs = NULL;
 
-	/* Verify YB is enabled. */
+	/* Verify K2PG is enabled. */
 	if (!IsK2PgEnabled())
 		return false;
 
@@ -2572,7 +2572,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	relInfo = root->simple_rel_array[1];
 	relid = root->simple_rte_array[1]->relid;
 
-	/* Verify we're a YB relation. */
+	/* Verify we're a K2PG relation. */
 	if (!IsK2PgRelationById(relid))
 		return false;
 
@@ -2634,11 +2634,11 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 				Var *var = castNode(Var, tle->expr);
 				/*
 				 * Column set to itself (unset) or k2pgctid pseudo-column
-				 * (added for YB scan in rewrite handler).
+				 * (added for K2PG scan in rewrite handler).
 				 */
 				if (var->varattno == InvalidAttrNumber ||
 				    var->varattno == tle->resno ||
-				    (var->varattno == YBTupleIdAttributeNumber &&
+				    (var->varattno == K2PgTupleIdAttributeNumber &&
 				        var->varcollid == InvalidOid))
 				{
 					continue;
@@ -2806,7 +2806,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	}
 
 	/*
-	 * Verify all YB primary keys are specified in the WHERE clause.
+	 * Verify all K2PG primary keys are specified in the WHERE clause.
 	 */
 	if (!K2PgAllPrimaryKeysProvided(relid, primary_key_attrs))
 	{
@@ -2901,7 +2901,7 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 	bool        no_row_trigger = false;
 
 	/*
-	 * If we are a single row UPDATE/DELETE in a YB relation, add Result subplan
+	 * If we are a single row UPDATE/DELETE in a K2PG relation, add Result subplan
 	 * instead of IndexScan. It is necessary to avoid the scan since we will be
 	 * running outside of a transaction and thus cannot rely on the results from a
 	 * separately executed operation.

@@ -428,8 +428,8 @@ heap_attisnull(HeapTuple tup, int attnum, TupleDesc tupleDesc)
 			/* these are never null */
 			break;
 
-		case YBTupleIdAttributeNumber:
-			/* If selected, virtual YB columns are never null */
+		case K2PgTupleIdAttributeNumber:
+			/* If selected, virtual K2PG columns are never null */
 			break;
 
 		default:
@@ -705,7 +705,7 @@ heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 			result = ObjectIdGetDatum(tup->t_tableOid);
 			break;
 
-		case YBTupleIdAttributeNumber:
+		case K2PgTupleIdAttributeNumber:
 			result = tup->t_k2pgctid;
 			break;
 

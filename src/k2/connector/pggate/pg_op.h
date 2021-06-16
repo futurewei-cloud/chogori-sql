@@ -132,7 +132,7 @@ private:
 
     // store computed k2pgctids;
     std::vector<k2::String> k2pgctid_strings_;
-    //... and also as slices so that we can return them to the YB API
+    //... and also as slices so that we can return them to the PG Gate API
     std::vector<Slice> k2pgctids_;
 
 private :

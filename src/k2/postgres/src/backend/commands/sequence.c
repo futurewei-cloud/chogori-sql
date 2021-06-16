@@ -45,7 +45,7 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 
 /*
@@ -594,12 +594,12 @@ DeleteSequenceTuple(Oid relid)
 }
 
 HeapTuple
-YBReadSequenceTuple(Relation seqrel)
+K2PgReadSequenceTuple(Relation seqrel)
 {
   /* Get sequence OID */
   Oid relid = seqrel->rd_id;
 
-  /* Read our data from YB's table of all sequences */
+  /* Read our data from K2PG's table of all sequences */
   FormData_pg_sequence_data seqdataform;
   if (IsK2PgEnabled())
   {

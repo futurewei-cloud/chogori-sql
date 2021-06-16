@@ -545,7 +545,7 @@ pg_notify(PG_FUNCTION_ARGS)
 void
 Async_Notify(const char *channel, const char *payload)
 {
-	// (YB) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
+	// (K2PG) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
 	// double warning message when using "NOTIFY channel".
 	return;
 
@@ -644,7 +644,7 @@ queue_listen(ListenActionKind action, const char *channel)
 void
 Async_Listen(const char *channel)
 {
-	// (YB) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
+	// (K2PG) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
 	// double warning message when using "LISTEN channel".
 	return;
 
@@ -662,7 +662,7 @@ Async_Listen(const char *channel)
 void
 Async_Unlisten(const char *channel)
 {
-	// (YB) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
+	// (K2PG) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
 	// double warning message when using "UNLISTEN channel".
 	return;
 
@@ -684,7 +684,7 @@ Async_Unlisten(const char *channel)
 void
 Async_UnlistenAll(void)
 {
-	// (YB) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
+	// (K2PG) Note: This function is replaced by NOOP, but we don't raise warning here to avoid
 	// double warning message when using "UNLISTEN *".
 	return;
 

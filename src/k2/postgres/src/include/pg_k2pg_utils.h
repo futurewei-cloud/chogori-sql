@@ -58,9 +58,9 @@ extern uint64_t k2pg_catalog_cache_version;
 #define K2PG_CATCACHE_VERSION_UNINITIALIZED (0)
 
 /*
- * Checks whether YugaByte functionality is enabled within PostgreSQL.
+ * Checks whether K2PG functionality is enabled within PostgreSQL.
  * This relies on pgapi being non-NULL, so probably should not be used
- * in postmaster (which does not need to talk to YB backend) or early
+ * in postmaster (which does not need to talk to K2 backend) or early
  * in backend process initialization. In those cases the
  * K2PgIsEnabledInPostgresEnvVar function might be more appropriate.
  */
@@ -117,7 +117,7 @@ extern bool K2PgRelHasSecondaryIndices(Relation relation);
 extern bool K2PgTransactionsEnabled();
 
 /*
- * Given a status returned by YB C++ code, reports that status using ereport if
+ * Given a status returned by K2 PgGate C++ code, reports that status using ereport if
  * it is not OK.
  */
 extern void	HandleK2PgStatus(K2PgStatus status);
@@ -146,7 +146,7 @@ extern void HandleK2PgStatusWithOwner(K2PgStatus status,
  */
 extern void HandleK2PgTableDescStatus(K2PgStatus status, K2PgTableDesc table);
 /*
- * YB initialization that needs to happen when a PostgreSQL backend process
+ * K2PG initialization that needs to happen when a PostgreSQL backend process
  * is started. Reports errors using ereport.
  */
 extern void K2PgInitPostgresBackend(const char *program_name,
@@ -270,10 +270,10 @@ void K2PgRaiseNotSupported(const char *msg, int issue_no);
 void K2PgRaiseNotSupportedSignal(const char *msg, int issue_no, int signal_level);
 
 //------------------------------------------------------------------------------
-// YB Debug utils.
+// K2PG Debug utils.
 
 /**
- * YSQL variable that can be used to enable/disable yugabyte debug mode.
+ * K2 Sql variable that can be used to enable/disable k2pg debug mode.
  * e.g. 'SET k2pg_debug_mode=true'.
  */
 extern bool k2pg_debug_mode;

@@ -613,10 +613,10 @@ K2PgStatus PgGate_DmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_co
 }
 
 // This function returns the tuple id (k2pgctid) of a Postgres tuple.
-K2PgStatus PgGate_DmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
+K2PgStatus PgGate_DmlBuildPgTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *k2pgctid){
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBuildYBTupleId {}", nattrs);
-  return ToK2PgStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, k2pgctid));
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBuildPgTupleId {}", nattrs);
+  return ToK2PgStatus(api_impl->DmlBuildPgTupleId(handle, attrs, nattrs, k2pgctid));
 }
 
 // DB Operations: WHERE(partially supported by K2-SKV)

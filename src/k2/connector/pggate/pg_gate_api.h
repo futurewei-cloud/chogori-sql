@@ -318,7 +318,7 @@ K2PgStatus PgGate_DmlFetch(K2PgStatement handle, int32_t natts, uint64_t *values
 K2PgStatus PgGate_DmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_count);
 
 // This function returns the tuple id (k2pgctid) of a Postgres tuple.
-K2PgStatus PgGate_DmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
+K2PgStatus PgGate_DmlBuildPgTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
                                  int32_t nattrs, uint64_t *k2pgctid);
 
 // DB Operations: WHERE(partially supported by K2-SKV)

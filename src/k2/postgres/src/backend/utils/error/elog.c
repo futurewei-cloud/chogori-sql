@@ -78,7 +78,7 @@
 #include "utils/memutils.h"
 #include "utils/ps_status.h"
 
-// YB includes.
+// K2PG includes.
 #include "pg_k2pg_utils.h"
 
 /* In this module, access gettext() via err_gettext() */

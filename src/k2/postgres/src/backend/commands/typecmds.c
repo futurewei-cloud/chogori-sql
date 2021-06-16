@@ -69,7 +69,7 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 
 /* result structure for get_rels_with_domain() */

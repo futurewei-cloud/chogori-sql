@@ -1008,7 +1008,7 @@ typedef struct PgBackendStatus
 	Oid			st_userid;
 	SockAddr	st_clientaddr;
 	char	   *st_clienthostname;	/* MUST be null-terminated */
-	char 		*st_databasename; /* Used in YB Mode */
+	char 		*st_databasename; /* Used in K2PG Mode */
 
 	/* Information about SSL connection */
 	bool		st_ssl;

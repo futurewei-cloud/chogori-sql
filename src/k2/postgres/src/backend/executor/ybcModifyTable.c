@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------------------------------
  *
  * ybcModifyTable.c
- *        YB routines to stmt_handle ModifyTable nodes.
+ *        K2PG routines to stmt_handle ModifyTable nodes.
  *
  * Copyright (c) YugaByte, Inc.
  *
@@ -64,7 +64,7 @@ void MarkCurrentCommandUsed() {
 
 /*
  * Returns whether a relation's attribute is a real column in the backing
- * YugaByte table. (It implies we can both read from and write to it).
+ * K2 table. (It implies we can both read from and write to it).
  */
 bool IsRealK2PgColumn(Relation rel, int attrNum)
 {
@@ -73,13 +73,13 @@ bool IsRealK2PgColumn(Relation rel, int attrNum)
 }
 
 /*
- * Returns whether a relation's attribute is a YB system column.
+ * Returns whether a relation's attribute is a K2PG system column.
  */
 bool IsK2PgSystemColumn(int attrNum)
 {
-	return (attrNum == YBRowIdAttributeNumber ||
-			attrNum == YBIdxBaseTupleIdAttributeNumber ||
-			attrNum == YBUniqueIdxKeySuffixAttributeNumber);
+	return (attrNum == K2PgRowIdAttributeNumber ||
+			attrNum == K2PgIdxBaseTupleIdAttributeNumber ||
+			attrNum == K2PgUniqueIdxKeySuffixAttributeNumber);
 }
 
 /*
@@ -127,7 +127,7 @@ static Oid GetTypeId(int attrNum, TupleDesc tupleDesc)
  */
 static Bitmapset *GetTablePrimaryKey(Relation rel,
 									 AttrNumber minattr,
-									 bool includeYBSystemColumns)
+									 bool includeK2PgSystemColumns)
 {
 	Oid            dboid         = K2PgGetDatabaseOid(rel);
 	Oid            relid         = RelationGetRelid(rel);
@@ -139,7 +139,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = minattr; attnum <= natts; attnum++)
 	{
-		if ((!includeYBSystemColumns && !IsRealK2PgColumn(rel, attnum)) ||
+		if ((!includeK2PgSystemColumns && !IsRealK2PgColumn(rel, attnum)) ||
 			(!IsRealK2PgColumn(rel, attnum) && !IsK2PgSystemColumn(attnum)))
 		{
 			continue;
@@ -161,25 +161,25 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 }
 
 /*
- * Get primary key columns as bitmap of a table for real YB columns.
+ * Get primary key columns as bitmap of a table for real K2PG columns.
  */
 Bitmapset *GetK2PgTablePrimaryKey(Relation rel)
 {
 	return GetTablePrimaryKey(rel, FirstLowInvalidHeapAttributeNumber + 1 /* minattr */,
-							  false /* includeYBSystemColumns */);
+							  false /* includeK2PgSystemColumns */);
 }
 
 /*
- * Get primary key columns as bitmap of a table for real and system YB columns.
+ * Get primary key columns as bitmap of a table for real and system K2PG columns.
  */
 Bitmapset *GetFullK2PgTablePrimaryKey(Relation rel)
 {
-	return GetTablePrimaryKey(rel, YBSystemFirstLowInvalidAttributeNumber + 1 /* minattr */,
-							  true /* includeYBSystemColumns */);
+	return GetTablePrimaryKey(rel, K2PgSystemFirstLowInvalidAttributeNumber + 1 /* minattr */,
+							  true /* includeK2PgSystemColumns */);
 }
 
 /*
- * Get the k2pgctid from a YB scan slot for UPDATE/DELETE.
+ * Get the k2pgctid from a K2PG scan slot for UPDATE/DELETE.
  */
 Datum K2PgGetPgTupleIdFromSlot(TupleTableSlot *slot)
 {
@@ -217,7 +217,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 							   HeapTuple tuple,
 							   TupleDesc tupleDesc) {
 	Bitmapset *pkey = GetFullK2PgTablePrimaryKey(rel);
-	AttrNumber minattr = YBSystemFirstLowInvalidAttributeNumber + 1;
+	AttrNumber minattr = K2PgSystemFirstLowInvalidAttributeNumber + 1;
 	const int nattrs = bms_num_members(pkey);
 	K2PgAttrValueDescriptor *attrs =
 			(K2PgAttrValueDescriptor*)palloc(nattrs * sizeof(K2PgAttrValueDescriptor));
@@ -231,7 +231,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 		 * Don't need to fill in for the DocDB RowId column, however we still
 		 * need to add the column to the statement to construct the k2pgctid.
 		 */
-		if (attnum != YBRowIdAttributeNumber) {
+		if (attnum != K2PgRowIdAttributeNumber) {
 			Oid	type_id = (attnum > 0) ?
 					TupleDescAttr(tupleDesc, attnum - 1)->atttypid : InvalidOid;
 
@@ -244,7 +244,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 		}
 		++next_attr;
 	}
-	HandleK2PgStatus(PgGate_DmlBuildYBTupleId(pg_stmt, attrs, nattrs, &tuple_id));
+	HandleK2PgStatus(PgGate_DmlBuildPgTupleId(pg_stmt, attrs, nattrs, &tuple_id));
 	pfree(attrs);
 	return (Datum)tuple_id;
 }
@@ -255,7 +255,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 static void K2PgBindTupleId(K2PgStatement pg_stmt, Datum tuple_id) {
 	K2PgExpr k2pg_expr = K2PgNewConstant(pg_stmt, BYTEAOID, tuple_id,
 										false /* is_null */);
-	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, YBTupleIdAttributeNumber, k2pg_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(pg_stmt, K2PgTupleIdAttributeNumber, k2pg_expr));
 }
 
 /*
@@ -441,7 +441,7 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
 	 */
 	if (unique_index)
 		BindColumn(stmt,
-		           YBUniqueIdxKeySuffixAttributeNumber,
+		           K2PgUniqueIdxKeySuffixAttributeNumber,
 		           BYTEAOID,
 		           ybbasectid,
 		           !has_null_attr /* is_null */);
@@ -453,7 +453,7 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
 	 */
 	if (k2pgctid_as_value || !unique_index)
 		BindColumn(stmt,
-		           YBIdxBaseTupleIdAttributeNumber,
+		           K2PgIdxBaseTupleIdAttributeNumber,
 		           BYTEAOID,
 		           ybbasectid,
 		           false /* is_null */);
@@ -595,7 +595,7 @@ bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modif
 	/* Bind k2pgctid to identify the current row. */
 	K2PgExpr k2pgctid_expr = K2PgNewConstant(delete_stmt, BYTEAOID, k2pgctid,
 										   false /* is_null */);
-	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, k2pgctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, K2PgTupleIdAttributeNumber, k2pgctid_expr));
 
 	/* Delete row from foreign key cache */
 	HandleK2PgStatus(PgGate_DeleteFromForeignKeyReferenceCache(relid, k2pgctid));
@@ -682,7 +682,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	/* Bind k2pgctid to identify the current row. */
 	K2PgExpr k2pgctid_expr = K2PgNewConstant(update_stmt, BYTEAOID, k2pgctid,
 										   false /* is_null */);
-	HandleK2PgStatus(PgGate_DmlBindColumn(update_stmt, YBTupleIdAttributeNumber, k2pgctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(update_stmt, K2PgTupleIdAttributeNumber, k2pgctid_expr));
 
 	/* Assign new values to the updated columns for the current row. */
 	tupleDesc = RelationGetDescr(rel);
@@ -780,7 +780,7 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 	/* Delete row from foreign key cache */
 	HandleK2PgStatus(PgGate_DeleteFromForeignKeyReferenceCache(relid, tuple->t_k2pgctid));
 
-	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, YBTupleIdAttributeNumber, k2pgctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(delete_stmt, K2PgTupleIdAttributeNumber, k2pgctid_expr));
 
 	/*
 	 * Mark tuple for invalidation from system caches at next command

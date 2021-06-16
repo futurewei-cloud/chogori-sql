@@ -101,7 +101,7 @@ class PgSelectIndex : public PgDmlRead {
 
   CHECKED_STATUS PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req);
 
-  // The output parameter "ybidxbasectid" of index rows
+  // The output parameter "k2pgidxbasectid" of index rows
   Result<bool> FetchBaseRowIdBatch(std::vector<std::string>& baseRowIds);
 
   void set_is_executed(bool value) {

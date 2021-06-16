@@ -92,26 +92,26 @@ class PgGateApiImpl {
   // If database_name is empty, a session is created without connecting to any database.
   CHECKED_STATUS InitSession(const PgEnv *pg_env, const string& database_name);
 
-  // YB Memctx: Create, Destroy, and Reset must be "static" because a few contexts are created
+  // PG Memctx: Create, Destroy, and Reset must be "static" because a few contexts are created
   //            before YugaByte environments including PgGate are created and initialized.
-  // Create YB Memctx. Each memctx will be associated with a Postgres's MemoryContext.
+  // Create PG Memctx. Each memctx will be associated with a Postgres's MemoryContext.
   static PgMemctx *CreateMemctx();
 
-  // Destroy YB Memctx.
+  // Destroy PG Memctx.
   static CHECKED_STATUS DestroyMemctx(PgMemctx *memctx);
 
-  // Reset YB Memctx.
+  // Reset PG Memctx.
   static CHECKED_STATUS ResetMemctx(PgMemctx *memctx);
 
-  // Cache statements in YB Memctx. When Memctx is destroyed, the statement is destructed.
+  // Cache statements in PG Memctx. When Memctx is destroyed, the statement is destructed.
   CHECKED_STATUS AddToCurrentMemctx(const std::shared_ptr<PgStatement> &stmt,
                                       PgStatement **handle);
 
-  // Cache table descriptor in YB Memctx. When Memctx is destroyed, the descriptor is destructed.
+  // Cache table descriptor in PG Memctx. When Memctx is destroyed, the descriptor is destructed.
   CHECKED_STATUS AddToCurrentMemctx(size_t table_desc_id,
                                       const std::shared_ptr<PgTableDesc> &table_desc);
 
-  // Read table descriptor that was cached in YB Memctx.
+  // Read table descriptor that was cached in PG Memctx.
   CHECKED_STATUS GetTabledescFromCurrentMemctx(size_t table_desc_id, PgTableDesc **handle);
 
   // Invalidate the sessions table cache.
@@ -342,12 +342,12 @@ class PgGateApiImpl {
   CHECKED_STATUS DmlExecWriteOp(PgStatement *handle, int32_t *rows_affected_count);
 
   // This function adds a primary column to be used in the construction of the tuple id (k2pgctid).
-  CHECKED_STATUS DmlAddYBTupleIdColumn(PgStatement *handle, int attr_num, uint64_t datum,
+  CHECKED_STATUS DmlAddPgTupleIdColumn(PgStatement *handle, int attr_num, uint64_t datum,
                                        bool is_null, const K2PgTypeEntity *type_entity);
 
 
   // This function returns the tuple id (k2pgctid) of a Postgres tuple.
-  CHECKED_STATUS DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
+  CHECKED_STATUS DmlBuildPgTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                    int32_t nattrs, uint64_t *k2pgctid);
 
   // DB Operations: WHERE(partially supported by K2-SKV)

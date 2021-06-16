@@ -267,7 +267,7 @@ CatalogTupleInsert(Relation heapRel, HeapTuple tup)
 	{
 		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 	}
 	else
 	{
@@ -300,7 +300,7 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 	{
 		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 	}
 	else
 	{
@@ -349,7 +349,7 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 
 		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 
 		if (has_indices)
 			CatalogIndexInsert(indstate, tup);
@@ -395,7 +395,7 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 
 		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 
 		if (has_indices)
 			CatalogIndexInsert(indstate, tup);

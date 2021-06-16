@@ -77,7 +77,7 @@
 #include "utils/snapmgr.h"
 #include "utils/tqual.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "commands/ybccmds.h"
 #include "pg_k2pg_utils.h"
 
@@ -871,7 +871,7 @@ index_create(Relation heapRelation,
 		elog(ERROR, "shared relations must be placed in pg_global tablespace");
 
 	/*
-	 * In YB mode, during bootstrap, a relation lookup by name will be a full-table scan
+	 * In K2PG mode, during bootstrap, a relation lookup by name will be a full-table scan
 	 * and slow because secondary indexes are not available yet. So we will skip this
 	 * duplicate name check as it will error later anyway when the indexes are created.
 	 */

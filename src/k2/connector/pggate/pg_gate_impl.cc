@@ -167,24 +167,24 @@ Result<uint64_t> PgGateApiImpl::GetSharedCatalogVersion() {
 //--------------------------------------------------------------------------------------------------
 
 PgMemctx *PgGateApiImpl::CreateMemctx() {
-  // Postgres will create YB Memctx when it first use the Memctx to allocate YugaByte object.
+  // Postgres will create PG Memctx when it first use the Memctx to allocate K2PG object.
   return PgMemctx::Create();
 }
 
 Status PgGateApiImpl::DestroyMemctx(PgMemctx *memctx) {
-  // Postgres will destroy YB Memctx by releasing the pointer.
+  // Postgres will destroy PG Memctx by releasing the pointer.
   return PgMemctx::Destroy(memctx);
 }
 
 Status PgGateApiImpl::ResetMemctx(PgMemctx *memctx) {
-  // Postgres reset YB Memctx when clearing a context content without clearing its nested context.
+  // Postgres reset PG Memctx when clearing a context content without clearing its nested context.
   return PgMemctx::Reset(memctx);
 }
 
 // TODO(neil) Use Arena in the future.
 // - PgStatement should have been declared as derived class of "MCBase".
-// - All objects of PgStatement's derived class should be allocated by YbPgMemctx::Arena.
-// - We cannot use Arena yet because quite a large number of YugaByte objects are being referenced
+// - All objects of PgStatement's derived class should be allocated by K2PgMemctx::Arena.
+// - We cannot use Arena yet because quite a large number of K2PG objects are being referenced
 //   from other layers.  Those added code violated the original design as they assume ScopedPtr
 //   instead of memory pool is being used. This mess should be cleaned up later.
 //
@@ -678,9 +678,9 @@ Status PgGateApiImpl::DmlFetch(PgStatement *handle, int32_t natts, uint64_t *val
   return dynamic_cast<PgDml*>(handle)->Fetch(natts, values, isnulls, syscols, has_data);
 }
 
-Status PgGateApiImpl::DmlBuildYBTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
+Status PgGateApiImpl::DmlBuildPgTupleId(PgStatement *handle, const PgAttrValueDescriptor *attrs,
                                     int32_t nattrs, uint64_t *k2pgctid) {
-  const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildYBTupleId(attrs, nattrs));
+  const string id = VERIFY_RESULT(dynamic_cast<PgDml*>(handle)->BuildPgTupleId(attrs, nattrs));
   const K2PgTypeEntity *type_entity = FindTypeEntity(kPgByteArrayOid);
   *k2pgctid = type_entity->k2pg_to_datum(id.data(), id.size(), nullptr /* type_attrs */);
   return Status::OK();

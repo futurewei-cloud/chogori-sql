@@ -64,7 +64,7 @@ struct WebserverWrapper *webserver = NULL;
 int port = 0;
 static int num_backends = 0;
 static rpczEntry *rpcz = NULL;
-static MemoryContext ybrpczMemoryContext = NULL;
+static MemoryContext pgRpczMemoryContext = NULL;
 PgBackendStatus **backendStatusArrayPointer = NULL;
 
 void		_PG_init(void);
@@ -135,11 +135,11 @@ pullRpczEntries(void)
   if (!(*backendStatusArrayPointer))
     elog(LOG, "Backend Status Array hasn't been initialized yet.");
 
-  ybrpczMemoryContext = AllocSetContextCreate(TopMemoryContext,
-                                             "YB RPCz memory context",
+  pgRpczMemoryContext = AllocSetContextCreate(TopMemoryContext,
+                                             "K2PG RPCz memory context",
                                              ALLOCSET_SMALL_SIZES);
 
-  MemoryContext oldcontext = MemoryContextSwitchTo(ybrpczMemoryContext);
+  MemoryContext oldcontext = MemoryContextSwitchTo(pgRpczMemoryContext);
   rpcz = (rpczEntry *) palloc(sizeof(rpczEntry) * NumBackendStatSlots);
 
   num_backends = NumBackendStatSlots;
@@ -253,8 +253,8 @@ pullRpczEntries(void)
 void
 freeRpczEntries(void)
 {
-  MemoryContextDelete(ybrpczMemoryContext);
-  ybrpczMemoryContext = NULL;
+  MemoryContextDelete(pgRpczMemoryContext);
+  pgRpczMemoryContext = NULL;
 }
 
 /*
@@ -291,9 +291,9 @@ webserver_worker_main(Datum unused)
 
   WaitLatch(&MyProc->procLatch, WL_POSTMASTER_DEATH, -1, PG_WAIT_EXTENSION);
 
-  if (rpcz != NULL && ybrpczMemoryContext != NULL)
+  if (rpcz != NULL && pgRpczMemoryContext != NULL)
   {
-    MemoryContext oldcontext = MemoryContextSwitchTo(ybrpczMemoryContext);
+    MemoryContext oldcontext = MemoryContextSwitchTo(pgRpczMemoryContext);
     pfree(rpcz);
     MemoryContextSwitchTo(oldcontext);
   }

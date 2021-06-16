@@ -71,7 +71,7 @@
 #include "utils/syscache.h"
 #include "utils/typcache.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 
 /* The main type cache hashtable searched by lookup_type_cache */

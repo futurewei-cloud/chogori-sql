@@ -1153,7 +1153,7 @@ SetCatCacheList(CatCache *cache,
 					continue;    /* quickly skip entry if wrong hash val */
 
 				if (IsK2PgEnabled())
-					continue; /* Cannot rely on ctid comparison in YB mode */
+					continue; /* Cannot rely on ctid comparison in K2PG mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self),
 									   &(ntp->t_self)))
@@ -2034,7 +2034,7 @@ SearchCatCacheList(CatCache *cache,
 					continue;	/* quickly skip entry if wrong hash val */
 
 				if (IsK2PgEnabled())
-					continue; /* Cannot rely on ctid comparison in YB mode */
+					continue; /* Cannot rely on ctid comparison in K2PG mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self), &(ntp->t_self)))
 					continue;	/* not same tuple */

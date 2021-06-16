@@ -69,7 +69,7 @@
 #include "utils/rel.h"
 #include "utils/tqual.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "access/sysattr.h"
 #include "catalog/pg_database.h"
 #include "executor/ybcModifyTable.h"
@@ -2832,7 +2832,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			case CMD_UPDATE:
 			case CMD_DELETE:
 				/*
-				 * If it's a YB single row UPDATE/DELETE we do not perform an
+				 * If it's a K2PG single row UPDATE/DELETE we do not perform an
 				 * initial scan to populate the k2pgctid, so there is no junk
 				 * attribute to extract.
 				 */

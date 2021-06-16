@@ -79,7 +79,7 @@
 #include "utils/syscache.h"
 #include "utils/tqual.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "commands/ybccmds.h"
 #include "pg_k2pg_utils.h"
 
@@ -360,8 +360,8 @@ createdb(ParseState *pstate, const CreatedbStmt *stmt)
 	if (!dbtemplate)
 		dbtemplate = "template1";	/* Default template database name */
 
-	/* Check YB options support */
-	if (K2PgIsUsingYBParser())
+	/* Check K2PG options support */
+	if (IsUsingK2PGParser())
 	{
 		for (int i = lengthof(default_options); i > 0; --i)
 		{
@@ -1595,8 +1595,8 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 					 parser_errposition(pstate, defel->location)));
 	}
 
-	/* Check YB options support */
-	if (K2PgIsUsingYBParser()) {
+	/* Check K2PG options support */
+	if (IsUsingK2PGParser()) {
 		for (int i = lengthof(unsupported_options); i > 0; --i) {
 			DefElem *option = *unsupported_options[i - 1];
 			if (option != NULL && option->arg != NULL) {

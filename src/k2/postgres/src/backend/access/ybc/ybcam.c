@@ -1035,7 +1035,7 @@ static void ybcSetupTargets(Relation relation,
 		 * In this case, Postgres requests base_ctid and maybe also data from IndexTable and then uses
 		 * them for further processing.
 		 */
-		ybcAddTargetColumn(ybScan, YBIdxBaseTupleIdAttributeNumber);
+		ybcAddTargetColumn(ybScan, K2PgIdxBaseTupleIdAttributeNumber);
 	else
 	{
 		/* Two cases:
@@ -1044,14 +1044,14 @@ static void ybcSetupTargets(Relation relation,
 		 * - Secondary IndexScan
 		 *     SELECT data, k2pgctid FROM table WHERE k2pgctid IN ( SELECT base_k2pgctid FROM IndexTable )
 		 */
-		ybcAddTargetColumn(ybScan, YBTupleIdAttributeNumber);
+		ybcAddTargetColumn(ybScan, K2PgTupleIdAttributeNumber);
 		if (index && !index->rd_index->indisprimary)
 		{
 			/*
 			 * IndexScan: Postgres layer sends both actual-query and index-scan to PgGate, who will
 			 * select and immediately use base_ctid to query data before responding.
 			 */
-			ybcAddTargetColumn(ybScan, YBIdxBaseTupleIdAttributeNumber);
+			ybcAddTargetColumn(ybScan, K2PgIdxBaseTupleIdAttributeNumber);
 		}
 	}
 }
@@ -1253,7 +1253,7 @@ HeapTuple k2pg_getnext_heaptuple(K2PgScanDesc ybScan, bool is_forward_scan, bool
 	HeapTuple   tup      = NULL;
 
 	/*
-	 * YB Scan may not be able to push down the scan key condition so we may
+	 * K2PG Scan may not be able to push down the scan key condition so we may
 	 * need additional filtering here.
 	 */
 	while (HeapTupleIsValid(tup = ybcFetchNextHeapTuple(ybScan, is_forward_scan)))
@@ -1276,7 +1276,7 @@ IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bo
 	IndexTuple  tup      = NULL;
 
 	/*
-	 * YB Scan may not be able to push down the scan key condition so we may
+	 * K2PG Scan may not be able to push down the scan key condition so we may
 	 * need additional filtering here.
 	 */
 	while (PointerIsValid(tup = ybcFetchNextIndexTuple(ybScan, index, is_forward_scan)))
@@ -1615,7 +1615,7 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum k2pgctid)
 										   BYTEAOID,
 										   k2pgctid,
 										   false);
-	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, YBTupleIdAttributeNumber, k2pgctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, K2PgTupleIdAttributeNumber, k2pgctid_expr));
 
 	/*
 	 * Set up the scan targets. For index-based scan we need to return all "real" columns.
@@ -1635,7 +1635,7 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum k2pgctid)
 		HandleK2PgStatus(PgGate_DmlAppendTarget(k2pg_stmt, expr));
 	}
 	K2PgTypeAttrs type_attrs = { 0 };
-	K2PgExpr   expr = K2PgNewColumnRef(k2pg_stmt, YBTupleIdAttributeNumber, InvalidOid,
+	K2PgExpr   expr = K2PgNewColumnRef(k2pg_stmt, K2PgTupleIdAttributeNumber, InvalidOid,
 									   &type_attrs);
 	HandleK2PgStatus(PgGate_DmlAppendTarget(k2pg_stmt, expr));
 
