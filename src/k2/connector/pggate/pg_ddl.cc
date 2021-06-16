@@ -306,7 +306,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
   primary_key_range_column_count_ = PgCreateTable::PrimaryKeyRangeColumnCount();
   // Add YBUniqueIdxKeySuffix column to store key suffix for handling multiple NULL values in column
   // with unique index.
-  // Value of this column is set to ybctid (same as ybbasectid) for index row in case index
+  // Value of this column is set to k2pgtid (same as ybbasectid) for index row in case index
   // is unique and at least one of its key column is NULL.
   // In all other case value of this column is NULL.
   if (is_unique_index_) {
@@ -318,7 +318,7 @@ Status PgCreateIndex::AddYBbasectidColumn() {
                                      true /* is_range */));
   }
 
-  // Add ybbasectid column to store the ybctid of the rows in the indexed table. It should be added
+  // Add ybbasectid column to store the k2pgtid of the rows in the indexed table. It should be added
   // at the end of the primary key of the index, i.e. either before any non-primary-key column if
   // any or before exec() below.
   RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",

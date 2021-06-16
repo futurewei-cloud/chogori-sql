@@ -336,29 +336,29 @@ Result<uint64_t> PgSession::GetSharedCatalogVersion() {
 
 bool operator==(const PgForeignKeyReference& k1, const PgForeignKeyReference& k2) {
   return k1.table_oid == k2.table_oid &&
-      k1.ybctid == k2.ybctid;
+      k1.k2pgtid == k2.k2pgtid;
 }
 
 size_t hash_value(const PgForeignKeyReference& key) {
   size_t hash = 0;
   boost::hash_combine(hash, key.table_oid);
-  boost::hash_combine(hash, key.ybctid);
+  boost::hash_combine(hash, key.k2pgtid);
   return hash;
 }
 
-bool PgSession::ForeignKeyReferenceExists(uint32_t table_oid, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
+bool PgSession::ForeignKeyReferenceExists(uint32_t table_oid, std::string&& k2pgtid) {
+  PgForeignKeyReference reference{table_oid, std::move(k2pgtid)};
   return fk_reference_cache_.find(reference) != fk_reference_cache_.end();
 }
 
-Status PgSession::CacheForeignKeyReference(uint32_t table_oid, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
+Status PgSession::CacheForeignKeyReference(uint32_t table_oid, std::string&& k2pgtid) {
+  PgForeignKeyReference reference{table_oid, std::move(k2pgtid)};
   fk_reference_cache_.emplace(reference);
   return Status::OK();
 }
 
-Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid) {
-  PgForeignKeyReference reference{table_oid, std::move(ybctid)};
+Status PgSession::DeleteForeignKeyReference(uint32_t table_oid, std::string&& k2pgtid) {
+  PgForeignKeyReference reference{table_oid, std::move(k2pgtid)};
   fk_reference_cache_.erase(reference);
   return Status::OK();
 }

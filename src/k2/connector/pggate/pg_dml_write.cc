@@ -96,10 +96,10 @@ Status PgDmlWrite::Exec() {
   RETURN_NOT_OK(UpdateBindVars());
   RETURN_NOT_OK(UpdateAssignVars());
 
-  if (write_req_->ybctid_column_value != nullptr && write_req_->ybctid_column_value->expr != NULL) {
-    std::shared_ptr<BindVariable> expr_var = write_req_->ybctid_column_value;
+  if (write_req_->k2pgtid_column_value != nullptr && write_req_->k2pgtid_column_value->expr != NULL) {
+    std::shared_ptr<BindVariable> expr_var = write_req_->k2pgtid_column_value;
     PgConstant *pg_const = static_cast<PgConstant *>(expr_var->expr);
-    K2ASSERT(log::pg, pg_const != NULL && pg_const->getValue() != NULL && pg_const->getValue()->isBinaryValue(), "YBCTID must be of BINARY datatype");
+    K2ASSERT(log::pg, pg_const != NULL && pg_const->getValue() != NULL && pg_const->getValue()->isBinaryValue(), "K2PGTID must be of BINARY datatype");
   }
 
   // Initialize sql operator.
@@ -124,9 +124,9 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
   // Iterate primary-key columns and remove the binds without values.
   bool missing_primary_key = false;
 
-  // Either ybctid or primary key must be present.
+  // Either k2pgtid or primary key must be present.
   // always use regular binding for INSERT
-  if (stmt_op() == StmtOp::STMT_INSERT || !ybctid_bind_) {
+  if (stmt_op() == StmtOp::STMT_INSERT || !k2pgtid_bind_) {
     K2LOG_D(log::pg, "Checking missing primary keys for regular key binding, stmt op: {}, key_col_vals size: {}", stmt_op(), write_req_->key_column_values.size());
     // Remove empty binds from key list.
     auto key_iter = write_req_->key_column_values.begin();
@@ -145,7 +145,7 @@ Status PgDmlWrite::DeleteEmptyPrimaryBinds() {
       }
     }
   } else {
-    K2LOG_D(log::pg, "Clearing key column values for ybctid binding");
+    K2LOG_D(log::pg, "Clearing key column values for k2pgtid binding");
     write_req_->key_column_values.clear();
   }
 
@@ -186,4 +186,3 @@ Status PgDmlWrite::SetWriteTime(const uint64_t write_time) {
 
 }  // namespace gate
 }  // namespace k2pg
-

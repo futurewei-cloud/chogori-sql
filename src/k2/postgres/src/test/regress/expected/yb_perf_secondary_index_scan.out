@@ -104,7 +104,7 @@
 --                       coordinates TEXT,
 --                       PRIMARY KEY (ident));
 --
--- Index for SELECTing ybctid of the same airport country using HASH key.
+-- Index for SELECTing k2pgtid of the same airport country using HASH key.
 -- CREATE INDEX airport_type_region_idx ON airports((type, iso_region) HASH, ident ASC);
 --
 --

@@ -550,7 +550,7 @@ K2PgStatus PgGate_DmlAppendTarget(K2PgStatement handle, K2PgExpr target){
 // - For Sequential Scan, the target columns of the bind are those in the main table.
 // - For Primary Scan, the target columns of the bind are those in the main table.
 // - For Index Scan, the target columns of the bind are those in the index table.
-//   The index-scan will use the bind to find base-ybctid which is then use to read data from
+//   The index-scan will use the bind to find base-k2pgtid which is then use to read data from
 //   the main-table, and therefore the bind-arguments are not associated with columns in main table.
 K2PgStatus PgGate_DmlBindColumn(K2PgStatement handle, int attr_num, K2PgExpr attr_value){
   K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBindColumn {}", attr_num);
@@ -612,11 +612,11 @@ K2PgStatus PgGate_DmlExecWriteOp(K2PgStatement handle, int32_t *rows_affected_co
   return ToK2PgStatus(api_impl->DmlExecWriteOp(handle, rows_affected_count));
 }
 
-// This function returns the tuple id (ybctid) of a Postgres tuple.
+// This function returns the tuple id (k2pgtid) of a Postgres tuple.
 K2PgStatus PgGate_DmlBuildYBTupleId(K2PgStatement handle, const K2PgAttrValueDescriptor *attrs,
-                                 int32_t nattrs, uint64_t *ybctid){
+                                 int32_t nattrs, uint64_t *k2pgtid){
   K2LOG_V(log::pg, "PgGateAPI: PgGate_DmlBuildYBTupleId {}", nattrs);
-  return ToK2PgStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, ybctid));
+  return ToK2PgStatus(api_impl->DmlBuildYBTupleId(handle, attrs, nattrs, k2pgtid));
 }
 
 // DB Operations: WHERE(partially supported by K2-SKV)
@@ -838,24 +838,24 @@ K2PgStatus PgGate_OperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg){
 
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
-bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size) {
+bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* k2pgtid, int64_t k2pgtid_size) {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_ForeignKeyReferenceExists {}", table_oid);
-  return api_impl->ForeignKeyReferenceExists(table_oid, std::string(ybctid, ybctid_size));
+  return api_impl->ForeignKeyReferenceExists(table_oid, std::string(k2pgtid, k2pgtid_size));
 }
 
 // Add an entry to foreign key reference cache.
-K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* ybctid, int64_t ybctid_size){
+K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* k2pgtid, int64_t k2pgtid_size){
   K2LOG_V(log::pg, "PgGateAPI: PgGate_CacheForeignKeyReference {}", table_oid);
-  return ToK2PgStatus(api_impl->CacheForeignKeyReference(table_oid, std::string(ybctid, ybctid_size)));
+  return ToK2PgStatus(api_impl->CacheForeignKeyReference(table_oid, std::string(k2pgtid, k2pgtid_size)));
 }
 
 // Delete an entry from foreign key reference cache.
-K2PgStatus PgGate_DeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t ybctid){
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_DeleteFromForeignKeyReferenceCache {}, {}", table_oid, ybctid);
+K2PgStatus PgGate_DeleteFromForeignKeyReferenceCache(K2PgOid table_oid, uint64_t k2pgtid){
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_DeleteFromForeignKeyReferenceCache {}, {}", table_oid, k2pgtid);
   char *value;
   int64_t bytes;
   const K2PgTypeEntity *type_entity = api_impl->FindTypeEntity(kPgByteArrayOid);
-  type_entity->datum_to_k2pg(ybctid, &value, &bytes);
+  type_entity->datum_to_k2pg(k2pgtid, &value, &bytes);
   return ToK2PgStatus(api_impl->DeleteForeignKeyReference(table_oid, std::string(value, bytes)));
 }
 

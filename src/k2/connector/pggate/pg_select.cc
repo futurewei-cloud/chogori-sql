@@ -156,11 +156,11 @@ Status PgSelectIndex::PrepareQuery(std::shared_ptr<SqlOpReadRequest> read_req) {
   return Status::OK();
 }
 
-// From a index table resut set, get the corresponding base table ybctids (RowIds)
+// From a index table resut set, get the corresponding base table k2pgtids (RowIds)
 Result<bool> PgSelectIndex::FetchBaseRowIdBatch(std::vector<std::string>& baseRowIds) {
   K2LOG_D(log::pg, "FetchBaseRowIdBatch, next batch size: {}", (rowsets_.empty() ? 0: rowsets_.front().data_.size()));
 
-  // Keep reading until we get one batch of ybctids or EOF.
+  // Keep reading until we get one batch of k2pgtids or EOF.
   while (!VERIFY_RESULT(HasBaseRowIdBatch())) {
     K2LOG_D(log::pg, "FetchBaseRowIdBatch has nothing cached, trying FetchDataFromServer");
     if (!VERIFY_RESULT(FetchDataFromServer())) {

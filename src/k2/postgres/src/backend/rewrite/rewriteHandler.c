@@ -1344,7 +1344,7 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 		}
 
 		/*
-		 * Emit ybctid so that executor can find the row to update or delete from YugaByte tables.
+		 * Emit k2pgtid so that executor can find the row to update or delete from YugaByte tables.
 		 */
 		var = makeVar(parsetree->resultRelation,
 					  YBTupleIdAttributeNumber,
@@ -1352,7 +1352,7 @@ rewriteTargetListUD(Query *parsetree, RangeTblEntry *target_rte,
 					  -1,
 					  InvalidOid,
 					  0);
-		attrname = "ybctid";
+		attrname = "k2pgtid";
 	}
 	else if (target_relation->rd_rel->relkind == RELKIND_RELATION ||
 		target_relation->rd_rel->relkind == RELKIND_MATVIEW ||

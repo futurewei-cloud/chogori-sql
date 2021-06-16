@@ -2215,7 +2215,7 @@ CatalogCacheCreateEntry(CatCache *cache, HeapTuple ntp, Datum *arguments,
 		memcpy((char *) ct->tuple.t_data,
 			   (const char *) dtp->t_data,
 			   dtp->t_len);
-		HEAPTUPLE_COPY_YBCTID(dtp->t_ybctid, ct->tuple.t_ybctid);
+		HEAPTUPLE_COPY_K2PGTID(dtp->t_k2pgtid, ct->tuple.t_k2pgtid);
 		MemoryContextSwitchTo(oldcxt);
 
 		if (dtp != ntp)

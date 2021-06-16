@@ -78,7 +78,7 @@ namespace k2pg
         int idx = static_cast<int>(PgSystemAttrNum::kYBTupleId);
         desc_.Init(idx,
                    idx,
-                   "ybctid",
+                   "k2pgtid",
                    false,
                    false,
                    idx,
@@ -92,7 +92,7 @@ namespace k2pg
 
     bool PgColumn::is_virtual_column()
     {
-      // Currently only ybctid is a virtual column.
+      // Currently only k2pgtid is a virtual column.
       return attr_num() == static_cast<int>(PgSystemAttrNum::kYBTupleId);
     }
 
@@ -132,10 +132,10 @@ namespace k2pg
         K2LOG_V(log::pg, "Allocating binding variable for column name: {}, order: {}, for write request", attr_name(), attr_num());
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId))
         {
-          if (write_req->ybctid_column_value == nullptr)
+          if (write_req->k2pgtid_column_value == nullptr)
           {
             bind_var_ = std::make_shared<BindVariable>(index());
-            write_req->ybctid_column_value = bind_var_;
+            write_req->k2pgtid_column_value = bind_var_;
           }
         }
         else
@@ -183,7 +183,7 @@ namespace k2pg
         K2LOG_V(log::pg, "Allocating binding variable for column name: {}, order: {}, for read request", attr_name(), attr_num());
         if (id() == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
           bind_var_ = std::make_shared<BindVariable>(index());
-          read_req->ybctid_column_values.push_back(bind_var_);
+          read_req->k2pgtid_column_values.push_back(bind_var_);
         } else {
           K2LOG_E(log::pg, "Binds for other columns are not allowed");
         }

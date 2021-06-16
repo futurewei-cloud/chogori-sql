@@ -134,7 +134,7 @@ typedef struct PgSysColumns {
   uint64_t ctid;
 
   // K2 Sql system columns.
-  uint8_t *ybctid;
+  uint8_t *k2pgtid;
   uint8_t *ybbasectid;
 } K2PgSysColumns;
 

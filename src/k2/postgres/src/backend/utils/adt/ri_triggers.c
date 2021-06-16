@@ -423,7 +423,7 @@ RI_FKey_check(TriggerData *trigdata)
 
 		if (tuple_id != NULL && PgGate_ForeignKeyReferenceExists(ref_table_id, tuple_id, tuple_id_size))
 		{
-			elog(DEBUG1, "Skipping FK check for table %d, ybctid %s", ref_table_id, tuple_id);
+			elog(DEBUG1, "Skipping FK check for table %d, k2pgtid %s", ref_table_id, tuple_id);
 			heap_close(pk_rel, RowShareLock);
 			return PointerGetDatum(NULL);
 		}

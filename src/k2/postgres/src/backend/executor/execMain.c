@@ -2465,7 +2465,7 @@ ExecBuildAuxRowMark(ExecRowMark *erm, List *targetlist)
 		/* need ctid for all methods other than COPY */
 		if (IsK2PgBackedRelation(erm->relation))
 		{
-			snprintf(resname, sizeof(resname), "ybctid%u", erm->rowmarkId);
+			snprintf(resname, sizeof(resname), "k2pgtid%u", erm->rowmarkId);
 		}
 		else
 		{

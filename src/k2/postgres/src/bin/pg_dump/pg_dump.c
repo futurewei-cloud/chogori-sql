@@ -16366,7 +16366,7 @@ getAttrName(int attrnum, TableInfo *tblInfo)
 		case TableOidAttributeNumber:
 			return "tableoid";
 		case YBTupleIdAttributeNumber:
-			return "ybctid";
+			return "k2pgtid";
 	}
 	exit_horribly(NULL, "invalid column number %d for table \"%s\"\n",
 				  attrnum, tblInfo->dobj.name);

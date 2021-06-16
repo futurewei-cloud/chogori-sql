@@ -158,7 +158,7 @@ preprocess_targetlist(PlannerInfo *root)
 								-1,
 								InvalidOid,
 								0);
-				snprintf(resname, sizeof(resname), "ybctid%u", rc->rowmarkId);
+				snprintf(resname, sizeof(resname), "k2pgtid%u", rc->rowmarkId);
 			}
 			else
 			{

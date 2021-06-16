@@ -237,7 +237,7 @@ CatalogIndexDelete(CatalogIndexState indstate, HeapTuple heapTuple)
 		index_delete(relationDescs[i],	/* index relation */
 					 values,	/* array of index Datums */
 					 isnull,	/* is-null flags */
-					 heapTuple->t_ybctid,	/* heap tuple */
+					 heapTuple->t_k2pgtid,	/* heap tuple */
 					 heapRelation,
 					 indexInfo);
 	}
@@ -337,13 +337,13 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 
 		if (has_indices)
 		{
-			if (tup->t_ybctid)
+			if (tup->t_k2pgtid)
 			{
-				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_k2pgtid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("k2pgtid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 
@@ -383,13 +383,13 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 
 		if (has_indices)
 		{
-			if (tup->t_ybctid)
+			if (tup->t_k2pgtid)
 			{
-				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = K2PgFetchTuple(heapRel, tup->t_k2pgtid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("k2pgtid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 

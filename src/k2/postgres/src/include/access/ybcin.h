@@ -30,9 +30,9 @@
  */
 extern IndexBuildResult *ybcinbuild(Relation heap, Relation index, struct IndexInfo *indexInfo);
 extern void ybcinbuildempty(Relation index);
-extern bool ybcininsert(Relation rel, Datum *values, bool *isnull, Datum ybctid, Relation heapRel,
+extern bool ybcininsert(Relation rel, Datum *values, bool *isnull, Datum k2pgtid, Relation heapRel,
 						IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo);
-extern void ybcindelete(Relation rel, Datum *values, bool *isnull, Datum ybctid, Relation heapRel,
+extern void ybcindelete(Relation rel, Datum *values, bool *isnull, Datum k2pgtid, Relation heapRel,
 						struct IndexInfo *indexInfo);
 extern IndexBuildResult *ybcinbackfill(Relation heap,
 									   Relation index,

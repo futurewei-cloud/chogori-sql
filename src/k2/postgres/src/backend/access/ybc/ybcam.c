@@ -289,9 +289,9 @@ static HeapTuple ybcFetchNextHeapTuple(K2PgScanDesc ybScan, bool is_forward_scan
 		{
 			HeapTupleSetOid(tuple, syscols.oid);
 		}
-		if (syscols.ybctid != NULL)
+		if (syscols.k2pgtid != NULL)
 		{
-			tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+			tuple->t_k2pgtid = PointerGetDatum(syscols.k2pgtid);
 		}
 		if (ybScan->tableOid != InvalidOid)
 		{
@@ -357,9 +357,9 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
 			}
 
 			tuple = index_form_tuple(RelationGetDescr(index), ivalues, inulls);
-			if (syscols.ybctid != NULL)
+			if (syscols.k2pgtid != NULL)
 			{
-				tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+				tuple->t_k2pgtid = PointerGetDatum(syscols.k2pgtid);
 			}
 		}
 		else
@@ -367,7 +367,7 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
 			tuple = index_form_tuple(tupdesc, values, nulls);
 			if (syscols.ybbasectid != NULL)
 			{
-				tuple->t_ybctid = PointerGetDatum(syscols.ybbasectid);
+				tuple->t_k2pgtid = PointerGetDatum(syscols.ybbasectid);
 			}
 		}
 
@@ -395,9 +395,9 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
  *
  * 3. IndexScan(UserTable, Index)
  *    - Both target and bind descriptors are specifed by the IndexTable.
- *    - For this scan, YugaByte returns an index-tuple, which has a ybctid (ROWID) to be used for
+ *    - For this scan, YugaByte returns an index-tuple, which has a k2pgtid (ROWID) to be used for
  *      querying data from the UserTable.
- *    - TODO(neil) By batching ybctid and processing it on YugaByte for all index-scans, the target
+ *    - TODO(neil) By batching k2pgtid and processing it on YugaByte for all index-scans, the target
  *      for index-scan on regular table should also be the table itself (relation).
  *
  * 4. IndexOnlyScan(Table, Index)
@@ -462,7 +462,7 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 	else
 	{
 		/*
-		 * Index-Scan: SELECT data FROM UserTable WHERE rowid IN (SELECT ybctid FROM indexTable)
+		 * Index-Scan: SELECT data FROM UserTable WHERE rowid IN (SELECT k2pgtid FROM indexTable)
 		 *
 		 */
 
@@ -481,7 +481,7 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 		{
 			/*
 			 * IndexScan ( SysTable / UserTable)
-			 * - YugaByte will use the binds to query base-ybctid in the index table, which is then used
+			 * - YugaByte will use the binds to query base-k2pgtid in the index table, which is then used
 			 *   to query data from the main table.
 			 * - The target table descriptor, where data is read and returned, is the main table.
 			 * - The binding table descriptor, whose column is bound to values, is the index table.
@@ -1040,9 +1040,9 @@ static void ybcSetupTargets(Relation relation,
 	{
 		/* Two cases:
 		 * - Primary Scan (Key or sequential)
-		 *     SELECT data, ybctid FROM table [ WHERE primary-key-condition ]
+		 *     SELECT data, k2pgtid FROM table [ WHERE primary-key-condition ]
 		 * - Secondary IndexScan
-		 *     SELECT data, ybctid FROM table WHERE ybctid IN ( SELECT base_ybctid FROM IndexTable )
+		 *     SELECT data, k2pgtid FROM table WHERE k2pgtid IN ( SELECT base_k2pgtid FROM IndexTable )
 		 */
 		ybcAddTargetColumn(ybScan, YBTupleIdAttributeNumber);
 		if (index && !index->rd_index->indisprimary)
@@ -1067,7 +1067,7 @@ static void ybcSetupTargets(Relation relation,
  *   keys[].sk_attno = the columns' attnum in the IndexTable or "index"
  *                     (This is not the attnum in UserTable or "relation")
  *
- * - If "xs_want_itup" is true, Postgres layer is expecting an IndexTuple that has ybctid to
+ * - If "xs_want_itup" is true, Postgres layer is expecting an IndexTuple that has k2pgtid to
  *   identify the desired row.
  */
 K2PgScanDesc
@@ -1600,7 +1600,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	RelationClose(index);
 }
 
-HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
+HeapTuple K2PgFetchTuple(Relation relation, Datum k2pgtid)
 {
 	K2PgStatement k2pg_stmt;
 	TupleDesc      tupdesc = RelationGetDescr(relation);
@@ -1610,12 +1610,12 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 																NULL /* prepare_params */,
 																&k2pg_stmt));
 
-	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = K2PgNewConstant(k2pg_stmt,
+	/* Bind k2pgtid to identify the current row. */
+	K2PgExpr k2pgtid_expr = K2PgNewConstant(k2pg_stmt,
 										   BYTEAOID,
-										   ybctid,
+										   k2pgtid,
 										   false);
-	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, YBTupleIdAttributeNumber, ybctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, YBTupleIdAttributeNumber, k2pgtid_expr));
 
 	/*
 	 * Set up the scan targets. For index-based scan we need to return all "real" columns.
@@ -1641,7 +1641,7 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 
 	/*
 	 * Execute the select statement.
-	 * This select statement fetch the row for a specific YBCTID, LIMIT setting is not needed.
+	 * This select statement fetch the row for a specific K2PGTID, LIMIT setting is not needed.
 	 */
 	HandleK2PgStatus(PgGate_ExecSelect(k2pg_stmt, NULL /* exec_params */));
 
@@ -1668,9 +1668,9 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 		{
 			HeapTupleSetOid(tuple, syscols.oid);
 		}
-		if (syscols.ybctid != NULL)
+		if (syscols.k2pgtid != NULL)
 		{
-			tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+			tuple->t_k2pgtid = PointerGetDatum(syscols.k2pgtid);
 		}
 		tuple->t_tableOid = RelationGetRelid(relation);
 	}

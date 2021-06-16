@@ -59,11 +59,11 @@ extern Oid K2PgExecuteNonTxnInsert(Relation rel,
 extern void K2PgExecuteInsertIndex(Relation rel,
 								  Datum *values,
 								  bool *isnull,
-								  Datum ybctid,
+								  Datum k2pgtid,
 								  bool is_backfill);
 
 /*
- * Delete a tuple (identified by ybctid) from a YugaByte table.
+ * Delete a tuple (identified by k2pgtid) from a YugaByte table.
  * If this is a single row op we will return false in the case that there was
  * no row to delete. This can occur because we do not first perform a scan if
  * it is a single row op.
@@ -73,16 +73,16 @@ extern bool K2PgExecuteDelete(Relation rel,
 							 EState *estate,
 							 ModifyTableState *mtstate);
 /*
- * Delete a tuple (identified by index columns and base table ybctid) from an
+ * Delete a tuple (identified by index columns and base table k2pgtid) from an
  * index's backing YugaByte index table.
  */
 extern void K2PgExecuteDeleteIndex(Relation index,
                                   Datum *values,
                                   bool *isnull,
-                                  Datum ybctid);
+                                  Datum k2pgtid);
 
 /*
- * Update a row (identified by ybctid) in a YugaByte table.
+ * Update a row (identified by k2pgtid) in a YugaByte table.
  * If this is a single row op we will return false in the case that there was
  * no row to update. This can occur because we do not first perform a scan if
  * it is a single row op.
@@ -97,7 +97,7 @@ extern bool K2PgExecuteUpdate(Relation rel,
 //------------------------------------------------------------------------------
 // System tables modify-table API.
 // For system tables we identify rows to update/delete directly by primary key
-// and execute them directly (rather than needing to read ybctid first).
+// and execute them directly (rather than needing to read k2pgtid first).
 // TODO This should be used for regular tables whenever possible.
 
 extern void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple);

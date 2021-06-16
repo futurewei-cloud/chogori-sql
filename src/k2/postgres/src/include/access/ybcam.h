@@ -169,9 +169,9 @@ extern void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 								 Cost *startup_cost, Cost *total_cost);
 
 /*
- * Fetch a single tuple by the ybctid.
+ * Fetch a single tuple by the k2pgtid.
  */
-extern HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid);
+extern HeapTuple K2PgFetchTuple(Relation relation, Datum k2pgtid);
 
 
 #endif							/* YBCAM_H */

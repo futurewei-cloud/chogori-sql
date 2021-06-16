@@ -3393,7 +3393,7 @@ ltrmark:;
 		tuple.t_len = ItemIdGetLength(lp);
 		tuple.t_self = *tid;
 		tuple.t_tableOid = RelationGetRelid(relation);
-		tuple.t_ybctid = PointerGetDatum(NULL);
+		tuple.t_k2pgtid = PointerGetDatum(NULL);
 
 		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 	}

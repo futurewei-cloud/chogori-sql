@@ -2633,7 +2633,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 			{
 				Var *var = castNode(Var, tle->expr);
 				/*
-				 * Column set to itself (unset) or ybctid pseudo-column
+				 * Column set to itself (unset) or k2pgtid pseudo-column
 				 * (added for YB scan in rewrite handler).
 				 */
 				if (var->varattno == InvalidAttrNumber ||
