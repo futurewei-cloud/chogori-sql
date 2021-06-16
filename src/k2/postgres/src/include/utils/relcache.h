@@ -92,7 +92,7 @@ extern void RelationCacheInitialize(void);
 extern void RelationCacheInitializePhase2(void);
 extern void RelationCacheInitializePhase3(void);
 
-extern void YBPreloadRelCache();
+extern void K2PgPreloadRelCache();
 
 /*
  * Routine to create a relcache entry for an about-to-be-created relation

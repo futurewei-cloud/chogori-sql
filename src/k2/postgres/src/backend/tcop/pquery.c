@@ -160,7 +160,7 @@ ProcessQuery(PlannedStmt *plan,
 	 */
 	ExecutorStart(queryDesc, 0);
 
-	/* Set whether this is a single-row, single-stmt modify, used in YB mode. */
+	/* Set whether this is a single-row, single-stmt modify, used in K2PG mode. */
 	queryDesc->estate->es_k2pg_is_single_row_modify_txn =
 		isSingleRowModifyTxn && queryDesc->estate->es_num_result_relations == 1 &&
 		K2PgIsSingleRowTxnCapableRel(&queryDesc->estate->es_result_relations[0]);

@@ -17,11 +17,8 @@
  * src/include/executor/ybcExpr.h
  *
  * NOTES:
- *   - For performance reasons, some expressions must be sent to YugaByte for execution.
- *   - This module constructs expression tree to be sent to YBC API.
- *   - In the future, we can move a portion of Postgres datum and engine to /common such that
- *     DocDB can execute Postgres expression without constructing YBC tree.  That involves a lot
- *     more work, so we limit this work to construct a few simple expressions.
+ *   - For performance reasons, some expressions must be sent to K2 for execution.
+ *   - This module constructs expression tree to be sent to K2 PgGate API.
  *--------------------------------------------------------------------------------------------------
  */
 

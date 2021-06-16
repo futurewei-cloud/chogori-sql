@@ -142,10 +142,10 @@ PgCreateTable::PgCreateTable(std::shared_ptr<PgSession> pg_session,
       if_not_exist_(if_not_exist) {
   // Add internal primary key column to a Postgres table without a user-specified primary key.
   if (add_primary_key) {
-    // For regular user table, ybrowid should be a hash key because ybrowid is a random uuid.
+    // For regular user table, k2pgrowid should be a hash key because k2pgrowid is a random uuid.
     //
     bool is_hash = !(is_pg_catalog_table_);
-    CHECK_OK(AddColumn("ybrowid", static_cast<int32_t>(PgSystemAttrNum::kYBRowId),
+    CHECK_OK(AddColumn("k2pgrowid", static_cast<int32_t>(PgSystemAttrNum::kPgRowId),
                        K2SQL_DATA_TYPE_BINARY, is_hash, true /* is_range */));
   }
 }
@@ -298,35 +298,35 @@ PgCreateIndex::PgCreateIndex(std::shared_ptr<PgSession> pg_session,
 }
 
 size_t PgCreateIndex::PrimaryKeyRangeColumnCount() const {
-  return ybbasectid_added_ ? primary_key_range_column_count_
+  return k2pgbasectid_added_ ? primary_key_range_column_count_
                            : PgCreateTable::PrimaryKeyRangeColumnCount();
 }
 
-Status PgCreateIndex::AddYBbasectidColumn() {
+Status PgCreateIndex::AddPgbasectidColumn() {
   primary_key_range_column_count_ = PgCreateTable::PrimaryKeyRangeColumnCount();
-  // Add YBUniqueIdxKeySuffix column to store key suffix for handling multiple NULL values in column
+  // Add kPgUniqueIdxKeySuffix column to store key suffix for handling multiple NULL values in column
   // with unique index.
-  // Value of this column is set to ybctid (same as ybbasectid) for index row in case index
+  // Value of this column is set to k2pgctid (same as k2pgbasectid) for index row in case index
   // is unique and at least one of its key column is NULL.
   // In all other case value of this column is NULL.
   if (is_unique_index_) {
     RETURN_NOT_OK(
-        PgCreateTable::AddColumnImpl("ybuniqueidxkeysuffix",
-                                     k2pg::sql::to_underlying(PgSystemAttrNum::kYBUniqueIdxKeySuffix),
+        PgCreateTable::AddColumnImpl("k2pguniqueidxkeysuffix",
+                                     k2pg::sql::to_underlying(PgSystemAttrNum::kPgUniqueIdxKeySuffix),
                                      K2SQL_DATA_TYPE_BINARY,
                                      false /* is_hash */,
                                      true /* is_range */));
   }
 
-  // Add ybbasectid column to store the ybctid of the rows in the indexed table. It should be added
+  // Add ybbasectid column to store the k2pgctid of the rows in the indexed table. It should be added
   // at the end of the primary key of the index, i.e. either before any non-primary-key column if
   // any or before exec() below.
-  RETURN_NOT_OK(PgCreateTable::AddColumnImpl("ybidxbasectid",
-                                             k2pg::sql::to_underlying(PgSystemAttrNum::kYBIdxBaseTupleId),
+  RETURN_NOT_OK(PgCreateTable::AddColumnImpl("k2pgidxbasectid",
+                                             k2pg::sql::to_underlying(PgSystemAttrNum::kPgIdxBaseTupleId),
                                              K2SQL_DATA_TYPE_BINARY,
                                              false /* is_hash */,
                                              !is_unique_index_ /* is_range */));
-  ybbasectid_added_ = true;
+  k2pgbasectid_added_ = true;
   return Status::OK();
 }
 
@@ -336,8 +336,8 @@ Status PgCreateIndex::AddColumnImpl(const std::string& attr_name,
                                     bool is_hash,
                                     bool is_range,
                                     ColumnSchema::SortingType sorting_type) {
-  if (!is_hash && !is_range && !ybbasectid_added_) {
-    RETURN_NOT_OK(AddYBbasectidColumn());
+  if (!is_hash && !is_range && !k2pgbasectid_added_) {
+    RETURN_NOT_OK(AddPgbasectidColumn());
   }
 
   return PgCreateTable::AddColumnImpl(attr_name, attr_num, attr_ybtype,
@@ -345,8 +345,8 @@ Status PgCreateIndex::AddColumnImpl(const std::string& attr_name,
 }
 
 Status PgCreateIndex::Exec() {
-  if (!ybbasectid_added_) {
-    RETURN_NOT_OK(AddYBbasectidColumn());
+  if (!k2pgbasectid_added_) {
+    RETURN_NOT_OK(AddPgbasectidColumn());
   }
 
   // Construct schema.

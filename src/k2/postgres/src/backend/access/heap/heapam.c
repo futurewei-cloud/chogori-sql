@@ -306,7 +306,7 @@ initscan(HeapScanDesc scan, ScanKey key, bool keep_startblock)
 	scan->rs_inited = false;
 	scan->rs_ctup.t_data = NULL;
 	ItemPointerSetInvalid(&scan->rs_ctup.t_self);
-	scan->rs_ctup.t_ybctid = (Datum) 0;
+	scan->rs_ctup.t_k2pgctid = (Datum) 0;
 	scan->rs_cbuf = InvalidBuffer;
 	scan->rs_cblock = InvalidBlockNumber;
 
@@ -1465,10 +1465,10 @@ heap_beginscan_internal(Relation relation, Snapshot snapshot,
 {
 	HeapScanDesc scan;
 
-	/* YB scan methods should only be used for tables that are handled by YugaByte. */
+	/* K2PG scan methods should only be used for tables that are handled by K2 PgGate. */
 	if (IsK2PgRelation(relation))
 	{
-		return k2pg_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
+		return cam_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
 	}
 
 	/*
@@ -1587,7 +1587,7 @@ heap_endscan(HeapScanDesc scan)
 
 	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return k2pg_heap_endscan(scan);
+		return cam_heap_endscan(scan);
 	}
 
 	/*
@@ -1855,7 +1855,7 @@ heap_getnext(HeapScanDesc scan, ScanDirection direction)
 
 	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return k2pg_heap_getnext(scan);
+		return cam_heap_getnext(scan);
 	}
 
 	HEAPDEBUG_1;				/* heap_getnext( info ) */
@@ -4772,10 +4772,10 @@ heap_lock_tuple(Relation relation, HeapTuple tuple,
 	tuple->t_tableOid = RelationGetRelid(relation);
 
 	/*
-	 * This will only be used for non-YB tuples (e.g. Temp tables) so we just
-	 * need to set the ybctid to 0 (NULL) here.
+	 * This will only be used for non-K2PG tuples (e.g. Temp tables) so we just
+	 * need to set the k2pgctid to 0 (NULL) here.
 	 */
-	tuple->t_ybctid = (Datum) 0;
+	tuple->t_k2pgctid = (Datum) 0;
 
 l3:
 	result = HeapTupleSatisfiesUpdate(tuple, cid, *buffer);

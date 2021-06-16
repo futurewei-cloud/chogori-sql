@@ -4091,7 +4091,7 @@ k2pg_not_support(int pos, const char *feature, int issue) {
 	static int restricted = -1;
 	if (restricted == -1)
 	{
-		restricted = K2PgIsUsingYBParser();
+		restricted = IsUsingK2PGParser();
 	}
 
 	if (!restricted)

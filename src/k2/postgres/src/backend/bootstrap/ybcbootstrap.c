@@ -1,7 +1,7 @@
 /*--------------------------------------------------------------------------------------------------
  *
  * ybcbootstrap.c
- *        YB commands for creating and altering table structures and settings
+ *        K2PG commands for creating and altering table structures and settings
  *
  * Copyright (c) YugaByte, Inc.
  *

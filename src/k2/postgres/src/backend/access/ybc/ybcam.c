@@ -51,7 +51,7 @@
 #include "pg_k2pg_utils.h"
 #include "access/nbtree.h"
 
-typedef struct YbScanPlanData
+typedef struct CamScanPlanData
 {
 	/* The relation where to read data from */
 	Relation target_relation;
@@ -66,11 +66,11 @@ typedef struct YbScanPlanData
 	/* Description and attnums of the columns to bind */
 	TupleDesc bind_desc;
 	AttrNumber bind_key_attnums[K2PG_MAX_SCAN_KEYS];
-} YbScanPlanData;
+} CamScanPlanData;
 
-typedef YbScanPlanData *YbScanPlan;
+typedef CamScanPlanData *CamScanPlan;
 
-static void ybcAddAttributeColumn(YbScanPlan scan_plan, AttrNumber attnum)
+static void camAddAttributeColumn(CamScanPlan scan_plan, AttrNumber attnum)
 {
   const int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
@@ -82,7 +82,7 @@ static void ybcAddAttributeColumn(YbScanPlan scan_plan, AttrNumber attnum)
  * Checks if an attribute is a hash or primary key column and note it in
  * the scan plan.
  */
-static void ybcCheckPrimaryKeyAttribute(YbScanPlan      scan_plan,
+static void camCheckPrimaryKeyAttribute(CamScanPlan      scan_plan,
 										K2PgTableDesc  k2pg_table_desc,
 										AttrNumber      attnum)
 {
@@ -118,7 +118,7 @@ static void ybcCheckPrimaryKeyAttribute(YbScanPlan      scan_plan,
  * Get YugaByte-specific table metadata and load it into the scan_plan.
  * Currently only the hash and primary key info.
  */
-static void ybcLoadTableInfo(Relation relation, YbScanPlan scan_plan)
+static void camLoadTableInfo(Relation relation, CamScanPlan scan_plan)
 {
 	Oid            dboid          = K2PgGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
@@ -128,15 +128,15 @@ static void ybcLoadTableInfo(Relation relation, YbScanPlan scan_plan)
 
 	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
 	{
-		ybcCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, attnum);
+		camCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, attnum);
 	}
 	if (relation->rd_rel->relhasoids)
 	{
-		ybcCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, ObjectIdAttributeNumber);
+		camCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, ObjectIdAttributeNumber);
 	}
 }
 
-static Oid k2pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
+static Oid cam_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
 {
 	Oid	atttypid;
 
@@ -157,84 +157,84 @@ static Oid k2pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
 /*
  * Bind a scan key.
  */
-static void ybcBindColumn(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
+static void camBindColumn(CamScanDesc camScan, TupleDesc bind_desc, AttrNumber attnum, Datum value, bool is_null)
 {
-	Oid	atttypid = k2pg_get_atttypid(bind_desc, attnum);
+	Oid	atttypid = cam_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr k2pg_expr = K2PgNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr k2pg_expr = K2PgNewConstant(camScan->handle, atttypid, value, is_null);
 
-	HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(ybScan->handle, attnum, k2pg_expr),
-													ybScan->handle,
-													ybScan->stmt_owner);
+	HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(camScan->handle, attnum, k2pg_expr),
+													camScan->handle,
+													camScan->stmt_owner);
 }
 
-void ybcBindColumnCondEq(K2PgScanDesc ybScan, bool is_hash_key, TupleDesc bind_desc,
+void camBindColumnCondEq(CamScanDesc camScan, bool is_hash_key, TupleDesc bind_desc,
 						 AttrNumber attnum, Datum value, bool is_null)
 {
-	Oid	atttypid = k2pg_get_atttypid(bind_desc, attnum);
+	Oid	atttypid = cam_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr k2pg_expr = K2PgNewConstant(ybScan->handle, atttypid, value, is_null);
+	K2PgExpr k2pg_expr = K2PgNewConstant(camScan->handle, atttypid, value, is_null);
 
 	if (is_hash_key)
-		HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(ybScan->handle, attnum, k2pg_expr),
-														ybScan->handle,
-														ybScan->stmt_owner);
+		HandleK2PgStatusWithOwner(PgGate_DmlBindColumn(camScan->handle, attnum, k2pg_expr),
+														camScan->handle,
+														camScan->stmt_owner);
 	else
-		HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondEq(ybScan->handle, attnum, k2pg_expr),
-														ybScan->handle,
-														ybScan->stmt_owner);
+		HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondEq(camScan->handle, attnum, k2pg_expr),
+														camScan->handle,
+														camScan->stmt_owner);
 }
 
-static void ybcBindColumnCondBetween(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
+static void camBindColumnCondBetween(CamScanDesc camScan, TupleDesc bind_desc, AttrNumber attnum,
                                      bool start_valid, Datum value, bool end_valid, Datum value_end)
 {
-	Oid	atttypid = k2pg_get_atttypid(bind_desc, attnum);
+	Oid	atttypid = cam_get_atttypid(bind_desc, attnum);
 
-	K2PgExpr k2pg_expr = start_valid ? K2PgNewConstant(ybScan->handle, atttypid, value,
+	K2PgExpr k2pg_expr = start_valid ? K2PgNewConstant(camScan->handle, atttypid, value,
       false /* isnull */) : NULL;
-	K2PgExpr k2pg_expr_end = end_valid ? K2PgNewConstant(ybScan->handle, atttypid, value_end,
+	K2PgExpr k2pg_expr_end = end_valid ? K2PgNewConstant(camScan->handle, atttypid, value_end,
       false /* isnull */) : NULL;
 
-  HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondBetween(ybScan->handle, attnum, k2pg_expr,
+  HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondBetween(camScan->handle, attnum, k2pg_expr,
 																												k2pg_expr_end),
-													ybScan->handle,
-													ybScan->stmt_owner);
+													camScan->handle,
+													camScan->stmt_owner);
 }
 
 /*
  * Bind an array of scan keys for a column.
  */
-static void ybcBindColumnCondIn(K2PgScanDesc ybScan, TupleDesc bind_desc, AttrNumber attnum,
+static void camBindColumnCondIn(CamScanDesc camScan, TupleDesc bind_desc, AttrNumber attnum,
                                 int nvalues, Datum *values)
 {
-	Oid	atttypid = k2pg_get_atttypid(bind_desc, attnum);
+	Oid	atttypid = cam_get_atttypid(bind_desc, attnum);
 
 	K2PgExpr k2pg_exprs[nvalues]; /* VLA - scratch space */
 	for (int i = 0; i < nvalues; i++) {
 		/*
-		 * For IN we are removing all null values in ybcBindScanKeys before
+		 * For IN we are removing all null values in camBindScanKeys before
 		 * getting here (relying on btree/lsm operators being strict).
 		 * So we can safely set is_null to false for all options left here.
 		 */
-		k2pg_exprs[i] = K2PgNewConstant(ybScan->handle, atttypid, values[i], false /* is_null */);
+		k2pg_exprs[i] = K2PgNewConstant(camScan->handle, atttypid, values[i], false /* is_null */);
 	}
 
-	HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondIn(ybScan->handle, attnum, nvalues, k2pg_exprs),
-	                                                 ybScan->handle,
-	                                                 ybScan->stmt_owner);
+	HandleK2PgStatusWithOwner(PgGate_DmlBindColumnCondIn(camScan->handle, attnum, nvalues, k2pg_exprs),
+	                                                 camScan->handle,
+	                                                 camScan->stmt_owner);
 }
 
 /*
  * Add a target column.
  */
-static void ybcAddTargetColumn(K2PgScanDesc ybScan, AttrNumber attnum)
+static void camAddTargetColumn(CamScanDesc camScan, AttrNumber attnum)
 {
 	/* Regular (non-system) attribute. */
 	Oid atttypid = InvalidOid;
 	int32 atttypmod = 0;
 	if (attnum > 0)
 	{
-		Form_pg_attribute attr = TupleDescAttr(ybScan->target_desc, attnum - 1);
+		Form_pg_attribute attr = TupleDescAttr(camScan->target_desc, attnum - 1);
 		/* Ignore dropped attributes */
 		if (attr->attisdropped)
 			return;
@@ -243,43 +243,43 @@ static void ybcAddTargetColumn(K2PgScanDesc ybScan, AttrNumber attnum)
 	}
 
 	K2PgTypeAttrs type_attrs = { atttypmod };
-	K2PgExpr expr = K2PgNewColumnRef(ybScan->handle, attnum, atttypid, &type_attrs);
-	HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(ybScan->handle, expr),
-													ybScan->handle,
-													ybScan->stmt_owner);
+	K2PgExpr expr = K2PgNewColumnRef(camScan->handle, attnum, atttypid, &type_attrs);
+	HandleK2PgStatusWithOwner(PgGate_DmlAppendTarget(camScan->handle, expr),
+													camScan->handle,
+													camScan->stmt_owner);
 }
 
-static HeapTuple ybcFetchNextHeapTuple(K2PgScanDesc ybScan, bool is_forward_scan)
+static HeapTuple camFetchNextHeapTuple(CamScanDesc camScan, bool is_forward_scan)
 {
 	HeapTuple tuple    = NULL;
 	bool      has_data = false;
-	TupleDesc tupdesc  = ybScan->target_desc;
+	TupleDesc tupdesc  = camScan->target_desc;
 
 	Datum           *values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
 	bool            *nulls  = (bool *) palloc(tupdesc->natts * sizeof(bool));
 	K2PgSysColumns syscols;
 
 	/* Execute the select statement. */
-	if (!ybScan->is_exec_done)
+	if (!camScan->is_exec_done)
 	{
-		HandleK2PgStatusWithOwner(PgGate_SetForwardScan(ybScan->handle, is_forward_scan),
-														ybScan->handle,
-														ybScan->stmt_owner);
-		HandleK2PgStatusWithOwner(PgGate_ExecSelect(ybScan->handle, ybScan->exec_params),
-														ybScan->handle,
-														ybScan->stmt_owner);
-		ybScan->is_exec_done = true;
+		HandleK2PgStatusWithOwner(PgGate_SetForwardScan(camScan->handle, is_forward_scan),
+														camScan->handle,
+														camScan->stmt_owner);
+		HandleK2PgStatusWithOwner(PgGate_ExecSelect(camScan->handle, camScan->exec_params),
+														camScan->handle,
+														camScan->stmt_owner);
+		camScan->is_exec_done = true;
 	}
 
 	/* Fetch one row. */
-	HandleK2PgStatusWithOwner(PgGate_DmlFetch(ybScan->handle,
+	HandleK2PgStatusWithOwner(PgGate_DmlFetch(camScan->handle,
 																				tupdesc->natts,
 																				(uint64_t *) values,
 																				nulls,
 																				&syscols,
 																				&has_data),
-													ybScan->handle,
-													ybScan->stmt_owner);
+													camScan->handle,
+													camScan->stmt_owner);
 
 	if (has_data)
 	{
@@ -289,13 +289,13 @@ static HeapTuple ybcFetchNextHeapTuple(K2PgScanDesc ybScan, bool is_forward_scan
 		{
 			HeapTupleSetOid(tuple, syscols.oid);
 		}
-		if (syscols.ybctid != NULL)
+		if (syscols.k2pgctid != NULL)
 		{
-			tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+			tuple->t_k2pgctid = PointerGetDatum(syscols.k2pgctid);
 		}
-		if (ybScan->tableOid != InvalidOid)
+		if (camScan->tableOid != InvalidOid)
 		{
-			tuple->t_tableOid = ybScan->tableOid;
+			tuple->t_tableOid = camScan->tableOid;
 		}
 	}
 	pfree(values);
@@ -304,37 +304,37 @@ static HeapTuple ybcFetchNextHeapTuple(K2PgScanDesc ybScan, bool is_forward_scan
 	return tuple;
 }
 
-static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bool is_forward_scan)
+static IndexTuple camFetchNextIndexTuple(CamScanDesc camScan, Relation index, bool is_forward_scan)
 {
 	IndexTuple tuple    = NULL;
 	bool       has_data = false;
-	TupleDesc  tupdesc  = ybScan->target_desc;
+	TupleDesc  tupdesc  = camScan->target_desc;
 
 	Datum           *values = (Datum *) palloc0(tupdesc->natts * sizeof(Datum));
 	bool            *nulls = (bool *) palloc(tupdesc->natts * sizeof(bool));
 	K2PgSysColumns syscols;
 
 	/* Execute the select statement. */
-	if (!ybScan->is_exec_done)
+	if (!camScan->is_exec_done)
 	{
-		HandleK2PgStatusWithOwner(PgGate_SetForwardScan(ybScan->handle, is_forward_scan),
-									ybScan->handle,
-									ybScan->stmt_owner);
-		HandleK2PgStatusWithOwner(PgGate_ExecSelect(ybScan->handle, ybScan->exec_params),
-									ybScan->handle,
-									ybScan->stmt_owner);
-		ybScan->is_exec_done = true;
+		HandleK2PgStatusWithOwner(PgGate_SetForwardScan(camScan->handle, is_forward_scan),
+									camScan->handle,
+									camScan->stmt_owner);
+		HandleK2PgStatusWithOwner(PgGate_ExecSelect(camScan->handle, camScan->exec_params),
+									camScan->handle,
+									camScan->stmt_owner);
+		camScan->is_exec_done = true;
 	}
 
 	/* Fetch one row. */
-	HandleK2PgStatusWithOwner(PgGate_DmlFetch(ybScan->handle,
+	HandleK2PgStatusWithOwner(PgGate_DmlFetch(camScan->handle,
 	                                          tupdesc->natts,
 	                                          (uint64_t *) values,
 	                                          nulls,
 	                                          &syscols,
 	                                          &has_data),
-	                            ybScan->handle,
-	                            ybScan->stmt_owner);
+	                            camScan->handle,
+	                            camScan->stmt_owner);
 
 	if (has_data)
 	{
@@ -357,9 +357,9 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
 			}
 
 			tuple = index_form_tuple(RelationGetDescr(index), ivalues, inulls);
-			if (syscols.ybctid != NULL)
+			if (syscols.k2pgctid != NULL)
 			{
-				tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+				tuple->t_k2pgctid = PointerGetDatum(syscols.k2pgctid);
 			}
 		}
 		else
@@ -367,7 +367,7 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
 			tuple = index_form_tuple(tupdesc, values, nulls);
 			if (syscols.ybbasectid != NULL)
 			{
-				tuple->t_ybctid = PointerGetDatum(syscols.ybbasectid);
+				tuple->t_k2pgctid = PointerGetDatum(syscols.ybbasectid);
 			}
 		}
 
@@ -395,9 +395,9 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
  *
  * 3. IndexScan(UserTable, Index)
  *    - Both target and bind descriptors are specifed by the IndexTable.
- *    - For this scan, YugaByte returns an index-tuple, which has a ybctid (ROWID) to be used for
+ *    - For this scan, YugaByte returns an index-tuple, which has a k2pgctid (ROWID) to be used for
  *      querying data from the UserTable.
- *    - TODO(neil) By batching ybctid and processing it on YugaByte for all index-scans, the target
+ *    - TODO(neil) By batching k2pgctid and processing it on YugaByte for all index-scans, the target
  *      for index-scan on regular table should also be the table itself (relation).
  *
  * 4. IndexOnlyScan(Table, Index)
@@ -406,8 +406,8 @@ static IndexTuple ybcFetchNextIndexTuple(K2PgScanDesc ybScan, Relation index, bo
  *    - For this scan, YugaByte ALWAYS return index-tuple, which is expected by Postgres layer.
  */
 static void
-ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
-				 K2PgScanDesc ybScan, YbScanPlan scan_plan)
+camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
+				 CamScanDesc camScan, CamScanPlan scan_plan)
 {
 	int i;
 	memset(scan_plan, 0, sizeof(*scan_plan));
@@ -422,11 +422,11 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 	 * NOTE: Primary index is a special case as there isn't a primary index
 	 * table in YugaByte.
 	 */
-	ybScan->index = index;
+	camScan->index = index;
 
-	ybScan->prepare_params.querying_colocated_table =
+	camScan->prepare_params.querying_colocated_table =
 		IsSystemRelation(relation);
-	if (!ybScan->prepare_params.querying_colocated_table &&
+	if (!camScan->prepare_params.querying_colocated_table &&
 		MyDatabaseColocated)
 	{
 		bool colocated = false;
@@ -435,14 +435,14 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 																											 RelationGetRelid(relation),
 																											 &colocated),
 																 &notfound);
-		ybScan->prepare_params.querying_colocated_table |= colocated;
+		camScan->prepare_params.querying_colocated_table |= colocated;
 	}
 
 	if (index)
 	{
-		ybScan->prepare_params.index_oid = RelationGetRelid(index);
-		ybScan->prepare_params.index_only_scan = xs_want_itup;
-		ybScan->prepare_params.use_secondary_index = !index->rd_index->indisprimary;
+		camScan->prepare_params.index_oid = RelationGetRelid(index);
+		camScan->prepare_params.index_only_scan = xs_want_itup;
+		camScan->prepare_params.use_secondary_index = !index->rd_index->indisprimary;
 	}
 
 	/* Setup descriptors for target and bind. */
@@ -455,18 +455,18 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 		 * - The binding table descriptor, whose column is bound to values, is also the main table.
 		 */
 		scan_plan->target_relation = relation;
-		ybcLoadTableInfo(relation, scan_plan);
-		ybScan->target_desc = RelationGetDescr(relation);
+		camLoadTableInfo(relation, scan_plan);
+		camScan->target_desc = RelationGetDescr(relation);
 		scan_plan->bind_desc = RelationGetDescr(relation);
 	}
 	else
 	{
 		/*
-		 * Index-Scan: SELECT data FROM UserTable WHERE rowid IN (SELECT ybctid FROM indexTable)
+		 * Index-Scan: SELECT data FROM UserTable WHERE rowid IN (SELECT k2pgctid FROM indexTable)
 		 *
 		 */
 
-		if (ybScan->prepare_params.index_only_scan)
+		if (camScan->prepare_params.index_only_scan)
 		{
 			/*
 			 * IndexOnlyScan
@@ -475,22 +475,22 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 			 * - The binding table descriptor, whose column is bound to values, is also the index table.
 			 */
 			scan_plan->target_relation = index;
-			ybScan->target_desc = RelationGetDescr(index);
+			camScan->target_desc = RelationGetDescr(index);
 		}
 		else
 		{
 			/*
 			 * IndexScan ( SysTable / UserTable)
-			 * - YugaByte will use the binds to query base-ybctid in the index table, which is then used
+			 * - YugaByte will use the binds to query base-k2pgctid in the index table, which is then used
 			 *   to query data from the main table.
 			 * - The target table descriptor, where data is read and returned, is the main table.
 			 * - The binding table descriptor, whose column is bound to values, is the index table.
 			 */
 			scan_plan->target_relation = relation;
-			ybScan->target_desc = RelationGetDescr(relation);
+			camScan->target_desc = RelationGetDescr(relation);
 		}
 
-		ybcLoadTableInfo(index, scan_plan);
+		camLoadTableInfo(index, scan_plan);
 		scan_plan->bind_desc = RelationGetDescr(index);
 	}
 
@@ -503,13 +503,13 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 	 * - For IndexScan(SysTable, Index), SysTable is used for targets, but Index is for binds.
 	 * - For IndexOnlyScan(Table, Index), only Index is used to setup both target and bind.
 	 */
-	for (i = 0; i < ybScan->nkeys; i++)
+	for (i = 0; i < camScan->nkeys; i++)
 	{
 		if (!index)
 		{
 			/* Sequential scan */
-			ybScan->target_key_attnums[i] = ybScan->key[i].sk_attno;
-			scan_plan->bind_key_attnums[i] = ybScan->key[i].sk_attno;
+			camScan->target_key_attnums[i] = camScan->key[i].sk_attno;
+			scan_plan->bind_key_attnums[i] = camScan->key[i].sk_attno;
 		}
 		else if (index->rd_index->indisprimary)
 		{
@@ -517,17 +517,17 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 			 * PrimaryIndex scan: This is a special case in YugaByte. There is no PrimaryIndexTable.
 			 * The table itself will be scanned.
 			 */
-			ybScan->target_key_attnums[i] =	scan_plan->bind_key_attnums[i] =
-				index->rd_index->indkey.values[ybScan->key[i].sk_attno - 1];
+			camScan->target_key_attnums[i] =	scan_plan->bind_key_attnums[i] =
+				index->rd_index->indkey.values[camScan->key[i].sk_attno - 1];
 		}
-		else if (ybScan->prepare_params.index_only_scan)
+		else if (camScan->prepare_params.index_only_scan)
 		{
 			/*
 			 * IndexOnlyScan(Table, Index) returns IndexTuple.
 			 * Use the index attnum for both targets and binds.
 			 */
-			scan_plan->bind_key_attnums[i] = ybScan->key[i].sk_attno;
-			ybScan->target_key_attnums[i] =	ybScan->key[i].sk_attno;
+			scan_plan->bind_key_attnums[i] = camScan->key[i].sk_attno;
+			camScan->target_key_attnums[i] =	camScan->key[i].sk_attno;
 		}
 		else
 		{
@@ -535,13 +535,13 @@ ybcSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 			 * IndexScan(SysTable or UserTable, Index) returns HeapTuple.
 			 * Use SysTable attnum for targets. Use its index attnum for binds.
 			 */
-			scan_plan->bind_key_attnums[i] = ybScan->key[i].sk_attno;
-			ybScan->target_key_attnums[i] =	index->rd_index->indkey.values[ybScan->key[i].sk_attno - 1];
+			scan_plan->bind_key_attnums[i] = camScan->key[i].sk_attno;
+			camScan->target_key_attnums[i] =	index->rd_index->indkey.values[camScan->key[i].sk_attno - 1];
 		}
 	}
 }
 
-static bool k2pg_should_pushdown_op(YbScanPlan scan_plan, AttrNumber attnum, int op_strategy)
+static bool cam_should_pushdown_op(CamScanPlan scan_plan, AttrNumber attnum, int op_strategy)
 {
 	const int idx =  K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
@@ -589,7 +589,7 @@ static bool IsSearchArray(int sk_flags) {
 }
 
 static bool
-ShouldPushdownScanKey(Relation relation, YbScanPlan scan_plan, AttrNumber attnum,
+ShouldPushdownScanKey(Relation relation, CamScanPlan scan_plan, AttrNumber attnum,
                       ScanKey key, bool is_primary_key) {
 	if (IsSystemRelation(relation))
 	{
@@ -606,7 +606,7 @@ ShouldPushdownScanKey(Relation relation, YbScanPlan scan_plan, AttrNumber attnum
 		if (IsBasicOpSearch(key->sk_flags))
 		{
 			/* Eq strategy for hash key, eq + ineq for range key. */
-			return k2pg_should_pushdown_op(scan_plan, attnum, key->sk_strategy);
+			return cam_should_pushdown_op(scan_plan, attnum, key->sk_strategy);
 		}
 
 		if (IsSearchNull(key->sk_flags))
@@ -647,15 +647,15 @@ static int int_compar_cb(const void *v1, const void *v2)
 }
 
 /* Use the scan-descriptor and scan-plan to setup scan key for filtering */
-static void	ybcSetupScanKeys(Relation relation,
+static void	camSetupScanKeys(Relation relation,
 							 Relation index,
-							 K2PgScanDesc ybScan,
-							 YbScanPlan scan_plan)
+							 CamScanDesc camScan,
+							 CamScanPlan scan_plan)
 {
 	/*
 	 * Find the scan keys that are the primary key.
 	 */
-	for (int i = 0; i < ybScan->nkeys; i++)
+	for (int i = 0; i < camScan->nkeys; i++)
 	{
 		if (scan_plan->bind_key_attnums[i] == InvalidOid)
 			break;
@@ -668,7 +668,7 @@ static void	ybcSetupScanKeys(Relation relation,
 		bool is_primary_key = bms_is_member(idx, scan_plan->primary_key);
 
 		if (!ShouldPushdownScanKey(relation, scan_plan, scan_plan->bind_key_attnums[i],
-		                           &ybScan->key[i], is_primary_key))
+		                           &camScan->key[i], is_primary_key))
 			continue;
 
 		if (is_primary_key)
@@ -731,30 +731,30 @@ static void	ybcSetupScanKeys(Relation relation,
 }
 
 /* Use the scan-descriptor and scan-plan to setup binds for the queryplan */
-static void ybcBindScanKeys(Relation relation,
+static void camBindScanKeys(Relation relation,
 							Relation index,
-							K2PgScanDesc ybScan,
-							YbScanPlan scan_plan) {
+							CamScanDesc camScan,
+							CamScanPlan scan_plan) {
 	Oid		dboid    = K2PgGetDatabaseOid(relation);
 	Oid		relid    = RelationGetRelid(relation);
 
-	HandleK2PgStatus(PgGate_NewSelect(dboid, relid, &ybScan->prepare_params, &ybScan->handle));
+	HandleK2PgStatus(PgGate_NewSelect(dboid, relid, &camScan->prepare_params, &camScan->handle));
 	ResourceOwnerEnlargeYugaByteStmts(CurrentResourceOwner);
-	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, ybScan->handle);
-	ybScan->stmt_owner = CurrentResourceOwner;
+	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, camScan->handle);
+	camScan->stmt_owner = CurrentResourceOwner;
 
 	if (IsSystemRelation(relation))
 	{
 		/* Bind the scan keys */
-		for (int i = 0; i < ybScan->nkeys; i++)
+		for (int i = 0; i < camScan->nkeys; i++)
 		{
 			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 			if (bms_is_member(idx, scan_plan->sk_cols))
 			{
-				bool is_null = (ybScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
+				bool is_null = (camScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
 
-				ybcBindColumn(ybScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
-							  ybScan->key[i].sk_argument, is_null);
+				camBindColumn(camScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
+							  camScan->key[i].sk_argument, is_null);
 			}
 		}
 	}
@@ -762,7 +762,7 @@ static void ybcBindScanKeys(Relation relation,
 	{
 		/* Find max number of cols in schema in use in query */
 		int max_idx = 0;
-		for (int i = 0; i < ybScan->nkeys; i++)
+		for (int i = 0; i < camScan->nkeys; i++)
 		{
 			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
 			if (!bms_is_member(idx, scan_plan->sk_cols))
@@ -793,9 +793,9 @@ static void ybcBindScanKeys(Relation relation,
 		 * to establish priority order EQUAL > IN > BETWEEN.
 		 */
 		int noffsets = 0;
-		int offsets[ybScan->nkeys + 1]; /* VLA - scratch space: +1 to avoid zero elements */
+		int offsets[camScan->nkeys + 1]; /* VLA - scratch space: +1 to avoid zero elements */
 
-		for (int i = 0; i < ybScan->nkeys; i++)
+		for (int i = 0; i < camScan->nkeys; i++)
 		{
 			/* Check if this is primary columns */
 			int idx = K2PgAttnumToBmsIndex(relation, scan_plan->bind_key_attnums[i]);
@@ -803,20 +803,20 @@ static void ybcBindScanKeys(Relation relation,
 				continue;
 
 			/* Assign key offsets */
-			switch (ybScan->key[i].sk_strategy)
+			switch (camScan->key[i].sk_strategy)
 			{
 				case InvalidStrategy:
 					/* Should be ensured during planning. */
-					Assert(IsSearchNull(ybScan->key[i].sk_flags));
+					Assert(IsSearchNull(camScan->key[i].sk_flags));
 					/* fallthrough  -- treating IS NULL as (DocDB) = (null) */
 				case BTEqualStrategyNumber:
-					if (IsBasicOpSearch(ybScan->key[i].sk_flags) ||
-						IsSearchNull(ybScan->key[i].sk_flags))
+					if (IsBasicOpSearch(camScan->key[i].sk_flags) ||
+						IsSearchNull(camScan->key[i].sk_flags))
 					{
 						/* Use a -ve value so that qsort places EQUAL before others */
 						offsets[noffsets++] = -i;
 					}
-					else if (IsSearchArray(ybScan->key[i].sk_flags))
+					else if (IsSearchArray(camScan->key[i].sk_flags))
 					{
 						offsets[noffsets++] = i;
 					}
@@ -853,22 +853,22 @@ static void ybcBindScanKeys(Relation relation,
 			bool is_hash_key = bms_is_member(idx, scan_plan->hash_key);
 			bool is_primary_key = bms_is_member(idx, scan_plan->primary_key); // Includes hash key
 
-			switch (ybScan->key[i].sk_strategy)
+			switch (camScan->key[i].sk_strategy)
 			{
 				case InvalidStrategy: /* fallthrough, c IS NULL -> c = NULL (checked above) */
 				case BTEqualStrategyNumber:
 					/* Bind the scan keys */
-					if (IsBasicOpSearch(ybScan->key[i].sk_flags) ||
-						IsSearchNull(ybScan->key[i].sk_flags))
+					if (IsBasicOpSearch(camScan->key[i].sk_flags) ||
+						IsSearchNull(camScan->key[i].sk_flags))
 					{
 						/* Either c = NULL or c IS NULL. */
-						bool is_null = (ybScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
-						ybcBindColumnCondEq(ybScan, is_hash_key, scan_plan->bind_desc,
+						bool is_null = (camScan->key[i].sk_flags & SK_ISNULL) == SK_ISNULL;
+						camBindColumnCondEq(camScan, is_hash_key, scan_plan->bind_desc,
 											scan_plan->bind_key_attnums[i],
-											ybScan->key[i].sk_argument, is_null);
+											camScan->key[i].sk_argument, is_null);
 						is_column_bound[idx] = true;
 					}
-					else if (IsSearchArray(ybScan->key[i].sk_flags) && is_primary_key)
+					else if (IsSearchArray(camScan->key[i].sk_flags) && is_primary_key)
 					{
 						/* based on _bt_preprocess_array_keys() */
 						ArrayType  *arrayval;
@@ -881,7 +881,7 @@ static void ybcBindScanKeys(Relation relation,
 						int			num_nonnulls;
 						int			j;
 
-						ScanKey cur = &ybScan->key[i];
+						ScanKey cur = &camScan->key[i];
 
 						/*
 						 * First, deconstruct the array into elements.  Anything allocated
@@ -936,7 +936,7 @@ static void ybcBindScanKeys(Relation relation,
 						/*
 						 * And set up the BTArrayKeyInfo data.
 						 */
-						ybcBindColumnCondIn(ybScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
+						camBindColumnCondIn(camScan, scan_plan->bind_desc, scan_plan->bind_key_attnums[i],
 						                    num_elems, elem_values);
 						is_column_bound[idx] = true;
 					} else {
@@ -948,17 +948,17 @@ static void ybcBindScanKeys(Relation relation,
 				case BTGreaterStrategyNumber:
 					if (start_valid[idx]) {
 						/* take max of old value and new value */
-						bool is_gt = DatumGetBool(FunctionCall2Coll(&ybScan->key[i].sk_func,
-						                                            ybScan->key[i].sk_collation,
+						bool is_gt = DatumGetBool(FunctionCall2Coll(&camScan->key[i].sk_func,
+						                                            camScan->key[i].sk_collation,
 						                                            start[idx],
-						                                            ybScan->key[i].sk_argument));
+						                                            camScan->key[i].sk_argument));
 						if (!is_gt) {
-						start[idx] = ybScan->key[i].sk_argument;
+						start[idx] = camScan->key[i].sk_argument;
 						}
 					}
 					else
 					{
-						start[idx] = ybScan->key[i].sk_argument;
+						start[idx] = camScan->key[i].sk_argument;
 						start_valid[idx] = true;
 					}
 					break;
@@ -968,17 +968,17 @@ static void ybcBindScanKeys(Relation relation,
 					if (end_valid[idx])
 					{
 						/* take min of old value and new value */
-						bool is_lt = DatumGetBool(FunctionCall2Coll(&ybScan->key[i].sk_func,
-						                                            ybScan->key[i].sk_collation,
+						bool is_lt = DatumGetBool(FunctionCall2Coll(&camScan->key[i].sk_func,
+						                                            camScan->key[i].sk_collation,
 						                                            end[idx],
-						                                            ybScan->key[i].sk_argument));
+						                                            camScan->key[i].sk_argument));
 						if (!is_lt) {
-							end[idx] = ybScan->key[i].sk_argument;
+							end[idx] = camScan->key[i].sk_argument;
 						}
 					}
 					else
 					{
-						end[idx] = ybScan->key[i].sk_argument;
+						end[idx] = camScan->key[i].sk_argument;
 						end_valid[idx] = true;
 					}
 					break;
@@ -999,7 +999,7 @@ static void ybcBindScanKeys(Relation relation,
 			if (!start_valid[idx] && !end_valid[idx])
 				continue;
 
-			ybcBindColumnCondBetween(ybScan,
+			camBindColumnCondBetween(camScan,
 			                         scan_plan->bind_desc,
 									 K2PgBmsIndexToAttnum(relation, idx),
 									 start_valid[idx], start[idx],
@@ -1010,23 +1010,23 @@ static void ybcBindScanKeys(Relation relation,
 }
 
 /* Setup the targets */
-static void ybcSetupTargets(Relation relation,
+static void camSetupTargets(Relation relation,
 														Relation index,
-														K2PgScanDesc ybScan,
-														YbScanPlan scan_plan) {
+														CamScanDesc camScan,
+														CamScanPlan scan_plan) {
 	if (scan_plan->target_relation->rd_rel->relhasoids)
-		ybcAddTargetColumn(ybScan, ObjectIdAttributeNumber);
+		camAddTargetColumn(camScan, ObjectIdAttributeNumber);
 
-	if (ybScan->prepare_params.index_only_scan && index->rd_index->indisprimary)
+	if (camScan->prepare_params.index_only_scan && index->rd_index->indisprimary)
 		/*
 		 * Special case: For Primary-Key-ONLY-Scan, we select ONLY the primary key from the target
 		 * table instead of the whole target table.
 		 */
 		for (int i = 0; i < index->rd_index->indnatts; i++)
-			ybcAddTargetColumn(ybScan, index->rd_index->indkey.values[i]);
+			camAddTargetColumn(camScan, index->rd_index->indkey.values[i]);
 	else
-		for (AttrNumber attnum = 1; attnum <= ybScan->target_desc->natts; attnum++)
-			ybcAddTargetColumn(ybScan, attnum);
+		for (AttrNumber attnum = 1; attnum <= camScan->target_desc->natts; attnum++)
+			camAddTargetColumn(camScan, attnum);
 
 	if (scan_plan->target_relation->rd_index)
 		/*
@@ -1035,23 +1035,23 @@ static void ybcSetupTargets(Relation relation,
 		 * In this case, Postgres requests base_ctid and maybe also data from IndexTable and then uses
 		 * them for further processing.
 		 */
-		ybcAddTargetColumn(ybScan, YBIdxBaseTupleIdAttributeNumber);
+		camAddTargetColumn(camScan, K2PgIdxBaseTupleIdAttributeNumber);
 	else
 	{
 		/* Two cases:
 		 * - Primary Scan (Key or sequential)
-		 *     SELECT data, ybctid FROM table [ WHERE primary-key-condition ]
+		 *     SELECT data, k2pgctid FROM table [ WHERE primary-key-condition ]
 		 * - Secondary IndexScan
-		 *     SELECT data, ybctid FROM table WHERE ybctid IN ( SELECT base_ybctid FROM IndexTable )
+		 *     SELECT data, k2pgctid FROM table WHERE k2pgctid IN ( SELECT base_k2pgctid FROM IndexTable )
 		 */
-		ybcAddTargetColumn(ybScan, YBTupleIdAttributeNumber);
+		camAddTargetColumn(camScan, K2PgTupleIdAttributeNumber);
 		if (index && !index->rd_index->indisprimary)
 		{
 			/*
 			 * IndexScan: Postgres layer sends both actual-query and index-scan to PgGate, who will
 			 * select and immediately use base_ctid to query data before responding.
 			 */
-			ybcAddTargetColumn(ybScan, YBIdxBaseTupleIdAttributeNumber);
+			camAddTargetColumn(camScan, K2PgIdxBaseTupleIdAttributeNumber);
 		}
 	}
 }
@@ -1067,11 +1067,11 @@ static void ybcSetupTargets(Relation relation,
  *   keys[].sk_attno = the columns' attnum in the IndexTable or "index"
  *                     (This is not the attnum in UserTable or "relation")
  *
- * - If "xs_want_itup" is true, Postgres layer is expecting an IndexTuple that has ybctid to
+ * - If "xs_want_itup" is true, Postgres layer is expecting an IndexTuple that has k2pgctid to
  *   identify the desired row.
  */
-K2PgScanDesc
-k2pgBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
+CamScanDesc
+camBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, ScanKey key)
 {
 	if (nkeys > K2PG_MAX_SCAN_KEYS)
 		ereport(ERROR,
@@ -1080,25 +1080,25 @@ k2pgBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, S
 						K2PG_MAX_SCAN_KEYS)));
 
 	/* Set up YugaByte scan description */
-	K2PgScanDesc ybScan = (K2PgScanDesc) palloc0(sizeof(K2PgScanDescData));
-	ybScan->key   = key;
-	ybScan->nkeys = nkeys;
-	ybScan->exec_params = NULL;
-	ybScan->tableOid = RelationGetRelid(relation);
+	CamScanDesc camScan = (CamScanDesc) palloc0(sizeof(CamScanDescData));
+	camScan->key   = key;
+	camScan->nkeys = nkeys;
+	camScan->exec_params = NULL;
+	camScan->tableOid = RelationGetRelid(relation);
 
 	/* Setup the scan plan */
-	YbScanPlanData	scan_plan;
-	ybcSetupScanPlan(relation, index, xs_want_itup, ybScan, &scan_plan);
+	CamScanPlanData	scan_plan;
+	camSetupScanPlan(relation, index, xs_want_itup, camScan, &scan_plan);
 
 	/* Setup binds for the scan-key */
-	ybcSetupScanKeys(relation, index, ybScan, &scan_plan);
-	ybcBindScanKeys(relation, index, ybScan, &scan_plan);
+	camSetupScanKeys(relation, index, camScan, &scan_plan);
+	camBindScanKeys(relation, index, camScan, &scan_plan);
 
 	/*
 	 * Set up the scan targets. If the table is indexed and only the indexed columns should be
 	 * returned, fetch just those columns. Otherwise, fetch all "real" columns.
 	 */
-	ybcSetupTargets(relation, index, ybScan, &scan_plan);
+	camSetupTargets(relation, index, camScan, &scan_plan);
 
 	/*
 	 * Set the current syscatalog version (will check that we are up to date).
@@ -1109,26 +1109,26 @@ k2pgBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, S
 	 */
 	if (!IsSystemRelation(relation))
 	{
-		HandleK2PgStatusWithOwner(PgGate_SetCatalogCacheVersion(ybScan->handle,
+		HandleK2PgStatusWithOwner(PgGate_SetCatalogCacheVersion(camScan->handle,
 		                                                        k2pg_catalog_cache_version),
-		                            ybScan->handle,
-		                            ybScan->stmt_owner);
+		                            camScan->handle,
+		                            camScan->stmt_owner);
 	}
 
 	bms_free(scan_plan.hash_key);
 	bms_free(scan_plan.primary_key);
 	bms_free(scan_plan.sk_cols);
 
-	return ybScan;
+	return camScan;
 }
 
-void k2pgEndScan(K2PgScanDesc ybScan)
+void camEndScan(CamScanDesc camScan)
 {
-	if (ybScan->handle)
+	if (camScan->handle)
 	{
-		ResourceOwnerForgetYugaByteStmt(ybScan->stmt_owner, ybScan->handle);
+		ResourceOwnerForgetYugaByteStmt(camScan->stmt_owner, camScan->handle);
 	}
-	pfree(ybScan);
+	pfree(camScan);
 }
 
 static bool
@@ -1245,20 +1245,20 @@ indextuple_matches_key(IndexTuple tup,
 	return true;
 }
 
-HeapTuple k2pg_getnext_heaptuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck)
+HeapTuple cam_getnext_heaptuple(CamScanDesc camScan, bool is_forward_scan, bool *recheck)
 {
-	int         nkeys    = ybScan->nkeys;
-	ScanKey     key      = ybScan->key;
-	AttrNumber *sk_attno = ybScan->target_key_attnums;
+	int         nkeys    = camScan->nkeys;
+	ScanKey     key      = camScan->key;
+	AttrNumber *sk_attno = camScan->target_key_attnums;
 	HeapTuple   tup      = NULL;
 
 	/*
-	 * YB Scan may not be able to push down the scan key condition so we may
+	 * K2PG Scan may not be able to push down the scan key condition so we may
 	 * need additional filtering here.
 	 */
-	while (HeapTupleIsValid(tup = ybcFetchNextHeapTuple(ybScan, is_forward_scan)))
+	while (HeapTupleIsValid(tup = camFetchNextHeapTuple(camScan, is_forward_scan)))
 	{
-		if (heaptuple_matches_key(tup, ybScan->target_desc, nkeys, key, sk_attno, recheck))
+		if (heaptuple_matches_key(tup, camScan->target_desc, nkeys, key, sk_attno, recheck))
 			return tup;
 
 		heap_freetuple(tup);
@@ -1267,19 +1267,19 @@ HeapTuple k2pg_getnext_heaptuple(K2PgScanDesc ybScan, bool is_forward_scan, bool
 	return NULL;
 }
 
-IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bool *recheck)
+IndexTuple cam_getnext_indextuple(CamScanDesc camScan, bool is_forward_scan, bool *recheck)
 {
-	int         nkeys    = ybScan->nkeys;
-	ScanKey     key      = ybScan->key;
-	AttrNumber *sk_attno = ybScan->target_key_attnums;
-	Relation    index    = ybScan->index;
+	int         nkeys    = camScan->nkeys;
+	ScanKey     key      = camScan->key;
+	AttrNumber *sk_attno = camScan->target_key_attnums;
+	Relation    index    = camScan->index;
 	IndexTuple  tup      = NULL;
 
 	/*
-	 * YB Scan may not be able to push down the scan key condition so we may
+	 * K2PG Scan may not be able to push down the scan key condition so we may
 	 * need additional filtering here.
 	 */
-	while (PointerIsValid(tup = ybcFetchNextIndexTuple(ybScan, index, is_forward_scan)))
+	while (PointerIsValid(tup = camFetchNextIndexTuple(camScan, index, is_forward_scan)))
 	{
 		if (indextuple_matches_key(tup, RelationGetDescr(index), nkeys, key, sk_attno, recheck))
 			return tup;
@@ -1290,7 +1290,7 @@ IndexTuple k2pg_getnext_indextuple(K2PgScanDesc ybScan, bool is_forward_scan, bo
 	return NULL;
 }
 
-SysScanDesc k2pg_systable_beginscan(Relation relation,
+SysScanDesc cam_systable_beginscan(Relation relation,
                                    Oid indexId,
                                    bool indexOK,
                                    Snapshot snapshot,
@@ -1339,13 +1339,13 @@ SysScanDesc k2pg_systable_beginscan(Relation relation,
 		}
 	}
 
-	K2PgScanDesc ybScan = k2pgBeginScan(relation, index, false /* xs_want_itup */, nkeys, key);
+	CamScanDesc camScan = camBeginScan(relation, index, false /* xs_want_itup */, nkeys, key);
 
 	/* Set up Postgres sys table scan description */
 	SysScanDesc scan_desc = (SysScanDesc) palloc0(sizeof(SysScanDescData));
 	scan_desc->heap_rel   = relation;
 	scan_desc->snapshot   = snapshot;
-	scan_desc->ybscan     = ybScan;
+	scan_desc->ybscan     = camScan;
 
 	if (index)
 	{
@@ -1355,13 +1355,13 @@ SysScanDesc k2pg_systable_beginscan(Relation relation,
 	return scan_desc;
 }
 
-HeapTuple k2pg_systable_getnext(SysScanDesc scan_desc)
+HeapTuple cam_systable_getnext(SysScanDesc scan_desc)
 {
 	bool recheck = false;
 
 	Assert(PointerIsValid(scan_desc->ybscan));
 
-	HeapTuple tuple = k2pg_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
+	HeapTuple tuple = cam_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
 											&recheck);
 
 	Assert(!recheck);
@@ -1370,20 +1370,20 @@ HeapTuple k2pg_systable_getnext(SysScanDesc scan_desc)
 }
 
 
-void k2pg_systable_endscan(SysScanDesc scan_desc)
+void cam_systable_endscan(SysScanDesc scan_desc)
 {
 	Assert(PointerIsValid(scan_desc->ybscan));
-	k2pgEndScan(scan_desc->ybscan);
+	camEndScan(scan_desc->ybscan);
 }
 
-HeapScanDesc k2pg_heap_beginscan(Relation relation,
+HeapScanDesc cam_heap_beginscan(Relation relation,
                                 Snapshot snapshot,
                                 int nkeys,
                                 ScanKey key,
                                 bool temp_snap)
 {
 	/* Restart should not be prevented if operation caused by system read of system table. */
-	K2PgScanDesc ybScan = k2pgBeginScan(relation, NULL /* index */, false /* xs_want_itup */,
+	CamScanDesc camScan = camBeginScan(relation, NULL /* index */, false /* xs_want_itup */,
 	                                 nkeys, key);
 
 	/* Set up Postgres sys table scan description */
@@ -1392,18 +1392,18 @@ HeapScanDesc k2pg_heap_beginscan(Relation relation,
 	scan_desc->rs_snapshot  = snapshot;
 	scan_desc->rs_temp_snap = temp_snap;
 	scan_desc->rs_cblock    = InvalidBlockNumber;
-	scan_desc->ybscan       = ybScan;
+	scan_desc->ybscan       = camScan;
 
 	return scan_desc;
 }
 
-HeapTuple k2pg_heap_getnext(HeapScanDesc scan_desc)
+HeapTuple cam_heap_getnext(HeapScanDesc scan_desc)
 {
 	bool recheck = false;
 
 	Assert(PointerIsValid(scan_desc->ybscan));
 
-	HeapTuple tuple = k2pg_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
+	HeapTuple tuple = cam_getnext_heaptuple(scan_desc->ybscan, true /* is_forward_scan */,
 											&recheck);
 
 	Assert(!recheck);
@@ -1411,10 +1411,10 @@ HeapTuple k2pg_heap_getnext(HeapScanDesc scan_desc)
 	return tuple;
 }
 
-void k2pg_heap_endscan(HeapScanDesc scan_desc)
+void cam_heap_endscan(HeapScanDesc scan_desc)
 {
 	Assert(PointerIsValid(scan_desc->ybscan));
-	k2pgEndScan(scan_desc->ybscan);
+	camEndScan(scan_desc->ybscan);
 	if (scan_desc->rs_temp_snap)
 		UnregisterSnapshot(scan_desc->rs_snapshot);
 	pfree(scan_desc);
@@ -1422,7 +1422,7 @@ void k2pg_heap_endscan(HeapScanDesc scan_desc)
 
 /* --------------------------------------------------------------------------------------------- */
 
-void k2pgCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
+void camCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 					 bool is_backwards_scan, bool is_uncovered_idx_scan,
 					 Cost *startup_cost, Cost *total_cost)
 {
@@ -1457,7 +1457,7 @@ void k2pgCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
  * TODO this should look into the actual operators and distinguish, for instance
  * equality and inequality conditions (for ASC/DESC columns) better.
  */
-static double ybcIndexEvalClauseSelectivity(Bitmapset *qual_cols,
+static double camIndexEvalClauseSelectivity(Bitmapset *qual_cols,
                                             bool is_unique_idx,
                                             Bitmapset *hash_key,
                                             Bitmapset *primary_key)
@@ -1485,7 +1485,7 @@ static double ybcIndexEvalClauseSelectivity(Bitmapset *qual_cols,
 	return K2PG_HASH_SCAN_SELECTIVITY;
 }
 
-void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
+void camIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 						  Cost *startup_cost, Cost *total_cost)
 {
 	Relation	index = RelationIdGetRelation(path->indexinfo->indexoid);
@@ -1503,10 +1503,10 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	bool       is_uncovered_idx_scan = !index->rd_index->indisprimary &&
 	                                   path->path.pathtype != T_IndexOnlyScan;
 
-	YbScanPlanData	scan_plan;
+	CamScanPlanData	scan_plan;
 	memset(&scan_plan, 0, sizeof(scan_plan));
 	scan_plan.target_relation = isprimary ? relation : index;
-	ybcLoadTableInfo(scan_plan.target_relation, &scan_plan);
+	camLoadTableInfo(scan_plan.target_relation, &scan_plan);
 
 	/* Do preliminary analysis of indexquals */
 	qinfos = deconstruct_indexquals(path);
@@ -1530,7 +1530,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 			if (nt->nulltesttype == IS_NULL)
 			{
 				const_quals = bms_add_member(const_quals, bms_idx);
-				ybcAddAttributeColumn(&scan_plan, attnum);
+				camAddAttributeColumn(&scan_plan, attnum);
 			}
 		}
 		else
@@ -1543,9 +1543,9 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 													   path->indexinfo->opfamily[qinfo->indexcol]);
 				Assert(op_strategy != 0);  /* not a member of opfamily?? */
 
-				if (k2pg_should_pushdown_op(&scan_plan, attnum, op_strategy))
+				if (cam_should_pushdown_op(&scan_plan, attnum, op_strategy))
 				{
-					ybcAddAttributeColumn(&scan_plan, attnum);
+					camAddAttributeColumn(&scan_plan, attnum);
 					if (qinfo->other_operand && IsA(qinfo->other_operand, Const))
 						const_quals = bms_add_member(const_quals, bms_idx);
 				}
@@ -1558,7 +1558,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	 * will be a full-table scan. Otherwise, it will be either a primary key lookup or range scan
 	 * on a hash key.
 	 */
-	*selectivity = ybcIndexEvalClauseSelectivity(scan_plan.sk_cols,
+	*selectivity = camIndexEvalClauseSelectivity(scan_plan.sk_cols,
 	                                             is_unique,
 	                                             scan_plan.hash_key,
 	                                             scan_plan.primary_key);
@@ -1574,7 +1574,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 		*selectivity *= K2PG_PARTIAL_IDX_PRED_SELECTIVITY;
 	}
 
-	k2pgCostEstimate(baserel, *selectivity, is_backwards_scan,
+	camCostEstimate(baserel, *selectivity, is_backwards_scan,
 	                is_uncovered_idx_scan, startup_cost, total_cost);
 
 	/*
@@ -1583,7 +1583,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	 * they may not be applied if another join path is chosen.
 	 * So only use the t1.c1 = <const_value> quals (filtered above) for this.
 	 */
-	double const_qual_selectivity = ybcIndexEvalClauseSelectivity(const_quals,
+	double const_qual_selectivity = camIndexEvalClauseSelectivity(const_quals,
 	                                                              is_unique,
 	                                                              scan_plan.hash_key,
 	                                                              scan_plan.primary_key);
@@ -1600,7 +1600,7 @@ void k2pgIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	RelationClose(index);
 }
 
-HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
+HeapTuple CamFetchTuple(Relation relation, Datum k2pgctid)
 {
 	K2PgStatement k2pg_stmt;
 	TupleDesc      tupdesc = RelationGetDescr(relation);
@@ -1610,12 +1610,12 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 																NULL /* prepare_params */,
 																&k2pg_stmt));
 
-	/* Bind ybctid to identify the current row. */
-	K2PgExpr ybctid_expr = K2PgNewConstant(k2pg_stmt,
+	/* Bind k2pgctid to identify the current row. */
+	K2PgExpr k2pgctid_expr = K2PgNewConstant(k2pg_stmt,
 										   BYTEAOID,
-										   ybctid,
+										   k2pgctid,
 										   false);
-	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, YBTupleIdAttributeNumber, ybctid_expr));
+	HandleK2PgStatus(PgGate_DmlBindColumn(k2pg_stmt, K2PgTupleIdAttributeNumber, k2pgctid_expr));
 
 	/*
 	 * Set up the scan targets. For index-based scan we need to return all "real" columns.
@@ -1635,13 +1635,13 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 		HandleK2PgStatus(PgGate_DmlAppendTarget(k2pg_stmt, expr));
 	}
 	K2PgTypeAttrs type_attrs = { 0 };
-	K2PgExpr   expr = K2PgNewColumnRef(k2pg_stmt, YBTupleIdAttributeNumber, InvalidOid,
+	K2PgExpr   expr = K2PgNewColumnRef(k2pg_stmt, K2PgTupleIdAttributeNumber, InvalidOid,
 									   &type_attrs);
 	HandleK2PgStatus(PgGate_DmlAppendTarget(k2pg_stmt, expr));
 
 	/*
 	 * Execute the select statement.
-	 * This select statement fetch the row for a specific YBCTID, LIMIT setting is not needed.
+	 * This select statement fetch the row for a specific K2PGTID, LIMIT setting is not needed.
 	 */
 	HandleK2PgStatus(PgGate_ExecSelect(k2pg_stmt, NULL /* exec_params */));
 
@@ -1668,9 +1668,9 @@ HeapTuple K2PgFetchTuple(Relation relation, Datum ybctid)
 		{
 			HeapTupleSetOid(tuple, syscols.oid);
 		}
-		if (syscols.ybctid != NULL)
+		if (syscols.k2pgctid != NULL)
 		{
-			tuple->t_ybctid = PointerGetDatum(syscols.ybctid);
+			tuple->t_k2pgctid = PointerGetDatum(syscols.k2pgctid);
 		}
 		tuple->t_tableOid = RelationGetRelid(relation);
 	}

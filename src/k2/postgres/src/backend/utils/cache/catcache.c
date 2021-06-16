@@ -1153,7 +1153,7 @@ SetCatCacheList(CatCache *cache,
 					continue;    /* quickly skip entry if wrong hash val */
 
 				if (IsK2PgEnabled())
-					continue; /* Cannot rely on ctid comparison in YB mode */
+					continue; /* Cannot rely on ctid comparison in K2PG mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self),
 									   &(ntp->t_self)))
@@ -2034,7 +2034,7 @@ SearchCatCacheList(CatCache *cache,
 					continue;	/* quickly skip entry if wrong hash val */
 
 				if (IsK2PgEnabled())
-					continue; /* Cannot rely on ctid comparison in YB mode */
+					continue; /* Cannot rely on ctid comparison in K2PG mode */
 
 				if (!ItemPointerEquals(&(ct->tuple.t_self), &(ntp->t_self)))
 					continue;	/* not same tuple */
@@ -2215,7 +2215,7 @@ CatalogCacheCreateEntry(CatCache *cache, HeapTuple ntp, Datum *arguments,
 		memcpy((char *) ct->tuple.t_data,
 			   (const char *) dtp->t_data,
 			   dtp->t_len);
-		HEAPTUPLE_COPY_YBCTID(dtp->t_ybctid, ct->tuple.t_ybctid);
+		HEAPTUPLE_COPY_K2PGTID(dtp->t_k2pgctid, ct->tuple.t_k2pgctid);
 		MemoryContextSwitchTo(oldcxt);
 
 		if (dtp != ntp)

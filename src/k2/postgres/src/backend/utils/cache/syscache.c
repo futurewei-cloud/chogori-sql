@@ -991,11 +991,11 @@ static int	SysCacheSupportingRelOidSize;
 static int	oid_compare(const void *a, const void *b);
 
 Bitmapset *
-YBSysTablePrimaryKey(Oid relid)
+K2PgSysTablePrimaryKey(Oid relid)
 {
 	Bitmapset *pkey = NULL;
 
-#define YBPkAddAttribute(attid) \
+#define K2PgPkAddAttribute(attid) \
 	do { pkey = bms_add_member(pkey, attid - FirstLowInvalidHeapAttributeNumber); } while (false)
 
 	switch (relid)
@@ -1037,47 +1037,47 @@ YBSysTablePrimaryKey(Oid relid)
 		case TransformRelationId:
 		case TypeRelationId:
 		case UserMappingRelationId:
-			YBPkAddAttribute(ObjectIdAttributeNumber);
+			K2PgPkAddAttribute(ObjectIdAttributeNumber);
 			break;
 		case AttributeRelationId:
-			YBPkAddAttribute(Anum_pg_attribute_attrelid);
-			YBPkAddAttribute(Anum_pg_attribute_attnum);
+			K2PgPkAddAttribute(Anum_pg_attribute_attrelid);
+			K2PgPkAddAttribute(Anum_pg_attribute_attnum);
 			break;
 		case AuthMemRelationId:
-			YBPkAddAttribute(Anum_pg_auth_members_roleid);
-			YBPkAddAttribute(Anum_pg_auth_members_member);
+			K2PgPkAddAttribute(Anum_pg_auth_members_roleid);
+			K2PgPkAddAttribute(Anum_pg_auth_members_member);
 			break;
 		case IndexRelationId:
-			YBPkAddAttribute(Anum_pg_index_indexrelid);
+			K2PgPkAddAttribute(Anum_pg_index_indexrelid);
 			break;
 		case PartitionedRelationId:
-			YBPkAddAttribute(Anum_pg_partitioned_table_partrelid);
+			K2PgPkAddAttribute(Anum_pg_partitioned_table_partrelid);
 			break;
 		case RangeRelationId:
-			YBPkAddAttribute(Anum_pg_range_rngtypid);
+			K2PgPkAddAttribute(Anum_pg_range_rngtypid);
 			break;
 		case ReplicationOriginRelationId:
-			YBPkAddAttribute(Anum_pg_replication_origin_roident);
+			K2PgPkAddAttribute(Anum_pg_replication_origin_roident);
 			break;
 		case SequenceRelationId:
-			YBPkAddAttribute(Anum_pg_sequence_seqrelid);
+			K2PgPkAddAttribute(Anum_pg_sequence_seqrelid);
 			break;
 		case StatisticRelationId:
-			YBPkAddAttribute(Anum_pg_statistic_starelid);
+			K2PgPkAddAttribute(Anum_pg_statistic_starelid);
 			break;
 		case SubscriptionRelRelationId:
-			YBPkAddAttribute(Anum_pg_subscription_rel_srrelid);
-			YBPkAddAttribute(Anum_pg_subscription_rel_srsubid);
+			K2PgPkAddAttribute(Anum_pg_subscription_rel_srrelid);
+			K2PgPkAddAttribute(Anum_pg_subscription_rel_srsubid);
 			break;
 		case TSConfigMapRelationId:
-			YBPkAddAttribute(Anum_pg_ts_config_map_mapcfg);
-			YBPkAddAttribute(Anum_pg_ts_config_map_maptokentype);
-			YBPkAddAttribute(Anum_pg_ts_config_map_mapseqno);
+			K2PgPkAddAttribute(Anum_pg_ts_config_map_mapcfg);
+			K2PgPkAddAttribute(Anum_pg_ts_config_map_maptokentype);
+			K2PgPkAddAttribute(Anum_pg_ts_config_map_mapseqno);
 			break;
 		default: break;
 	}
 
-#undef YBPkAddAttribute
+#undef K2PgPkAddAttribute
 
 	return pkey;
 }
@@ -1086,7 +1086,7 @@ YBSysTablePrimaryKey(Oid relid)
  * Utility function for YugaByte mode. Is used to automatically add entries
  * from common catalog tables to the cache immediately after they are inserted.
  */
-void YBSetSysCacheTuple(Relation rel, HeapTuple tup)
+void K2PgSetSysCacheTuple(Relation rel, HeapTuple tup)
 {
 	TupleDesc tupdesc = RelationGetDescr(rel);
 	switch (RelationGetRelid(rel))
@@ -1119,7 +1119,7 @@ void YBSetSysCacheTuple(Relation rel, HeapTuple tup)
  * If no index cache is associated with the given cache (most of the time), its id should be -1.
  */
 void
-YBPreloadCatalogCache(int cache_id, int idx_cache_id)
+K2PgPreloadCatalogCache(int cache_id, int idx_cache_id)
 {
 
 	CatCache* cache         = SysCache[cache_id];
@@ -1282,7 +1282,7 @@ YBPreloadCatalogCache(int cache_id, int idx_cache_id)
  * Used during initdb.
  */
 static void
-YBPreloadCatalogCacheIfEssential(int cache_id)
+K2PgPreloadCatalogCacheIfEssential(int cache_id)
 {
 	int idx_cache_id = -1;
 
@@ -1311,7 +1311,7 @@ YBPreloadCatalogCacheIfEssential(int cache_id)
 			return;
 	}
 
-	YBPreloadCatalogCache(cache_id, idx_cache_id);
+	K2PgPreloadCatalogCache(cache_id, idx_cache_id);
 }
 
 /*
@@ -1321,7 +1321,7 @@ YBPreloadCatalogCacheIfEssential(int cache_id)
  * Used during initdb.
  */
 void
-YBPreloadCatalogCaches(void)
+K2PgPreloadCatalogCaches(void)
 {
 	int			cacheId;
 
@@ -1331,7 +1331,7 @@ YBPreloadCatalogCaches(void)
 	InitCatalogCachePhase2();
 
 	for (cacheId = 0; cacheId < SysCacheSize; cacheId++)
-		YBPreloadCatalogCacheIfEssential(cacheId);
+		K2PgPreloadCatalogCacheIfEssential(cacheId);
 }
 
 /*

@@ -438,7 +438,7 @@ extern void EnterParallelMode(void);
 extern void ExitParallelMode(void);
 extern bool IsInParallelMode(void);
 
-extern void YBMarkDataSent(void);
-extern bool YBIsDataSent(void);
+extern void K2PgMarkDataSent(void);
+extern bool K2PgIsDataSent(void);
 
 #endif							/* XACT_H */

@@ -66,7 +66,7 @@
 #include "rewrite/rewriteManip.h"
 #include "utils/lsyscache.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "executor/ybc_fdw.h"
 #include "pg_k2pg_utils.h"
 
@@ -205,7 +205,7 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 					 * Set the YugaByte FDW routine because we will use the foreign
 					 * scan API below.
 					 */
-					relation->fdwroutine = (FdwRoutine *) k2pg_fdw_handler();
+					relation->fdwroutine = (FdwRoutine *) k2_fdw_handler();
 				}
 			}
 		}
@@ -520,7 +520,7 @@ set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 					if (IsK2PgRelationById(rte->relid))
 					{
 						/*
-						 * Using a foreign scan which will use the YB FDW by
+						 * Using a foreign scan which will use the K2PG FDW by
 						 * default.
 						 */
 						set_foreign_pathlist(root, rel, rte);
@@ -683,7 +683,7 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 
 			if (IsK2PgEnabled())
 			{
-				/* If YB scan, disable parallelization for now. */
+				/* If K2PG scan, disable parallelization for now. */
 				return;
 			}
 

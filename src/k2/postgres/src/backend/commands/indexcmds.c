@@ -364,7 +364,7 @@ DefineIndex(Oid relationId,
 	LockRelId	heaprelid;
 	LOCKMODE	lockmode;
 	int			i;
-	YBIndexPermissions actual_index_permissions;
+	K2PgIndexPermissions actual_index_permissions;
 
 	/*
 	 * count key attributes in index
@@ -1414,7 +1414,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 						break;
 					case SORTBY_DEFAULT:
 						/*
-						 * In YB mode, first attribute defaults to HASH and
+						 * In K2PG mode, first attribute defaults to HASH and
 						 * other attributes default to ASC.  However, for
 						 * colocated tables, the first attribute defaults to
 						 * ASC.

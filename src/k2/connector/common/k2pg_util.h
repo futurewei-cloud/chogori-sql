@@ -10,7 +10,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-// C wrappers around some YB utilities. Suitable for inclusion into C codebases such as our modified
+// C wrappers around some K2PG utilities. Suitable for inclusion into C codebases such as our modified
 // version of PostgreSQL.
 #pragma once
 

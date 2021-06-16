@@ -91,8 +91,8 @@ PgExpr::PgExpr(Opcode opcode, const K2PgTypeEntity *type_entity)
          type_entity_->k2pg_type != K2SQL_DATA_TYPE_UNKNOWN_DATA &&
          type_entity_->k2pg_type != K2SQL_DATA_TYPE_NULL_VALUE_TYPE)
     << "Invalid datatype for YSQL expressions";
-  DCHECK(type_entity_->datum_to_k2pg) << "Conversion from datum to YB format not defined";
-  DCHECK(type_entity_->k2pg_to_datum) << "Conversion from YB to datum format not defined";
+  DCHECK(type_entity_->datum_to_k2pg) << "Conversion from datum to K2 Sql format not defined";
+  DCHECK(type_entity_->k2pg_to_datum) << "Conversion from K2 Sql to datum format not defined";
 }
 
 PgExpr::PgExpr(Opcode opcode, const K2PgTypeEntity *type_entity, const PgTypeAttrs *type_attrs)
@@ -102,8 +102,8 @@ PgExpr::PgExpr(Opcode opcode, const K2PgTypeEntity *type_entity, const PgTypeAtt
          type_entity_->k2pg_type != K2SQL_DATA_TYPE_UNKNOWN_DATA &&
          type_entity_->k2pg_type != K2SQL_DATA_TYPE_NULL_VALUE_TYPE)
     << "Invalid datatype for YSQL expressions";
-  DCHECK(type_entity_->datum_to_k2pg) << "Conversion from datum to YB format not defined";
-  DCHECK(type_entity_->k2pg_to_datum) << "Conversion from YB to datum format not defined";
+  DCHECK(type_entity_->datum_to_k2pg) << "Conversion from datum to K2 Sql format not defined";
+  DCHECK(type_entity_->k2pg_to_datum) << "Conversion from K2 Sql to datum format not defined";
 }
 
 PgExpr::PgExpr(const char *opname, const K2PgTypeEntity *type_entity)
@@ -181,7 +181,7 @@ PgColumnRef::~PgColumnRef() {
 }
 
 bool PgColumnRef::is_ybbasetid() const {
-  return attr_num_ == static_cast<int>(PgSystemAttrNum::kYBIdxBaseTupleId);
+  return attr_num_ == static_cast<int>(PgSystemAttrNum::kPgIdxBaseTupleId);
 }
 
 PgOperator::PgOperator(const char *opname, const K2PgTypeEntity *type_entity)

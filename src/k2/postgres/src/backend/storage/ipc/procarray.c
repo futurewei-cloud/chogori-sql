@@ -345,7 +345,7 @@ ProcArrayRemove(PGPROC *proc, TransactionId latestXid)
 	LWLockAcquire(ProcArrayLock, LW_EXCLUSIVE);
 
 	/*
-	 * Postgres transaction related code-paths are disabled for YB.
+	 * Postgres transaction related code-paths are disabled for K2PG.
 	 */
 
 	if (!IsK2PgEnabled()) {

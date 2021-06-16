@@ -79,7 +79,7 @@ ExecSort(PlanState *pstate)
 
 		/*
 		 * Use default prefetch limit when ORDER BY is present.
-		 * YugaByte doesn't sort the row, but Postgres layer does. YB has to do full scan and let
+		 * K2 doesn't sort the row, but Postgres layer does. K2PG has to do full scan and let
 		 * Postgres engine sort and limit the rows.
 		 */
 		if (IsK2PgEnabled()) {

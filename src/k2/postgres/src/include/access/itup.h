@@ -35,7 +35,7 @@
 typedef struct IndexTupleData
 {
 	ItemPointerData t_tid;		/* reference TID to heap tuple */
-	Datum 			t_ybctid;	/* virtual column ybctid */
+	Datum 			t_k2pgctid;	/* virtual column k2pgctid */
 
 	/* ---------------
 	 * t_info is laid out in the following fashion:

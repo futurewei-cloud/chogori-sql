@@ -137,7 +137,7 @@ typedef struct TupleTableSlot
 	bool		tts_fixedTupleDescriptor;	/* descriptor can't be changed */
 
 	/* YugaByte support */
-	Datum tts_ybctid; /* selected ybctid value */
+	Datum tts_k2pgctid; /* selected k2pgctid value */
 } TupleTableSlot;
 
 #define TTS_HAS_PHYSICAL_TUPLE(slot)  \

@@ -114,9 +114,9 @@ K2PgDataTypeFromOidMod(int attnum, Oid type_id)
 			case MaxTransactionIdAttributeNumber: /* xmax */
 				type_id = XIDOID;
 				break;
-			case YBTupleIdAttributeNumber:            /* ybctid */
-			case YBIdxBaseTupleIdAttributeNumber:     /* ybidxbasectid */
-			case YBUniqueIdxKeySuffixAttributeNumber: /* ybuniqueidxkeysuffix */
+			case K2PgTupleIdAttributeNumber:            /* k2pgctid */
+			case K2PgIdxBaseTupleIdAttributeNumber:     /* k2pgidxbasectid */
+			case K2PgUniqueIdxKeySuffixAttributeNumber: /* k2pguniqueidxkeysuffix */
 				type_id = BYTEAOID;
 				break;
 			default:
@@ -461,7 +461,7 @@ Datum K2SqlFloat8ToDatum(const double *data, int64 bytes, const K2PgTypeAttrs *t
 
 /*
  * DECIMAL / NUMERIC conversion.
- * We're using plaintext c-string as an intermediate step between PG and YB numerics.
+ * We're using plaintext c-string as an intermediate step between PG and K2 numerics.
  */
 void K2SqlDatumToDecimalText(Datum datum, char *plaintext[], int64 *bytes) {
 	Numeric num = DatumGetNumeric(datum);

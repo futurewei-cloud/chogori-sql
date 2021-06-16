@@ -27,20 +27,20 @@
 #define TableOidAttributeNumber					(-7)
 #define FirstLowInvalidHeapAttributeNumber		(-8)
 
-#define YBTupleIdAttributeNumber				(-8)
-#define YBFirstLowInvalidAttributeNumber		(-9)
+#define K2PgTupleIdAttributeNumber				(-8)
+#define K2PgFirstLowInvalidAttributeNumber		(-9)
 
 /*
- * RowId is an auto-generated DocDB column used for tables without a
+ * RowId is an auto-generated K2 record column used for tables without a
  * primary key, but is not present in the postgres table.
  *
- * It is included here to reserve the number and for use in YB postgres
+ * It is included here to reserve the number and for use in K2PG postgres
  * code that requires knowledge about this column.
  */
-#define YBRowIdAttributeNumber					(-100)
+#define K2PgRowIdAttributeNumber					(-100)
 
-#define YBIdxBaseTupleIdAttributeNumber			(-101)
-#define YBUniqueIdxKeySuffixAttributeNumber		(-102)
-#define YBSystemFirstLowInvalidAttributeNumber	(-103)
+#define K2PgIdxBaseTupleIdAttributeNumber			(-101)
+#define K2PgUniqueIdxKeySuffixAttributeNumber		(-102)
+#define K2PgSystemFirstLowInvalidAttributeNumber	(-103)
 
 #endif							/* SYSATTR_H */

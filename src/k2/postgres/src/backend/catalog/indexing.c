@@ -237,7 +237,7 @@ CatalogIndexDelete(CatalogIndexState indstate, HeapTuple heapTuple)
 		index_delete(relationDescs[i],	/* index relation */
 					 values,	/* array of index Datums */
 					 isnull,	/* is-null flags */
-					 heapTuple->t_ybctid,	/* heap tuple */
+					 heapTuple->t_k2pgctid,	/* heap tuple */
 					 heapRelation,
 					 indexInfo);
 	}
@@ -267,7 +267,7 @@ CatalogTupleInsert(Relation heapRel, HeapTuple tup)
 	{
 		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 	}
 	else
 	{
@@ -300,7 +300,7 @@ CatalogTupleInsertWithInfo(Relation heapRel, HeapTuple tup,
 	{
 		oid = K2PgExecuteInsert(heapRel, RelationGetDescr(heapRel), tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 	}
 	else
 	{
@@ -337,19 +337,19 @@ CatalogTupleUpdate(Relation heapRel, ItemPointer otid, HeapTuple tup)
 
 		if (has_indices)
 		{
-			if (tup->t_ybctid)
+			if (tup->t_k2pgctid)
 			{
-				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = CamFetchTuple(heapRel, tup->t_k2pgctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("k2pgctid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 
 		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 
 		if (has_indices)
 			CatalogIndexInsert(indstate, tup);
@@ -383,19 +383,19 @@ CatalogTupleUpdateWithInfo(Relation heapRel, ItemPointer otid, HeapTuple tup,
 
 		if (has_indices)
 		{
-			if (tup->t_ybctid)
+			if (tup->t_k2pgctid)
 			{
-				oldtup = K2PgFetchTuple(heapRel, tup->t_ybctid);
+				oldtup = CamFetchTuple(heapRel, tup->t_k2pgctid);
 				CatalogIndexDelete(indstate, oldtup);
 			}
 			else
-				K2PG_LOG_WARNING("ybctid missing in %s's tuple",
+				K2PG_LOG_WARNING("k2pgctid missing in %s's tuple",
 								RelationGetRelationName(heapRel));
 		}
 
 		K2PgUpdateSysCatalogTuple(heapRel, oldtup, tup);
 		/* Update the local cache automatically */
-		YBSetSysCacheTuple(heapRel, tup);
+		K2PgSetSysCacheTuple(heapRel, tup);
 
 		if (has_indices)
 			CatalogIndexInsert(indstate, tup);

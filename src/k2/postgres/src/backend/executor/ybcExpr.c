@@ -1,6 +1,6 @@
 /*--------------------------------------------------------------------------------------------------
  * ybcExpr.c
- *        Routines to construct YBC expression tree.
+ *        Routines to construct K2PG expression tree.
  *
  * Copyright (c) YugaByte, Inc.
  *

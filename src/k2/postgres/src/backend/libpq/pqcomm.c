@@ -325,7 +325,7 @@ socket_close(int code, Datum arg)
  * Disabling this is used specifically for BEGIN statement to not prevent transaction restart.
  */
 void
-YBSaveOutputBufferPosition(bool sending_non_restartable_data)
+K2PgSaveOutputBufferPosition(bool sending_non_restartable_data)
 {
 	PqSendYbSavedBufPos = PqSendPointer;
 	PqSendYbNonRestartableData = sending_non_restartable_data;
@@ -333,10 +333,10 @@ YBSaveOutputBufferPosition(bool sending_non_restartable_data)
 
 /*
  * Rollback output buffer to a previously saved position, discarding everything added after it.
- * Should ONLY be called after YBSaveOutputBufferPosition.
+ * Should ONLY be called after K2PgSaveOutputBufferPosition.
  */
 void
-YBRestoreOutputBufferPosition(void)
+K2PgRestoreOutputBufferPosition(void)
 {
 	PqSendPointer = PqSendYbSavedBufPos;
 }
@@ -1463,7 +1463,7 @@ static int
 internal_flush(void)
 {
 	if (PqSendYbNonRestartableData) {
-		YBMarkDataSent();
+		K2PgMarkDataSent();
 	}
 
 	static int	last_reported_send_errno = 0;

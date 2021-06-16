@@ -56,7 +56,7 @@
 #include "utils/typcache.h"
 #include "utils/fmgroids.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "commands/dbcommands.h"
 #include "catalog/pg_operator.h"
 #include "catalog/ybctype.h"
@@ -77,16 +77,16 @@
 /* -------------------------------------------------------------------------- */
 /*  Planner/Optimizer functions */
 
-typedef struct YbFdwPlanState
+typedef struct K2FdwPlanState
 {
-	/* Bitmap of attribute (column) numbers that we need to fetch from YB. */
+	/* Bitmap of attribute (column) numbers that we need to fetch from K2. */
 	Bitmapset *target_attrs;
 	/*
 	 * Restriction clauses, divided into safe and unsafe to pushdown subsets.
 	 */
 	List	   *remote_conds;
 	List	   *local_conds;
-} YbFdwPlanState;
+} K2FdwPlanState;
 
 /*
  * Global context for foreign_expr_walker's search of an expression tree.
@@ -155,9 +155,9 @@ typedef struct foreign_expr_cxt {
 /*
  * FDW-specific information for ForeignScanState.fdw_state.
  */
-typedef struct YbFdwExecState
+typedef struct K2FdwExecState
 {
-	/* The handle for the internal YB Select statement. */
+	/* The handle for the internal K2PG Select statement. */
 	K2PgStatement	handle;
 	ResourceOwner	stmt_owner;
 
@@ -173,9 +173,9 @@ typedef struct YbFdwExecState
 
 	K2PgExecParameters *exec_params; /* execution control parameters for YugaByte */
 	bool is_exec_done; /* Each statement should be executed exactly one time */
-} YbFdwExecState;
+} K2FdwExecState;
 
-typedef struct PgFdwScanPlanData
+typedef struct K2FdwScanPlanData
 {
 	/* The relation where to read data from */
 	Relation target_relation;
@@ -196,9 +196,9 @@ typedef struct PgFdwScanPlanData
 	TupleDesc bind_desc;
 	AttrNumber bind_key_attnums[K2PG_MAX_SCAN_KEYS];
 	AttrNumber bind_nonkey_attnums[K2PG_MAX_SCAN_KEYS];
-} PgFdwScanPlanData;
+} K2FdwScanPlanData;
 
-typedef PgFdwScanPlanData *PgFdwScanPlan;
+typedef K2FdwScanPlanData *K2FdwScanPlan;
 
 /*
  * Functions to determine whether an expression can be evaluated safely on
@@ -224,7 +224,7 @@ static void parse_const(Const *node, FDWExprRefValues *ref_values);
 
 static void parse_param(Param *node, FDWExprRefValues *ref_values);
 
-static K2PgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond);
+static K2PgExpr build_expr(K2FdwExecState *fdw_state, FDWOprCond *opr_cond);
 
 /*
  * Return true if given object is one of PostgreSQL's built-in objects.
@@ -994,7 +994,7 @@ static void parse_param(Param *node, FDWExprRefValues *ref_values) {
 	ref_values->const_values = lappend(ref_values->const_values, val);
 }
 
-static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
+static void K2AddAttributeColumn(K2FdwScanPlan scan_plan, AttrNumber attnum)
 {
   const int idx = K2PgAttnumToBmsIndex(scan_plan->target_relation, attnum);
 
@@ -1006,7 +1006,7 @@ static void pgAddAttributeColumn(PgFdwScanPlan scan_plan, AttrNumber attnum)
  * Checks if an attribute is a hash or primary key column and note it in
  * the scan plan.
  */
-static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
+static void K2CheckPrimaryKeyAttribute(K2FdwScanPlan      scan_plan,
 										K2PgTableDesc  k2pg_table_desc,
 										AttrNumber      attnum)
 {
@@ -1042,7 +1042,7 @@ static void pgCheckPrimaryKeyAttribute(PgFdwScanPlan      scan_plan,
  * Get k2Sql-specific table metadata and load it into the scan_plan.
  * Currently only the hash and primary key info.
  */
-static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
+static void K2LoadTableInfo(Relation relation, K2FdwScanPlan scan_plan)
 {
 	Oid            dboid          = K2PgGetDatabaseOid(relation);
 	Oid            relid          = RelationGetRelid(relation);
@@ -1055,16 +1055,16 @@ static void pgLoadTableInfo(Relation relation, PgFdwScanPlan scan_plan)
 	// number of attributes in the relation tuple
 	for (AttrNumber attnum = 1; attnum <= relation->rd_att->natts; attnum++)
 	{
-		pgCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, attnum);
+		K2CheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, attnum);
 	}
 	// we generate OIDs for rows of relation
 	if (relation->rd_rel->relhasoids)
 	{
-		pgCheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, ObjectIdAttributeNumber);
+		K2CheckPrimaryKeyAttribute(scan_plan, k2pg_table_desc, ObjectIdAttributeNumber);
 	}
 }
 
-static Oid pg_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
+static Oid k2_get_atttypid(TupleDesc bind_desc, AttrNumber attnum)
 {
 	Oid	atttypid;
 
@@ -1096,7 +1096,7 @@ static List *findOprCondition(foreign_expr_cxt context, int attr_num) {
 	return result;
 }
 
-K2PgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
+K2PgExpr build_expr(K2FdwExecState *fdw_state, FDWOprCond *opr_cond) {
 	K2PgExpr opr_expr = NULL;
 	const K2PgTypeEntity *type_ent = K2PgFindTypeEntity(BYTEAOID);
 	char *opr_name = NULL;
@@ -1152,9 +1152,9 @@ K2PgExpr build_expr(YbFdwExecState *fdw_state, FDWOprCond *opr_cond) {
 	return opr_expr;
 }
 
-static void pgBindScanKeys(Relation relation,
-							YbFdwExecState *fdw_state,
-							PgFdwScanPlan scan_plan) {
+static void K2BindScanKeys(Relation relation,
+							K2FdwExecState *fdw_state,
+							K2FdwScanPlan scan_plan) {
 	if (list_length(fdw_state->remote_exprs) == 0) {
 		elog(DEBUG4, "FDW: No remote exprs to bind keys for relation: %d", relation->rd_id);
 		return;
@@ -1229,17 +1229,17 @@ static void pgBindScanKeys(Relation relation,
 }
 
 /*
- * ybcGetForeignRelSize
+ * k2GetForeignRelSize
  *		Obtain relation size estimates for a foreign table
  */
 static void
-ybcGetForeignRelSize(PlannerInfo *root,
+k2GetForeignRelSize(PlannerInfo *root,
 					 RelOptInfo *baserel,
 					 Oid foreigntableid)
 {
-	YbFdwPlanState		*fdw_plan = NULL;
+	K2FdwPlanState		*fdw_plan = NULL;
 
-	fdw_plan = (YbFdwPlanState *) palloc0(sizeof(YbFdwPlanState));
+	fdw_plan = (K2FdwPlanState *) palloc0(sizeof(K2FdwPlanState));
 
 	/* Set the estimate for the total number of rows (tuples) in this table. */
 	baserel->tuples = K2PG_DEFAULT_NUM_ROWS;
@@ -1247,7 +1247,7 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	/*
 	 * Initialize the estimate for the number of rows returned by this query.
 	 * This does not yet take into account the restriction clauses, but it will
-	 * be updated later by k2pgIndexCostEstimate once it inspects the clauses.
+	 * be updated later by camIndexCostEstimate once it inspects the clauses.
 	 */
 	baserel->rows = baserel->tuples;
 
@@ -1256,7 +1256,7 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	fdw_plan->local_conds = NIL;
 
 	ListCell   *lc;
-	elog(DEBUG4, "FDW: ybcGetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
+	elog(DEBUG4, "FDW: k2GetForeignRelSize %d base restrictinfos for relation %d", list_length(baserel->baserestrictinfo), baserel->relid);
 
 	foreach(lc, baserel->baserestrictinfo)
 	{
@@ -1276,13 +1276,13 @@ ybcGetForeignRelSize(PlannerInfo *root,
 }
 
 /*
- * ybcGetForeignPaths
+ * k2GetForeignPaths
  *		Create possible access paths for a scan on the foreign table, which is
  *      the full table scan plus available index paths (including the  primary key
  *      scan path if any).
  */
 static void
-ybcGetForeignPaths(PlannerInfo *root,
+k2GetForeignPaths(PlannerInfo *root,
 				   RelOptInfo *baserel,
 				   Oid foreigntableid)
 {
@@ -1290,7 +1290,7 @@ ybcGetForeignPaths(PlannerInfo *root,
 	Cost total_cost;
 
 	/* Estimate costs */
-	k2pgCostEstimate(baserel, K2PG_FULL_SCAN_SELECTIVITY,
+	camCostEstimate(baserel, K2PG_FULL_SCAN_SELECTIVITY,
 	                false /* is_backwards scan */,
 	                false /* is_uncovered_idx_scan */,
 	                &startup_cost, &total_cost);
@@ -1313,11 +1313,11 @@ ybcGetForeignPaths(PlannerInfo *root,
 }
 
 /*
- * ybcGetForeignPlan
+ * k2GetForeignPlan
  *		Create a ForeignScan plan node for scanning the foreign table
  */
 static ForeignScan *
-ybcGetForeignPlan(PlannerInfo *root,
+k2GetForeignPlan(PlannerInfo *root,
 				  RelOptInfo *baserel,
 				  Oid foreigntableid,
 				  ForeignPath *best_path,
@@ -1325,7 +1325,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 				  List *scan_clauses,
 				  Plan *outer_plan)
 {
-	YbFdwPlanState *fdw_plan_state = (YbFdwPlanState *) baserel->fdw_private;
+	K2FdwPlanState *fdw_plan_state = (K2FdwPlanState *) baserel->fdw_private;
 	Index          scan_relid;
 	ListCell       *lc;
 	List	   *local_exprs = NIL;
@@ -1439,7 +1439,7 @@ ybcGetForeignPlan(PlannerInfo *root,
 					/* Nothing to do in YugaByte: Postgres will handle this. */
 					break;
 				case ObjectIdAttributeNumber:
-				case YBTupleIdAttributeNumber:
+				case K2PgTupleIdAttributeNumber:
 				default: /* Regular column: attrNum > 0*/
 				{
 					TargetEntry *target = makeNode(TargetEntry);
@@ -1454,10 +1454,10 @@ ybcGetForeignPlan(PlannerInfo *root,
 	return make_foreignscan(tlist,  /* target list */
 	                        scan_clauses,  /* ideally we should use local_exprs here, still use the whole list in case the FDW cannot process some remote exprs*/
 	                        scan_relid,
-	                        remote_exprs,    /* expressions YB may evaluate */
-	                        target_attrs,  /* fdw_private data for YB */
-	                        NIL,    /* custom YB target list (none for now) */
-	                        NIL,    /* custom YB target list (none for now) */
+	                        remote_exprs,    /* expressions K2 may evaluate */
+	                        target_attrs,  /* fdw_private data for K2 */
+	                        NIL,    /* custom K2 target list (none for now) */
+	                        NIL,    /* custom K2 target list (none for now) */
 	                        outer_plan);
 }
 
@@ -1465,24 +1465,24 @@ ybcGetForeignPlan(PlannerInfo *root,
 /*  Scanning functions */
 
 /*
- * ybcBeginForeignScan
- *		Initiate access to the Yugabyte by allocating a Select handle.
+ * k2BeginForeignScan
+ *		Initiate access to the K2PG by allocating a Select handle.
  */
 static void
-ybcBeginForeignScan(ForeignScanState *node, int eflags)
+k2BeginForeignScan(ForeignScanState *node, int eflags)
 {
 	EState      *estate      = node->ss.ps.state;
 	Relation    relation     = node->ss.ss_currentRelation;
 	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 
-	YbFdwExecState *k2pg_state = NULL;
+	K2FdwExecState *k2pg_state = NULL;
 
 	/* Do nothing in EXPLAIN (no ANALYZE) case.  node->fdw_state stays NULL. */
 	if (eflags & EXEC_FLAG_EXPLAIN_ONLY)
 		return;
 
-	/* Allocate and initialize YB scan state. */
-	k2pg_state = (YbFdwExecState *) palloc0(sizeof(YbFdwExecState));
+	/* Allocate and initialize K2PG scan state. */
+	k2pg_state = (K2FdwExecState *) palloc0(sizeof(K2FdwExecState));
 
 	node->fdw_state = (void *) k2pg_state;
 	HandleK2PgStatus(PgGate_NewSelect(K2PgGetDatabaseOid(relation),
@@ -1520,12 +1520,12 @@ ybcBeginForeignScan(ForeignScanState *node, int eflags)
  * Setup the scan targets (either columns or aggregates).
  */
 static void
-ybcSetupScanTargets(ForeignScanState *node)
+k2SetupScanTargets(ForeignScanState *node)
 {
 	EState *estate = node->ss.ps.state;
 	ForeignScan *foreignScan = (ForeignScan *) node->ss.ps.plan;
 	Relation relation = node->ss.ss_currentRelation;
-	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
+	K2FdwExecState *k2pg_state = (K2FdwExecState *) node->fdw_state;
 	TupleDesc tupdesc = RelationGetDescr(relation);
 	ListCell *lc;
 
@@ -1707,15 +1707,15 @@ ybcSetupScanTargets(ForeignScanState *node)
 }
 
 /*
- * ybcIterateForeignScan
+ * k2IterateForeignScan
  *		Read next record from the data file and store it into the
  *		ScanTupleSlot as a virtual tuple
  */
 static TupleTableSlot *
-ybcIterateForeignScan(ForeignScanState *node)
+k2IterateForeignScan(ForeignScanState *node)
 {
 	TupleTableSlot *slot;
-	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
+	K2FdwExecState *k2pg_state = (K2FdwExecState *) node->fdw_state;
 	bool           has_data   = false;
 
 	/* Execute the select statement one time.
@@ -1725,17 +1725,17 @@ ybcIterateForeignScan(ForeignScanState *node)
 	 * - The subsequent fetches don't need to setup the query with these operations again.
 	 */
 	if (!k2pg_state->is_exec_done) {
-		PgFdwScanPlanData scan_plan;
+		K2FdwScanPlanData scan_plan;
 		memset(&scan_plan, 0, sizeof(scan_plan));
 
 		Relation relation = node->ss.ss_currentRelation;
 		scan_plan.target_relation = relation;
 		scan_plan.paramLI = node->ss.ps.state->es_param_list_info;
-		pgLoadTableInfo(relation, &scan_plan);
+		K2LoadTableInfo(relation, &scan_plan);
 		scan_plan.bind_desc = RelationGetDescr(relation);
-		pgBindScanKeys(relation, k2pg_state, &scan_plan);
+		K2BindScanKeys(relation, k2pg_state, &scan_plan);
 
-		ybcSetupScanTargets(node);
+		k2SetupScanTargets(node);
 		HandleK2PgStatusWithOwner(PgGate_ExecSelect(k2pg_state->handle, k2pg_state->exec_params),
 								k2pg_state->handle,
 								k2pg_state->stmt_owner);
@@ -1775,7 +1775,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 			slot = ExecStoreTuple(tuple, slot, InvalidBuffer, false);
 
 			/* Setup special columns in the slot */
-			slot->tts_ybctid = PointerGetDatum(syscols.ybctid);
+			slot->tts_k2pgctid = PointerGetDatum(syscols.k2pgctid);
 		}
 		else
 		{
@@ -1792,7 +1792,7 @@ ybcIterateForeignScan(ForeignScanState *node)
 }
 
 static void
-ybcFreeStatementObject(YbFdwExecState* k2pg_fdw_exec_state)
+k2FreeStatementObject(K2FdwExecState* k2pg_fdw_exec_state)
 {
 	/* If k2pg_fdw_exec_state is NULL, we are in EXPLAIN; nothing to do */
 	if (k2pg_fdw_exec_state != NULL && k2pg_fdw_exec_state->handle != NULL)
@@ -1811,26 +1811,26 @@ ybcFreeStatementObject(YbFdwExecState* k2pg_fdw_exec_state)
  *		Rescan table, possibly with new parameters
  */
 static void
-ybcReScanForeignScan(ForeignScanState *node)
+k2ReScanForeignScan(ForeignScanState *node)
 {
-	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
+	K2FdwExecState *k2pg_state = (K2FdwExecState *) node->fdw_state;
 
 	/* Clear (delete) the previous select */
-	ybcFreeStatementObject(k2pg_state);
+	k2FreeStatementObject(k2pg_state);
 
 	/* Re-allocate and execute the select. */
-	ybcBeginForeignScan(node, 0 /* eflags */);
+	k2BeginForeignScan(node, 0 /* eflags */);
 }
 
 /*
- * ybcEndForeignScan
+ * k2EndForeignScan
  *		Finish scanning foreign table and dispose objects used for this scan
  */
 static void
-ybcEndForeignScan(ForeignScanState *node)
+k2EndForeignScan(ForeignScanState *node)
 {
-	YbFdwExecState *k2pg_state = (YbFdwExecState *) node->fdw_state;
-	ybcFreeStatementObject(k2pg_state);
+	K2FdwExecState *k2pg_state = (K2FdwExecState *) node->fdw_state;
+	k2FreeStatementObject(k2pg_state);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1841,17 +1841,17 @@ ybcEndForeignScan(ForeignScanState *node)
  * to YugaByte callback routines.
  */
 Datum
-k2pg_fdw_handler()
+k2_fdw_handler()
 {
 	FdwRoutine *fdwroutine = makeNode(FdwRoutine);
 
-	fdwroutine->GetForeignRelSize  = ybcGetForeignRelSize;
-	fdwroutine->GetForeignPaths    = ybcGetForeignPaths;
-	fdwroutine->GetForeignPlan     = ybcGetForeignPlan;
-	fdwroutine->BeginForeignScan   = ybcBeginForeignScan;
-	fdwroutine->IterateForeignScan = ybcIterateForeignScan;
-	fdwroutine->ReScanForeignScan  = ybcReScanForeignScan;
-	fdwroutine->EndForeignScan     = ybcEndForeignScan;
+	fdwroutine->GetForeignRelSize  = k2GetForeignRelSize;
+	fdwroutine->GetForeignPaths    = k2GetForeignPaths;
+	fdwroutine->GetForeignPlan     = k2GetForeignPlan;
+	fdwroutine->BeginForeignScan   = k2BeginForeignScan;
+	fdwroutine->IterateForeignScan = k2IterateForeignScan;
+	fdwroutine->ReScanForeignScan  = k2ReScanForeignScan;
+	fdwroutine->EndForeignScan     = k2EndForeignScan;
 
 	/* TODO: These are optional but we should support them eventually. */
 	/* fdwroutine->ExplainForeignScan = ybcExplainForeignScan; */

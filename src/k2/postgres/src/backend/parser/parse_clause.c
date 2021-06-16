@@ -53,7 +53,7 @@
 #include "utils/syscache.h"
 #include "utils/rel.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 
 /* Convenience macro for the most common makeNamespaceItem() case */

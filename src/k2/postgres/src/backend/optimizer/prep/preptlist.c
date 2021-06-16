@@ -151,14 +151,14 @@ preprocess_targetlist(PlannerInfo *root)
 
 			if (is_k2pg_relation)
 			{
-				/* Need to fetch YB TID */
+				/* Need to fetch K2PG TID */
 				var = makeVar(rc->rti,
-								YBTupleIdAttributeNumber,
+								K2PgTupleIdAttributeNumber,
 								BYTEAOID,
 								-1,
 								InvalidOid,
 								0);
-				snprintf(resname, sizeof(resname), "ybctid%u", rc->rowmarkId);
+				snprintf(resname, sizeof(resname), "k2pgctid%u", rc->rowmarkId);
 			}
 			else
 			{

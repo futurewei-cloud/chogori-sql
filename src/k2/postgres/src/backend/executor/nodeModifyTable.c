@@ -69,7 +69,7 @@
 #include "utils/rel.h"
 #include "utils/tqual.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "access/sysattr.h"
 #include "catalog/pg_database.h"
 #include "executor/ybcModifyTable.h"
@@ -791,10 +791,10 @@ ExecDelete(ModifyTableState *mtstate,
 
 		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo))
 		{
-			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
+			Datum	k2pgctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
-			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
+			ExecDeleteIndexTuples(k2pgctid, oldtuple, estate);
 		}
 	}
 	else
@@ -1154,10 +1154,10 @@ ExecUpdate(ModifyTableState *mtstate,
 		if (K2PgRelInfoHasSecondaryIndices(resultRelInfo) &&
 		    !((ModifyTable *)mtstate->ps.plan)->no_index_update)
 		{
-			Datum	ybctid = K2PgGetPgTupleIdFromSlot(planSlot);
+			Datum	k2pgctid = K2PgGetPgTupleIdFromSlot(planSlot);
 
 			/* Delete index entries of the old tuple */
-			ExecDeleteIndexTuples(ybctid, oldtuple, estate);
+			ExecDeleteIndexTuples(k2pgctid, oldtuple, estate);
 
 			/* Insert new index entries for tuple */
 			recheckIndexes = ExecInsertIndexTuples(slot, tuple,
@@ -1538,11 +1538,11 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 	 *   and performs transaction-control locking operations on the selected row.
 	 * - YugaByte usually uses Postgres heap buffer after selecting data from storage (DocDB).
 	 *   However, in this case, it's complicated to use the heap buffer because the two systems use
-	 *   different tuple IDs - "ybctid" vs "ctid".
+	 *   different tuple IDs - "k2pgctid" vs "ctid".
 	 * - Also, YugaByte manages transactions separately from Postgres's plan execution.
 	 *
 	 * Coding-wise, Posgres writes tuple to heap buffer and writes its tuple ID to "conflictTid".
-	 * However, YugaByte writes the conflict tuple including its "ybctid" to execution state "estate"
+	 * However, YugaByte writes the conflict tuple including its "k2pgctid" to execution state "estate"
 	 * and then frees the slot when done.
 	 */
 	if (IsK2PgBackedRelation(relation)) {
@@ -1551,7 +1551,7 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 
 		/* Ensure the heap tuple is initialized to invalid too. */
 		ItemPointerSetInvalid(&(tuple.t_self));
-		tuple.t_ybctid = (Datum) 0;
+		tuple.t_k2pgctid = (Datum) 0;
 
 		goto k2pg_skip_transaction_control_check;
 	}
@@ -1654,7 +1654,7 @@ k2pg_skip_transaction_control_check:
 	{
 		oldtuple = ExecMaterializeSlot(estate->k2pg_conflict_slot);
 		ExecStoreTuple(oldtuple, mtstate->mt_existing, buffer, false);
-		planSlot->tts_tuple->t_ybctid = oldtuple->t_ybctid;
+		planSlot->tts_tuple->t_k2pgctid = oldtuple->t_k2pgctid;
 	}
 	else
 	{
@@ -2294,7 +2294,7 @@ ExecModifyTable(PlanState *pstate)
 				/*
 				 * For YugaByte relations extract the old row from the wholerow junk
 				 * attribute if needed.
-				 * 1. For tables with secondary indexes we need the (old) ybctid for
+				 * 1. For tables with secondary indexes we need the (old) k2pgctid for
 				 *    removing old index entries (for UPDATE and DELETE)
 				 * 2. For tables with row triggers we need to pass the old row for
 				 *    trigger execution.
@@ -2320,14 +2320,14 @@ ExecModifyTable(PlanState *pstate)
 							(relkind == RELKIND_VIEW) ? InvalidOid :
 							RelationGetRelid(resultRelInfo->ri_RelationDesc);
 
-					resno = ExecFindJunkAttribute(junkfilter, "ybctid");
+					resno = ExecFindJunkAttribute(junkfilter, "k2pgctid");
 					datum = ExecGetJunkAttribute(slot, resno, &isNull);
 
 					/* shouldn't ever get a null result... */
 					if (isNull)
-						elog(ERROR, "ybctid is NULL");
+						elog(ERROR, "k2pgctid is NULL");
 
-					oldtupdata.t_ybctid = datum;
+					oldtupdata.t_k2pgctid = datum;
 
 					oldtuple = &oldtupdata;
 				}
@@ -2832,8 +2832,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 			case CMD_UPDATE:
 			case CMD_DELETE:
 				/*
-				 * If it's a YB single row UPDATE/DELETE we do not perform an
-				 * initial scan to populate the ybctid, so there is no junk
+				 * If it's a K2PG single row UPDATE/DELETE we do not perform an
+				 * initial scan to populate the k2pgctid, so there is no junk
 				 * attribute to extract.
 				 */
 				junk_filter_needed = !mtstate->k2pg_mt_is_single_row_update_or_delete;
@@ -2867,9 +2867,9 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 					relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 					if (IsK2PgRelation(rel))
 					{
-						j->jf_junkAttNo = ExecFindJunkAttribute(j, "ybctid");
+						j->jf_junkAttNo = ExecFindJunkAttribute(j, "k2pgctid");
 						if (!AttributeNumberIsValid(j->jf_junkAttNo)) {
-							elog(ERROR, "could not find junk ybctid column");
+							elog(ERROR, "could not find junk k2pgctid column");
 						}
 					}
 					else if (relkind == RELKIND_RELATION ||

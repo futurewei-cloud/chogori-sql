@@ -476,7 +476,7 @@ ExecInsertIndexTuples(TupleTableSlot *slot,
  * ----------------------------------------------------------------
  */
 void
-ExecDeleteIndexTuples(Datum ybctid, HeapTuple tuple, EState *estate)
+ExecDeleteIndexTuples(Datum k2pgctid, HeapTuple tuple, EState *estate)
 {
 	ResultRelInfo *resultRelInfo;
 	int			i;
@@ -580,7 +580,7 @@ ExecDeleteIndexTuples(Datum ybctid, HeapTuple tuple, EState *estate)
 		index_delete(indexRelation, /* index relation */
 					 values,	/* array of index Datums */
 					 isnull,	/* null flags */
-					 ybctid,	/* ybctid */
+					 k2pgctid,	/* k2pgctid */
 					 heapRelation,	/* heap relation */
 					 indexInfo);	/* index AM may need this */
 

@@ -1538,7 +1538,7 @@ k2_agg_pushdown_supported(AggState *aggstate)
 }
 
 /*
- * Populates aggregate pushdown information in the YB foreign scan state.
+ * Populates aggregate pushdown information in the K2PG foreign scan state.
  */
 static void
 k2_agg_pushdown(AggState *aggstate)
@@ -1788,7 +1788,7 @@ agg_retrieve_direct(AggState *aggstate)
 			initialize_aggregates(aggstate, pergroups, numReset);
 
 			/*
-			 * Aggs were pushed down to YB, so handle returned aggregate results. The slot
+			 * Aggs were pushed down to K2, so handle returned aggregate results. The slot
 			 * contains one value for each aggno, and there is one result per RPC response.
 			 * We need to aggregate the results from all responses.
 			 *
@@ -2592,7 +2592,7 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 		select_current_set(aggstate, 0, false);
 	}
 
-	/* Internally set whether plan supports YB agg pushdown. */
+	/* Internally set whether plan supports K2PG agg pushdown. */
 	k2_agg_pushdown_supported(aggstate);
 
 	/* -----------------
@@ -2831,7 +2831,7 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 		 */
 		if (aggstate->k2_pushdown_supported && !aggref->aggstar)
 		{
-			/* We currently only support single argument aggregates for YB pushdown. */
+			/* We currently only support single argument aggregates for K2PG pushdown. */
 			numArguments = 1;
 			Assert(list_length(aggref->aggargtypes) == numArguments);
 			inputTypes[0] = aggref->aggtranstype;

@@ -66,7 +66,7 @@
 
 #include "pggate/pg_gate_api.h"
 
-/* Temporary disable YB calls in ASAN build due to linking issues. */
+/* Temporary disable K2PG calls in ASAN build due to linking issues. */
 #ifdef ADDRESS_SANITIZER
 #define DISABLE_K2PG_EXTENTIONS
 #endif
@@ -15857,7 +15857,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 		}
 
 #ifndef DISABLE_K2PG_EXTENTIONS
-		/* Additional properties for YB table or index. */
+		/* Additional properties for K2PG table or index. */
 		if (dopt->include_k2pg_metadata &&
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
@@ -16365,8 +16365,8 @@ getAttrName(int attrnum, TableInfo *tblInfo)
 			return "cmax";
 		case TableOidAttributeNumber:
 			return "tableoid";
-		case YBTupleIdAttributeNumber:
-			return "ybctid";
+		case K2PgTupleIdAttributeNumber:
+			return "k2pgctid";
 	}
 	exit_horribly(NULL, "invalid column number %d for table \"%s\"\n",
 				  attrnum, tblInfo->dobj.name);

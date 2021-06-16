@@ -756,10 +756,10 @@ RelationBuildTupleDesc(Relation relation)
  *
  * Its only difference from the original is that instead of doing a direct scan
  * on RewriteRelationId, it uses partial query against RULERELNAME cache
- * (which we pre-initialized in YBPreloadRelCache).
+ * (which we pre-initialized in K2PgPreloadRelCache).
  */
 static void
-YBRelationBuildRuleLock(Relation relation)
+K2PgRelationBuildRuleLock(Relation relation)
 {
 	MemoryContext rulescxt;
 	MemoryContext oldcxt;
@@ -800,7 +800,6 @@ YBRelationBuildRuleLock(Relation relation)
 	 * ensures that rules will be fired in name order.
 	 *
 	 *
-	 * # YB NOTE (alex):
 	 *
 	 * Instead of full scan, we're doing partial cache lookup. This cache is also using
 	 * RewriteRelRulenameIndexId, so the order persists.
@@ -1264,8 +1263,8 @@ equalPartitionDescs(PartitionKey key, PartitionDesc partdesc1,
 }
 
 /*
- * YugaByte-mode only utility used to load up the relcache on initialization
- * to minimize the number on YB-master queries needed.
+ * K2PG-mode only utility used to load up the relcache on initialization
+ * to minimize the number on K2 queries needed.
  * It is based on (and similar to) RelationBuildDesc but does all relations
  * at once.
  * It works in two steps:
@@ -1278,7 +1277,7 @@ equalPartitionDescs(PartitionKey key, PartitionDesc partdesc1,
  *  Note: We assume that any error happening here will fatal so as to not end
  *  up with partial information in the cache.
  */
-void YBPreloadRelCache()
+void K2PgPreloadRelCache()
 {
 	Relation    relation;
 	Oid         relid;
@@ -1317,8 +1316,8 @@ void YBPreloadRelCache()
 	 *                     the catcache for that too.
 	 */
 
-	YBPreloadCatalogCache(INDEXRELID, -1); // pg_index
-	YBPreloadCatalogCache(RULERELNAME, -1); // pg_rewrite
+	K2PgPreloadCatalogCache(INDEXRELID, -1); // pg_index
+	K2PgPreloadCatalogCache(RULERELNAME, -1); // pg_rewrite
 
 	/*
 	 * 1. Load up the (partial) relation info from pg_class.
@@ -1713,7 +1712,7 @@ void YBPreloadRelCache()
 			 * Fetch rules and triggers that affect this relation
 			 */
 			if (relation->rd_rel->relhasrules)
-				YBRelationBuildRuleLock(relation);
+				K2PgRelationBuildRuleLock(relation);
 			else
 			{
 				relation->rd_rules    = NULL;
@@ -4290,12 +4289,12 @@ RelationCacheInitializePhase3(void)
 		return;
 
 	/*
-	 * In YB mode initialize the relache at the beginning so that we need
+	 * In K2PG mode initialize the relache at the beginning so that we need
 	 * fewer cache lookups in steady state.
 	 */
 	if (needNewCacheFile && IsK2PgEnabled())
 	{
-		YBPreloadRelCache();
+		K2PgPreloadRelCache();
 	}
 
 	/*
@@ -4546,7 +4545,7 @@ RelationCacheInitializePhase3(void)
 	 */
 	if (IsK2PgEnabled() && K2PgIsPreparingTemplates())
 	{
-		YBPreloadCatalogCaches();
+		K2PgPreloadCatalogCaches();
 	}
 }
 

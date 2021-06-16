@@ -79,11 +79,11 @@ typedef bool (*aminsert_function) (Relation indexRelation,
 								   IndexUniqueCheck checkUnique,
 								   struct IndexInfo *indexInfo);
 
-/* alternate insert callback for YugaByte-based index that passs ybctid instead of ctid */
+/* alternate insert callback for YugaByte-based index that passs k2pgctid instead of ctid */
 typedef bool (*k2pg_aminsert_function) (Relation indexRelation,
 									  Datum *values,
 									  bool *isnull,
-									  Datum ybctid,
+									  Datum k2pgctid,
 									  Relation heapRelation,
 									  IndexUniqueCheck checkUnique,
 									  struct IndexInfo *indexInfo);
@@ -92,7 +92,7 @@ typedef bool (*k2pg_aminsert_function) (Relation indexRelation,
 typedef void (*k2pg_amdelete_function) (Relation indexRelation,
 									  Datum *values,
 									  bool *isnull,
-									  Datum ybctid,
+									  Datum k2pgctid,
 									  Relation heapRelation,
 									  struct IndexInfo *indexInfo);
 

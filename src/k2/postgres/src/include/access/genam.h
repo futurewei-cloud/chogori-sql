@@ -139,7 +139,7 @@ extern bool index_insert(Relation indexRelation,
 			 struct IndexInfo *indexInfo);
 extern void index_delete(Relation indexRelation,
 			 Datum *values, bool *isnull,
-			 Datum ybctid,
+			 Datum k2pgctid,
 			 Relation heapRelation,
 			 struct IndexInfo *indexInfo);
 

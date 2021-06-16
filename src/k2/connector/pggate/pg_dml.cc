@@ -163,12 +163,12 @@ Status PgDml::BindColumn(int attr_num, PgExpr *attr_value) {
   // - Bind values for a column in INSERT statement.
   //     INSERT INTO a_table(hash, key, col) VALUES(?, ?, ?)
   expr_binds_[bind_var] = attr_value;
-  if (attr_num == static_cast<int>(PgSystemAttrNum::kYBTupleId)) {
-    // K2PG logic uses a virtual column ybctid as a row id in a string format
+  if (attr_num == static_cast<int>(PgSystemAttrNum::kPgTupleId)) {
+    // K2PG logic uses a virtual column k2pgctid as a row id in a string format
     // we need to follow the logic unless we change the logic inside PG
-    CHECK(attr_value->is_constant()) << "Column ybctid must be bound to constant";
-    K2LOG_D(log::pg, "kYBTupleId was bound and ybctid_bind_ is set as true");
-    ybctid_bind_ = true;
+    CHECK(attr_value->is_constant()) << "Column k2pgctid must be bound to constant";
+    K2LOG_D(log::pg, "kPgTupleId was bound and k2pgctid_bind_ is set as true");
+    k2pgctid_bind_ = true;
   }
 
   return Status::OK();
@@ -275,7 +275,7 @@ Result<bool> PgDml::FetchDataFromServer() {
   if (rowsets_.empty()) {
     K2LOG_D(log::pg, "Result set is empty");
     // Process the secondary index to find the next WHERE condition.
-    //   DML(Table) WHERE ybctid IN (SELECT base_ybctid FROM IndexTable),
+    //   DML(Table) WHERE k2pgctid IN (SELECT base_k2pgctid FROM IndexTable),
     //   The nested query would return many rows each of which yields different result-set.
     if (!VERIFY_RESULT(ProcessSecondaryIndexRequest(nullptr))) {
       // Return EOF as the nested subquery does not have any more data.
@@ -308,16 +308,16 @@ Result<bool> PgDml::ProcessSecondaryIndexRequest(const PgExecParameters *exec_pa
     RETURN_NOT_OK(secondary_index_query_->Exec(exec_params));
   }
 
-  // When INDEX has its own sql_op_, execute it to fetch next batch of ybctids which is then used
+  // When INDEX has its own sql_op_, execute it to fetch next batch of k2pgctids which is then used
   // to read data from the main table.
-  std::vector<std::string> ybctids;
-  if (!VERIFY_RESULT(secondary_index_query_->FetchBaseRowIdBatch(ybctids))) {
-    // No more rows of ybctids.
+  std::vector<std::string> k2pgctids;
+  if (!VERIFY_RESULT(secondary_index_query_->FetchBaseRowIdBatch(k2pgctids))) {
+    // No more rows of k2pgctids.
     return false;
   }
 
-  // Update request with the new batch of ybctids to fetch the next batch of rows.
-  RETURN_NOT_OK(sql_op_->PopulateDmlByRowIdOps(ybctids));
+  // Update request with the new batch of k2pgctids to fetch the next batch of rows.
+  RETURN_NOT_OK(sql_op_->PopulateDmlByRowIdOps(k2pgctids));
   return true;
 }
 
@@ -351,7 +351,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
   return false;
 }
 
-Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
+Result<string> PgDml::BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
   std::vector<SqlValue *> values;
   auto attrs_end = attrs + nattrs;
   for (auto& c : target_desc_->columns()) {
@@ -362,11 +362,11 @@ Result<string> PgDml::BuildYBTupleId(const PgAttrValueDescriptor *attrs, int32_t
                                    attr->attr_num);
         }
 
-        if (attr->attr_num == k2pg::sql::to_underlying(PgSystemAttrNum::kYBRowId)) {
-          // get the pre-bound kYBRowId column and its value
+        if (attr->attr_num == k2pg::sql::to_underlying(PgSystemAttrNum::kPgRowId)) {
+          // get the pre-bound kPgRowId column and its value
           std::shared_ptr<BindVariable> bind_var = c.bind_var();
           PgConstant * pg_const = static_cast<PgConstant *>(bind_var->expr);
-          K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kYBRowId column must be pre-bound");
+          K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kPgRowId column must be pre-bound");
           SqlValue *value = pg_const->getValue();
           values.push_back(value);
         } else {

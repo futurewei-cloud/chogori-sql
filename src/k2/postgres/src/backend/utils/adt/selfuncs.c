@@ -150,7 +150,7 @@
 #include "utils/typcache.h"
 #include "utils/varlena.h"
 
-// YB includes
+// K2PG includes
 #include "pg_k2pg_utils.h"
 
 /* Hooks for plugins to get control when we ask for stats */

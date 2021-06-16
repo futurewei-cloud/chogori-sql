@@ -90,9 +90,9 @@ typedef std::vector<BufferableOperation> PgsqlOpBuffer;
 
 struct PgForeignKeyReference {
   uint32_t table_oid;
-  std::string ybctid;
+  std::string k2pgctid;
 
-  K2_DEF_FMT(PgForeignKeyReference, table_oid, ybctid);
+  K2_DEF_FMT(PgForeignKeyReference, table_oid, k2pgctid);
 };
 
 class RowIdentifier {
@@ -228,15 +228,15 @@ class PgSession {
     timeout_ = k2::Duration(1ms * timeout_ms);
   }
 
-  // Returns true if the row referenced by ybctid exists in FK reference cache (Used for caching
+  // Returns true if the row referenced by k2pgctid exists in FK reference cache (Used for caching
   // foreign key checks).
-  bool ForeignKeyReferenceExists(uint32_t table_oid, std::string&& ybctid);
+  bool ForeignKeyReferenceExists(uint32_t table_oid, std::string&& k2pgctid);
 
-  // Adds the row referenced by ybctid to FK reference cache.
-  CHECKED_STATUS CacheForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
+  // Adds the row referenced by k2pgctid to FK reference cache.
+  CHECKED_STATUS CacheForeignKeyReference(uint32_t table_oid, std::string&& k2pgctid);
 
-  // Deletes the row referenced by ybctid from FK reference cache.
-  CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_oid, std::string&& ybctid);
+  // Deletes the row referenced by k2pgctid from FK reference cache.
+  CHECKED_STATUS DeleteForeignKeyReference(uint32_t table_oid, std::string&& k2pgctid);
 
   // Run the given operation to read and write database content.
   // Template is used here to handle all kind of derived operations

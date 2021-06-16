@@ -109,7 +109,7 @@ _null_			{ return NULLVAL; }
 ^\#[^\n]* 		;		/* drop everything after "#" for comments */
 
 declare			{ yylval.kw = "declare"; return XDECLARE; }
-k2pg_declare		{ yylval.kw = "k2pg_declare"; return YBDECLARE; } /* For YugaByte pkeys */
+k2pg_declare		{ yylval.kw = "k2pg_declare"; return YBDECLARE; } /* For K2PG pkeys */
 build			{ yylval.kw = "build"; return XBUILD; }
 indices			{ yylval.kw = "indices"; return INDICES; }
 unique			{ yylval.kw = "unique"; return UNIQUE; }

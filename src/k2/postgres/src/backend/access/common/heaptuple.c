@@ -428,8 +428,8 @@ heap_attisnull(HeapTuple tup, int attnum, TupleDesc tupleDesc)
 			/* these are never null */
 			break;
 
-		case YBTupleIdAttributeNumber:
-			/* If selected, virtual YB columns are never null */
+		case K2PgTupleIdAttributeNumber:
+			/* If selected, virtual K2PG columns are never null */
 			break;
 
 		default:
@@ -705,8 +705,8 @@ heap_getsysattr(HeapTuple tup, int attnum, TupleDesc tupleDesc, bool *isnull)
 			result = ObjectIdGetDatum(tup->t_tableOid);
 			break;
 
-		case YBTupleIdAttributeNumber:
-			result = tup->t_ybctid;
+		case K2PgTupleIdAttributeNumber:
+			result = tup->t_k2pgctid;
 			break;
 
 		default:
@@ -738,7 +738,7 @@ heap_copytuple(HeapTuple tuple)
 	newTuple->t_len = tuple->t_len;
 	newTuple->t_self = tuple->t_self;
 	newTuple->t_tableOid = tuple->t_tableOid;
-	HEAPTUPLE_COPY_YBCTID(tuple->t_ybctid, newTuple->t_ybctid);
+	HEAPTUPLE_COPY_K2PGTID(tuple->t_k2pgctid, newTuple->t_k2pgctid);
 	newTuple->t_data = (HeapTupleHeader) ((char *) newTuple + HEAPTUPLESIZE);
 	memcpy((char *) newTuple->t_data, (char *) tuple->t_data, tuple->t_len);
 	return newTuple;
@@ -765,7 +765,7 @@ heap_copytuple_with_tuple(HeapTuple src, HeapTuple dest)
 	dest->t_len = src->t_len;
 	dest->t_self = src->t_self;
 	dest->t_tableOid = src->t_tableOid;
-	HEAPTUPLE_COPY_YBCTID(src->t_ybctid, dest->t_ybctid);
+	HEAPTUPLE_COPY_K2PGTID(src->t_k2pgctid, dest->t_k2pgctid);
 	dest->t_data = (HeapTupleHeader) palloc(src->t_len);
 	memcpy((char *) dest->t_data, (char *) src->t_data, src->t_len);
 }
@@ -1135,7 +1135,7 @@ heap_form_tuple(TupleDesc tupleDescriptor,
 	tuple->t_len = len;
 	ItemPointerSetInvalid(&(tuple->t_self));
 	tuple->t_tableOid = InvalidOid;
-	tuple->t_ybctid = 0;
+	tuple->t_k2pgctid = 0;
 
 	HeapTupleHeaderSetDatumLength(td, len);
 	HeapTupleHeaderSetTypeId(td, tupleDescriptor->tdtypeid);
@@ -1224,7 +1224,7 @@ heap_modify_tuple(HeapTuple tuple,
 	newTuple->t_data->t_ctid = tuple->t_data->t_ctid;
 	newTuple->t_self = tuple->t_self;
 	newTuple->t_tableOid = tuple->t_tableOid;
-	HEAPTUPLE_COPY_YBCTID(tuple->t_ybctid, newTuple->t_ybctid);
+	HEAPTUPLE_COPY_K2PGTID(tuple->t_k2pgctid, newTuple->t_k2pgctid);
 	if (tupleDesc->tdhasoid)
 		HeapTupleSetOid(newTuple, HeapTupleGetOid(tuple));
 
@@ -1291,7 +1291,7 @@ heap_modify_tuple_by_cols(HeapTuple tuple,
 	newTuple->t_data->t_ctid = tuple->t_data->t_ctid;
 	newTuple->t_self = tuple->t_self;
 	newTuple->t_tableOid = tuple->t_tableOid;
-	HEAPTUPLE_COPY_YBCTID(tuple->t_ybctid, newTuple->t_ybctid);
+	HEAPTUPLE_COPY_K2PGTID(tuple->t_k2pgctid, newTuple->t_k2pgctid);
 	if (tupleDesc->tdhasoid)
 		HeapTupleSetOid(newTuple, HeapTupleGetOid(tuple));
 
@@ -1909,7 +1909,7 @@ heap_tuple_from_minimal_tuple(MinimalTuple mtup)
 	result->t_len = len;
 	ItemPointerSetInvalid(&(result->t_self));
 	result->t_tableOid = InvalidOid;
-	result->t_ybctid = 0;
+	result->t_k2pgctid = 0;
 	result->t_data = (HeapTupleHeader) ((char *) result + HEAPTUPLESIZE);
 	memcpy((char *) result->t_data + MINIMAL_TUPLE_OFFSET, mtup, mtup->t_len);
 	memset(result->t_data, 0, offsetof(HeapTupleHeaderData, t_infomask2));

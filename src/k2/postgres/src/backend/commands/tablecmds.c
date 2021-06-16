@@ -118,7 +118,7 @@
 #include "utils/tqual.h"
 #include "utils/typcache.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "catalog/pg_database.h"
 
 #include "commands/ybccmds.h"
@@ -3714,7 +3714,7 @@ ATController(AlterTableStmt *parsetree,
 	relation_close(rel, NoLock);
 
 	/*
-	 * Prepare the YB alter statement handle -- need to call this before the
+	 * Prepare the K2PG alter statement handle -- need to call this before the
 	 * system catalogs are changed below (since it looks up table metadata).
 	 */
 	K2PgStatement handle = NULL;
@@ -3727,9 +3727,9 @@ ATController(AlterTableStmt *parsetree,
 	ATRewriteCatalogs(&wqueue, lockmode);
 
 	/*
-	 * Execute the YB alter table (if needed).
+	 * Execute the K2PG alter table (if needed).
 	 * Must call this after syscatalog updates succeed (e.g. dependencies are
-	 * checked) since we do not support rollback of YB alter operations yet.
+	 * checked) since we do not support rollback of K2PG alter operations yet.
 	 */
 	if (handle)
 	{

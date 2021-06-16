@@ -30,7 +30,7 @@ namespace gate {
        newRequest->schema_version = schema_version;
        newRequest->key_column_values = key_column_values;
        // copy for now, should we just use a new empty vector?
-       newRequest->ybctid_column_values = ybctid_column_values;
+       newRequest->k2pgctid_column_values = k2pgctid_column_values;
        newRequest->targets = targets;
        newRequest->range_conds = range_conds;
        newRequest->where_conds = where_conds;

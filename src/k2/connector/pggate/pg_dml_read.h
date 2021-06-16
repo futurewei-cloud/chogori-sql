@@ -68,7 +68,7 @@ namespace gate {
 //    - The binding table descriptor, whose column is bound to values, is also the index table.
 //
 // 3. IndexScan SysTable / UserTable (Class PgSelect and Nested PgSelectIndex)
-//    - We will use the binds to query base-ybctid in the index table, which is then used
+//    - We will use the binds to query base-k2pgctid in the index table, which is then used
 //      to query data from the main table.
 //    - The target table descriptor, where data is read and returned, is the main table.
 //    - The binding table descriptor, whose column is bound to values, is the index table.

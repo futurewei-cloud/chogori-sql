@@ -1084,7 +1084,7 @@ typedef struct ModifyTableState
 	/* Per plan map for tuple conversion from child to root */
 	TupleConversionMap **mt_per_subplan_tupconv_maps;
 
-	/* YB specific attributes. */
+	/* K2PG specific attributes. */
 	bool k2pg_mt_is_single_row_update_or_delete;
 } ModifyTableState;
 
@@ -1670,7 +1670,7 @@ typedef struct ForeignScanState
 	struct FdwRoutine *fdwroutine;
 	void	   *fdw_state;		/* foreign-data wrapper can keep state here */
 
-	/* YB specific attributes. */
+	/* K2PG specific attributes. */
 	List	   *k2pg_fdw_aggs;	/* aggregate pushdown information */
 } ForeignScanState;
 

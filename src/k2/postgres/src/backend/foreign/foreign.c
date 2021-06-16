@@ -43,7 +43,7 @@
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
-/*  YB includes. */
+/*  K2PG includes. */
 #include "pg_k2pg_utils.h"
 #include "executor/ybc_fdw.h"
 
@@ -419,8 +419,8 @@ GetFdwRoutineForRelation(Relation relation, bool makecopy)
 	if (relation->rd_fdwroutine == NULL)
 	{
 		if (IsK2PgRelation(relation)) {
-			/* Get the custom YB FDW directly */
-			fdwroutine = (FdwRoutine *) k2pg_fdw_handler();
+			/* Get the custom K2PG FDW directly */
+			fdwroutine = (FdwRoutine *) k2_fdw_handler();
 		} else {
 			/* Get the info by consulting the catalogs and the FDW code */
 			fdwroutine = GetFdwRoutineByRelId(RelationGetRelid(relation));

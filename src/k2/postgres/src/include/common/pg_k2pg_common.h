@@ -44,7 +44,7 @@ extern bool K2PgIsEnvVarTrueWithDefault(
 /**
  * Checks if the K2PG_ENABLED_IN_POSTGRES is set. This is different from
  * IsK2PgEnabled(), because the IsK2PgEnabled() also checks that we are
- * in the "normal processing mode" and we have a YB client session.
+ * in the "normal processing mode" and we have a K2PG client session.
  */
 extern bool K2PgIsEnabledInPostgresEnvVar();
 
@@ -68,10 +68,10 @@ extern void K2PgSetInitDbModeEnvVar();
 
 
 /**
- * Checks if environment variables indicating that YB's unsupported features must
+ * Checks if environment variables indicating that K2PG's unsupported features must
  * be restricted are set
  */
-extern bool K2PgIsUsingYBParser();
+extern bool IsUsingK2PGParser();
 
 /**
  * Returns ERROR or WARNING level depends on environment variable

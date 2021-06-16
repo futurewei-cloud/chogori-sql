@@ -366,9 +366,9 @@ heap_create(const char *relname,
 									 relkind);
 
 	/*
-	 * No need to create local storage for YB Tables as YugaByte will handle it.
-	 * Temporary tables in YugaByte mode use local storage.
-	 * TODO Consider hooking the YB-Create logic here instead of above.
+	 * No need to create local storage for K2PG Tables as K2 will handle it.
+	 * Temporary tables in K2PG mode use local storage.
+	 * TODO Consider hooking the K@PG-Create logic here instead of above.
 	 */
 	if (K2PgIsEnabledInPostgresEnvVar())
 		create_storage = relpersistence == RELPERSISTENCE_TEMP;
@@ -1086,7 +1086,7 @@ heap_create_with_catalog(const char *relname,
 	old_type_oid = InvalidOid;
 
 	/*
-	 * In YB mode, during bootstrap, a relation lookup by name will be a full-table scan
+	 * In K2PG mode, during bootstrap, a relation lookup by name will be a full-table scan
 	 * and slow because secondary indexes are not available yet. So we will skip this
 	 * duplicate name check as it will error later anyway when the indexes are created.
 	 */

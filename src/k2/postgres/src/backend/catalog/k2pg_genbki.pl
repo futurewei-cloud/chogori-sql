@@ -273,7 +273,7 @@ my %schemapg_entries;
 my @tables_needing_macros;
 
 
-# YB-specific pre-processing of the catalogs.
+# K2PG-specific pre-processing of the catalogs.
 
 # Primary keys used for system tables.
 my %pkidxs;

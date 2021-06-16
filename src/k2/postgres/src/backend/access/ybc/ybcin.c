@@ -109,7 +109,7 @@ ybcinbuildCallback(Relation index, HeapTuple heapTuple, Datum *values, bool *isn
 		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
-							  heapTuple->t_ybctid,
+							  heapTuple->t_k2pgctid,
 							  buildstate->is_backfill);
 
 	buildstate->index_tuples += 1;
@@ -175,25 +175,25 @@ ybcinbuildempty(Relation index)
 }
 
 bool
-ybcininsert(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation heap,
+ybcininsert(Relation index, Datum *values, bool *isnull, Datum k2pgctid, Relation heap,
 			IndexUniqueCheck checkUnique, struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
 		K2PgExecuteInsertIndex(index,
 							  values,
 							  isnull,
-							  ybctid,
+							  k2pgctid,
 							  false /* is_backfill */);
 
 	return index->rd_index->indisunique ? true : false;
 }
 
 void
-ybcindelete(Relation index, Datum *values, bool *isnull, Datum ybctid, Relation heap,
+ybcindelete(Relation index, Datum *values, bool *isnull, Datum k2pgctid, Relation heap,
 			struct IndexInfo *indexInfo)
 {
 	if (!index->rd_index->indisprimary)
-		K2PgExecuteDeleteIndex(index, values, isnull, ybctid);
+		K2PgExecuteDeleteIndex(index, values, isnull, k2pgctid);
 }
 
 IndexBulkDeleteResult *
@@ -231,7 +231,7 @@ ybcincostestimate(struct PlannerInfo *root, struct IndexPath *path, double loop_
 				  Cost *indexStartupCost, Cost *indexTotalCost, Selectivity *indexSelectivity,
 				  double *indexCorrelation, double *indexPages)
 {
-	k2pgIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
+	camIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
 }
 
 bytea *
@@ -280,10 +280,10 @@ ybcinrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,	ScanKey orderbys
 		scan->opaque = NULL;
 	}
 
-	K2PgScanDesc ybScan = k2pgBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
+	CamScanDesc camScan = camBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
 																	 nscankeys, scankey);
-	ybScan->index = scan->indexRelation;
-	scan->opaque = ybScan;
+	camScan->index = scan->indexRelation;
+	scan->opaque = camScan;
 }
 
 /*
@@ -301,42 +301,42 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	Assert(dir == ForwardScanDirection || dir == BackwardScanDirection);
 	const bool is_forward_scan = (dir == ForwardScanDirection);
 
-	K2PgScanDesc ybscan = (K2PgScanDesc) scan->opaque;
+	CamScanDesc ybscan = (CamScanDesc) scan->opaque;
 	ybscan->exec_params = scan->k2pg_exec_params;
 	Assert(PointerIsValid(ybscan));
 
 	/*
 	 * IndexScan(SysTable, Index) --> HeapTuple.
 	 */
-	scan->xs_ctup.t_ybctid = 0;
+	scan->xs_ctup.t_k2pgctid = 0;
 	if (ybscan->prepare_params.index_only_scan)
 	{
-		IndexTuple tuple = k2pg_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		IndexTuple tuple = cam_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
-			scan->xs_ctup.t_ybctid = tuple->t_ybctid;
+			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
 			scan->xs_itup = tuple;
 			scan->xs_itupdesc = RelationGetDescr(scan->indexRelation);
 		}
 	}
 	else
 	{
-		HeapTuple tuple = k2pg_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		HeapTuple tuple = cam_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
-			scan->xs_ctup.t_ybctid = tuple->t_ybctid;
+			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
 			scan->xs_hitup = tuple;
 			scan->xs_hitupdesc = RelationGetDescr(scan->heapRelation);
 		}
 	}
 
-	return scan->xs_ctup.t_ybctid != 0;
+	return scan->xs_ctup.t_k2pgctid != 0;
 }
 
 void
 ybcinendscan(IndexScanDesc scan)
 {
-	K2PgScanDesc ybscan = (K2PgScanDesc)scan->opaque;
+	CamScanDesc ybscan = (CamScanDesc)scan->opaque;
 	Assert(PointerIsValid(ybscan));
-	k2pgEndScan(ybscan);
+	camEndScan(ybscan);
 }

@@ -66,7 +66,7 @@ namespace sql {
     using TableId = std::string;
     using UDTypeId = std::string;
 
-    // In addition to regular columns, YB support for postgres also have virtual columns.
+    // In addition to regular columns, K2PG support for postgres also have virtual columns.
     // Virtual columns are just expression that is evaluated by DocDB in "doc_expr.cc".
     enum class PgSystemAttrNum : int {
         // Postgres system columns.
@@ -78,15 +78,15 @@ namespace sql {
         kMaxCommandId         = -6, // cmax
         kTableOid             = -7, // tableoid
 
-        // YugaByte system columns.
-        kYBTupleId            = -8, // ybctid: virtual column representing DocDB-encoded key.
-                              // YB analogue of Postgres's SelfItemPointer/ctid column.
+        // K2PG system columns.
+        kPgTupleId            = -8, // k2pgctid: virtual column representing K2 record key.
+                              // K2 PG analogue of Postgres's SelfItemPointer/ctid column.
 
         // The following attribute numbers are stored persistently in the table schema. For this reason,
         // they are chosen to avoid potential conflict with Postgres' own sys attributes now and future.
-        kYBRowId              = -100, // ybrowid: auto-generated key-column for tables without pkey.
-        kYBIdxBaseTupleId     = -101, // ybidxbasectid: for indexes ybctid of the indexed table row.
-        kYBUniqueIdxKeySuffix = -102, // ybuniqueidxkeysuffix: extra key column for unique indexes, used
+        kPgRowId              = -100, // k2pgrowid: auto-generated key-column for tables without pkey.
+        kPgIdxBaseTupleId     = -101, // k2pgidxbasectid: for indexes k2pgctid of the indexed table row.
+        kPgUniqueIdxKeySuffix = -102, // k2pguniqueidxkeysuffix: extra key column for unique indexes, used
                                       // to ensure SQL semantics for null (null != null) in DocDB
                                       // (where null == null). For each index row will be set to:
                                       //  - the base table ctid when one or more indexed cols are null

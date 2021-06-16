@@ -3393,7 +3393,7 @@ ltrmark:;
 		tuple.t_len = ItemIdGetLength(lp);
 		tuple.t_self = *tid;
 		tuple.t_tableOid = RelationGetRelid(relation);
-		tuple.t_ybctid = PointerGetDatum(NULL);
+		tuple.t_k2pgctid = PointerGetDatum(NULL);
 
 		LockBuffer(buffer, BUFFER_LOCK_UNLOCK);
 	}
@@ -4087,7 +4087,7 @@ afterTriggerAddEvent(AfterTriggerEventList *events,
 		 * So k2pg_txn_fdw_tuplestore must be checked before reuse existing AfterTriggerShared data,
 		 * in other case tuple will be read from wrong tuplestore.
 		 *
-		 * Due to checking of the k2pg_txn_fdw_tuplestore field postgres in YB mode will reuse
+		 * Due to checking of the k2pg_txn_fdw_tuplestore field postgres in K2PG mode will reuse
 		 * AfterTriggerShared objects less often than vanilla postgres.
 		 */
 		if (newshared->ats_tgoid == evtshared->ats_tgoid &&

@@ -103,9 +103,9 @@ namespace gate {
         PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         // K2 SKV schema version
         uint64_t schema_version;
-        // One of either key_column_values or ybctid_column_values
+        // One of either key_column_values or k2pgctid_column_values
         std::vector<std::shared_ptr<BindVariable>> key_column_values;
-        std::vector<std::shared_ptr<BindVariable>> ybctid_column_values;
+        std::vector<std::shared_ptr<BindVariable>> k2pgctid_column_values;
 
         // Projection, aggregate, etc.
         std::vector<PgExpr *> targets;
@@ -146,7 +146,7 @@ namespace gate {
         PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         uint64_t schema_version;
         std::vector<std::shared_ptr<BindVariable>> key_column_values;
-        std::shared_ptr<BindVariable> ybctid_column_value;
+        std::shared_ptr<BindVariable> k2pgctid_column_value;
         // Not used with UPDATEs. Use column_new_values to UPDATE a value.
         std::vector<std::shared_ptr<BindVariable>> column_values;
         // Column New Values.

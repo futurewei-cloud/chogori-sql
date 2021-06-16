@@ -299,12 +299,12 @@ class PgCreateIndex : public PgCreateTable {
  private:
   size_t PrimaryKeyRangeColumnCount() const override;
 
-  CHECKED_STATUS AddYBbasectidColumn();
+  CHECKED_STATUS AddPgbasectidColumn();
 
   const PgObjectId base_table_object_id_;
   bool is_unique_index_ = false;
   bool skip_index_backfill_ = false;
-  bool ybbasectid_added_ = false;
+  bool k2pgbasectid_added_ = false;
   size_t primary_key_range_column_count_ = 0;
 };
 

@@ -78,7 +78,7 @@ class ClusterInfo {
     // cluster id, could be randomly generated or from a configuration parameter
     std::string cluster_id_;
 
-    // Right now, the YB logic in PG uses a single global catalog caching version defined in
+    // Right now, the K2PG logic in PG uses a single global catalog caching version defined in
     //  src/include/pg_k2pg_utils.h
     //
     //  extern uint64_t k2pg_catalog_cache_version;
@@ -86,7 +86,7 @@ class ClusterInfo {
     // to check if the catalog needs to be refreshed or not. To not break the above caching
     // logic, we need to store the catalog_version as a global variable here.
     //
-    // TODO: update both YB logic in PG, PG gate APIs, and catalog manager to be more fine-grained to
+    // TODO: update both K2PG logic in PG, PG gate APIs, and catalog manager to be more fine-grained to
     // reduce frequency and/or duration of cache refreshes. One good example is to use a separate
     // catalog version for a database, however, we do need to consider the catalog version change
     // for shared system tables in PG if we go this path.

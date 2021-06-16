@@ -152,7 +152,7 @@ ExecScan(ScanState *node,
 	ResetExprContext(econtext);
 
 	/*
-	 * Use default prefetch limit if there's a qualifier for filtering since YB cannot LIMIT the
+	 * Use default prefetch limit if there's a qualifier for filtering since K2PG cannot LIMIT the
 	 * number rows but must feed all rows to NodeSort Operator.
 	 */
 	if (qual)

@@ -73,7 +73,7 @@
 
 #include "pg_k2pg_utils.h"
 
-static void YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
+static void K2PgProcessUtilityDefaultHook(PlannedStmt *pstmt,
                                         const char *queryString,
                                         ProcessUtilityContext context,
                                         ParamListInfo params,
@@ -84,10 +84,10 @@ static void YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
 /* Hook for plugins to get control in ProcessUtility() */
 
 /*
- * Setting YBProcessUtilityDefaultHook directly guaranties it will be the first one.
+ * Setting K2PgProcessUtilityDefaultHook directly guaranties it will be the first one.
  * It will be called after all plugins hooks.
  */
-ProcessUtility_hook_type ProcessUtility_hook = &YBProcessUtilityDefaultHook;
+ProcessUtility_hook_type ProcessUtility_hook = &K2PgProcessUtilityDefaultHook;
 
 /* local function declarations */
 static void ProcessUtilitySlow(ParseState *pstate,
@@ -1034,7 +1034,7 @@ ProcessUtilitySlow(ParseState *pstate,
 															 secondaryObject,
 															 stmt);
 
-							/* No need for toasting attributes in YB mode */
+							/* No need for toasting attributes in K2PG mode */
 							if (!IsK2PgEnabled())
 							{
 								/*
@@ -3490,7 +3490,7 @@ GetCommandLogLevel(Node *parsetree)
 
 // TODO: as this hook become the standard_ProcessUtility, consider removing this Hook later.
 void
-YBProcessUtilityDefaultHook(PlannedStmt *pstmt,
+K2PgProcessUtilityDefaultHook(PlannedStmt *pstmt,
                             const char *queryString,
                             ProcessUtilityContext context,
                             ParamListInfo params,
