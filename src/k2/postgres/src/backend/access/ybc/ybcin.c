@@ -231,7 +231,7 @@ ybcincostestimate(struct PlannerInfo *root, struct IndexPath *path, double loop_
 				  Cost *indexStartupCost, Cost *indexTotalCost, Selectivity *indexSelectivity,
 				  double *indexCorrelation, double *indexPages)
 {
-	k2pgIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
+	camIndexCostEstimate(path, indexSelectivity, indexStartupCost, indexTotalCost);
 }
 
 bytea *
@@ -280,10 +280,10 @@ ybcinrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,	ScanKey orderbys
 		scan->opaque = NULL;
 	}
 
-	K2PgScanDesc ybScan = k2pgBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
+	CamScanDesc camScan = camBeginScan(scan->heapRelation, scan->indexRelation, scan->xs_want_itup,
 																	 nscankeys, scankey);
-	ybScan->index = scan->indexRelation;
-	scan->opaque = ybScan;
+	camScan->index = scan->indexRelation;
+	scan->opaque = camScan;
 }
 
 /*
@@ -301,7 +301,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	Assert(dir == ForwardScanDirection || dir == BackwardScanDirection);
 	const bool is_forward_scan = (dir == ForwardScanDirection);
 
-	K2PgScanDesc ybscan = (K2PgScanDesc) scan->opaque;
+	CamScanDesc ybscan = (CamScanDesc) scan->opaque;
 	ybscan->exec_params = scan->k2pg_exec_params;
 	Assert(PointerIsValid(ybscan));
 
@@ -311,7 +311,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	scan->xs_ctup.t_k2pgctid = 0;
 	if (ybscan->prepare_params.index_only_scan)
 	{
-		IndexTuple tuple = k2pg_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		IndexTuple tuple = cam_getnext_indextuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
 			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
@@ -321,7 +321,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 	}
 	else
 	{
-		HeapTuple tuple = k2pg_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
+		HeapTuple tuple = cam_getnext_heaptuple(ybscan, is_forward_scan, &scan->xs_recheck);
 		if (tuple)
 		{
 			scan->xs_ctup.t_k2pgctid = tuple->t_k2pgctid;
@@ -336,7 +336,7 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 void
 ybcinendscan(IndexScanDesc scan)
 {
-	K2PgScanDesc ybscan = (K2PgScanDesc)scan->opaque;
+	CamScanDesc ybscan = (CamScanDesc)scan->opaque;
 	Assert(PointerIsValid(ybscan));
-	k2pgEndScan(ybscan);
+	camEndScan(ybscan);
 }

@@ -1247,7 +1247,7 @@ ybcGetForeignRelSize(PlannerInfo *root,
 	/*
 	 * Initialize the estimate for the number of rows returned by this query.
 	 * This does not yet take into account the restriction clauses, but it will
-	 * be updated later by k2pgIndexCostEstimate once it inspects the clauses.
+	 * be updated later by camIndexCostEstimate once it inspects the clauses.
 	 */
 	baserel->rows = baserel->tuples;
 
@@ -1290,7 +1290,7 @@ ybcGetForeignPaths(PlannerInfo *root,
 	Cost total_cost;
 
 	/* Estimate costs */
-	k2pgCostEstimate(baserel, K2PG_FULL_SCAN_SELECTIVITY,
+	camCostEstimate(baserel, K2PG_FULL_SCAN_SELECTIVITY,
 	                false /* is_backwards scan */,
 	                false /* is_uncovered_idx_scan */,
 	                &startup_cost, &total_cost);

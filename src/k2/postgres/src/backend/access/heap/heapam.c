@@ -1468,7 +1468,7 @@ heap_beginscan_internal(Relation relation, Snapshot snapshot,
 	/* K2PG scan methods should only be used for tables that are handled by K2 PgGate. */
 	if (IsK2PgRelation(relation))
 	{
-		return k2pg_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
+		return cam_heap_beginscan(relation, snapshot, nkeys, key, temp_snap);
 	}
 
 	/*
@@ -1587,7 +1587,7 @@ heap_endscan(HeapScanDesc scan)
 
 	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return k2pg_heap_endscan(scan);
+		return cam_heap_endscan(scan);
 	}
 
 	/*
@@ -1855,7 +1855,7 @@ heap_getnext(HeapScanDesc scan, ScanDirection direction)
 
 	if (IsK2PgRelation(scan->rs_rd))
 	{
-		return k2pg_heap_getnext(scan);
+		return cam_heap_getnext(scan);
 	}
 
 	HEAPDEBUG_1;				/* heap_getnext( info ) */
