@@ -28,7 +28,7 @@
 #include <unordered_map>
 
 #include <boost/optional.hpp>
-#include "common/sys/malloc.h"
+#include "common/malloc.h"
 
 namespace k2pg {
 
