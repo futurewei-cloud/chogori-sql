@@ -90,7 +90,7 @@ std::string ObjectIdGenerator::Next(const bool binary_id) {
 }
 
 std::string PgObjectId::ToString() const {
-  return fmt::format("{{}, {}}", database_oid_, object_oid_);
+  return fmt::format("({}, {})", database_oid_, object_oid_);
 }
 
 std::string PgObjectId::GetDatabaseUuid() const {
