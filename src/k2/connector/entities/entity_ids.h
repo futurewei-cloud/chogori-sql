@@ -85,7 +85,7 @@ namespace sql {
         // The following attribute numbers are stored persistently in the table schema. For this reason,
         // they are chosen to avoid potential conflict with Postgres' own sys attributes now and future.
         kPgRowId              = -100, // k2pgrowid: auto-generated key-column for tables without pkey.
-        kPgIdxBaseTupleId     = -101, // k2pgidxbasectid: for indexes k2pgctid of the indexed table row.
+        kPgIdxBaseTupleId     = -101, // k2pgidxbasectid: for indexes, the k2pgctid of base table row.
         kPgUniqueIdxKeySuffix = -102, // k2pguniqueidxkeysuffix: extra key column for unique indexes, used
                                       // to ensure SQL semantics for null (null != null) in DocDB
                                       // (where null == null). For each index row will be set to:

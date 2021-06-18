@@ -2,7 +2,6 @@
 
 #include "common/k2pg-internal.h"
 #include "common/k2pg_util.h"
-#include "common/env.h"
 #include "entities/entity_ids.h"
 #include "pggate/pg_env.h"
 #include "pggate/pg_gate_defaults.h"

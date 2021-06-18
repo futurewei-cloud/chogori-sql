@@ -83,7 +83,6 @@ and task state checking APIs later by using thread pools.
 
 #include <boost/functional/hash.hpp>
 
-#include "common/env.h"
 #include "common/status.h"
 #include "entities/entity_ids.h"
 #include "entities/schema.h"

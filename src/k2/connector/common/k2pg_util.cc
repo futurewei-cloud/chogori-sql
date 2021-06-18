@@ -16,6 +16,14 @@
 #include <fstream>
 #include <string>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#include <sys/sysctl.h>
+#else
+#include <linux/falloc.h>
+#include <sys/sysinfo.h>
+#endif  // defined(__APPLE__)
+
 #include <gflags/gflags.h>
 
 #include <fmt/format.h>
@@ -24,7 +32,6 @@
 #include "pgsql_error.h"
 #include "transaction_error.h"
 #include "k2pg-internal.h"
-#include "env.h"
 #include "scope_exit.h"
 #include "flag_tags.h"
 #include "common-utils.h"
@@ -41,6 +48,37 @@ namespace k2pg {
 
 namespace {
 
+Status GetExecutablePath(std::string* path) {
+  uint32_t size = 64;
+  uint32_t len = 0;
+  while (true) {
+    std::unique_ptr<char[]> buf(new char[size]);
+#if defined(__linux__)
+    int rc = readlink("/proc/self/exe", buf.get(), size);
+    if (rc == -1) {
+      return STATUS(IOError, "Unable to determine own executable path", "", Errno(errno));
+    } else if (rc >= size) {
+      // The buffer wasn't large enough
+      size *= 2;
+      continue;
+    }
+    len = rc;
+#elif defined(__APPLE__)
+    if (_NSGetExecutablePath(buf.get(), &size) != 0) {
+      // The buffer wasn't large enough; 'size' has been updated.
+      continue;
+    }
+    len = strlen(buf.get());
+#else
+#error Unsupported platform
+#endif
+
+    path->assign(buf.get(), len);
+    break;
+  }
+  return Status::OK();
+}
+
 void ChangeWorkingDir(const char* dir) {
   int chdir_result = chdir(dir);
   if (chdir_result != 0) {
@@ -50,7 +88,7 @@ void ChangeWorkingDir(const char* dir) {
 
 void WriteCurrentProcessInfo(const std::string& destination_dir) {
   std::string executable_path;
-  if (Env::Default()->GetExecutablePath(&executable_path).ok()) {
+if (GetExecutablePath(&executable_path).ok()) {
     const auto destination_file = fmt::format("{}/{}" , destination_dir, getpid()); //Format("$0/$1", destination_dir, getpid());
     std::ofstream out(destination_file, std::ios_base::out);
     out << executable_path;
@@ -66,7 +104,7 @@ Status InitGFlags(const char* argv0) {
   const char* executable_path = argv0;
   std::string executable_path_str;
   if (executable_path == nullptr) {
-    RETURN_NOT_OK(Env::Default()->GetExecutablePath(&executable_path_str));
+    RETURN_NOT_OK(GetExecutablePath(&executable_path_str));
     executable_path = executable_path_str.c_str();
   }
   if (executable_path == nullptr) {
