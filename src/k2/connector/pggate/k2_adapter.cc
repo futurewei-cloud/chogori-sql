@@ -655,10 +655,7 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
                 }
             }
 
-            // this is a total limit.
-            if (request->limit > 0) {
-                scan->setLimit(request->limit);
-            }
+            // We are explicitly not setting the limit on the query. See issue #278
         }
 
         k2::QueryResult scan_result = k23SITxn->scanRead(scan).get();

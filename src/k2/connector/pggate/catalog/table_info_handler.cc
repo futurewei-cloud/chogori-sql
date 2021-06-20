@@ -1056,8 +1056,8 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
                 field.nullLast = true;
             } break;
             case ColumnSchema::SortingType::kDescendingNullsLast: {
-                field.descending = true;
-                field.nullLast = true;
+                K2LOG_W(log::catalog, "Descending secondary indexes are not supported, see issue #268");
+                return nullptr;
             } break;
             default: break;
         }
