@@ -1680,8 +1680,13 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		if (amcanorder)
 		{
 			/* default ordering is ASC */
-			if (attribute->ordering == SORTBY_DESC)
+			/*
+             * We do not support DESC index (see chogori-sql issue #268),
+             * so commenting this out forces PG to see the index as ascending and sort if necessary
+             * This can be uncommented if the issue is resolved.
+            if (attribute->ordering == SORTBY_DESC)
 				colOptionP[attn] |= INDOPTION_DESC;
+            */
 			if (IsK2PgEnabled() &&
 				attribute->ordering == SORTBY_HASH)
 				colOptionP[attn] |= INDOPTION_HASH;

@@ -419,6 +419,13 @@ CreateSKVSchemaResult TableInfoHandler::CreateTableSKVSchema(std::shared_ptr<PgT
         if (table->has_secondary_indexes()) {
             std::vector<std::shared_ptr<k2::dto::Schema>> index_schemas = DeriveIndexSchemas(table);
             for (std::shared_ptr<k2::dto::Schema> index_schema : index_schemas) {
+                if (!index_schema) {
+                    K2LOG_W(log::catalog, "Failed to create index schema in {} due to unsupported feature",
+                        collection_name);
+                    response.status = STATUS(InvalidArgument, "Unsupported feature in secondary index");
+                    return response;
+                }
+
                 // TODO use sequential SKV writes for now, could optimize this later
                 auto createResult = k2_adapter_->CreateSchema(collection_name, index_schema).get();
                 if (!createResult.status.is2xxOK()) {
@@ -1041,16 +1048,16 @@ std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const Index
                 field.nullLast = false;
             } break;
             case ColumnSchema::SortingType::kDescending: {
-                field.descending = true;
-                field.nullLast = false;
+                K2LOG_W(log::catalog, "Descending secondary indexes are not supported, see issue #268");
+                return nullptr;
             } break;
             case ColumnSchema::SortingType::kAscendingNullsLast: {
                 field.descending = false;
                 field.nullLast = true;
             } break;
             case ColumnSchema::SortingType::kDescendingNullsLast: {
-                field.descending = true;
-                field.nullLast = true;
+                K2LOG_W(log::catalog, "Descending secondary indexes are not supported, see issue #268");
+                return nullptr;
             } break;
             default: break;
         }

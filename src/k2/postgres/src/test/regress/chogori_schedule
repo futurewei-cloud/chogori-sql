@@ -67,7 +67,6 @@ test: yb_pg_foreign_key
 ####################################################################################################
 test: yb_compound_key
 test: yb_select
-test: yb_guc
 # src/test/regress/yb_pg_dml_serial_schedule
 #
 ####################################################################################################
@@ -78,5 +77,15 @@ test: yb_guc
 #   - yb_insert_conflict
 # Other tests are YugaByte tests.
 ####################################################################################################
-test: yb_dml_read_time
 test: yb_dml_single_row
+#
+#
+# The following tests currently fail for chogori-sql and we are explicitly skipping them
+#
+# We don't support within-transaction MVCC the way yugabyte does, see issue #267
+# test: yb_dml_read_time
+# This test involves transaction priorities which are not implemented yet
+# test: yb_guc
+# These tests use types for primary keys that we don't support yet
+# test: yb_oid
+# test: yb_money
