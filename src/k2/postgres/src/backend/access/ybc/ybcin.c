@@ -303,6 +303,11 @@ ybcingettuple(IndexScanDesc scan, ScanDirection dir)
 
 	CamScanDesc ybscan = (CamScanDesc) scan->opaque;
 	ybscan->exec_params = scan->k2pg_exec_params;
+	if (!is_forward_scan) {
+		// Ignore limit count for reverse scan since K2 PG cannot push down the limit for reverse scan and
+		// rely on PG to process the limit count
+		ybscan->exec_params->limit_count = -1;
+	}
 	Assert(PointerIsValid(ybscan));
 
 	/*
