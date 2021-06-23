@@ -45,7 +45,7 @@ public:
     K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime);
 
     ~K23SITxn();
-private: 
+private:
     friend class K2Adapter;
     friend class PGK2Client;
 
@@ -64,7 +64,8 @@ private:
     // the record from K2.
     // The result future is eventually satisfied with the result of the write
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    CBFuture<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false, bool rejectIfExists=false);
+    CBFuture<k2::WriteResult> write(k2::dto::SKVRecord&& rec, bool erase=false,
+                k2::dto::ExistencePrecondition precondition = k2::dto::ExistencePrecondition::None);
 
     // Writes a partial update (e.g. SQL UPDATE) into K2.
     // fieldsToUpdate are the indexes of the fields to change, key may be empty in which case the key is

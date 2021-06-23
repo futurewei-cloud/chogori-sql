@@ -715,9 +715,14 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         K2LOG_V(log::k2Adapter, "Record made for write with ignore={}, k2pgctid={}, record={}", ignoreK2PGTID, writeRequest->k2pgctid_column_value, record);
 
-        // These two are INSERT, UPSERT, and DELETE only
         bool erase = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE;
-        bool rejectIfExists = writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT;
+
+        k2::dto::ExistencePrecondition precondition = k2::dto::ExistencePrecondition::None;
+        if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT) {
+            precondition = k2::dto::ExistencePrecondition::NotExists;
+        } else if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_DELETE) {
+            precondition = k2::dto::ExistencePrecondition::Exists;
+        }
 
         // UDPATE and DELETE only, get the cached key record
         k2::dto::SKVRecord keyRecord{};
@@ -741,7 +746,7 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         // block-write
         if (writeRequest->stmt_type != SqlOpWriteRequest::StmtType::PGSQL_UPDATE) {
-            k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, rejectIfExists).get();
+            k2::WriteResult writeResult = k23SITxn->write(std::move(record), erase, precondition).get();
             writeStatus = std::move(writeResult.status);
         } else {
             k2::PartialUpdateResult updateResult = k23SITxn->partialUpdate(std::move(record),
@@ -751,12 +756,19 @@ CBFuture<Status> K2Adapter::handleWriteOp(std::shared_ptr<K23SITxn> k23SITxn,
 
         if (writeStatus.is2xxOK()) {
             response.rows_affected_count = 1;
-        } else {
+        } else if (writeRequest->stmt_type == SqlOpWriteRequest::StmtType::PGSQL_INSERT ||
+                    writeStatus != k2::dto::K23SIStatus::ConditionFailed) {
             response.rows_affected_count = 0;
             response.error_message = writeStatus.message;
             // TODO pg_error_code or txn_error_code in response?
             K2LOG_E(log::k2Adapter, "K2 write failed due to {}", response.error_message);
+        } else {
+            // ConditionFailed status. SQL expects this to be an OK status with no rows affected if update or
+            // delete
+            response.rows_affected_count = 0;
+            writeStatus = k2::dto::K23SIStatus::OK;
         }
+
         K2LOG_D(log::k2Adapter, "K2 write status: {}", writeStatus);
         response.status = K2StatusToPGStatus(writeStatus);
         prom->set_value(K2StatusToK2PgStatus(writeStatus));
