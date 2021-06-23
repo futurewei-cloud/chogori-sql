@@ -106,10 +106,10 @@ struct ReadRequest {
 struct WriteRequest {
     k2::dto::K23SI_MTR mtr;
     bool erase = false;
-    bool rejectIfExists = false; // If true, acts like SQL Insert
+    k2::dto::ExistencePrecondition precondition = k2::dto::ExistencePrecondition::None;
     k2::SKVRecord record;
     std::promise<k2::WriteResult> prom;
-    K2_DEF_FMT(WriteRequest, mtr, erase, rejectIfExists);
+    K2_DEF_FMT(WriteRequest, mtr, erase, precondition);
 };
 
 struct UpdateRequest {

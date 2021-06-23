@@ -351,17 +351,17 @@ EXPLAIN (COSTS FALSE) UPDATE single_row_range_desc_primary_key SET v = abs(5 - k
 INSERT INTO single_row_range_desc_primary_key(k,v) values (1,1), (2,2), (3,3), (4,4);
 
 UPDATE single_row_range_desc_primary_key SET v = 10 WHERE k = 1;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 UPDATE single_row_range_desc_primary_key SET v = v + 1 WHERE k = 2;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 UPDATE single_row_range_desc_primary_key SET v = -3 WHERE k < 4 AND k >= 3;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 UPDATE single_row_range_desc_primary_key SET v = ceil(2.5 + power(2,2)) WHERE k = 4;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 DELETE FROM single_row_range_desc_primary_key WHERE k < 3;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 DELETE FROM single_row_range_desc_primary_key WHERE k = 4;
-SELECT * FROM single_row_range_desc_primary_key;
+SELECT * FROM single_row_range_desc_primary_key order by k desc;
 
 --
 -- Test tables with constraints.

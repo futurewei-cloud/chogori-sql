@@ -119,9 +119,9 @@ CBFuture<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::st
     return result;
 }
 
-CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rejectIfExists) {
+CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, k2::dto::ExistencePrecondition precondition) {
     _writeOps++;
-    WriteRequest qr{.mtr = _mtr, .erase=erase, .rejectIfExists=rejectIfExists, .record=std::move(rec), .prom={}};
+    WriteRequest qr{.mtr = _mtr, .erase=erase, .precondition=precondition, .record=std::move(rec), .prom={}};
 
     _inFlightOps++;
     session::in_flight_ops->observe(_inFlightOps);
@@ -131,10 +131,10 @@ CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, bool rej
     });
 
     K2LOG_D(log::k2Client,
-        "write: mtr={}, erase={}, reject={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
+        "write: mtr={}, erase={}, precondition={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
         qr.mtr,
         qr.erase,
-        qr.rejectIfExists,
+        qr.precondition,
         qr.record.collectionName,
         qr.record.schema->name,
         qr.record.schema->version,
