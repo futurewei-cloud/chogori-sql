@@ -370,7 +370,7 @@ Result<string> PgDml::BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t
           SqlValue *value = pg_const->getValue();
           values.push_back(value);
         } else {
-          std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(attr->type_entity, attr->datum, false);
+          std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(attr->type_entity, attr->datum, attr->is_null);
           values.push_back(pg_const->getValue());
           AddExpr(std::move(pg_const));
         }

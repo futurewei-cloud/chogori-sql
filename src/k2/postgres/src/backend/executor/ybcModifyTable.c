@@ -410,12 +410,12 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
                                   Datum *values,
                                   bool *isnull,
                                   int natts,
-                                  Datum ybbasectid,
+                                  Datum k2pgbasectid,
                                   bool k2pgctid_as_value)
 {
 	TupleDesc tupdesc = RelationGetDescr(index);
 
-	if (ybbasectid == 0)
+	if (k2pgbasectid == 0)
 	{
 		ereport(ERROR,
 		(errcode(ERRCODE_INTERNAL_ERROR), errmsg(
@@ -436,14 +436,14 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
 
 	/*
 	 * For unique indexes we need to set the key suffix system column:
-	 * - to ybbasectid if at least one index key column is null.
+	 * - to k2pgbasectid if at least one index key column is null.
 	 * - to NULL otherwise (setting is_null to true is enough).
 	 */
 	if (unique_index)
 		BindColumn(stmt,
 		           K2PgUniqueIdxKeySuffixAttributeNumber,
 		           BYTEAOID,
-		           ybbasectid,
+		           k2pgbasectid,
 		           !has_null_attr /* is_null */);
 
 	/*
@@ -455,7 +455,7 @@ static void PrepareIndexWriteStmt(K2PgStatement stmt,
 		BindColumn(stmt,
 		           K2PgIdxBaseTupleIdAttributeNumber,
 		           BYTEAOID,
-		           ybbasectid,
+		           k2pgbasectid,
 		           false /* is_null */);
 }
 

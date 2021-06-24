@@ -318,7 +318,7 @@ Status PgCreateIndex::AddPgbasectidColumn() {
                                      true /* is_range */));
   }
 
-  // Add ybbasectid column to store the k2pgctid of the rows in the indexed table. It should be added
+  // Add k2pgbasectid column to store the k2pgctid of the rows in the indexed table. It should be added
   // at the end of the primary key of the index, i.e. either before any non-primary-key column if
   // any or before exec() below.
   RETURN_NOT_OK(PgCreateTable::AddColumnImpl("k2pgidxbasectid",

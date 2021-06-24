@@ -135,7 +135,7 @@ typedef struct PgSysColumns {
 
   // K2 Sql system columns.
   uint8_t *k2pgctid;
-  uint8_t *ybbasectid;
+  uint8_t *k2pgbasectid;
 } K2PgSysColumns;
 
 // Structure to hold parameters for preparing query plan.
