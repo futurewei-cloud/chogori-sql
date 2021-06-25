@@ -210,7 +210,7 @@ Status TranslateSysCol<k2::String>(int attr_num, std::optional<k2::String> field
         }
         case static_cast<int>(PgSystemAttrNum::kPgIdxBaseTupleId): {
             k2::String& val = field.value();
-            pg_tuple->Write(&pg_tuple->syscols()->ybbasectid, (const uint8_t*)val.c_str(), val.size());
+            pg_tuple->Write(&pg_tuple->syscols()->k2pgbasectid, (const uint8_t*)val.c_str(), val.size());
             break;
         }
         default:

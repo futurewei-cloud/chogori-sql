@@ -838,13 +838,13 @@ K2PgStatus PgGate_OperatorAppendArg(K2PgExpr op_handle, K2PgExpr arg){
 // Referential Integrity Check Caching.
 // Check if foreign key reference exists in cache.
 bool PgGate_ForeignKeyReferenceExists(K2PgOid table_oid, const char* k2pgctid, int64_t k2pgctid_size) {
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_ForeignKeyReferenceExists {}", table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ForeignKeyReferenceExists {}, {}, {}", table_oid, k2pgctid, k2pgctid_size);
   return api_impl->ForeignKeyReferenceExists(table_oid, std::string(k2pgctid, k2pgctid_size));
 }
 
 // Add an entry to foreign key reference cache.
 K2PgStatus PgGate_CacheForeignKeyReference(K2PgOid table_oid, const char* k2pgctid, int64_t k2pgctid_size){
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_CacheForeignKeyReference {}", table_oid);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_CacheForeignKeyReference {}, {}, {}", table_oid, k2pgctid, k2pgctid_size);
   return ToK2PgStatus(api_impl->CacheForeignKeyReference(table_oid, std::string(k2pgctid, k2pgctid_size)));
 }
 

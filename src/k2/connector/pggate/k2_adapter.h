@@ -85,8 +85,8 @@ public:
   // 4/5 Utility APIs and Misc.
   std::string GetRowId(std::shared_ptr<SqlOpWriteRequest> request);
   std::string GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version,
-    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<SqlValue *>& key_values);
-  static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::unordered_map<std::string, SqlValue *>& key_values);
+ static std::string GetRowIdFromReadRecord(k2::dto::SKVRecord& record);
 
   static void SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRecord& record);
   static Status K2StatusToK2PgStatus(const k2::Status& status);

@@ -142,24 +142,17 @@ SELECT * FROM FKTABLE ORDER BY ftest1, ftest2, ftest3;
 (5 rows)
 
 -- Test truncate
--- Should fail due to dependency on FKTABLE.
-TRUNCATE ITABLE;
-ERROR:  cannot truncate a table referenced in a foreign key constraint
-DETAIL:  Table "fktable" references "itable".
-HINT:  Truncate table "fktable" at the same time, or use TRUNCATE ... CASCADE.
--- Should truncate both ITABLE and FKTABLE.
-TRUNCATE ITABLE CASCADE;
-NOTICE:  truncate cascades to table "fktable"
--- Check that both tables are now empty.
-SELECT * FROM ITABLE ORDER BY ptest1, ptest2;
- ptest1 | ptest2 | ptest3
---------+--------+--------
-(0 rows)
 
-SELECT * FROM FKTABLE ORDER BY ftest1, ftest2, ftest3;
- ftest1 | ftest2 | ftest3
---------+--------+--------
-(0 rows)
+-- Should fail due to dependency on FKTABLE.
+--- Truncate table is not implemented yet, disable the tests here
+--TRUNCATE ITABLE;
+
+-- Should truncate both ITABLE and FKTABLE.
+--TRUNCATE ITABLE CASCADE;
+
+-- Check that both tables are now empty.
+--SELECT * FROM ITABLE ORDER BY ptest1, ptest2;
+--SELECT * FROM FKTABLE ORDER BY ftest1, ftest2, ftest3;
 
 DROP TABLE ITABLE CASCADE;
 NOTICE:  drop cascades to constraint constrname on table fktable

@@ -365,9 +365,9 @@ static IndexTuple camFetchNextIndexTuple(CamScanDesc camScan, Relation index, bo
 		else
 		{
 			tuple = index_form_tuple(tupdesc, values, nulls);
-			if (syscols.ybbasectid != NULL)
+			if (syscols.k2pgbasectid != NULL)
 			{
-				tuple->t_k2pgctid = PointerGetDatum(syscols.ybbasectid);
+				tuple->t_k2pgctid = PointerGetDatum(syscols.k2pgbasectid);
 			}
 		}
 
@@ -1031,7 +1031,7 @@ static void camSetupTargets(Relation relation,
 	if (scan_plan->target_relation->rd_index)
 		/*
 		 * IndexOnlyScan:
-		 *   SELECT [ data, ] ybbasectid (ROWID of UserTable, relation) FROM secondary-index-table
+		 *   SELECT [ data, ] k2pgbasectid (ROWID of UserTable, relation) FROM secondary-index-table
 		 * In this case, Postgres requests base_ctid and maybe also data from IndexTable and then uses
 		 * them for further processing.
 		 */
