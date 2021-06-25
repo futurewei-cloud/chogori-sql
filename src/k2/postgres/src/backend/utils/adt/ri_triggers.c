@@ -2707,8 +2707,7 @@ BuildPgTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 		K2PgGetDatabaseOid(idx_rel), RelationGetRelid(idx_rel), &prepare_params, &k2pg_stmt));
 
 	TupleDesc	tupdesc = fk_rel->rd_att;
-	const int16 *attnums = riinfo->fk_attnums;
-	AttrNumber minattr = K2PgSystemFirstLowInvalidAttributeNumber + 1;
+	bool using_index = idx_rel->rd_index != NULL && !idx_rel->rd_index->indisprimary;
 
 	Bitmapset *pkey = GetFullK2PgTablePrimaryKey(idx_rel);
 	const int nattrs = bms_num_members(pkey);
@@ -2717,35 +2716,24 @@ BuildPgTupleId(Relation pk_rel, Relation fk_rel, Relation idx_rel,
 	K2PgAttrValueDescriptor *next_attr = attrs;
 	uint64_t tuple_id;
 
-	int i;
-	int col = -1;
+	elog(DEBUG1, "riinfo->nkeys = %d, nattrs = %d, using_index = %d", riinfo->nkeys, nattrs, using_index);
 
-	for (i = 0; i < riinfo->nkeys; i++)
+	for (int i = 0; i < riinfo->nkeys; i++)
 	{
-		col = bms_next_member(pkey, col);
-		next_attr->attr_num = col + minattr;
-
-		Oid	type_id = (attnums[i] > 0) ?
-			TupleDescAttr(fk_rel->rd_att, attnums[i] - 1)->atttypid : InvalidOid;
-
-		next_attr->type_entity = K2PgDataTypeFromOidMod(attnums[i], type_id);
-		next_attr->datum = heap_getattr(tup, attnums[i], tupdesc, &next_attr->is_null);
-
+		next_attr->attr_num = using_index ? (i + 1) : riinfo->pk_attnums[i];
+		const int fk_attnum = riinfo->fk_attnums[i];
+		const Oid type_id = TupleDescAttr(tupdesc, fk_attnum - 1)->atttypid;
+		next_attr->type_entity = K2PgDataTypeFromOidMod(fk_attnum, type_id);
+		next_attr->datum = heap_getattr(tup, fk_attnum, tupdesc, &next_attr->is_null);
+		elog(DEBUG1, "key: attr_num = %d, type_id = %d, is_null = %d", next_attr->attr_num, type_id, next_attr->is_null);
 		++next_attr;
 	}
 
-	if (RelationGetRelid(idx_rel) != RelationGetRelid(pk_rel))
-	{
-		/* Reference key is based on unique index, fill in K2PgUniqueIdxKeySuffixAttributeNumber */
-		col = bms_next_member(pkey, col);
-		next_attr->attr_num = col + minattr;
+	if (using_index) {
+		next_attr->attr_num = K2PgUniqueIdxKeySuffixAttributeNumber;
 		next_attr->type_entity = K2PgDataTypeFromOidMod(K2PgUniqueIdxKeySuffixAttributeNumber, BYTEAOID);
-
-		/*
-		 * Since foreign key checks are only done for non-null columns,
-		 * K2PgUniqueIdx will always be NULL.
-		 */
 		next_attr->is_null = true;
+	 	elog(DEBUG1, "K2PgUniqueIdxKey: attr_num = %d, type_id = %d, is_null = %d", next_attr->attr_num, BYTEAOID, next_attr->is_null);
 	}
 
 	HandleK2PgStatus(PgGate_DmlBuildPgTupleId(k2pg_stmt, attrs, nattrs, &tuple_id));

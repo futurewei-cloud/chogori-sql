@@ -352,7 +352,7 @@ Result<bool> PgDml::GetNextRow(PgTuple *pg_tuple) {
 }
 
 Result<string> PgDml::BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t nattrs) {
-  std::vector<SqlValue *> values;
+  std::unordered_map<std::string, SqlValue *> values;
   auto attrs_end = attrs + nattrs;
   for (auto& c : target_desc_->columns()) {
     for (auto attr = attrs; attr != attrs_end; ++attr) {
@@ -368,10 +368,10 @@ Result<string> PgDml::BuildPgTupleId(const PgAttrValueDescriptor *attrs, int32_t
           PgConstant * pg_const = static_cast<PgConstant *>(bind_var->expr);
           K2ASSERT(log::pg, bind_var != nullptr && pg_const->getValue() != NULL, "kPgRowId column must be pre-bound");
           SqlValue *value = pg_const->getValue();
-          values.push_back(value);
+          values[c.desc()->name()] = value;
         } else {
           std::unique_ptr<PgConstant> pg_const = std::make_unique<PgConstant>(attr->type_entity, attr->datum, attr->is_null);
-          values.push_back(pg_const->getValue());
+          values[c.desc()->name()] = pg_const->getValue();
           AddExpr(std::move(pg_const));
         }
       }

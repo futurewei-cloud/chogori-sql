@@ -980,7 +980,7 @@ std::string K2Adapter::GetRowId(std::shared_ptr<SqlOpWriteRequest> request) {
 }
 
 std::string K2Adapter::GetRowId(const std::string& collection_name, const std::string& schema_name, uint32_t schema_version,
-    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::vector<SqlValue *>& key_values)
+    k2pg::sql::PgOid base_table_oid, k2pg::sql::PgOid index_oid, std::unordered_map<std::string, SqlValue *>& key_values)
 {
     auto start = k2::Clock::now();
     CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(collection_name, schema_name, schema_version);
@@ -994,14 +994,14 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     // Serialize key data into SKVRecord
     record.serializeNext<int64_t>(base_table_oid);
     record.serializeNext<int64_t>(index_oid);
-    for (SqlValue *value : key_values) {
-        K2Adapter::SerializeValueToSKVRecord(*value, record);
-    }
-    // Skip non-key fields in record
-    size_t num_values = record.schema->fields.size() - record.schema->partitionKeyFields.size()
-                        - record.schema->rangeKeyFields.size();
-    for (size_t i = 0; i < num_values; ++i) {
-        record.serializeNull();
+    std::vector<k2::dto::SchemaField> fields = schema_result.schema->fields;
+    for (int i = SKV_FIELD_OFFSET; i < fields.size(); i++) {
+        SqlValue *value = key_values[fields[i].name];
+        if (value != nullptr) {
+            K2Adapter::SerializeValueToSKVRecord(*value, record);
+        } else {
+            record.serializeNull();
+        }
     }
 
     k2::dto::Key key = record.getKey();
