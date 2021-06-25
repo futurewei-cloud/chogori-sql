@@ -1,6 +1,8 @@
 // Copyright 2004 Google Inc.
 // All Rights Reserved.
 //
+// Portions Copyright (c) 2021 Futurewei Cloud
+//
 // The following only applies to changes made to this file as part of YugaByte development.
 //
 // Portions Copyright (c) YugaByte, Inc.
