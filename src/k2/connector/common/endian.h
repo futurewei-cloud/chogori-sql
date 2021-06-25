@@ -17,6 +17,8 @@
 // specific language governing permissions and limitations
 // under the License.
 //
+// Portions Copyright (c) 2021 Futurewei Cloud
+//
 // The following only applies to changes made to this file as part of YugaByte development.
 //
 // Portions Copyright (c) YugaByte, Inc.
