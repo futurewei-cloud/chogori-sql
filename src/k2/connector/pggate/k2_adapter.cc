@@ -1002,14 +1002,24 @@ std::string K2Adapter::GetRowId(const std::string& collection_name, const std::s
     record.serializeNext<int64_t>(base_table_oid);
     record.serializeNext<int64_t>(index_oid);
     std::vector<k2::dto::SchemaField> fields = schema_result.schema->fields;
+    // Add a count to avoid checking all fields on the map to improve efficiency.
+    // Normally the key fields are defined before non-key fields and thus, the
+    // count reduces the number of map checking to be close to the number of key values in general.
+    int remaining_check_size = key_values.size();
     for (int i = SKV_FIELD_OFFSET; i < fields.size(); i++) {
-        SqlValue *value = key_values[fields[i].name];
-        if (value != nullptr) {
-            K2Adapter::SerializeValueToSKVRecord(*value, record);
+        if (remaining_check_size > 0) {
+            SqlValue *value = key_values[fields[i].name];
+            if (value != nullptr) {
+                remaining_check_size--;
+                K2Adapter::SerializeValueToSKVRecord(*value, record);
+            } else {
+                record.serializeNull();
+            }
         } else {
             record.serializeNull();
         }
     }
+    K2ASSERT(log::k2Adapter, remaining_check_size == 0, "Not all key values are serialized to SKV record");
 
     k2::dto::Key key = record.getKey();
     K2LOG_D(log::k2Adapter, "Returning row id for table {} from SKV partition key: {}", schema_name, key.partitionKey);
