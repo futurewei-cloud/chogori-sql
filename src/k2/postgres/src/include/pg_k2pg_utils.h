@@ -123,11 +123,11 @@ extern bool K2PgTransactionsEnabled();
 extern void	HandleK2PgStatus(K2PgStatus status);
 
 /*
- * Since DDL metadata in master DocDB and postgres system tables is not modified
+ * Since DDL metadata in K2 platform and postgres system tables is not modified
  * in an atomic fashion, it is possible that we could have a table existing in
- * postgres metadata but not in DocDB. In the case of a delete it is really
+ * postgres metadata but not in K2 platform. In the case of a delete it is really
  * problematic, since we can't delete the table nor can we create a new one with
- * the same name. So in this case we just ignore the DocDB 'NotFound' error and
+ * the same name. So in this case we just ignore the K2 platform 'NotFound' error and
  * delete our metadata.
  */
 extern void HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found);

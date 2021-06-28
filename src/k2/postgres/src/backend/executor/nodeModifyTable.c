@@ -1536,13 +1536,13 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 	 * This routine selects data and check with indexes for conflicts.
 	 * - When selecting data from disk, Postgres prepares a heap buffer to hold the selected row
 	 *   and performs transaction-control locking operations on the selected row.
-	 * - YugaByte usually uses Postgres heap buffer after selecting data from storage (DocDB).
+	 * - K2 PG usually uses Postgres heap buffer after selecting data from storage (K2 Platform).
 	 *   However, in this case, it's complicated to use the heap buffer because the two systems use
 	 *   different tuple IDs - "k2pgctid" vs "ctid".
-	 * - Also, YugaByte manages transactions separately from Postgres's plan execution.
+	 * - Also, K2 PG manages transactions separately from Postgres's plan execution.
 	 *
 	 * Coding-wise, Posgres writes tuple to heap buffer and writes its tuple ID to "conflictTid".
-	 * However, YugaByte writes the conflict tuple including its "k2pgctid" to execution state "estate"
+	 * However, K2 PG writes the conflict tuple including its "k2pgctid" to execution state "estate"
 	 * and then frees the slot when done.
 	 */
 	if (IsK2PgBackedRelation(relation)) {

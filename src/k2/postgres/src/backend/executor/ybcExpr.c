@@ -69,9 +69,8 @@ K2PgExpr K2PgNewEvalExprCall(K2PgStatement k2pg_stmt,
 	PgGate_OperatorAppendArg(k2pg_expr, expr);
 
 	/*
-	 * Adding the column type id and mod to the message since we only have the YQL types in the
-	 * DocDB Schema.
-	 * TODO(mihnea): Eventually DocDB should know the full PSQL/PG types and we can remove this.
+	 * Adding the column type id and mod to the message since we only have the PG Sql types in the
+	 * K2 schema Schema.
 	 */
 	K2PgExpr attno_expr = K2PgNewConstant(k2pg_stmt, INT4OID, (Datum) attno, /* IsNull */ false);
 	PgGate_OperatorAppendArg(k2pg_expr, attno_expr);

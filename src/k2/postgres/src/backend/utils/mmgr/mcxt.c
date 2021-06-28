@@ -54,7 +54,7 @@ void PrepareThreadLocalCurrentMemoryContext()
 	if (PgGate_GetThreadLocalCurrentMemoryContext() == NULL)
 	{
 		MemoryContext memctx = AllocSetContextCreate((MemoryContext) NULL,
-		                                             "DocDBExprMemoryContext",
+		                                             "K2PGExprMemoryContext",
 		                                             ALLOCSET_SMALL_SIZES);
 		PgGate_SetThreadLocalCurrentMemoryContext(memctx);
 	}

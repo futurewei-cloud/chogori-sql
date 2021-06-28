@@ -2838,12 +2838,12 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 
 			/*
 			 * Convert SUM function to 8-byte SUM for appropriate types to match values
-			 * returned from DocDB aggregates.
+			 * returned from K2 Platform aggregates.
 			 *
 			 * Note that we don't need to perform this for floats as they use accumulators
 			 * of the same precision as the input. Also, we don't support pushdown of 8-byte
 			 * integer SUM as PG uses a numeric type to avoid overflow which we don't yet fully
-			 * support in DocDB, so we don't need to handle that here either.
+			 * support in K2 Platform, so we don't need to handle that here either.
 			 */
 			if (strcmp(get_func_name(aggref->aggfnoid), "sum") == 0)
 			{

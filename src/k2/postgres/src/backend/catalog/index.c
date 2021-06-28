@@ -3080,7 +3080,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 		}
 		else
 		{
-			/* In YugaByte mode DocDB will only send live tuples. */
+			/* In K2 PG mode K2 Platform will only send live tuples. */
 			tupleIsAlive = true;
 		}
 

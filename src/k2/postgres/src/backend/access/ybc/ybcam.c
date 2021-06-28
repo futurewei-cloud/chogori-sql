@@ -567,7 +567,7 @@ static bool cam_should_pushdown_op(CamScanPlan scan_plan, AttrNumber attnum, int
 /*
  * Is this a basic (c =/</<=/>=/> value) (in)equality condition.
  * TODO: The null value case (SK_ISNULL) should always evaluate to false
- *       per SQL semantics but in DocDB it will be true. So this case
+ *       per SQL semantics but in K2 PG it will be true. So this case
  *       will require PG filtering (for null values only).
  */
 static bool IsBasicOpSearch(int sk_flags) {
@@ -575,7 +575,7 @@ static bool IsBasicOpSearch(int sk_flags) {
 }
 
 /*
- * Is this a null search (c IS NULL) -- same as equality cond for DocDB.
+ * Is this a null search (c IS NULL) -- same as equality cond for K2 PG.
  */
 static bool IsSearchNull(int sk_flags) {
 	return sk_flags == (SK_ISNULL | SK_SEARCHNULL);
@@ -808,7 +808,7 @@ static void camBindScanKeys(Relation relation,
 				case InvalidStrategy:
 					/* Should be ensured during planning. */
 					Assert(IsSearchNull(camScan->key[i].sk_flags));
-					/* fallthrough  -- treating IS NULL as (DocDB) = (null) */
+					/* fallthrough  -- treating IS NULL as (K2PG) = (null) */
 				case BTEqualStrategyNumber:
 					if (IsBasicOpSearch(camScan->key[i].sk_flags) ||
 						IsSearchNull(camScan->key[i].sk_flags))
@@ -912,9 +912,6 @@ static void camBindScanKeys(Relation relation,
 
 						/*
 						 * If there's no non-nulls, the scan qual is unsatisfiable
-						 * TODO(rajukumaryb): when num_nonnulls is zero, the query should not be
-						 * sent to DocDB as it will return rows that will all be dropped.
-						 * Example: SELECT ... FROM ... WHERE h = ... AND r IN (NULL,NULL);
 						 */
 						if (num_nonnulls == 0)
 							break;
@@ -1428,7 +1425,7 @@ void camCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 {
 	/*
 	 * Yugabyte-specific per-tuple cost considerations:
-	 *   - 10x the regular CPU cost to account for network/RPC + DocDB overhead.
+	 *   - 10x the regular CPU cost to account for network/RPC + K2 PG Gate overhead.
 	 *   - backwards scan scale factor as it will need that many more fetches
 	 *     to get all rows/tuples.
 	 *   - uncovered index scan is more costly than index-only or seq scan because

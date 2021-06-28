@@ -13,10 +13,6 @@
 // under the License.
 //--------------------------------------------------------------------------------------------------
 
-// TODO(neil) PgEnv defines the interface for the environment where PostgreSQL engine is running.
-// Although postgres libraries might handle most of the environment variables, YugaByte libraries
-// might need to deal with some of them. This class is provided for that reason.  This class can
-// be removed if YugaByte layers, especially DocDB, do not handle any custom values for ENV.
 
 #pragma once
 

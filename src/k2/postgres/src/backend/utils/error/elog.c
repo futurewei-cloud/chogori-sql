@@ -1358,13 +1358,7 @@ getinternalerrposition(void)
 }
 
 /*
- * When running within DocDB as the execution library we do not have the
- * error management framework fully set up yet.
- * So we just do our best to log an error and jump back to the pgapi.c
- * execution layer which should report the failure to DocDB.
- * TODO - Investigate how to best integrate with the regular error
- * framework to get better error messages/reporting (considering globals,
- * error stack, signal masks, etc.).
+ * This is for future K2 platform support with more error message and debug information
  */
 void k2pg_pgbackend_ereport(int elevel, const char *fmt,...) {
 	if (fmt != NULL)

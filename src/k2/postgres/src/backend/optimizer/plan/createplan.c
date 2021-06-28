@@ -2535,7 +2535,7 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	*result_tlist = NIL;
 	Bitmapset *update_attrs = NULL;
 
-	/* For update, SET clause attrs whose RHS value to be evaluated by DocDB */
+	/* For update, SET clause attrs whose RHS value to be evaluated by K2 PG */
 	Bitmapset *pushdown_update_attrs = NULL;
 
 	/* Verify K2PG is enabled. */

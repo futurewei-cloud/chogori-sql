@@ -17,8 +17,6 @@
 // to allow (some components of) the PG/PSQL layer to run in a multi-threaded
 // environment.
 //
-// Currently this is used within DocDB where PG/PSQL is used as a library for
-// evaluating PSQL expression.
 #pragma once
 
 #include "pggate/pg_gate_typedefs.h"
