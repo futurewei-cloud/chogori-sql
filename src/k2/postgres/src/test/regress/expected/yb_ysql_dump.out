@@ -1,9 +1,9 @@
 --
--- YSQL database dump
+-- PSQL database dump
 --
 
 -- Dumped from database version 11.2-YB-2.0.4.0-b0
--- Dumped by ysql_dump version 11.2-YB-2.0.4.0-b0
+-- Dumped by pg_dump version 11.2-YB-2.0.4.0-b0
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -481,6 +481,5 @@ GRANT ALL ON TABLE public.rls_public TO PUBLIC;
 
 
 --
--- YSQL database dump complete
+-- PSQL database dump complete
 --
-

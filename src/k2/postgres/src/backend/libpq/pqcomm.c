@@ -132,7 +132,7 @@ static List *sock_paths = NIL;
  * Buffers for low-level I/O.
  *
  * The receive buffer is fixed size.
- * Send buffer is controlled by ysql_output_buffer_size pggate gflag, but can be
+ * Send buffer is controlled by psql_output_buffer_size pggate gflag, but can be
  * enlarged by pq_putmessage_noblock() if the message doesn't fit otherwise.
  */
 

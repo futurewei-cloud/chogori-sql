@@ -150,7 +150,7 @@ void camEndScan(CamScanDesc camScan);
 
 /*
  * Backwards scans are more expensive in DocDB.
- * TODO: the ysql_backward_prefetch_scale_factor gflag is correlated to this
+ * TODO: the psql_backward_prefetch_scale_factor gflag is correlated to this
  * but is too low (1/16 implying 16x slower) to be used here.
  */
 #define K2PG_BACKWARDS_SCAN_COST_FACTOR 1.1

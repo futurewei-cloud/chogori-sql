@@ -157,7 +157,7 @@ namespace gate {
 
         uint64_t catalog_version;
         // True only if this changes a system catalog table (or index).
-        bool is_ysql_catalog_change;
+        bool is_psql_catalog_change;
 
         std::unique_ptr<SqlOpWriteRequest> clone();
     };

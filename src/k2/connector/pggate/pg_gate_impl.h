@@ -267,13 +267,13 @@ class PgGateApiImpl {
 
   CHECKED_STATUS InsertSequenceTuple(int64_t db_oid,
                                      int64_t seq_oid,
-                                     uint64_t ysql_catalog_version,
+                                     uint64_t psql_catalog_version,
                                      int64_t last_val,
                                      bool is_called);
 
   CHECKED_STATUS UpdateSequenceTupleConditionally(int64_t db_oid,
                                                   int64_t seq_oid,
-                                                  uint64_t ysql_catalog_version,
+                                                  uint64_t psql_catalog_version,
                                                   int64_t last_val,
                                                   bool is_called,
                                                   int64_t expected_last_val,
@@ -282,14 +282,14 @@ class PgGateApiImpl {
 
   CHECKED_STATUS UpdateSequenceTuple(int64_t db_oid,
                                      int64_t seq_oid,
-                                     uint64_t ysql_catalog_version,
+                                     uint64_t psql_catalog_version,
                                      int64_t last_val,
                                      bool is_called,
                                      bool* skipped);
 
   CHECKED_STATUS ReadSequenceTuple(int64_t db_oid,
                                    int64_t seq_oid,
-                                   uint64_t ysql_catalog_version,
+                                   uint64_t psql_catalog_version,
                                    int64_t *last_val,
                                    bool *is_called);
 

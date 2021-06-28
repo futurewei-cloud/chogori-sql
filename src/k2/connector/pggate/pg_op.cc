@@ -671,10 +671,10 @@ Status PgReadOp::ProcessResponsePagingState() {
 void PgReadOp::SetRequestPrefetchLimit() {
     // Predict the maximum prefetch-limit
     std::shared_ptr<SqlOpReadRequest> req = template_op_->request();
-    int predicted_limit = default_ysql_prefetch_limit;
+    int predicted_limit = default_psql_prefetch_limit;
     if (!req->is_forward_scan) {
         // Backward scan is slower than forward scan, so predicted limit is a smaller number.
-        predicted_limit = predicted_limit * default_ysql_backward_prefetch_scale_factor;
+        predicted_limit = predicted_limit * default_psql_backward_prefetch_scale_factor;
     }
 
     // System setting has to be at least 1 while user setting (LIMIT clause) can be anything that

@@ -2820,9 +2820,9 @@ k2pg_single_row_update_or_delete_path(PlannerInfo *root,
 	 *  - subpath_tlist which has all SET clause targets (for UPDATEs only).
 	 * It will set the following (return) args:
 	 *  - result_tlist will have both the pkey and select targets and add
-	 *    dummy/null targets for all unset attrs to match PG/YSQL expectation.
+	 *    dummy/null targets for all unset attrs to match PG/PSQL expectation.
 	 *  - modify_tlist for UPDATEs with pushed-down expression only, we put
-	 *    the target expressions there to keep regular PG/YSQL execution from
+	 *    the target expressions there to keep regular PG/PSQL execution from
 	 *    trying to evaluate them (which would fail because they still have
 	 *    scan variables).
 	 * Note: Previous checks ensure all pkey columns are set and that there is

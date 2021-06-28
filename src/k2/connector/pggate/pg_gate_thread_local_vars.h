@@ -14,11 +14,11 @@
 //--------------------------------------------------------------------------------------------------
 
 // This file contains thread-local equivalents for (some) PG global variables
-// to allow (some components of) the PG/YSQL layer to run in a multi-threaded
+// to allow (some components of) the PG/PSQL layer to run in a multi-threaded
 // environment.
 //
-// Currently this is used within DocDB where PG/YSQL is used as a library for
-// evaluating YSQL expression.
+// Currently this is used within DocDB where PG/PSQL is used as a library for
+// evaluating PSQL expression.
 #pragma once
 
 #include "pggate/pg_gate_typedefs.h"
@@ -48,7 +48,7 @@ void PgResetCurrentMemCtxThreadLocalVars();
 /*
  * Jump buffer used for error reporting (with sigjmp/longjmp) in multithread
  * context.
- * TODO Currently not yet the same as the standard PG/YSQL sigjmp_buf exception
+ * TODO Currently not yet the same as the standard PG/PSQL sigjmp_buf exception
  * stack because we use simplified error reporting when multi-threaded.
  */
 void* PgSetThreadLocalJumpBuffer(void* new_buffer);

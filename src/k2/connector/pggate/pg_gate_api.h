@@ -73,13 +73,13 @@ K2PgStatus PgGate_IsDatabaseColocated(const K2PgOid database_oid, bool *colocate
 
 K2PgStatus PgGate_InsertSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
+                                 uint64_t psql_catalog_version,
                                  int64_t last_val,
                                  bool is_called);
 
 K2PgStatus PgGate_UpdateSequenceTupleConditionally(int64_t db_oid,
                                               int64_t seq_oid,
-                                              uint64_t ysql_catalog_version,
+                                              uint64_t psql_catalog_version,
                                               int64_t last_val,
                                               bool is_called,
                                               int64_t expected_last_val,
@@ -88,14 +88,14 @@ K2PgStatus PgGate_UpdateSequenceTupleConditionally(int64_t db_oid,
 
 K2PgStatus PgGate_UpdateSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
+                                 uint64_t psql_catalog_version,
                                  int64_t last_val,
                                  bool is_called,
                                  bool* skipped);
 
 K2PgStatus PgGate_ReadSequenceTuple(int64_t db_oid,
                                int64_t seq_oid,
-                               uint64_t ysql_catalog_version,
+                               uint64_t psql_catalog_version,
                                int64_t *last_val,
                                bool *is_called);
 
@@ -429,13 +429,13 @@ bool PgGate_IsInitDbModeEnvVarSet();
 // This is called by initdb. Used to customize some behavior.
 void PgGate_InitFlags();
 
-// Retrieves value of ysql_max_read_restart_attempts gflag
+// Retrieves value of psql_max_read_restart_attempts gflag
 int32_t PgGate_GetMaxReadRestartAttempts();
 
-// Retrieves value of ysql_output_buffer_size gflag
+// Retrieves value of psql_output_buffer_size gflag
 int32_t PgGate_GetOutputBufferSize();
 
-// Retrieve value of ysql_disable_index_backfill gflag.
+// Retrieve value of psql_disable_index_backfill gflag.
 bool PgGate_GetDisableIndexBackfill();
 
 bool PgGate_IsK2PgEnabled();

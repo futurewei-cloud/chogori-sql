@@ -1,6 +1,6 @@
 # src/bin/pgbench/Makefile
 
-PGFILEDESC = "ysql_bench - a simple program for running benchmark tests"
+PGFILEDESC = "psql_bench - a simple program for running benchmark tests"
 PGAPPICON = win32
 
 subdir = src/bin/pgbench
@@ -18,9 +18,9 @@ endif
 LIBS += $(PTHREAD_LIBS)
 
 
-all: ysql_bench
+all: psql_bench
 
-ysql_bench: $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
+psql_bench: $(OBJS) | submake-libpq submake-libpgport submake-libpgfeutils
 	$(CC) $(CFLAGS) $^ $(LDFLAGS) $(LDFLAGS_EX) $(LIBS) -o $@$(X)
 
 # exprscan is compiled as part of exprparse
@@ -29,16 +29,16 @@ exprparse.o: exprscan.c
 distprep: exprparse.c exprscan.c
 
 install: all installdirs
-	$(INSTALL_PROGRAM) ysql_bench$(X) '$(DESTDIR)$(bindir)/ysql_bench$(X)'
+	$(INSTALL_PROGRAM) psql_bench$(X) '$(DESTDIR)$(bindir)/psql_bench$(X)'
 
 installdirs:
 	$(MKDIR_P) '$(DESTDIR)$(bindir)'
 
 uninstall:
-	rm -f '$(DESTDIR)$(bindir)/ysql_bench$(X)'
+	rm -f '$(DESTDIR)$(bindir)/psql_bench$(X)'
 
 clean distclean:
-	rm -f ysql_bench$(X) $(OBJS)
+	rm -f psql_bench$(X) $(OBJS)
 	rm -rf tmp_check
 
 maintainer-clean: distclean

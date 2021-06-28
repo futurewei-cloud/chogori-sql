@@ -153,7 +153,7 @@ typedef struct ImportQual
 	k2pg_not_support_in_templates(pos, yyscanner, feature " not supported yet in template0/template1")
 
 #define parser_k2pg_beta_feature(pos, feature) \
-	check_beta_feature(pos, yyscanner, "FLAGS_ysql_beta_feature_" feature, feature)
+	check_beta_feature(pos, yyscanner, "FLAGS_psql_beta_feature_" feature, feature)
 
 static void base_yyerror(YYLTYPE *yylloc, core_yyscan_t yyscanner,
 						 const char *msg);
@@ -17253,7 +17253,7 @@ beta_features_enabled()
 	static int beta_enabled = -1;
 	if (beta_enabled == -1)
 	{
-		beta_enabled = K2PgIsEnvVarTrueWithDefault("FLAGS_ysql_beta_features", true);
+		beta_enabled = K2PgIsEnvVarTrueWithDefault("FLAGS_psql_beta_features", true);
 	}
 	return beta_enabled;
 }
@@ -17267,7 +17267,7 @@ check_beta_feature(int pos, core_yyscan_t yyscanner, const char *flag, const cha
 		ereport(signal_level,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 				 errmsg("'%s' is a beta feature and beta features are disabled.", feature),
-				 errhint("To enable beta features, set the 'ysql_beta_features' yb-tserver gflag to 'true'."),
+				 errhint("To enable beta features, set the 'psql_beta_features' yb-tserver gflag to 'true'."),
 				 parser_errposition(pos)));
 	}
 }

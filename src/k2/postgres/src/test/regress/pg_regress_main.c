@@ -21,11 +21,11 @@
 #include "pg_regress.h"
 
 /*
- * start a ysqlsh test process for specified file (including redirection),
+ * start a psql test process for specified file (including redirection),
  * and return process ID
  */
 static PID_TYPE
-ysqlsh_start_test(const char *testname,
+psql_start_test(const char *testname,
 				_stringlist **resultfiles,
 				_stringlist **expectfiles,
 				_stringlist **tags)
@@ -34,7 +34,7 @@ ysqlsh_start_test(const char *testname,
 	char		infile[MAXPGPATH];
 	char		outfile[MAXPGPATH];
 	char		expectfile[MAXPGPATH];
-	char		ysqlsh_cmd[MAXPGPATH * 3];
+	char		psql_cmd[MAXPGPATH * 3];
 	size_t		offset = 0;
 	char	   *appnameenv;
 
@@ -64,23 +64,23 @@ ysqlsh_start_test(const char *testname,
 
 	if (launcher)
 	{
-		offset += snprintf(ysqlsh_cmd + offset, sizeof(ysqlsh_cmd) - offset,
+		offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
 						   "%s ", launcher);
-		if (offset >= sizeof(ysqlsh_cmd))
+		if (offset >= sizeof(psql_cmd))
 		{
 			fprintf(stderr, _("command too long\n"));
 			exit(2);
 		}
 	}
 
-	offset += snprintf(ysqlsh_cmd + offset, sizeof(ysqlsh_cmd) - offset,
-					   "\"%s%sysqlsh\" -X -a -q -d \"%s\" < \"%s\" > \"%s\" 2>&1",
+	offset += snprintf(psql_cmd + offset, sizeof(psql_cmd) - offset,
+					   "\"%s%spsql\" -X -a -q -d \"%s\" < \"%s\" > \"%s\" 2>&1",
 					   bindir ? bindir : "",
 					   bindir ? "/" : "",
 					   dblist->str,
 					   infile,
 					   outfile);
-	if (offset >= sizeof(ysqlsh_cmd))
+	if (offset >= sizeof(psql_cmd))
 	{
 		fprintf(stderr, _("command too long\n"));
 		exit(2);
@@ -89,7 +89,7 @@ ysqlsh_start_test(const char *testname,
 	appnameenv = psprintf("PGAPPNAME=pg_regress/%s", testname);
 	putenv(appnameenv);
 
-	pid = spawn_process(ysqlsh_cmd);
+	pid = spawn_process(psql_cmd);
 
 	if (pid == INVALID_PID)
 	{
@@ -105,7 +105,7 @@ ysqlsh_start_test(const char *testname,
 }
 
 static void
-ysqlsh_init(int argc, char **argv)
+psql_init(int argc, char **argv)
 {
 	/* set default regression database name */
 	add_stringlist_item(&dblist, "regression");
@@ -114,5 +114,5 @@ ysqlsh_init(int argc, char **argv)
 int
 main(int argc, char *argv[])
 {
-	return regression_main(argc, argv, ysqlsh_init, ysqlsh_start_test);
+	return regression_main(argc, argv, psql_init, psql_start_test);
 }

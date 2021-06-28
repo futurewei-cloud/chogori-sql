@@ -39,7 +39,7 @@ extern Oid K2PgHeapInsert(TupleTableSlot *slot,
 
 /*
  * Insert a tuple into a YugaByte table. Will execute within a distributed
- * transaction if the table is transactional (YSQL default).
+ * transaction if the table is transactional (PSQL default).
  */
 extern Oid K2PgExecuteInsert(Relation rel,
                             TupleDesc tupleDesc,

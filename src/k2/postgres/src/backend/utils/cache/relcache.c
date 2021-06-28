@@ -6582,7 +6582,7 @@ write_relcache_init_file(bool shared)
 
 	if (IsK2PgEnabled())
 	{
-		/* Write the ysql_catalog_version */
+		/* Write the psql_catalog_version */
 		if (fwrite(&k2pg_catalog_cache_version,
 		           1,
 		           sizeof(k2pg_catalog_cache_version),

@@ -27,7 +27,7 @@
 #include "fe_utils/string_utils.h"
 
 /* version string we expect back from pg_dump */
-#define PGDUMP_VERSIONSTR "ysql_dump (YSQL) " PG_VERSION "\n"
+#define PGDUMP_VERSIONSTR "pg_dump (PSQL) " PG_VERSION "\n"
 
 
 static void help(void);
@@ -159,7 +159,7 @@ main(int argc, char *argv[])
 				ret;
 	int			optindex;
 
-	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("ysql_dump"));
+	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_dump"));
 
 	progname = get_progname(argv[0]);
 
@@ -172,12 +172,12 @@ main(int argc, char *argv[])
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("ysql_dumpall (YSQL) " PG_VERSION);
+			puts("pg_dumpall (PSQL) " PG_VERSION);
 			exit_nicely(0);
 		}
 	}
 
-	if ((ret = find_other_exec(argv[0], "ysql_dump", PGDUMP_VERSIONSTR,
+	if ((ret = find_other_exec(argv[0], "pg_dump", PGDUMP_VERSIONSTR,
 							   pg_dump_bin)) < 0)
 	{
 		char		full_path[MAXPGPATH];
@@ -187,14 +187,14 @@ main(int argc, char *argv[])
 
 		if (ret == -1)
 			fprintf(stderr,
-					_("The program \"ysql_dump\" is needed by %s "
+					_("The program \"pg_dump\" is needed by %s "
 					  "but was not found in the\n"
 					  "same directory as \"%s\".\n"
 					  "Check your installation.\n"),
 					progname, full_path);
 		else
 			fprintf(stderr,
-					_("The program \"ysql_dump\" was found by \"%s\"\n"
+					_("The program \"pg_dump\" was found by \"%s\"\n"
 					  "but was not the same version as %s.\n"
 					  "Check your installation.\n"),
 					full_path, progname);
@@ -496,7 +496,7 @@ main(int argc, char *argv[])
 	if (quote_all_identifiers && server_version >= 90100)
 		executeCommand(conn, "SET quote_all_identifiers = true");
 
-	fprintf(OPF, "--\n-- YSQL database cluster dump\n--\n\n");
+	fprintf(OPF, "--\n-- PSQL database cluster dump\n--\n\n");
 	if (verbose)
 		dumpTimestamp("Started on");
 
@@ -566,7 +566,7 @@ main(int argc, char *argv[])
 
 	if (verbose)
 		dumpTimestamp("Completed on");
-	fprintf(OPF, "--\n-- YSQL database cluster dump complete\n--\n\n");
+	fprintf(OPF, "--\n-- PSQL database cluster dump complete\n--\n\n");
 
 	if (filename)
 	{
@@ -584,7 +584,7 @@ main(int argc, char *argv[])
 static void
 help(void)
 {
-	printf(_("%s extracts a YSQL database cluster into an SQL script file.\n\n"), progname);
+	printf(_("%s extracts a PSQL database cluster into an SQL script file.\n\n"), progname);
 	printf(_("Usage:\n"));
 	printf(_("  %s [OPTION]...\n"), progname);
 
@@ -1414,7 +1414,7 @@ dumpDatabases(PGconn *conn)
 		ret = runPgDump(dbname, create_opts);
 		if (ret != 0)
 		{
-			fprintf(stderr, _("%s: ysql_dump failed on database \"%s\", exiting\n"), progname, dbname);
+			fprintf(stderr, _("%s: pg_dump failed on database \"%s\", exiting\n"), progname, dbname);
 			exit_nicely(1);
 		}
 

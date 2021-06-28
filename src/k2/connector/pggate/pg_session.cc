@@ -194,7 +194,7 @@ Status PgSession::CreateSequencesDataTable() {
 
 Status PgSession::InsertSequenceTuple(int64_t db_oid,
                                       int64_t seq_oid,
-                                      uint64_t ysql_catalog_version,
+                                      uint64_t psql_catalog_version,
                                       int64_t last_val,
                                       bool is_called) {
   // TODO: add implementation
@@ -203,7 +203,7 @@ Status PgSession::InsertSequenceTuple(int64_t db_oid,
 
 Status PgSession::UpdateSequenceTuple(int64_t db_oid,
                                       int64_t seq_oid,
-                                      uint64_t ysql_catalog_version,
+                                      uint64_t psql_catalog_version,
                                       int64_t last_val,
                                       bool is_called,
                                       std::optional<int64_t> expected_last_val,
@@ -215,7 +215,7 @@ Status PgSession::UpdateSequenceTuple(int64_t db_oid,
 
 Status PgSession::ReadSequenceTuple(int64_t db_oid,
                                     int64_t seq_oid,
-                                    uint64_t ysql_catalog_version,
+                                    uint64_t psql_catalog_version,
                                     int64_t *last_val,
                                     bool *is_called) {
   // TODO: add implementation
