@@ -125,6 +125,7 @@ void startK2App() {
         addArg("--prometheus_push_interval");
         addArg(std::to_string(prometheus_push_interval_ms/1000) + "s");
     }
+    k2pg::session::start();
 
     addNamedArg("cpo");
     addNamedArg("tso_endpoint");
