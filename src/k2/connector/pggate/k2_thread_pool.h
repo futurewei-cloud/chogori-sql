@@ -35,7 +35,6 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k2_log.h"
 #include "k2_includes.h"
 #include "k2_config.h"
-#include "k2_session_metrics.h"
 
 namespace k2pg {
 class ThreadPool {
@@ -87,7 +86,6 @@ public:
                         catch(...) {
                             K2LOG_E(log::k2Client, "Task threw unknown exception");
                         }
-                        session::thread_pool_task_duration->observe(k2::Clock::now() - start);
                     } else {
                         // no tasks left. Notify anyone waiting on threadpool
                         _waitNotifier.notify_all();
@@ -107,7 +105,6 @@ public:
         {
             std::lock_guard lock{_qMutex};
             _tasks.push_back([st = k2::Clock::now(), task = std::move(task)](k2::TimePoint now) {
-                session::thread_pool_qwait->observe(now - st);
                 task();
             });
         }

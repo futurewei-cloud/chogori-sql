@@ -23,7 +23,6 @@ Copyright(c) 2020 Futurewei Cloud
 #include "k2_txn.h"
 
 #include "k2_queue_defs.h"
-#include "k2_session_metrics.h"
 
 namespace k2pg {
 namespace gate {
@@ -32,7 +31,6 @@ using namespace k2;
 K23SITxn::K23SITxn(k2::dto::K23SI_MTR mtr, k2::TimePoint startTime):_mtr(std::move(mtr)), _startTime(startTime){
     K2LOG_D(log::k2Client, "starting txn {} at time: {}", _mtr, _startTime);
     _inFlightTxns++;
-    session::in_flight_txns->observe(_inFlightTxns);
 }
 
 K23SITxn::~K23SITxn() {
@@ -42,15 +40,12 @@ K23SITxn::~K23SITxn() {
 CBFuture<EndResult> K23SITxn::endTxn(bool shouldCommit) {
     EndTxnRequest qr{.mtr=_mtr, .shouldCommit = shouldCommit, .prom={}};
     _inFlightOps ++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<EndResult>(qr.prom.get_future(), [this, st=_startTime, endRequestTime=Clock::now()] {
         auto now = Clock::now();
         K2LOG_D(log::k2Client, "ended txn {} started at {}", _mtr, _startTime);
         _inFlightOps --;
         _inFlightTxns--;
 
-        session::txn_latency->observe(now - st);
-        session::txn_end_latency->observe(now - endRequestTime);
         _reportEndMetrics(now);
     });
 
@@ -65,10 +60,8 @@ CBFuture<k2::QueryResult> K23SITxn::scanRead(std::shared_ptr<k2::Query> query) {
     ScanReadRequest sr {.mtr = _mtr, .query=query, .prom={}};
 
     _inFlightOps++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<QueryResult>(sr.prom.get_future(), [this, st = Clock::now()] {
         _inFlightOps--;
-        session::scan_op_latency->observe(Clock::now() - st);
     });
 
     K2LOG_D(log::k2Client, "scanread: mtr={}, query={}", sr.mtr, (*query));
@@ -81,10 +74,8 @@ CBFuture<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     ReadRequest qr {.mtr = _mtr, .record=std::move(rec), .key=k2::dto::Key(), .collectionName="", .prom={}};
 
     _inFlightOps++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [this, st = Clock::now()] {
         _inFlightOps--;
-        session::read_op_latency->observe(Clock::now() - st);
     });
 
     K2LOG_D(log::k2Client, "read: mtr={}, coll={}, schema-name={}, schema-version={}, key-pk={}, key-rk={}",
@@ -104,10 +95,8 @@ CBFuture<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::st
                     .collectionName=std::move(collectionName), .prom={}};
 
     _inFlightOps++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<ReadResult<dto::SKVRecord>>(qr.prom.get_future(), [this, st = Clock::now()] {
         _inFlightOps--;
-        session::read_op_latency->observe(Clock::now() - st);
     });
 
     K2LOG_D(log::k2Client, "read: mtr={}, coll={}, key-pk={}, key-rk={}",
@@ -124,10 +113,8 @@ CBFuture<WriteResult> K23SITxn::write(dto::SKVRecord&& rec, bool erase, k2::dto:
     WriteRequest qr{.mtr = _mtr, .erase=erase, .precondition=precondition, .record=std::move(rec), .prom={}};
 
     _inFlightOps++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<WriteResult>(qr.prom.get_future(), [this, st = Clock::now()] {
         _inFlightOps--;
-        session::write_op_latency->observe(Clock::now() - st);
     });
 
     K2LOG_D(log::k2Client,
@@ -160,10 +147,8 @@ CBFuture<PartialUpdateResult> K23SITxn::partialUpdate(dto::SKVRecord&& rec,
                      .key=std::move(key), .prom={}};
 
     _inFlightOps++;
-    session::in_flight_ops->observe(_inFlightOps);
     auto result = CBFuture<PartialUpdateResult>(qr.prom.get_future(), [this, st = Clock::now()] {
         _inFlightOps--;
-        session::write_op_latency->observe(Clock::now() - st);
     });
 
     K2LOG_D(log::k2Client,
@@ -182,11 +167,6 @@ const k2::dto::K23SI_MTR& K23SITxn::mtr() const {
 }
 
 void K23SITxn::_reportEndMetrics(k2::TimePoint now) {
-    session::txn_latency->observe(now - _startTime);
-    session::txn_ops->observe(_readOps + _writeOps + _scanOps);
-    session::txn_read_ops->observe(_readOps);
-    session::txn_write_ops->observe(_writeOps);
-    session::txn_scan_ops->observe(_scanOps);
 };
 
 } // ns gate
