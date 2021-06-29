@@ -27,11 +27,11 @@
 #include "executor/tuptable.h"
 
 //------------------------------------------------------------------------------
-// YugaByte modify table API.
+// K2 PG modify table API.
 
 /*
- * Insert data into YugaByte table.
- * This function is equivalent to "heap_insert", but it sends data to DocDB (YugaByte storage).
+ * Insert data into K2 PG table.
+ * This function is equivalent to "heap_insert", but it sends data to K2 platform.
  */
 extern Oid K2PgHeapInsert(TupleTableSlot *slot,
 												 HeapTuple tuple,
@@ -39,7 +39,7 @@ extern Oid K2PgHeapInsert(TupleTableSlot *slot,
 
 /*
  * Insert a tuple into a YugaByte table. Will execute within a distributed
- * transaction if the table is transactional (YSQL default).
+ * transaction if the table is transactional (PSQL default).
  */
 extern Oid K2PgExecuteInsert(Relation rel,
                             TupleDesc tupleDesc,

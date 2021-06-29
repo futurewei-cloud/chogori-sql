@@ -69,7 +69,7 @@ namespace sql {
     using UDTypeId = std::string;
 
     // In addition to regular columns, K2PG support for postgres also have virtual columns.
-    // Virtual columns are just expression that is evaluated by DocDB in "doc_expr.cc".
+    // Virtual columns are just expression that is evaluated by K2 PG.
     enum class PgSystemAttrNum : int {
         // Postgres system columns.
         kSelfItemPointer      = -1, // ctid.
@@ -89,7 +89,7 @@ namespace sql {
         kPgRowId              = -100, // k2pgrowid: auto-generated key-column for tables without pkey.
         kPgIdxBaseTupleId     = -101, // k2pgidxbasectid: for indexes, the k2pgctid of base table row.
         kPgUniqueIdxKeySuffix = -102, // k2pguniqueidxkeysuffix: extra key column for unique indexes, used
-                                      // to ensure SQL semantics for null (null != null) in DocDB
+                                      // to ensure SQL semantics for null (null != null) in K2 PG
                                       // (where null == null). For each index row will be set to:
                                       //  - the base table ctid when one or more indexed cols are null
                                       //  - to null otherwise (all indexed cols are non-null).

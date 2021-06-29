@@ -173,7 +173,7 @@ public:
     virtual CHECKED_STATUS PopulateDmlByRowIdOps(const std::vector<std::string>& k2pgctids) = 0;
 
 protected:
-    // Populate Protobuf requests using the collected informtion for this DocDB operator.
+    // Create requests using the collected informtion for this PG operator.
     virtual CHECKED_STATUS CreateRequests() = 0;
 
     // Create operators.

@@ -44,7 +44,7 @@
  * Theoretically, any expression that evaluates to a constant before K2PG
  * execution.
  * Currently restrict this to a subset of expressions.
- * Note: As enhance pushdown support in DocDB (e.g. expr evaluation) this
+ * Note: As enhance pushdown support in K2 PG (e.g. expr evaluation) this
  * can be expanded.
  */
 bool K2PgIsSupportedSingleRowModifyWhereExpr(Expr *expr)
@@ -226,10 +226,9 @@ void K2PgExprInstantiateParams(Expr* expr, ParamListInfo paramLI)
 }
 
 /*
- * Check if the function/procedure can be executed by DocDB (i.e. if we can
+ * Check if the function/procedure can be executed by K2 Platform (i.e. if we can
  * pushdown its execution).
- * The main current limitation is that DocDB's execution layer does not have
- * syscatalog access (cache lookup) so only specific builtins are supported.q
+ * This is for future function support in K2 platform
  */
 static bool IsSupportedK2FunctionId(Oid funcid, Form_pg_proc pg_proc) {
 	// Will add logic to enable the support to push down functions once
@@ -241,7 +240,7 @@ static bool IsSupportedK2FunctionId(Oid funcid, Form_pg_proc pg_proc) {
 	return false;
 }
 
-static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has_vars, bool *has_docdb_unsupported_funcs) {
+static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *has_vars, bool *has_k2_unsupported_funcs) {
 	switch (nodeTag(expr))
 	{
 		case T_Const:
@@ -266,7 +265,7 @@ static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *ha
 			 * compatible datatypes so we just recurse into its argument.
 			 */
 			RelabelType *rt = castNode(RelabelType, expr);
-			return K2PgAnalyzeExpression(rt->arg, target_attnum, has_vars, has_docdb_unsupported_funcs);
+			return K2PgAnalyzeExpression(rt->arg, target_attnum, has_vars, has_k2_unsupported_funcs);
 		}
 		case T_FuncExpr:
 		case T_OpExpr:
@@ -306,14 +305,14 @@ static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *ha
 			}
 
 			if (!IsSupportedK2FunctionId(funcid, pg_proc)) {
-				*has_docdb_unsupported_funcs = true;
+				*has_k2_unsupported_funcs = true;
 			}
 			ReleaseSysCache(tuple);
 
 			/* Checking all arguments are valid (stable). */
 			foreach (lc, args) {
 				Expr* expr = (Expr *) lfirst(lc);
-				if (!K2PgAnalyzeExpression(expr, target_attnum, has_vars, has_docdb_unsupported_funcs)) {
+				if (!K2PgAnalyzeExpression(expr, target_attnum, has_vars, has_k2_unsupported_funcs)) {
 				    return false;
 				}
 			}
@@ -327,14 +326,14 @@ static bool K2PgAnalyzeExpression(Expr *expr, AttrNumber target_attnum, bool *ha
 }
 
 /*
- * Can expression be evaluated in DocDB.
+ * Can expression be evaluated in K2 Platform.
  * Eventually any immutable expression whose only variables are column references.
  * Currently, limit to the case where the only referenced column is the target column.
  */
 bool K2PgIsSupportedSingleRowModifyAssignExpr(Expr *expr, AttrNumber target_attnum, bool *needs_pushdown) {
 	bool has_vars = false;
-	bool has_docdb_unsupported_funcs = false;
-	bool is_basic_expr = K2PgAnalyzeExpression(expr, target_attnum, &has_vars, &has_docdb_unsupported_funcs);
+	bool has_k2_unsupported_funcs = false;
+	bool is_basic_expr = K2PgAnalyzeExpression(expr, target_attnum, &has_vars, &has_k2_unsupported_funcs);
 
 	/* default, will set to true below if needed. */
 	*needs_pushdown = false;
@@ -349,14 +348,14 @@ bool K2PgIsSupportedSingleRowModifyAssignExpr(Expr *expr, AttrNumber target_attn
 		return true;
 	}
 
-	/* We can push down expression evaluation to DocDB. */
-	if (has_vars && !has_docdb_unsupported_funcs)
+	/* We can push down expression evaluation to K2 platform. */
+	if (has_vars && !has_k2_unsupported_funcs)
 	{
 		*needs_pushdown = true;
 		return true;
 	}
 
-	/* Variables plus DocDB-unsupported funcs -> query layer must evaluate. */
+	/* Variables plus k2 platform-unsupported funcs -> query layer must evaluate. */
 	return false;
 }
 

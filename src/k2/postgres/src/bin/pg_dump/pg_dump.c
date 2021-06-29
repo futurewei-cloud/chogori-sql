@@ -397,7 +397,7 @@ main(int argc, char **argv)
 		{NULL, 0, NULL, 0}
 	};
 
-	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("ysql_dump"));
+	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_dump"));
 
 	/*
 	 * Initialize what we need for parallel execution, especially for thread
@@ -422,7 +422,7 @@ main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("ysql_dump (YSQL) " PG_VERSION);
+			puts("pg_dump (PSQL) " PG_VERSION);
 			exit_nicely(0);
 		}
 	}

@@ -149,8 +149,9 @@ void camEndScan(CamScanDesc camScan);
 #define K2PG_PARTIAL_IDX_PRED_SELECTIVITY 0.8
 
 /*
- * Backwards scans are more expensive in DocDB.
- * TODO: the ysql_backward_prefetch_scale_factor gflag is correlated to this
+ * Backwards scans are more expensive in K2 platform since K2 platform cannot store all types of field data in reverse order
+ * and have to rely on PG to filter the result set.
+ * TODO: the psql_backward_prefetch_scale_factor gflag is correlated to this
  * but is too low (1/16 implying 16x slower) to be used here.
  */
 #define K2PG_BACKWARDS_SCAN_COST_FACTOR 1.1

@@ -8,7 +8,7 @@
 #    build tasks.
 #
 #    Currently it is used to build the postgres shared library used
-#    in DocDB to evaluate Postgres/YSQL expressions.
+#    in DocDB to evaluate Postgres/PSQL expressions.
 #    Current changes:
 #        - replace OBJS with 'call expand_subsys,$(OBJS)' for
 #          compatibility with common.mk

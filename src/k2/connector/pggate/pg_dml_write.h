@@ -71,11 +71,11 @@ class PgDmlWrite : public PgDml {
   CHECKED_STATUS Exec();
 
   void SetIsSystemCatalogChange() {
-      ysql_catalog_change_ = true;
+      psql_catalog_change_ = true;
   }
 
   void SetCatalogCacheVersion(const uint64_t catalog_cache_version) override {
-    ysql_catalog_version_ = catalog_cache_version;
+    psql_catalog_version_ = catalog_cache_version;
   }
 
   int32_t GetRowsAffectedCount() {
@@ -111,9 +111,9 @@ class PgDmlWrite : public PgDml {
 
   int32_t rows_affected_count_ = 0;
 
-  bool ysql_catalog_change_ = false;
+  bool psql_catalog_change_ = false;
 
-  uint64_t ysql_catalog_version_ = 0;
+  uint64_t psql_catalog_version_ = 0;
 
   private:
   virtual std::unique_ptr<PgWriteOpTemplate> AllocWriteOperation() const = 0;

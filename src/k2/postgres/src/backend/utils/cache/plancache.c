@@ -1049,7 +1049,7 @@ choose_custom_plan(CachedPlanSource *plansource, ParamListInfo boundParams)
 		return true;
 
 	/* For single row modify operations, use a custom plan so as to push down
-	 * the update to the DocDB without performing the read. This involves
+	 * the update to the K2 platform without performing the read. This involves
 	 * faking the read results in postgres. However the boundParams needs to be
 	 * passed for the creation of the plan and hence we would need to enforce a
 	 * custom plan.

@@ -70,9 +70,9 @@ usage(unsigned short int pager)
 	 */
 	output = PageOutput(61, pager ? &(pset.popt.topt) : NULL);
 
-	fprintf(output, _("ysqlsh is the YSQL interactive terminal.\n\n"));
+	fprintf(output, _("psql is the PG SQL interactive terminal.\n\n"));
 	fprintf(output, _("Usage:\n"));
-	fprintf(output, _("  ysqlsh [OPTION]... [DBNAME [USERNAME]]\n\n"));
+	fprintf(output, _("  psql [OPTION]... [DBNAME [USERNAME]]\n\n"));
 
 	fprintf(output, _("General options:\n"));
 	/* Display default database */
@@ -144,7 +144,7 @@ usage(unsigned short int pager)
 	fprintf(output, _("  -W, --password           force password prompt (should happen automatically)\n"));
 
 	fprintf(output, _("\nFor more information, type \"\\?\" (for internal commands) or \"\\help\" (for SQL\n"
-					  "commands) from within ysqlsh, or consult the ysqlsh section in YugabyteDB docs.\n\n"));
+					  "commands) from within psql, or consult the psql section in Postgres docs.\n\n"));
 	fprintf(output, _("Report bugs on GitHub at https://github.com/futurewei-cloud/chogori-sql/issues.\n"));
 
 	ClosePager(output);

@@ -208,7 +208,7 @@ Datum K2PgGetPgTupleIdFromSlot(TupleTableSlot *slot)
 /*
  * Get the k2pgctid from a tuple.
  *
- * Note that if the relation has a DocDB RowId attribute, this will generate a new RowId value
+ * Note that if the relation has a K2 PG RowId attribute, this will generate a new RowId value
  * meaning the k2pgctid will be unique. Therefore you should only use this if the relation has
  * a primary key or you're doing an insert.
  */
@@ -228,7 +228,7 @@ Datum K2PgGetPgTupleIdFromTuple(K2PgStatement pg_stmt,
 		AttrNumber attnum = col + minattr;
 		next_attr->attr_num = attnum;
 		/*
-		 * Don't need to fill in for the DocDB RowId column, however we still
+		 * Don't need to fill in for the K2 PG RowId column, however we still
 		 * need to add the column to the statement to construct the k2pgctid.
 		 */
 		if (attnum != K2PgRowIdAttributeNumber) {
@@ -535,7 +535,7 @@ void K2PgExecuteInsertIndex(Relation index,
 
 	/*
 	 * For non-unique indexes the primary-key component (base tuple id) already
-	 * guarantees uniqueness, so no need to read and check it in DocDB.
+	 * guarantees uniqueness, so no need to read and check it in K2 PG.
 	 */
 	if (!index->rd_index->indisunique) {
 		HandleK2PgStatus(PgGate_InsertStmtSetUpsertMode(insert_stmt));

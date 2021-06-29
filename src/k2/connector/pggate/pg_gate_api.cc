@@ -255,46 +255,46 @@ K2PgStatus PgGate_InvalidateTableCacheByTableId(const char *table_uuid) {
 
 K2PgStatus PgGate_InsertSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
+                                 uint64_t psql_catalog_version,
                                  int64_t last_val,
                                  bool is_called) {
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_InsertSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
-  return ToK2PgStatus(api_impl->InsertSequenceTuple(db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_InsertSequenceTuple {}, {}, {}", db_oid, seq_oid, psql_catalog_version);
+  return ToK2PgStatus(api_impl->InsertSequenceTuple(db_oid, seq_oid, psql_catalog_version, last_val, is_called));
 }
 
 K2PgStatus PgGate_UpdateSequenceTupleConditionally(int64_t db_oid,
                                               int64_t seq_oid,
-                                              uint64_t ysql_catalog_version,
+                                              uint64_t psql_catalog_version,
                                               int64_t last_val,
                                               bool is_called,
                                               int64_t expected_last_val,
                                               bool expected_is_called,
                                               bool *skipped) {
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTupleConditionally {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTupleConditionally {}, {}, {}", db_oid, seq_oid, psql_catalog_version);
   return ToK2PgStatus(
-      api_impl->UpdateSequenceTupleConditionally(db_oid, seq_oid, ysql_catalog_version,
+      api_impl->UpdateSequenceTupleConditionally(db_oid, seq_oid, psql_catalog_version,
           last_val, is_called, expected_last_val, expected_is_called, skipped));
 }
 
 K2PgStatus PgGate_UpdateSequenceTuple(int64_t db_oid,
                                  int64_t seq_oid,
-                                 uint64_t ysql_catalog_version,
+                                 uint64_t psql_catalog_version,
                                  int64_t last_val,
                                  bool is_called,
                                  bool* skipped) {
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_UpdateSequenceTuple {}, {}, {}", db_oid, seq_oid, psql_catalog_version);
   return ToK2PgStatus(api_impl->UpdateSequenceTuple(
-      db_oid, seq_oid, ysql_catalog_version, last_val, is_called, skipped));
+      db_oid, seq_oid, psql_catalog_version, last_val, is_called, skipped));
 }
 
 K2PgStatus PgGate_ReadSequenceTuple(int64_t db_oid,
                                int64_t seq_oid,
-                               uint64_t ysql_catalog_version,
+                               uint64_t psql_catalog_version,
                                int64_t *last_val,
                                bool *is_called) {
-  K2LOG_V(log::pg, "PgGateAPI: PgGate_ReadSequenceTuple {}, {}, {}", db_oid, seq_oid, ysql_catalog_version);
+  K2LOG_V(log::pg, "PgGateAPI: PgGate_ReadSequenceTuple {}, {}, {}", db_oid, seq_oid, psql_catalog_version);
   return ToK2PgStatus(api_impl->ReadSequenceTuple(
-      db_oid, seq_oid, ysql_catalog_version, last_val, is_called));
+      db_oid, seq_oid, psql_catalog_version, last_val, is_called));
 }
 
 K2PgStatus PgGate_DeleteSequenceTuple(int64_t db_oid, int64_t seq_oid) {
@@ -905,19 +905,19 @@ void PgGate_InitFlags() {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_InitFlags");
 }
 
-// Retrieves value of ysql_max_read_restart_attempts gflag
+// Retrieves value of psql_max_read_restart_attempts gflag
 int32_t PgGate_GetMaxReadRestartAttempts() {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_GetMaxReadRestartAttempts");
   return default_max_read_restart_attempts;
 }
 
-// Retrieves value of ysql_output_buffer_size gflag
+// Retrieves value of psql_output_buffer_size gflag
 int32_t PgGate_GetOutputBufferSize() {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_GetOutputBufferSize");
   return default_output_buffer_size;
 }
 
-// Retrieve value of ysql_disable_index_backfill gflag.
+// Retrieve value of psql_disable_index_backfill gflag.
 bool PgGate_GetDisableIndexBackfill() {
   K2LOG_V(log::pg, "PgGateAPI: PgGate_GetDisableIndexBackfill");
   return default_disable_index_backfill;

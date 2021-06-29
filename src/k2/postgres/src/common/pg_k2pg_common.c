@@ -118,7 +118,7 @@ K2PgUnsupportedFeatureSignalLevel()
 	if (cached_value == -1) {
 		// TODO(dmitry): Remove 'K2PG_SUPPRESS_UNSUPPORTED_ERROR'
 		cached_value = K2PgIsEnvVarTrue("K2PG_SUPPRESS_UNSUPPORTED_ERROR") ||
-									 K2PgIsEnvVarTrue("FLAGS_ysql_suppress_unsupported_error") ? WARNING : ERROR;
+									 K2PgIsEnvVarTrue("FLAGS_psql_suppress_unsupported_error") ? WARNING : ERROR;
 	}
 	return cached_value;
 }
@@ -129,7 +129,7 @@ K2PgIsNonTxnCopyEnabled()
 	static int cached_value = -1;
 	if (cached_value == -1)
 	{
-		cached_value = K2PgIsEnvVarTrue("FLAGS_ysql_non_txn_copy");
+		cached_value = K2PgIsEnvVarTrue("FLAGS_psql_non_txn_copy");
 	}
 	return cached_value;
 }
