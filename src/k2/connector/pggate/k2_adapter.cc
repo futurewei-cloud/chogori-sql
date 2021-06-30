@@ -299,10 +299,30 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
         return Status::OK();
     }
 
+    std::unordered_map<std::string, PgExpr*> children_by_col_name;
+    for (auto& pg_expr : pg_opr->getArgs()) {
+        // the children should be PgOperators for the top "and" condition
+        auto& child_args = static_cast<PgOperator *>(pg_expr)->getArgs();
+        // the first arg for the child should column reference
+        if (!child_args[0]->is_colref()) {
+            std::stringstream oss;
+            oss << "First argument should be column reference, but actually is " << child_args[0]->opcode();
+            throw std::invalid_argument(oss.str());
+        }
+        PgColumnRef* child_col_ref = static_cast<PgColumnRef *>(child_args[0]);
+        children_by_col_name[child_col_ref->attr_name()] = pg_expr;
+    }
+
+    std::vector<PgExpr*> sorted_args;
     std::vector<k2::dto::SchemaField> fields = start.schema->fields;
     std::unordered_map<std::string, int> field_map;
     for (int i = SKV_FIELD_OFFSET; i < fields.size(); i++) {
         field_map[fields[i].name] = i;
+        PgExpr* pg_expr = children_by_col_name[fields[i].name];
+        if (pg_expr != nullptr) {
+            // add the child PgExpr in the schema order
+            sorted_args.push_back(pg_expr);
+        }
     }
 
     // make sure that the record cursor in the correct start position
@@ -311,7 +331,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
 
     int start_idx = SKV_FIELD_OFFSET - 1;
     bool didBranch = false;
-    for (auto& pg_expr : pg_opr->getArgs()) {
+    for (auto& pg_expr : sorted_args) {
          if (didBranch) {
             // there was a branch in the processing of previous condition and we cannot continue.
             // Ideally, this shouldn't happen if the query parser did its job well.
@@ -323,11 +343,6 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
         switch(pg_expr->opcode()) {
             case PgExpr::Opcode::PG_EXPR_EQ: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
-                if (!args[0]->is_colref()) {
-                    std::stringstream oss;
-                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
-                    throw std::invalid_argument(oss.str());
-                }
                 if (!args[1]->is_constant()) {
                     // only consider value here
                     // TODO:: apply NOT to other types of expressions
@@ -350,11 +365,6 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
             case PgExpr::Opcode::PG_EXPR_GE:
             case PgExpr::Opcode::PG_EXPR_GT: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
-                if (!args[0]->is_colref()) {
-                    std::stringstream oss;
-                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
-                    throw std::invalid_argument(oss.str());
-                }
                 if (!args[1]->is_constant()) {
                     // only consider value here
                     // TODO:: apply NOT to other types of expressions
@@ -380,11 +390,6 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
             } break;
             case PgExpr::Opcode::PG_EXPR_LT: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
-                if (!args[0]->is_colref()) {
-                    std::stringstream oss;
-                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
-                    throw std::invalid_argument(oss.str());
-                }
                 if (!args[1]->is_constant()) {
                     // only consider value here
                     // TODO:: apply NOT to other types of expressions
@@ -410,11 +415,6 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
             } break;
             case PgExpr::Opcode::PG_EXPR_LE: {
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
-                if (!args[0]->is_colref()) {
-                    std::stringstream oss;
-                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
-                    throw std::invalid_argument(oss.str());
-                }
                 if (!args[1]->is_constant()) {
                     // only consider value here
                     // TODO:: apply NOT to other types of expressions
@@ -446,11 +446,6 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
                 auto& args = static_cast<PgOperator *>(pg_expr)->getArgs();
                 if (args.size() != 3) {
                     throw std::invalid_argument("Between operator should have 3 arguments, but actually has " + args.size());
-                }
-                if (!args[0]->is_colref()) {
-                    std::stringstream oss;
-                    oss << "First argument should be column reference, but actually is " << args[0]->opcode();
-                    throw std::invalid_argument(oss.str());
                 }
                 if (!args[1]->is_constant() || !args[2]->is_constant()) {
                     // only consider value here

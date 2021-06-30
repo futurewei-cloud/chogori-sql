@@ -78,7 +78,7 @@ PgDml::~PgDml() {
 
 Status PgDml::AppendTarget(PgExpr *target) {
   // Except for base_ctid, all targets should be appended to this DML.
-  if (target_desc_ && (prepare_params_.index_only_scan || !target->is_ybbasetid())) {
+  if (target_desc_ && (prepare_params_.index_only_scan || !target->is_k2pgbasetid())) {
     RETURN_NOT_OK(AppendTargetVar(target));
   } else {
     // Append base_ctid to the index_query.
