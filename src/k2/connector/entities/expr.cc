@@ -182,7 +182,7 @@ PgColumnRef::PgColumnRef(int attr_num,
 PgColumnRef::~PgColumnRef() {
 }
 
-bool PgColumnRef::is_ybbasetid() const {
+bool PgColumnRef::is_k2pgbasetid() const {
   return attr_num_ == static_cast<int>(PgSystemAttrNum::kPgIdxBaseTupleId);
 }
 

@@ -160,7 +160,7 @@ class PgExpr {
                 opcode_ == Opcode::PG_EXPR_LT);
     }
 
-    virtual bool is_ybbasetid() const {
+    virtual bool is_k2pgbasetid() const {
         return false;
     }
 
@@ -246,7 +246,7 @@ class PgColumnRef : public PgExpr {
     return attr_num_;
   }
 
-  bool is_ybbasetid() const override;
+  bool is_k2pgbasetid() const override;
 
   friend std::ostream& operator<<(std::ostream& os, const PgColumnRef& expr) {
       os << "(PgColumnRef: attr_name: " << expr.attr_name_ << ", attr_num: " << expr.attr_num_ << ")";
