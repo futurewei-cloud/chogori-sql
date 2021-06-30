@@ -171,7 +171,7 @@ typedef struct K2FdwExecState
 	/* Kept query-plan control to pass it to PgGate during preparation */
 	K2PgPrepareParameters prepare_params;
 
-	K2PgExecParameters *exec_params; /* execution control parameters for YugaByte */
+	K2PgExecParameters *exec_params; /* execution control parameters for K2 PG */
 	bool is_exec_done; /* Each statement should be executed exactly one time */
 } K2FdwExecState;
 

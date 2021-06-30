@@ -668,8 +668,13 @@ static void	camSetupScanKeys(Relation relation,
 		bool is_primary_key = bms_is_member(idx, scan_plan->primary_key);
 
 		if (!ShouldPushdownScanKey(relation, scan_plan, scan_plan->bind_key_attnums[i],
-		                           &camScan->key[i], is_primary_key))
+		                           &camScan->key[i], is_primary_key)) {
+			if (camScan->exec_params != NULL && !camScan->exec_params->limit_use_default) {
+				// do not set limit count if we don't pushdown all conditions and we don't use default prefetch limit
+				camScan->exec_params->limit_count = -1;
+			}
 			continue;
+		}
 
 		if (is_primary_key)
 			scan_plan->sk_cols = bms_add_member(scan_plan->sk_cols, idx);
