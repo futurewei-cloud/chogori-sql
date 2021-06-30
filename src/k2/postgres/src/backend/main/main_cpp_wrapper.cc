@@ -14,13 +14,8 @@ inline thread_local k2::logging::Logger main("k2::pg_main");
 }
 
 extern "C" {
-#include <microhttpd.h>
-#include <prom.h>
-#include <promhttp.h>
 
 namespace globals {
-struct MHD_Daemon* prom_daemon = 0;
-promhttp_push_handle_t* prom_pusher = 0;
 
 std::thread k2thread;
 std::unique_ptr<k2pg::gate::Config> config;
@@ -40,25 +35,6 @@ killK2App(int, unsigned long) {
         globals::k2thread.join();
     }
 
-    if (globals::prom_daemon || globals::prom_pusher) {
-        sleep(10); // sleep in order to allow for metrics to be collected by prometheus before we shutdown
-    }
-    if (globals::prom_daemon) {
-        K2LOG_I(k2pg::log::main, "shutting down prometheus http server");
-        MHD_stop_daemon(globals::prom_daemon);
-    }
-    if (globals::prom_pusher) {
-        K2LOG_I(k2pg::log::main, "shutting down prometheus push thread");
-        promhttp_stop_push_metrics(globals::prom_pusher);
-    }
-
-    K2LOG_I(k2pg::log::main, "cleaning up metrics");
-    auto* registry = PROM_COLLECTOR_REGISTRY_DEFAULT;
-    PROM_COLLECTOR_REGISTRY_DEFAULT = NULL;
-    K2LOG_I(k2pg::log::main, "replacing collector registry");
-    promhttp_set_active_collector_registry(NULL);
-    K2LOG_I(k2pg::log::main, "deleting collector registry");
-    prom_collector_registry_destroy(registry);
     K2LOG_I(k2pg::log::main, "done cleaning up");
 }
 
@@ -72,23 +48,6 @@ const std::string& getHostName() {
     }
 
     return hostname;
-}
-
-void initMetrics(int promport, const std::string& push_url, int push_interval_ms) {
-    prom_collector_registry_default_init();
-    promhttp_set_active_collector_registry(NULL);
-    k2pg::session::start();
-
-    if (promport >=0) {
-        K2LOG_I(k2pg::log::main, "Creating prometheus thread on port: {}", promport);
-        globals::prom_daemon = promhttp_start_daemon(MHD_USE_INTERNAL_POLLING_THREAD, promport, NULL, NULL);
-        K2ASSERT(k2pg::log::main, globals::prom_daemon != 0, "Unable to create prometheus thread");
-    }
-
-    if (push_url.size() > 0) {
-        globals::prom_pusher = promhttp_start_push_metrics(push_url.c_str(), push_interval_ms);
-        K2ASSERT(k2pg::log::main, globals::prom_pusher != NULL, "Unable to create metrics pusher");
-    }
 }
 
 // this function initializes the K2 client library and hooks it up with the k2 pg connector
@@ -111,7 +70,6 @@ void startK2App() {
     if (prometheus_push_addr.size() > 0) {
         prometheus_push_url = "http://" + prometheus_push_addr + "/metrics/job/k2pg_gate/instance/" + getHostName() + ":" + std::to_string(::getpid());
     }
-    initMetrics(promport, prometheus_push_url, prometheus_push_interval_ms);
     K2LOG_I(k2pg::log::main, "Creating PG-K2 thread");
 
     // in order to pass the args to the seastar thread, we need to copy them into a new array as their storage will
@@ -167,6 +125,7 @@ void startK2App() {
         addArg("--prometheus_push_interval");
         addArg(std::to_string(prometheus_push_interval_ms/1000) + "s");
     }
+    k2pg::session::start();
 
     addNamedArg("cpo");
     addNamedArg("tso_endpoint");
