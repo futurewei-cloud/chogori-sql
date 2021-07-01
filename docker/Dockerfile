@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt upgrade -y
 RUN apt install -y build-essential vim gdb strace psmisc pkg-config python3 python3-pip git sed
 RUN pip3 install cmake
-RUN apt install -y libreadline-dev bison flex libboost-dev uuid-dev librust-backtrace+libbacktrace-dev libboost-thread-dev libssl-dev libmicrohttpd-dev
+RUN apt install -y libreadline-dev bison flex libboost-dev uuid-dev librust-backtrace+libbacktrace-dev libboost-thread-dev libssl-dev
 
 RUN cd /tmp && \
    git clone https://github.com/futurewei-cloud/chogori-seastar-rd.git && \
