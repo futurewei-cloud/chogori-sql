@@ -2,7 +2,7 @@
 
 ## Description
 
-The Chogori cluster was configured to use RDMA and only one Chogori server core was used. We used the Java TPC-C client from the open-source oltpbench project, and configured it to load five TPC-C warehouses. Minor, functionally-equivalent changes were needed for compatibilty with the oltpbench TPC-C benchmark. Namely, converting function updates (e.g. SET COUNT = COUNT + 1) into explicity read-modify-write operations, and handling conflict aborts correctly.
+The Chogori cluster was configured to use RDMA and only one Chogori server core was used. We used the Java TPC-C client from the open-source oltpbench project, and configured it to load five TPC-C warehouses. Minor, functionally-equivalent changes were needed for compatibilty with the oltpbench TPC-C benchmark. Namely, converting function updates (e.g. SET COUNT = COUNT + 1) into explicit read-modify-write operations, and handling conflict aborts correctly.
 
 ## Single server core throughput
 
