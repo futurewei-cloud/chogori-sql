@@ -12,6 +12,7 @@ All TPC-C transactions types (NewOrder, Payment, OrderStatus, Delivery, StockLev
 ratio. 
 
 June 30, 2021: **66.9 transactions / second**, 1806.3 NewOrder transactions / minute (tpmC).
+
 March 1, 2021: 62.6 transactions / second, 1690.5 NewOrder transactions / minute (tpmC).
 
 ## Competitor Comparison
