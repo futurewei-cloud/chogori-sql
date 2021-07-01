@@ -16,6 +16,7 @@
 
 #include "k2_adapter.h"
 
+#include <cstddef>
 #include <unordered_map>
 
 #include <seastar/core/memory.hh>
@@ -299,7 +300,8 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
         return Status::OK();
     }
 
-    std::unordered_map<std::string, PgExpr*> children_by_col_name;
+    // use multimap since the same column might have multiple conditions
+    std::multimap<std::string, PgExpr*> children_by_col_name;
     for (auto& pg_expr : pg_opr->getArgs()) {
         // the children should be PgOperators for the top "and" condition
         auto& child_args = static_cast<PgOperator *>(pg_expr)->getArgs();
@@ -310,7 +312,7 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
             throw std::invalid_argument(oss.str());
         }
         PgColumnRef* child_col_ref = static_cast<PgColumnRef *>(child_args[0]);
-        children_by_col_name[child_col_ref->attr_name()] = pg_expr;
+        children_by_col_name.insert(std::make_pair(child_col_ref->attr_name(), pg_expr));
     }
 
     std::vector<PgExpr*> sorted_args;
@@ -318,10 +320,9 @@ Status K2Adapter::HandleRangeConditions(PgExpr *range_conds, std::vector<PgExpr 
     std::unordered_map<std::string, int> field_map;
     for (int i = SKV_FIELD_OFFSET; i < fields.size(); i++) {
         field_map[fields[i].name] = i;
-        PgExpr* pg_expr = children_by_col_name[fields[i].name];
-        if (pg_expr != nullptr) {
-            // add the child PgExpr in the schema order
-            sorted_args.push_back(pg_expr);
+        auto range = children_by_col_name.equal_range(fields[i].name);
+        for (auto it = range.first; it != range.second; ++it) {
+            sorted_args.push_back(it->second);
         }
     }
 

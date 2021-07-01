@@ -183,7 +183,7 @@ typedef struct PgExecParameters {
   //     for filtering before LIMIT is applied.
   //   o ORDER BY clause is not processed by K2 platform. Similarly all rows must be fetched and sent
   //     to Postgres code layer.
-  uint64_t limit_count;
+  int64_t limit_count;
   uint64_t limit_offset;
   bool limit_use_default;
   // For now we only support one rowmark.
