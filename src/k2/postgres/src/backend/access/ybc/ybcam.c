@@ -745,8 +745,8 @@ static void camBindScanKeys(Relation relation,
 	Oid		relid    = RelationGetRelid(relation);
 
 	HandleK2PgStatus(PgGate_NewSelect(dboid, relid, &camScan->prepare_params, &camScan->handle));
-	ResourceOwnerEnlargeYugaByteStmts(CurrentResourceOwner);
-	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, camScan->handle);
+	ResourceOwnerEnlargeK2PgStmts(CurrentResourceOwner);
+	ResourceOwnerRememberK2PgStmt(CurrentResourceOwner, camScan->handle);
 	camScan->stmt_owner = CurrentResourceOwner;
 
 	if (IsSystemRelation(relation))
@@ -1129,7 +1129,7 @@ void camEndScan(CamScanDesc camScan)
 {
 	if (camScan->handle)
 	{
-		ResourceOwnerForgetYugaByteStmt(camScan->stmt_owner, camScan->handle);
+		ResourceOwnerForgetK2PgStmt(camScan->stmt_owner, camScan->handle);
 	}
 	pfree(camScan);
 }
@@ -1502,7 +1502,7 @@ void camIndexCostEstimate(IndexPath *path, Selectivity *selectivity,
 	bool        is_partial_idx = path->indexinfo->indpred != NIL && path->indexinfo->predOK;
 	Bitmapset  *const_quals = NULL;
 
-	/* Primary-index scans are always covered in Yugabyte (internally) */
+	/* Primary-index scans are always covered in K2PG (internally) */
 	bool       is_uncovered_idx_scan = !index->rd_index->indisprimary &&
 	                                   path->path.pathtype != T_IndexOnlyScan;
 

@@ -339,7 +339,7 @@ static bool IsK2PgGlobalClusterInitdb()
 	return IsEnvSet("K2PG_ENABLED_IN_POSTGRES");
 }
 
-static bool IsYugaByteLocalNodeInitdb()
+static bool IsK2PgLocalNodeInitdb()
 {
 	return IsEnvSet("K2PG_LOCAL_NODE_INITDB");
 }
@@ -1330,7 +1330,7 @@ setup_config(void)
 	free(conflines);
 
 	/* Do not create pg_hba.conf in chogori-sql */
-	if (!IsK2PgGlobalClusterInitdb() && !IsYugaByteLocalNodeInitdb()) {
+	if (!IsK2PgGlobalClusterInitdb() && !IsK2PgLocalNodeInitdb()) {
 		/* pg_hba.conf */
 
 		conflines = readfile(hba_file);
@@ -1473,7 +1473,7 @@ bootstrap_template1(void)
    * Lines from BKI file are not actually used in initdb on local node.
    * No need to substitute anything
    */
-	if (!IsYugaByteLocalNodeInitdb())
+	if (!IsK2PgLocalNodeInitdb())
   {
     /* Substitute for various symbols used in the BKI file */
 
@@ -1535,7 +1535,7 @@ bootstrap_template1(void)
 
   for (line = bki_lines; *line != NULL; line++)
   {
-    if (!IsYugaByteLocalNodeInitdb())
+    if (!IsK2PgLocalNodeInitdb())
       PG_CMD_PUTS(*line);
     free(*line);
   }
@@ -2427,7 +2427,7 @@ setlocales(void)
 	/* Use LC_COLLATE=C with everything else as en_US.UTF-8 as default locale in K2PG mode. */
 	/* This is because as of 06/15/2019 we don't support collation-aware string comparisons, */
 	/* but we still want to support storing UTF-8 strings. */
-	if (!locale && (IsYugaByteLocalNodeInitdb() || IsK2PgGlobalClusterInitdb())) {
+	if (!locale && (IsK2PgLocalNodeInitdb() || IsK2PgGlobalClusterInitdb())) {
 		const char *kPgDefaultLocaleForSortOrder = "C";
 		const char *kPgDefaultLocaleForEncoding = "en_US.UTF-8";
 
@@ -3128,7 +3128,7 @@ initialize_data_directory(void)
 	fflush(stdout);
 	bootstrap_template1();
 
-  if (IsYugaByteLocalNodeInitdb())
+  if (IsK2PgLocalNodeInitdb())
     return;
 
 	/*
@@ -3222,7 +3222,7 @@ initialize_data_directory(void)
 int
 main(int argc, char *argv[])
 {
-	if (IsK2PgGlobalClusterInitdb() || IsYugaByteLocalNodeInitdb())
+	if (IsK2PgGlobalClusterInitdb() || IsK2PgLocalNodeInitdb())
 		K2PgSetInitDbModeEnvVar();
 
 	static struct option long_options[] = {
@@ -3536,7 +3536,7 @@ main(int argc, char *argv[])
 	else
 		printf(_("\nSync to disk skipped.\nThe data directory might become corrupt if the operating system crashes.\n"));
 
-	if (IsYugaByteLocalNodeInitdb())
+	if (IsK2PgLocalNodeInitdb())
 		return 0;
 
 	if (authwarning != NULL && !IsK2PgGlobalClusterInitdb())

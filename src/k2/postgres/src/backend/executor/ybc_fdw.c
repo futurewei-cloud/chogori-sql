@@ -1490,8 +1490,8 @@ k2BeginForeignScan(ForeignScanState *node, int eflags)
 				   RelationGetRelid(relation),
 				   NULL /* prepare_params */,
 				   &k2pg_state->handle));
-	ResourceOwnerEnlargeYugaByteStmts(CurrentResourceOwner);
-	ResourceOwnerRememberYugaByteStmt(CurrentResourceOwner, k2pg_state->handle);
+	ResourceOwnerEnlargeK2PgStmts(CurrentResourceOwner);
+	ResourceOwnerRememberK2PgStmt(CurrentResourceOwner, k2pg_state->handle);
 	k2pg_state->stmt_owner = CurrentResourceOwner;
 	k2pg_state->exec_params = &estate->k2pg_exec_params;
 	k2pg_state->remote_exprs = foreignScan->fdw_exprs;
@@ -1792,7 +1792,7 @@ k2FreeStatementObject(K2FdwExecState* k2pg_fdw_exec_state)
 	/* If k2pg_fdw_exec_state is NULL, we are in EXPLAIN; nothing to do */
 	if (k2pg_fdw_exec_state != NULL && k2pg_fdw_exec_state->handle != NULL)
 	{
-		ResourceOwnerForgetYugaByteStmt(k2pg_fdw_exec_state->stmt_owner,
+		ResourceOwnerForgetK2PgStmt(k2pg_fdw_exec_state->stmt_owner,
 										k2pg_fdw_exec_state->handle);
 		k2pg_fdw_exec_state->handle = NULL;
 		k2pg_fdw_exec_state->stmt_owner = NULL;

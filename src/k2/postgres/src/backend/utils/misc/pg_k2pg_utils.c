@@ -270,7 +270,7 @@ HandleK2PgStatusWithOwner(K2PgStatus status,
 	{
 		if (owner != NULL)
 		{
-			ResourceOwnerForgetYugaByteStmt(owner, k2pg_stmt);
+			ResourceOwnerForgetK2PgStmt(owner, k2pg_stmt);
 		}
 	}
 	HandleK2PgStatus(status);

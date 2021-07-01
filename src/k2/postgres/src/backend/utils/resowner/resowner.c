@@ -178,7 +178,7 @@ static void PrintDSMLeakWarning(dsm_segment *seg);
 /**
  * K2PG-specific
  */
-static void PrintYugaByteStmtLeakWarning(K2PgStatement k2pg_stmt);
+static void PrintK2PgStmtLeakWarning(K2PgStatement k2pg_stmt);
 
 /*****************************************************************************
  *	  INTERNAL ROUTINES														 *
@@ -684,9 +684,9 @@ ResourceOwnerReleaseInternal(ResourceOwner owner,
 					(K2PgStatement) DatumGetPointer(foundres);
 
 				if (isCommit)
-					PrintYugaByteStmtLeakWarning(res);
+					PrintK2PgStmtLeakWarning(res);
 
-				ResourceOwnerForgetYugaByteStmt(owner, res);
+				ResourceOwnerForgetK2PgStmt(owner, res);
 			}
 		}
 	}
@@ -1336,7 +1336,7 @@ ResourceOwnerForgetJIT(ResourceOwner owner, Datum handle)
  * of memory, it's critical to do so *before* acquiring the resource.
  */
 void
-ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner)
+ResourceOwnerEnlargeK2PgStmts(ResourceOwner owner)
 {
 	ResourceArrayEnlarge(&(owner->ybstmtarr));
 }
@@ -1344,10 +1344,10 @@ ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner)
 /*
  * Remember that a K2PG statement is owned by a ResourceOwner
  *
- * Caller must have previously done ResourceOwnerEnlargeYugaByteStmts()
+ * Caller must have previously done ResourceOwnerEnlargeK2PgStmts()
  */
 void
-ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
+ResourceOwnerRememberK2PgStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
 {
 	ResourceArrayAdd(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt));
 }
@@ -1356,7 +1356,7 @@ ResourceOwnerRememberYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
  * Forget that a K2PG statement is owned by a ResourceOwner
  */
 void
-ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
+ResourceOwnerForgetK2PgStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
 {
 	if (!ResourceArrayRemove(&(owner->ybstmtarr), PointerGetDatum(k2pg_stmt)))
 		elog(ERROR, "K2PG statement %p is not owned by resource owner %s",
@@ -1367,7 +1367,7 @@ ResourceOwnerForgetYugaByteStmt(ResourceOwner owner, K2PgStatement k2pg_stmt)
  * Debugging subroutine
  */
 static void
-PrintYugaByteStmtLeakWarning(K2PgStatement k2pg_stmt)
+PrintK2PgStmtLeakWarning(K2PgStatement k2pg_stmt)
 {
 	elog(WARNING, "K2PG statement leak: statement %p still referenced",
 		 k2pg_stmt);
