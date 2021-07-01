@@ -4059,7 +4059,7 @@ comparetup_index_btree(const SortTuple *a, const SortTuple *b,
 	}
 
 	/*
-	 * Skip this for YugaByte-based table. In YugaByte, tuples do not have block number
+	 * Skip this for K2PG-based table. In K2PG, tuples do not have block number
 	 * and offset.
 	 */
 	if (!IsK2PgEnabled())

@@ -14,6 +14,7 @@
  * YugaByte development.
  *
  * Portions Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.
@@ -1618,7 +1619,7 @@ ExecuteTruncateGuts(List *explicit_rels, List *relids, List *relids_logged,
 		 */
 		if (IsK2PgRelation(rel))
 		{
-			// Call YugaByte API to truncate tables.
+			// Call K2PG API to truncate tables.
 			K2PgTruncateTable(rel);
 		}
 		else if (rel->rd_createSubid == mySubid ||
@@ -4100,7 +4101,7 @@ ATRewriteCatalogs(List **wqueue, LOCKMODE lockmode)
 		}
 	}
 
-	/* YugaByte doesn't support toast tables. */
+	/* K2PG doesn't support toast tables. */
 	if (IsK2PgEnabled())
 		return;
 
@@ -4915,7 +4916,7 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 					case CONSTR_CHECK:
 						if (!ExecCheck(con->qualstate, econtext))
 						{
-							/* If YugaByte is enabled, the add constraint operation is not atomic.
+							/* If K2PG is enabled, the add constraint operation is not atomic.
 							 * So we must delete the relevant entries from the catalog tables. */
 							if (IsK2PgEnabled())
 							{

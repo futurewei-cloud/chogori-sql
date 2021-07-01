@@ -598,8 +598,8 @@ DefineIndex(Oid relationId,
 	accessMethodName = stmt->accessMethod;
 
 	/*
-	 * In Yugabyte mode, switch index method from "btree" or "hash" to "lsm" depending on whether
-	 * the table is stored in Yugabyte storage or not (such as temporary tables).
+	 * In K2PG mode, switch index method from "btree" or "hash" to "lsm" depending on whether
+	 * the table is stored in K2PG storage or not (such as temporary tables).
 	 */
 	if (IsK2PgEnabled())
 	{
@@ -612,7 +612,7 @@ DefineIndex(Oid relationId,
 			if (strcmp(accessMethodName, "btree") == 0 || strcmp(accessMethodName, "hash") == 0)
 			{
 				ereport(NOTICE,
-						(errmsg("index method \"%s\" was replaced with \"%s\" in YugabyteDB",
+						(errmsg("index method \"%s\" was replaced with \"%s\" in K2PG",
 								accessMethodName, DEFAULT_K2PG_INDEX_TYPE)));
 				accessMethodName = DEFAULT_K2PG_INDEX_TYPE;
 			}
@@ -1180,32 +1180,20 @@ DefineIndex(Oid relationId,
 
 	PopActiveSnapshot();
 
-	/*
-	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleK2PgStatus.
-	 */
 	elog(LOG, "waiting for K2PG_INDEX_PERM_DELETE_ONLY");
 	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_DELETE_ONLY,
 														 &actual_index_permissions));
-	/*
-	 * TODO(jason): handle bad actual_index_permissions.
-	 */
 
 	elog(LOG, "committing pg_index tuple with indislive=true");
 	CommitTransactionCommand();
-	/* TODO(jason): handle nested CREATE INDEX (this assumes we're at nest
-	 * level 1). */
+
 	K2PgDecrementDdlNestingLevel(true /* success */);
 	K2PgIncrementDdlNestingLevel();
 	StartTransactionCommand();
 
-	/*
-	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleK2PgStatus.
-	 */
 	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
 	elog(LOG, "waiting for K2PG_INDEX_PERM_WRITE_AND_DELETE");
 	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
@@ -1213,13 +1201,10 @@ DefineIndex(Oid relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_WRITE_AND_DELETE,
 														 &actual_index_permissions));
-	/*
-	 * TODO(jason): handle bad actual_index_permissions.
-	 */
 
 	/*
 	 * Update the pg_index row to mark the index as ready for inserts.  This
-	 * allows writes, but Yugabyte would only accept deletes until the index
+	 * allows writes, but K2PG would only accept deletes until the index
 	 * permission changes to INDEX_PERM_WRITE_AND_DELETE.
 	 */
 	index_set_state_flags(indexRelationId, INDEX_CREATE_SET_READY);
@@ -1229,30 +1214,18 @@ DefineIndex(Oid relationId,
 	 */
 	elog(LOG, "committing pg_index tuple with indisready=true");
 	CommitTransactionCommand();
-	/* TODO(jason): handle nested CREATE INDEX (this assumes we're at nest
-	 * level 1). */
+
 	K2PgDecrementDdlNestingLevel(true /* success */);
 	K2PgIncrementDdlNestingLevel();
 	StartTransactionCommand();
 
-	/* TODO(jason): handle exclusion constraints, possibly not here. */
-
-	/*
-	 * TODO(jason): retry backfill or revert schema changes instead of failing
-	 * through HandleK2PgStatus.
-	 */
 	HandleK2PgStatus(PgGate_AsyncUpdateIndexPermissions(MyDatabaseId, relationId));
-	elog(LOG, "waiting for Yugabyte index read permission");
+	elog(LOG, "waiting for K2PG index read permission");
 	HandleK2PgStatus(PgGate_WaitUntilIndexPermissionsAtLeast(MyDatabaseId,
 														 relationId,
 														 indexRelationId,
 														 K2PG_INDEX_PERM_READ_WRITE_AND_DELETE,
 														 &actual_index_permissions));
-	/*
-	 * TODO(jason): handle bad actual_index_permissions, like
-	 * K2PG_INDEX_PERM_WRITE_AND_DELETE_WHILE_REMOVING.
-	 */
-
 	/*
 	 * Index can now be marked valid -- update its pg_index entry
 	 */
@@ -1372,7 +1345,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 		nextExclOp = NULL;
 
 	/*
-	 * Get whether the index will use Yugabyte ordering and whather it will be
+	 * Get whether the index will use K2PG ordering and whether it will be
 	 * colocated.  For now, regarding colocation, the index always follows the
 	 * indexed table, so just figure out whether the indexed table is
 	 * colocated.
@@ -1692,7 +1665,7 @@ ComputeIndexAttrs(IndexInfo *indexInfo,
 				colOptionP[attn] |= INDOPTION_HASH;
 
 			/*
-			 * In Yugabyte, use HASH as the default for the first column of
+			 * In K2PG, use HASH as the default for the first column of
 			 * non-colocated tables
 			 */
 			if (use_k2pg_ordering &&

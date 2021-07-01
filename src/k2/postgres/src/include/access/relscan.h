@@ -142,7 +142,7 @@ typedef struct IndexScanDescData
 	/* parallel index scan information, in shared memory */
 	ParallelIndexScanDesc parallel_scan;
 
-	/* During execution, Postgres will push down hints to YugaByte for performance purpose.
+	/* During execution, Postgres will push down hints to K2PG for performance purpose.
 	 * (currently, only LIMIT values are being pushed down). All these execution information will
 	 * kept in "k2pg_exec_params".
 	 *
@@ -156,7 +156,7 @@ typedef struct IndexScanDescData
 	 *   IndexScan functions.
 	 *
 	 * - Postgres IndexScan function will call and pass "k2pg_exec_params" to PgGate to control the
-	 *   index-scan execution in YugaByte.
+	 *   index-scan execution in K2PG.
 	 */
 	K2PgExecParameters *k2pg_exec_params;
 }			IndexScanDescData;

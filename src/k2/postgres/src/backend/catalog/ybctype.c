@@ -89,8 +89,8 @@ static const K2PgTypeEntity K2SqlVarLenByRefTypeEntity;
 void DatumToK2Sql(Datum datum, uint8 **data, int64 *bytes);
 
 /***************************************************************************************************
- * Find YugaByte storage type for each PostgreSQL datatype.
- * NOTE: Because YugaByte network buffer can be deleted after it is processed, Postgres layer must
+ * Find K2PG storage type for each PostgreSQL datatype.
+ * NOTE: Because K2PG network buffer can be deleted after it is processed, Postgres layer must
  *       allocate a buffer to keep the data in its slot.
  **************************************************************************************************/
 const K2PgTypeEntity *
@@ -122,7 +122,7 @@ K2PgDataTypeFromOidMod(int attnum, Oid type_id)
 			default:
 				ereport(ERROR,
 						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						 errmsg("System column not yet supported in YugaByte: %d", attnum)));
+						 errmsg("System column not yet supported in K2PG: %d", attnum)));
 				break;
 		}
 	}
@@ -302,7 +302,7 @@ Datum K2SqlBPCharToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *typ
 						errmsg("Invalid data size")));
 	}
 
-	/* Convert YugaByte cstring to Postgres internal representation */
+	/* Convert K2PG cstring to Postgres internal representation */
 	FunctionCallInfoData fargs;
 	FunctionCallInfo fcinfo = &fargs;
 	PG_GETARG_DATUM(0) = CStringGetDatum(data);
@@ -322,7 +322,7 @@ Datum K2SqlVarcharToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *ty
 						errmsg("Invalid data size")));
 	}
 
-	/* Convert YugaByte cstring to Postgres internal representation */
+	/* Convert K2PG cstring to Postgres internal representation */
 	FunctionCallInfoData fargs;
 	FunctionCallInfo fcinfo = &fargs;
 	PG_GETARG_DATUM(0) = CStringGetDatum(data);
@@ -371,7 +371,7 @@ Datum K2SqlCStrToDatum(const char *data, int64 bytes, const K2PgTypeAttrs *type_
 						errmsg("Invalid data size")));
 	}
 
-	/* Convert YugaByte cstring to Postgres internal representation */
+	/* Convert K2PG cstring to Postgres internal representation */
 	FunctionCallInfoData fargs;
 	FunctionCallInfo fcinfo = &fargs;
 	PG_GETARG_DATUM(0) = CStringGetDatum(data);
@@ -503,7 +503,7 @@ void K2SqlDatumToUuid(Datum datum, unsigned char **data, int64 *bytes) {
 }
 
 Datum K2SqlUuidToDatum(const unsigned char *data, int64 bytes, const K2PgTypeAttrs *type_attrs) {
-	// We have to make a copy for data because the "data" pointer belongs to YugaByte cache memory
+	// We have to make a copy for data because the "data" pointer belongs to K2PG cache memory
 	// which can be cleared at any time.
 	pg_uuid_t *uuid;
 	if (bytes != UUID_LEN) {
@@ -566,8 +566,8 @@ Datum K2SqlIntervalToDatum(const void *data, int64 bytes, const K2PgTypeAttrs *t
  * Workaround: These conversion functions can be used as a quick workaround to support a type.
  * - Used for Datum that contains address or pointer of actual data structure.
  *     Datum = pointer to { 1 or 4 bytes for data-size | data }
- * - Save Datum exactly as-is in YugaByte storage when writing.
- * - Read YugaByte storage and copy as-is to Postgres's in-memory datum when reading.
+ * - Save Datum exactly as-is in K2PG storage when writing.
+ * - Read K2PG storage and copy as-is to Postgres's in-memory datum when reading.
  *
  * IMPORTANT NOTE: This doesn't work for data values that are cached in-place instead of in a
  * separate space to which the datum is pointing to. For example, it doesn't work for numeric
@@ -595,11 +595,8 @@ Datum K2SqlToDatum(const uint8 *data, int64 bytes, const K2PgTypeAttrs *type_att
 
 /***************************************************************************************************
  * Conversion Table
- * Contain function pointers for conversion between PostgreSQL Datum to YugaByte data.
+ * Contain function pointers for conversion between PostgreSQL Datum to K2PG data.
  *
- * TODO(Alex)
- * - Change NOT_SUPPORTED to proper datatype.
- * - Turn ON or OFF certain type for KEY (true or false) when testing its support.
  **************************************************************************************************/
 static const K2PgTypeEntity K2SqlTypeEntityTable[] = {
 	{ BOOLOID, K2SQL_DATA_TYPE_BOOL, true, sizeof(bool),

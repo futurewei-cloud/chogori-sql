@@ -2365,7 +2365,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 		if (IsK2PgRelation(pstate->p_target_relation))
 		{
 
-			// Currently, YugaByte does not allow updating primary key columns that were specified
+			// Currently, K2PG does not allow updating primary key columns that were specified
 			// when creating table.
 			K2PgTableDesc k2pg_tabledesc = NULL;
 			bool is_primary = false;

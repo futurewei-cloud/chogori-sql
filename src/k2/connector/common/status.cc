@@ -19,8 +19,6 @@
 // under the License.
 //
 
-// Portions Copyright (c) YugaByte, Inc.
-
 #include "status.h"
 
 #include <stdio.h>
@@ -268,7 +266,7 @@ Status::StatePtr Status::State::Create(
   StatePtr result(static_cast<State*>(malloc(size + kHeaderSize + errors_size + file_name_size)));
   result->message_len = static_cast<uint32_t>(size);
   result->code = static_cast<uint8_t>(code);
-  // We aleady assigned intrusive_ptr, so counter should be one.
+  // We already assigned intrusive_ptr, so counter should be one.
   result->counter.store(1, std::memory_order_relaxed);
   result->line_number = line_number;
   memcpy(result->message, msg.data(), len1);
@@ -311,17 +309,8 @@ Status::Status(Code code,
     if (string_rep.empty()) {
       string_rep = ToString();
     }
-    // We skip a couple of top frames like these:
-    //    ~/code/yugabyte/src/yb/util/status.cc:53:
-    //        @ k2pg::Status::Status(k2pg::Status::Code, k2pg::Slice const&, k2pg::Slice const&, long,
-    //                             char const*, int)
-    //    ~/code/yugabyte/src/yb/util/status.h:137:
-    //        @ k2pg::STATUS(Corruption, char const*, int, k2pg::Slice const&, k2pg::Slice const&, short)
-    //    ~/code/yugabyte/src/yb/common/doc_hybrid_time.cc:94:
-    //        @ k2pg::DocHybridTime::DecodeFrom(k2pg::Slice*)
-    //    LOG(WARNING) << "Non-OK status generated: " << string_rep << ", stack trace:\n"
-    //                 << GetStackTrace(StackTraceLineFormat::DEFAULT, /* skip frames: */ 1);
-      LOG(WARNING) << "Non-OK status generated: " << string_rep << "\n";
+
+    LOG(WARNING) << "Non-OK status generated: " << string_rep << "\n";
   }
 #endif
 }
@@ -388,7 +377,7 @@ std::string Status::ToString(bool include_file_and_line, bool include_code) cons
     // C++ code is located in $K2PG_SRC_ROOT/src, where $K2PG_SRC_ROOT is the repository root. Note that
     // this will break if the repository itself is located in a parent directory named "src".
     // However, neither Jenkins, nor our standard code location on a developer workstation
-    // (~/code/yugabyte) should have that problem.
+    // should have that problem.
     const char* src_subpath = strstr(state_->file_name, "/src/");
     result.append(src_subpath != nullptr ? src_subpath + 5 : state_->file_name);
 

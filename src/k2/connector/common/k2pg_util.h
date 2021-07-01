@@ -49,7 +49,7 @@ typedef void* (*K2PgPAllocFn)(size_t size);
 
 typedef struct varlena* (*K2PgCStringToTextWithLenFn)(const char* c, int size);
 
-// Global initialization of the YugaByte subsystem.
+// Global initialization of the K2PG subsystem.
 CHECKED_K2PGSTATUS K2PgInit(
     const char* argv0,
     K2PgPAllocFn palloc_fn,

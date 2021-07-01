@@ -218,7 +218,7 @@ index_insert(Relation indexRelation,
 									   InvalidBuffer);
 
 	/*
-	 * For YugaByte-based index, call the variant of aminsert that takes the full tuple instead of
+	 * For K2PG-based index, call the variant of aminsert that takes the full tuple instead of
 	 * the tuple id.
 	 */
 	if (IsK2PgEnabled() && IsK2PgRelation(indexRelation))
@@ -239,10 +239,10 @@ index_insert(Relation indexRelation,
 
 /* ----------------
  *		index_delete - delete an index tuple from a relation.
- *      This is used only for indexes backed by YugabyteDB. For Postgres, when a tuple is updated,
+ *      This is used only for indexes backed by K2PG. For Postgres, when a tuple is updated,
  *      the ctid of the original tuple will be invalid (except for heap-only tuple (HOT)). Because
  *      of this, index entries of the original tuple do not need to be deleted in UPDATE. For
- *      YugaByte-based tables, the k2pgctid is the primary key of the tuple and will remain valid
+ *      K2PG-based tables, the k2pgctid is the primary key of the tuple and will remain valid
  *      after UPDATE. So when a tuple is updated, we need to delete all index entries associated
  *      explicitly.
  * ----------------
@@ -634,9 +634,9 @@ HeapTuple
 index_fetch_heap(IndexScanDesc scan)
 {
 	/*
-	 * For YugaByte secondary indexes, there are two scenarios.
-	 * - If YugaByte returns an index-tuple, the returned k2pgctid value should be used to query data.
-	 * - If YugaByte returns a heap_tuple, all requested data was already selected in the tuple.
+	 * For K2PG secondary indexes, there are two scenarios.
+	 * - If K2PG returns an index-tuple, the returned k2pgctid value should be used to query data.
+	 * - If K2PG returns a heap_tuple, all requested data was already selected in the tuple.
 	 */
 	if (IsK2PgEnabled())
 	{

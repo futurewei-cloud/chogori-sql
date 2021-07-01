@@ -136,7 +136,7 @@ typedef struct TupleTableSlot
 	uint32		tts_off;		/* saved state for slot_deform_tuple */
 	bool		tts_fixedTupleDescriptor;	/* descriptor can't be changed */
 
-	/* YugaByte support */
+	/* K2PG support */
 	Datum tts_k2pgctid; /* selected k2pgctid value */
 } TupleTableSlot;
 

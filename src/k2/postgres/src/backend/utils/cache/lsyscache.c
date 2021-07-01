@@ -2875,7 +2875,7 @@ get_attavgwidth(Oid relid, AttrNumber attnum)
 	HeapTuple	tp;
 	int32		stawidth;
 
-	/* Do not support avg width stats for YugaByte tables as of 14/12/2018 */
+	/* avg width stats are not supported for K2PG tables */
 	if (IsK2PgEnabled())
 		return 0;
 

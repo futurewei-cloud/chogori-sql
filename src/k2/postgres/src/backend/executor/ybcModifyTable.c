@@ -4,6 +4,7 @@
  *        K2PG routines to stmt_handle ModifyTable nodes.
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -135,7 +136,7 @@ static Bitmapset *GetTablePrimaryKey(Relation rel,
 	Bitmapset      *pkey         = NULL;
 	K2PgTableDesc k2pg_tabledesc = NULL;
 
-	/* Get the primary key columns 'pkey' from YugaByte. */
+	/* Get the primary key columns 'pkey' from K2PG. */
 	HandleK2PgStatus(PgGate_GetTableDesc(dboid, relid, &k2pg_tabledesc));
 	for (AttrNumber attnum = minattr; attnum <= natts; attnum++)
 	{
@@ -317,7 +318,7 @@ static void K2PgExecWriteStmt(K2PgStatement k2pg_stmt, Relation rel, int *rows_a
 }
 
 /*
- * Utility method to insert a tuple into the relation's backing YugaByte table.
+ * Utility method to insert a tuple into the relation's backing K2PG table.
  */
 static Oid K2PgExecuteInsertInternal(Relation rel,
                                     TupleDesc tupleDesc,
@@ -589,7 +590,7 @@ bool K2PgExecuteDelete(Relation rel, TupleTableSlot *slot, EState *estate, Modif
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_UNDEFINED_COLUMN), errmsg(
-					"Missing column k2pgctid in DELETE request to YugaByte database")));
+					"Missing column k2pgctid in DELETE request to K2PG database")));
 	}
 
 	/* Bind k2pgctid to identify the current row. */
@@ -676,7 +677,7 @@ bool K2PgExecuteUpdate(Relation rel,
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_UNDEFINED_COLUMN), errmsg(
-					"Missing column k2pgctid in UPDATE request to YugaByte database")));
+					"Missing column k2pgctid in UPDATE request to K2PG database")));
 	}
 
 	/* Bind k2pgctid to identify the current row. */
@@ -765,7 +766,7 @@ void K2PgDeleteSysCatalogTuple(Relation rel, HeapTuple tuple)
 	if (tuple->t_k2pgctid == 0)
 		ereport(ERROR,
 		        (errcode(ERRCODE_UNDEFINED_COLUMN), errmsg(
-				        "Missing column k2pgctid in DELETE request to YugaByte database")));
+				        "Missing column k2pgctid in DELETE request to K2PG database")));
 
 	/* Prepare DELETE statement. */
 	HandleK2PgStatus(PgGate_NewDelete(dboid,

@@ -117,7 +117,7 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	 */
 	intoRelationAddr = DefineRelation(create, relkind, InvalidOid, NULL, NULL);
 
-	/* TOAST tables are not needed in YugaByte database */
+	/* TOAST tables are not needed in K2PG database */
 	if (!IsK2PgEnabled())
 	{
 		/*

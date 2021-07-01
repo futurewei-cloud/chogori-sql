@@ -4,6 +4,7 @@
  *	  prototypes for ybcin.c
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -26,7 +27,7 @@
 #include "access/amapi.h"
 
 /*
- * external entry points for YugaByte indexes in ybcin.c
+ * external entry points for K2PG indexes in ybcin.c
  */
 extern IndexBuildResult *ybcinbuild(Relation heap, Relation index, struct IndexInfo *indexInfo);
 extern void ybcinbuildempty(Relation index);

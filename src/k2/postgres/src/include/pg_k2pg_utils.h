@@ -5,6 +5,7 @@
  * PostgreSQL side.
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy
@@ -67,7 +68,7 @@ extern uint64_t k2pg_catalog_cache_version;
 extern bool IsK2PgEnabled();
 
 /*
- * Given a relation, checks whether the relation is supported in YugaByte mode.
+ * Given a relation, checks whether the relation is supported in K2PG mode.
  */
 extern void CheckIsK2PgSupportedRelation(Relation relation);
 
@@ -75,14 +76,14 @@ extern void CheckIsK2PgSupportedRelationByKind(char relkind);
 
 /*
  * Given a relation (table) id, returns whether this table is handled by
- * YugaByte: i.e. it is not a temporary or foreign table.
+ * K2PG: i.e. it is not a temporary or foreign table.
  */
 extern bool IsK2PgRelationById(Oid relid);
 
 extern bool IsK2PgRelation(Relation relation);
 
 /*
- * Same as IsK2PgRelation but it additionally includes views on YugaByte
+ * Same as IsK2PgRelation but it additionally includes views on K2PG
  * relations i.e. views on persistent (non-temporary) tables.
  */
 extern bool IsK2PgBackedRelation(Relation relation);
@@ -111,7 +112,7 @@ extern bool K2PgRelHasOldRowTriggers(Relation rel, CmdType operation);
 extern bool K2PgRelHasSecondaryIndices(Relation relation);
 
 /*
- * Whether to route BEGIN / COMMIT / ROLLBACK to YugaByte's distributed
+ * Whether to route BEGIN / COMMIT / ROLLBACK to K2PG's distributed
  * transactions.
  */
 extern bool K2PgTransactionsEnabled();
@@ -134,7 +135,7 @@ extern void HandleK2PgStatusIgnoreNotFound(K2PgStatus status, bool *not_found);
 
 /*
  * Same as HandleK2PgStatus but also ask the given resource owner to forget
- * the given YugaByte statement.
+ * the given K2PG statement.
  */
 extern void HandleK2PgStatusWithOwner(K2PgStatus status,
 																		K2PgStatement k2pg_stmt,
@@ -165,12 +166,12 @@ extern void K2PgOnPostgresBackendShutdown();
 extern void K2PgRestartTransaction();
 
 /*
- * Commits the current YugaByte-level transaction (if any).
+ * Commits the current K2PG-level transaction (if any).
  */
 extern void K2PgCommitTransaction();
 
 /*
- * Aborts the current YugaByte-level transaction.
+ * Aborts the current K2PG-level transaction.
  */
 extern void K2PgAbortTransaction();
 
@@ -193,12 +194,12 @@ extern const char* K2PgTypeOidToStr(Oid type_id);
 extern const char* K2PgDataTypeToStr(K2PgDataType k2pg_type);
 
 /*
- * Report an error saying the given type as not supported by YugaByte.
+ * Report an error saying the given type as not supported by K2PG.
  */
 extern void K2PgReportTypeNotSupported(Oid type_id);
 
 /*
- * Log whether or not YugaByte is enabled.
+ * Log whether or not K2PG is enabled.
  */
 extern void K2PgReportIfK2PgEnabled();
 
@@ -206,7 +207,7 @@ extern void K2PgReportIfK2PgEnabled();
 		Oid computed_type_id = type_id; \
 		ereport(ERROR, \
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
-					errmsg("Type not yet supported in YugaByte: %d (%s)", \
+					errmsg("Type not yet supported in K2PG: %d (%s)", \
 						computed_type_id, K2PgTypeOidToStr(computed_type_id)))); \
 	} while (0)
 

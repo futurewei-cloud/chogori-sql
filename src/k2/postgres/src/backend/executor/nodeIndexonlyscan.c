@@ -114,7 +114,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 	}
 
 	/*
-	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
+	 * Setup LIMIT and future execution parameter before calling K2Pg scanning rountines.
 	 */
 	if (IsK2PgEnabled()) {
 		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;
@@ -166,7 +166,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 		 * It's worth going through this complexity to avoid needing to lock
 		 * the VM buffer, which could cause significant contention.
 		 *
-		 * YugaByte index tuple is always visible.
+		 * K2PG index tuple is always visible.
 		 */
 		if (!IsK2PgEnabled() &&
 			!VM_ALL_VISIBLE(scandesc->heapRelation,
@@ -256,7 +256,7 @@ IndexOnlyNext(IndexOnlyScanState *node)
 		 * anyway, then we already have the tuple-level lock and can skip the
 		 * page lock.
 		 *
-		 * YugaByte index tuple does not require locking.
+		 * K2PG index tuple does not require locking.
 		 */
 		if (tuple == NULL && !IsK2PgEnabled())
 			PredicateLockPage(scandesc->heapRelation,

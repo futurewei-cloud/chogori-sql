@@ -5,6 +5,7 @@
  *	  the PostgreSQL side.
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License.  You may obtain a copy
@@ -85,7 +86,7 @@ CheckIsK2PgSupportedRelationByKind(char relkind)
 		  relkind == RELKIND_COMPOSITE_TYPE))
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								errmsg("This feature is not supported in YugaByte.")));
+								errmsg("This feature is not supported in K2PG.")));
 }
 
 bool
@@ -269,7 +270,7 @@ HandleK2PgStatusWithOwner(K2PgStatus status,
 	{
 		if (owner != NULL)
 		{
-			ResourceOwnerForgetYugaByteStmt(owner, k2pg_stmt);
+			ResourceOwnerForgetK2PgStmt(owner, k2pg_stmt);
 		}
 	}
 	HandleK2PgStatus(status);
@@ -321,7 +322,7 @@ K2PgInitPostgresBackend(
 
 	/*
 	 * Enable "K2PG mode" for PostgreSQL so that we will initiate a connection
-	 * to the YugaByte cluster right away from every backend process. We only
+	 * to the K2 platform cluster right away from every backend process. We only
 
 	 * do this if this env variable is set, so we can still run the regular
 	 * PostgreSQL "make check".
@@ -339,7 +340,7 @@ K2PgInitPostgresBackend(
 
 		/*
 		 * For each process, we create one K2PG session for PostgreSQL to use
-		 * when accessing YugaByte storage.
+		 * when accessing K2PG storage.
 		 *
 		 * TODO: do we really need to DB name / username here?
 		 */

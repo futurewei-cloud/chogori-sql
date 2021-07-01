@@ -14,6 +14,7 @@
  * YugaByte development.
  *
  * Portions Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.
@@ -670,7 +671,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	if (!bootstrap)
 		pgstat_initialize();
 
-	/* Connect to YugaByte cluster. */
+	/* Connect to K2PG cluster. */
 	if (bootstrap)
 		K2PgInitPostgresBackend("postgres", "", username);
 	else
@@ -981,7 +982,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 					 errdetail("It seems to have just been dropped or renamed.")));
 	}
 
-	/* No local physical path for the database in YugaByte mode */
+	/* No local physical path for the database in K2PG mode */
 	if (!IsK2PgEnabled())
 	{
 		/*
@@ -1021,7 +1022,7 @@ InitPostgres(const char *in_dbname, Oid dboid, const char *username,
 	 * Load relcache entries for the system catalogs.  This must create at
 	 * least the minimum set of "nailed-in" cache entries.
 	 *
-	 * In YugaByte mode initialize the catalog cache version to the latest
+	 * In K2PG mode initialize the catalog cache version to the latest
 	 * version from the master (except during initdb).
 	 */
 	if (IsK2PgEnabled() && !IsBootstrapProcessingMode())

@@ -339,7 +339,7 @@ static bool IsK2PgGlobalClusterInitdb()
 	return IsEnvSet("K2PG_ENABLED_IN_POSTGRES");
 }
 
-static bool IsYugaByteLocalNodeInitdb()
+static bool IsK2PgLocalNodeInitdb()
 {
 	return IsEnvSet("K2PG_LOCAL_NODE_INITDB");
 }
@@ -347,7 +347,7 @@ static bool IsYugaByteLocalNodeInitdb()
 /*
  * pclose() plus useful error reporting
  *
- * YugaByte-specific version recognizes a special status indicating that initdb
+ * K2PG-specific version recognizes a special status indicating that initdb
  * has already been run, or the cluster has been initialized from a sys catalog
  * snapshot.
  */
@@ -1032,7 +1032,7 @@ test_config_settings(void)
 #define MIN_BUFS_FOR_CONNS(nconns)	((nconns) * 10)
 
 	/*
-	 * For YugaByte we try larger number of connections (300) first.
+	 * For K2PG we try larger number of connections (300) first.
 	 * TODO: we should also consider lowering the shared buffers below
 	 */
 	static const int trial_conns[] = {
@@ -1330,7 +1330,7 @@ setup_config(void)
 	free(conflines);
 
 	/* Do not create pg_hba.conf in chogori-sql */
-	if (!IsK2PgGlobalClusterInitdb() && !IsYugaByteLocalNodeInitdb()) {
+	if (!IsK2PgGlobalClusterInitdb() && !IsK2PgLocalNodeInitdb()) {
 		/* pg_hba.conf */
 
 		conflines = readfile(hba_file);
@@ -1473,7 +1473,7 @@ bootstrap_template1(void)
    * Lines from BKI file are not actually used in initdb on local node.
    * No need to substitute anything
    */
-	if (!IsYugaByteLocalNodeInitdb())
+	if (!IsK2PgLocalNodeInitdb())
   {
     /* Substitute for various symbols used in the BKI file */
 
@@ -1535,7 +1535,7 @@ bootstrap_template1(void)
 
   for (line = bki_lines; *line != NULL; line++)
   {
-    if (!IsYugaByteLocalNodeInitdb())
+    if (!IsK2PgLocalNodeInitdb())
       PG_CMD_PUTS(*line);
     free(*line);
   }
@@ -1725,7 +1725,7 @@ setup_depend(FILE *cmdfd)
 
 	for (line = pg_depend_setup; *line != NULL; line++)
 	{
-		/* Skip VACUUM commands in YugaByte mode */
+		/* Skip VACUUM commands in K2PG mode */
 		if (IsK2PgGlobalClusterInitdb() && strncmp(*line, "VACUUM", 6) == 0)
 			continue;
 		PG_CMD_PUTS(*line);
@@ -2427,7 +2427,7 @@ setlocales(void)
 	/* Use LC_COLLATE=C with everything else as en_US.UTF-8 as default locale in K2PG mode. */
 	/* This is because as of 06/15/2019 we don't support collation-aware string comparisons, */
 	/* but we still want to support storing UTF-8 strings. */
-	if (!locale && (IsYugaByteLocalNodeInitdb() || IsK2PgGlobalClusterInitdb())) {
+	if (!locale && (IsK2PgLocalNodeInitdb() || IsK2PgGlobalClusterInitdb())) {
 		const char *kPgDefaultLocaleForSortOrder = "C";
 		const char *kPgDefaultLocaleForEncoding = "en_US.UTF-8";
 
@@ -2435,7 +2435,7 @@ setlocales(void)
 		lc_collate = pg_strdup(kPgDefaultLocaleForSortOrder);
 		fprintf(
 			stderr,
-			_("In YugabyteDB, setting LC_COLLATE to %s and all other locale settings to %s "
+			_("In K2PGDB, setting LC_COLLATE to %s and all other locale settings to %s "
 			  "by default. Locale support will be enhanced as part of addressing "),
 			lc_collate, locale);
 	}
@@ -3128,7 +3128,7 @@ initialize_data_directory(void)
 	fflush(stdout);
 	bootstrap_template1();
 
-  if (IsYugaByteLocalNodeInitdb())
+  if (IsK2PgLocalNodeInitdb())
     return;
 
 	/*
@@ -3222,7 +3222,7 @@ initialize_data_directory(void)
 int
 main(int argc, char *argv[])
 {
-	if (IsK2PgGlobalClusterInitdb() || IsYugaByteLocalNodeInitdb())
+	if (IsK2PgGlobalClusterInitdb() || IsK2PgLocalNodeInitdb())
 		K2PgSetInitDbModeEnvVar();
 
 	static struct option long_options[] = {
@@ -3536,13 +3536,13 @@ main(int argc, char *argv[])
 	else
 		printf(_("\nSync to disk skipped.\nThe data directory might become corrupt if the operating system crashes.\n"));
 
-	if (IsYugaByteLocalNodeInitdb())
+	if (IsK2PgLocalNodeInitdb())
 		return 0;
 
 	if (authwarning != NULL && !IsK2PgGlobalClusterInitdb())
 		fprintf(stderr, "%s", authwarning);
 
-	/* In YugaByte mode we only call this indirectly and manage starting the server automatically */
+	/* In K2PG mode we only call this indirectly and manage starting the server automatically */
 	if (!IsK2PgGlobalClusterInitdb())
 	{
 

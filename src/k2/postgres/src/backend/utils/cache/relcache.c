@@ -4180,7 +4180,7 @@ RelationCacheInitializePhase2(void)
 {
 	MemoryContext oldcxt;
 
-	/* We do not use a relation map file in YugaByte mode yet */
+	/* We do not use a relation map file in K2PG mode yet */
 	if (!IsK2PgEnabled())
 	{
 		/*
@@ -4246,7 +4246,7 @@ RelationCacheInitializePhase3(void)
 	MemoryContext oldcxt;
 	bool		needNewCacheFile = !criticalSharedRelcachesBuilt;
 
-	/* We do not use a relation map file in YugaByte mode yet */
+	/* We do not use a relation map file in K2PG mode yet */
 	if (!IsK2PgEnabled())
 	{
 	  /*
@@ -4561,7 +4561,7 @@ load_critical_index(Oid indexoid, Oid heapoid)
 	Relation	ird;
 	if (IsK2PgEnabled())
 	{
-		/* TODO We do not support/use critical indexes in YugaByte mode yet */
+		/* TODO We do not support/use critical indexes in K2PG mode yet */
 		return;
 	}
 
@@ -6446,7 +6446,7 @@ load_relcache_init_file(bool shared)
 	int num_critical_local_indexes = NUM_CRITICAL_LOCAL_INDEXES;
 
 	/*
-	 * TODO We do not support/use critical indexes in YugaByte mode yet so set
+	 * TODO We do not support/use critical indexes in K2PG mode yet so set
 	 * the expected number of indexes to 0 so we do not fail here.
 	 */
 	if (IsK2PgEnabled())
@@ -6875,7 +6875,7 @@ RelationCacheInitFileRemove(void)
 	char		path[MAXPGPATH + 10 + sizeof(TABLESPACE_VERSION_DIRECTORY)];
 
 	/*
-	 * In YugaByte mode we anyway do a cache version check on each backend init
+	 * In K2PG mode we anyway do a cache version check on each backend init
 	 * so no need to preemptively clean up the init files here.
 	 */
 	if (IsK2PgEnabled())

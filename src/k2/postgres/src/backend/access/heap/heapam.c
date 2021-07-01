@@ -2478,7 +2478,7 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_INTERNAL_ERROR), errmsg(
-				        "Operation not allowed in YugaByte mode %s",
+				        "Operation not allowed in K2PG mode %s",
 				        __func__)));
 	}
 
@@ -2756,7 +2756,7 @@ heap_multi_insert(Relation relation, HeapTuple *tuples, int ntuples,
 	{
 		ereport(ERROR,
 		        (errcode(ERRCODE_INTERNAL_ERROR),
-				        errmsg("Operation not allowed in YugaByte mode")));
+				        errmsg("Operation not allowed in K2PG mode")));
 	}
 
 	/* currently not needed (thus unsupported) for heap_multi_insert() */

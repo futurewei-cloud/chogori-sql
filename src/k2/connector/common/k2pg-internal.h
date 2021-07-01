@@ -11,7 +11,7 @@
 // or implied.  See the License for the specific language governing permissions and limitations
 // under the License.
 
-// Utilities for implementations of C wrappers around YugaByte C++ code. This file is not intended
+// Utilities for implementations of C wrappers around K2PG C++ code. This file is not intended
 // to be included
 #pragma once
 

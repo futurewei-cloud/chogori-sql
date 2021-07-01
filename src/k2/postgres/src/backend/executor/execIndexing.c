@@ -325,7 +325,7 @@ ExecInsertIndexTuples(TupleTableSlot *slot,
 			   indexRelation->rd_index->indisready);
 
 		/*
-		 * No need to update YugaByte primary key which is intrinic part of
+		 * No need to update K2PG primary key which is intrinsic part of
 		 * the base table.
 		 */
 		if (IsK2PgEnabled() && indexRelation->rd_index->indisprimary)
@@ -472,7 +472,7 @@ ExecInsertIndexTuples(TupleTableSlot *slot,
  *		This routine takes care of deleting index tuples
  *		from all the relations indexing the result relation
  *		when a heap tuple is updated or deleted in the result relation.
- *      This is used only for relations and indexes backed by YugabyteDB.
+ *      This is used only for relations and indexes backed by K2PG.
  * ----------------------------------------------------------------
  */
 void
@@ -525,7 +525,7 @@ ExecDeleteIndexTuples(Datum k2pgctid, HeapTuple tuple, EState *estate)
 			continue;
 
 		/*
-		 * No need to update YugaByte primary key which is intrinic part of
+		 * No need to update K2PG primary key which is intrinsic part of
 		 * the base table.
 		 */
 		if (IsK2PgEnabled() && indexRelation->rd_index->indisprimary)
@@ -919,9 +919,8 @@ retry:
 		 * want to hold any index internal locks while waiting.
 		 */
 		/*
-		 * YugaByte manages transaction at a lower level, so we don't need to execute the following
+		 * K2PG manages transaction at a lower level, so we don't need to execute the following
 		 * code block.
-		 * TODO(Mikhail) Verify correctness in YugaByte transaction management for on-conflict.
 		 */
 		if (!IsK2PgEnabled()) {
 			xwait = TransactionIdIsValid(DirtySnapshot.xmin) ?

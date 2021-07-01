@@ -826,7 +826,7 @@ Status PgGateApiImpl::NewSelect(const PgObjectId& table_object_id,
                             PgStatement **handle) {
   // Scenarios:
   // - Sequential Scan: PgSelect to read from table_object_id.
-  // - Primary Scan: PgSelect from table_object_id. YugaByte does not have separate table for primary key.
+  // - Primary Scan: PgSelect from table_object_id. K2PG does not have separate table for primary key.
   // - Index-Only-Scan: PgSelectIndex directly from secondary index_id.
   // - IndexScan: Use PgSelectIndex to read from index_id and then PgSelect to read from table_object_id.
   //     Note that for SysTable, only one request is send for both table_object_id and index_object_id.

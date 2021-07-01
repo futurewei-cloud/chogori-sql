@@ -1336,7 +1336,7 @@ get_relation_statistics(RelOptInfo *rel, Relation relation)
 	List	   *stainfos = NIL;
 	ListCell   *l;
 
-	/* YugaByte does not support forwarding statistics to Postgres yet */
+	/* K2PG does not support forwarding statistics to Postgres yet */
 	if (IsK2PgEnabled())
 		return NIL;
 

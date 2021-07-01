@@ -1368,7 +1368,7 @@ results_differ(const char *testname, const char *resultsfile, const char *defaul
 	snprintf(diff, sizeof(diff), "%s.diff", resultsfile);
 
 	/*
-	 * A YugaByte-specific way to post-process the results file and also the
+	 * A K2PG-specific way to post-process the results file and also the
 	 * expected output file  before running diff. As part of this we can remove
 	 * trailing whitespace and LLVM sanitizer suppression warnings.
 	 */

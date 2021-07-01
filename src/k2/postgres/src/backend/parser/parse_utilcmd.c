@@ -358,7 +358,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 
 	/*
 	 * Postprocess constraints that give rise to index definitions.
-	 * In YugaByte mode we handle ixconstraints as regular constraints below.
+	 * In K2PG mode we handle ixconstraints as regular constraints below.
 	 */
 	transformIndexConstraints(&cxt);
 
@@ -385,7 +385,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 
 	/*
 	 * If K2PG is enabled, add the index constraints to the statement as they
-	 * might be passed down to YugaByte (e.g. as primary key).
+	 * might be passed down to K2 platform (e.g. as primary key).
 	 */
 	if (IsK2PgEnabled())
 	{

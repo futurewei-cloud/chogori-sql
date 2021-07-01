@@ -93,7 +93,7 @@ class PgGateApiImpl {
   CHECKED_STATUS InitSession(const PgEnv *pg_env, const string& database_name);
 
   // PG Memctx: Create, Destroy, and Reset must be "static" because a few contexts are created
-  //            before YugaByte environments including PgGate are created and initialized.
+  //            before K2PG environments including PgGate are created and initialized.
   // Create PG Memctx. Each memctx will be associated with a Postgres's MemoryContext.
   static PgMemctx *CreateMemctx();
 
@@ -465,11 +465,10 @@ class PgGateApiImpl {
 
   std::shared_ptr<SqlCatalogClient> CreateCatalogClient();
 
-  // TODO(neil) Map for environments (we should have just one ENV?). Environments should contain
-  // all the custom flags the PostgreSQL sets. We ignore them all for now.
+  // Environments should contain all the custom flags the PostgreSQL sets. We ignore them all for now.
   std::shared_ptr<PgEnv> pg_env_;
 
-  // Mapping table of YugaByte and PostgreSQL datatypes.
+  // Mapping table of K2PG and PostgreSQL datatypes.
   std::unordered_map<int, const K2PgTypeEntity *> type_map_;
 
   std::shared_ptr<K2Adapter> k2_adapter_;

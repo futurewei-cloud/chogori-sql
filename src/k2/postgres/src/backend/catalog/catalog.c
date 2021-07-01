@@ -309,7 +309,7 @@ GetNewOid(Relation relation)
 	if (!OidIsValid(oidIndex))
 	{
 		/*
-		 * In YugaByte we convert the OID index into a primary key.
+		 * In K2PG we convert the OID index into a primary key.
 		 */
 		if (!IsK2PgEnabled())
 		{

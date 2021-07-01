@@ -4,6 +4,7 @@
  *        K2PG commands for creating and altering table structures and settings
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -683,7 +684,7 @@ K2PgPrepareAlterTable(AlterTableStmt *stmt, Relation rel, Oid relationId)
 			case AT_DisableRowSecurity:
 			case AT_ForceRowSecurity:
 			case AT_NoForceRowSecurity:
-				/* For these cases a YugaByte alter isn't required, so we do nothing. */
+				/* For these cases a K2PG alter isn't required, so we do nothing. */
 				break;
 
 			default:

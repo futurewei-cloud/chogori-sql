@@ -41,7 +41,7 @@ K2PgStatus PgGate_InitSession(const K2PgEnv pg_env, const char *database_name);
 //   are done, the context is destroyed.
 // - There K2Pg objects are bound to Postgres operations. All of these objects' allocated
 //   memory will be held by K2PgMemCtx, whose handle belongs to Postgres MemoryContext. Once all
-//   Postgres operations are done, associated YugaByte memory context (K2PgMemCtx) will be
+//   Postgres operations are done, associated K2PG memory context (K2PgMemCtx) will be
 //   destroyed toghether with Postgres memory context.
 K2PgMemctx PgGate_CreateMemctx();
 K2PgStatus PgGate_DestroyMemctx(K2PgMemctx memctx);

@@ -15861,7 +15861,7 @@ dumpTableSchema(Archive *fout, TableInfo *tbinfo)
 		if (dopt->include_k2pg_metadata &&
 			(tbinfo->relkind == RELKIND_RELATION || tbinfo->relkind == RELKIND_INDEX))
 		{
-			/* Get the table properties from YugaByte. */
+			/* Get the table properties from K2PG. */
 			K2PgTableDesc k2pg_tabledesc = NULL;
 			K2PgTableProperties properties;
 			HandleK2PgStatus(PgGate_GetTableDesc(dopt->db_oid, tbinfo->dobj.catId.oid, &k2pg_tabledesc));

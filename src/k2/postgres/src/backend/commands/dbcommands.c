@@ -19,6 +19,7 @@
  * YugaByte development.
  *
  * Portions Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.
@@ -952,7 +953,7 @@ dropdb(const char *dbname, bool missing_ok)
 				 errmsg("cannot drop the currently open database")));
 
 	/*
-	 * YugaByte allows dropping a database even when multiple sessions are dependent on that database.
+	 * K2PG allows dropping a database even when multiple sessions are dependent on that database.
 	 * Skip the following checks.
 	 */
 	if (IsK2PgEnabled())
@@ -1086,7 +1087,7 @@ removing_database_from_system:
 	ForceSyncCommit();
 
 	/*
-	 * Call YugaByte to delete the entries ourselves.
+	 * Call K2PG to delete the entries ourselves.
 	 */
 	if (IsK2PgEnabled())
 	{

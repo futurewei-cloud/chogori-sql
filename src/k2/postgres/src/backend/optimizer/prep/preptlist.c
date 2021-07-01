@@ -115,7 +115,7 @@ preprocess_targetlist(PlannerInfo *root)
 	 * 10/94
 	 */
 	/*
-	 * For YugaByte relation, if a CMD_DELETE has returning clause, we select
+	 * For a K2PG relation, if a CMD_DELETE has returning clause, we select
 	 * all columns from the table to evaluate the returning expression list.
 	 * TODO(neil) The optimizer should reduce the list to referenced columns.
 	 */
@@ -398,7 +398,7 @@ expand_targetlist(List *tlist, int command_type,
 					}
 					break;
 				case CMD_DELETE:
-					// This case is added only for DELETE from YugaByte table with RETURNING clause.
+					// This case is added only for DELETE from K2PG table with RETURNING clause.
 					if (IsK2PgEnabled())
 					{
 						if (att_tup->attisdropped) {
@@ -413,7 +413,7 @@ expand_targetlist(List *tlist, int command_type,
 						}
 						else
 						{
-							// Query all attribute in the YugaByte relation.
+							// Query all attribute in the K2PG relation.
 							new_expr = (Node *) makeVar(result_relation,
 														attrno,
 														atttype,
