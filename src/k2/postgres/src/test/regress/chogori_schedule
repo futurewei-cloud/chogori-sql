@@ -58,7 +58,7 @@ test: yb_uuid
 # This includes tests for foreign key constraints.
 ####################################################################################################
 test: yb_foreign_key
-test: yb_pg_foreign_key
+# test: yb_pg_foreign_key
 # src/test/regress/yb_misc_serial_schedule
 #
 ####################################################################################################

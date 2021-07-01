@@ -5,6 +5,7 @@
  *	  This is used to access data from YugaByte's system catalog tables.
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -90,7 +91,7 @@ static void camCheckPrimaryKeyAttribute(CamScanPlan      scan_plan,
 	bool is_hash    = false;
 
 	/*
-	 * TODO(neil) We shouldn't need to upload YugaByte table descriptor here because the structure
+	 * We shouldn't need to upload the table descriptor here because the structure
 	 * Postgres::Relation already has all information.
 	 * - Primary key indicator: IndexRelation->rd_index->indisprimary
 	 * - Number of key columns: IndexRelation->rd_index->indnkeyatts
@@ -115,7 +116,7 @@ static void camCheckPrimaryKeyAttribute(CamScanPlan      scan_plan,
 }
 
 /*
- * Get YugaByte-specific table metadata and load it into the scan_plan.
+ * Get K2PG-specific table metadata and load it into the scan_plan.
  * Currently only the hash and primary key info.
  */
 static void camLoadTableInfo(Relation relation, CamScanPlan scan_plan)
@@ -385,25 +386,25 @@ static IndexTuple camFetchNextIndexTuple(CamScanDesc camScan, Relation index, bo
  *
  * 1. SequentialScan(Table) and PrimaryIndexScan(Table): index = 0
  *    - Table can be systable or usertable.
- *    - YugaByte doesn't have a separate PrimaryIndexTable. It's a special case.
+ *    - K2PG doesn't have a separate PrimaryIndexTable. It's a special case.
  *    - Both target and bind descriptors are specified by the <Table>
  *
  * 2. IndexScan(SysTable, Index).
  *    - Target descriptor is specifed by the SysTable.
  *    - Bind descriptor is specified by the IndexTable.
- *    - For this scan, YugaByte returns a heap-tuple, which has all user's requested data.
+ *    - For this scan, K2PG returns a heap-tuple, which has all user's requested data.
  *
  * 3. IndexScan(UserTable, Index)
  *    - Both target and bind descriptors are specifed by the IndexTable.
- *    - For this scan, YugaByte returns an index-tuple, which has a k2pgctid (ROWID) to be used for
+ *    - For this scan, K2PG returns an index-tuple, which has a k2pgctid (ROWID) to be used for
  *      querying data from the UserTable.
- *    - TODO(neil) By batching k2pgctid and processing it on YugaByte for all index-scans, the target
+ *    - TODO(neil) By batching k2pgctid and processing it on K2PG for all index-scans, the target
  *      for index-scan on regular table should also be the table itself (relation).
  *
  * 4. IndexOnlyScan(Table, Index)
  *    - Table can be systable or usertable.
  *    - Both target and bind descriptors are specifed by the IndexTable.
- *    - For this scan, YugaByte ALWAYS return index-tuple, which is expected by Postgres layer.
+ *    - For this scan, K2PG ALWAYS return index-tuple, which is expected by Postgres layer.
  */
 static void
 camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
@@ -413,14 +414,14 @@ camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 	memset(scan_plan, 0, sizeof(*scan_plan));
 
 	/*
-	 * Setup control-parameters for Yugabyte preparing statements for different
+	 * Setup control-parameters for K2PG preparing statements for different
 	 * types of scan.
 	 * - "querying_colocated_table": Support optimizations for (system and
 	 *   user) colocated tables
 	 * - "index_oid, index_only_scan, use_secondary_index": Different index
 	 *   scans.
 	 * NOTE: Primary index is a special case as there isn't a primary index
-	 * table in YugaByte.
+	 * table in K2PG.
 	 */
 	camScan->index = index;
 
@@ -450,7 +451,7 @@ camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 	{
 		/*
 		 * SequentialScan or PrimaryIndexScan
-		 * - YugaByte does not have a separate table for PrimaryIndex.
+		 * - K2PG does not have a separate table for PrimaryIndex.
 		 * - The target table descriptor, where data is read and returned, is the main table.
 		 * - The binding table descriptor, whose column is bound to values, is also the main table.
 		 */
@@ -481,7 +482,7 @@ camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 		{
 			/*
 			 * IndexScan ( SysTable / UserTable)
-			 * - YugaByte will use the binds to query base-k2pgctid in the index table, which is then used
+			 * - K2PG will use the binds to query base-k2pgctid in the index table, which is then used
 			 *   to query data from the main table.
 			 * - The target table descriptor, where data is read and returned, is the main table.
 			 * - The binding table descriptor, whose column is bound to values, is the index table.
@@ -514,7 +515,7 @@ camSetupScanPlan(Relation relation, Relation index, bool xs_want_itup,
 		else if (index->rd_index->indisprimary)
 		{
 			/*
-			 * PrimaryIndex scan: This is a special case in YugaByte. There is no PrimaryIndexTable.
+			 * PrimaryIndex scan: This is a special case in K2PG. There is no PrimaryIndexTable.
 			 * The table itself will be scanned.
 			 */
 			camScan->target_key_attnums[i] =	scan_plan->bind_key_attnums[i] =
@@ -689,19 +690,19 @@ static void	camSetupScanKeys(Relation relation,
 	 *
 	 * Implementation Notes:
 	 * Because internally, hash and range columns are cached and stored prior to other columns in
-	 * YugaByte, the columns' indexes are different from the columns' attnum.
+	 * K2PG, the columns' indexes are different from the columns' attnum.
 	 * Example:
 	 *   CREATE TABLE tab(i int, j int, k int, primary key(k HASH, j ASC))
 	 *   Column k's index is 1, but its attnum is 3.
 	 *
 	 * Additionally, we currently have the following setup.
-	 * - For PRIMARY KEY SCAN, the key is specified by columns' attnums by both Postgres and YugaByte
+	 * - For PRIMARY KEY SCAN, the key is specified by columns' attnums by both Postgres and K2PG
 	 *   code components.
 	 * - For SECONDARY INDEX SCAN and INDEX-ONLY SCAN, column_attnums and column_indexes are
 	 *   identical, so they can be both used interchangeably. This is because of CREATE_INDEX
 	 *   syntax rules enforce that HASH columns are specified before RANGE columns which comes
 	 *   before INCLUDE columns.
-	 * - For SYSTEM SCAN, Postgres's layer use attnums to specify a catalog INDEX, but YugaByte
+	 * - For SYSTEM SCAN, Postgres's layer use attnums to specify a catalog INDEX, but K2PG
 	 *   layer is using column_indexes to specify them.
 	 * - For SEQUENTIAL SCAN, column_attnums and column_indexes are the same.
 	 *
@@ -1081,7 +1082,7 @@ camBeginScan(Relation relation, Relation index, bool xs_want_itup, int nkeys, Sc
 				 errmsg("cannot use more than %d predicates in a table or index scan",
 						K2PG_MAX_SCAN_KEYS)));
 
-	/* Set up YugaByte scan description */
+	/* Set up K2PG scan description */
 	CamScanDesc camScan = (CamScanDesc) palloc0(sizeof(CamScanDescData));
 	camScan->key   = key;
 	camScan->nkeys = nkeys;
@@ -1303,7 +1304,7 @@ SysScanDesc cam_systable_beginscan(Relation relation,
 
 	/*
 	 * Look up the index to scan with if we can. If the index is the primary key which is part
-	 * of the table in YugaByte, we should scan the table directly.
+	 * of the table in K2PG, we should scan the table directly.
 	 */
 	if (indexOK && !IgnoreSystemIndexes && !ReindexIsProcessingIndex(indexId))
 	{
@@ -1429,7 +1430,7 @@ void camCostEstimate(RelOptInfo *baserel, Selectivity selectivity,
 					 Cost *startup_cost, Cost *total_cost)
 {
 	/*
-	 * Yugabyte-specific per-tuple cost considerations:
+	 * K2PG-specific per-tuple cost considerations:
 	 *   - 10x the regular CPU cost to account for network/RPC + K2 PG Gate overhead.
 	 *   - backwards scan scale factor as it will need that many more fetches
 	 *     to get all rows/tuples.

@@ -14,6 +14,7 @@
  * YugaByte development.
  *
  * Portions Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.
@@ -434,7 +435,7 @@ ExecInsert(ModifyTableState *mtstate,
 		if (!IsK2PgRelation(resultRelationDesc))
 		{
 			/*
-			 * TODO(Hector) When partitioning is supported in YugaByte, this check must be enabled.
+			 * TODO: When explicit partitioning is supported in K2PG, this check must be enabled.
 			 */
 			if (resultRelInfo->ri_PartitionCheck &&
 					(resultRelInfo->ri_PartitionRoot == NULL ||
@@ -501,7 +502,7 @@ ExecInsert(ModifyTableState *mtstate,
 					 */
 					Assert(onconflict == ONCONFLICT_NOTHING);
 					if (!IsK2PgRelation(resultRelationDesc)) {
-						// YugaByte does not use Postgres transaction control code.
+						// K2PG does not use Postgres transaction control code.
 						ExecCheckTIDVisible(estate, resultRelInfo, &conflictTid);
 					}
 					InstrCountTuples2(&mtstate->ps, 1);
@@ -513,9 +514,8 @@ ExecInsert(ModifyTableState *mtstate,
 			if (IsK2PgRelation(resultRelationDesc))
 			{
 				/*
-				 * YugaByte handles transaction-control internally, so speculative token are not being
+				 * K2PG handles transaction-control internally, so speculative token are not being
 				 * locked and released in this call.
-				 * TODO(Mikhail) Verify the YugaByte transaction support works properly for on-conflict.
 				 */
 				newId = K2PgHeapInsert(slot, tuple, estate);
 
@@ -1546,7 +1546,7 @@ ExecOnConflictUpdate(ModifyTableState *mtstate,
 	 * and then frees the slot when done.
 	 */
 	if (IsK2PgBackedRelation(relation)) {
-		/* Not using heap buffer for YugaByte */
+		/* Not using heap buffer for K2PG */
 		buffer = InvalidBuffer;
 
 		/* Ensure the heap tuple is initialized to invalid too. */
@@ -1690,7 +1690,7 @@ k2pg_skip_transaction_control_check:
 
 	if (!ExecQual(onConflictSetWhere, econtext))
 	{
-		/* YugaByte don't use the heap buffer to cache the conflict tuple */
+		/* K2PG don't use the heap buffer to cache the conflict tuple */
 		if (!IsK2PgEnabled())
 			ReleaseBuffer(buffer);
 		InstrCountFiltered1(&mtstate->ps, 1);
@@ -1737,7 +1737,7 @@ k2pg_skip_transaction_control_check:
 							&mtstate->mt_epqstate, mtstate->ps.state,
 							canSetTag);
 
-	/* YugaByte don't use the heap buffer to cache the conflict tuple */
+	/* K2PG don't use the heap buffer to cache the conflict tuple */
 	if (!IsK2PgEnabled())
 		ReleaseBuffer(buffer);
 	return true;
@@ -2292,7 +2292,7 @@ ExecModifyTable(PlanState *pstate)
 
 				relkind = resultRelInfo->ri_RelationDesc->rd_rel->relkind;
 				/*
-				 * For YugaByte relations extract the old row from the wholerow junk
+				 * For K2PG relations extract the old row from the wholerow junk
 				 * attribute if needed.
 				 * 1. For tables with secondary indexes we need the (old) k2pgctid for
 				 *    removing old index entries (for UPDATE and DELETE)
@@ -2525,7 +2525,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		 * already, since we share the resultrel state with the original
 		 * query.
 		 *
-		 * For a YugaByte table, we need to update the secondary indices for
+		 * For a K2PG table, we need to update the secondary indices for
 		 * all of the INSERT, UPDATE, and DELETE statements. The ON CONFLICT UPDATE
 		 * execution also needs to process primary key index.
 		 */

@@ -1911,7 +1911,7 @@ heap_drop_with_catalog(Oid relid)
 
 	/*
 	 * Schedule unlinking of the relation's physical files at commit.
-	 * If YugaByte is enabled, there aren't any physical files to remove.
+	 * If K2PG is enabled, there aren't any physical files to remove.
 	 */
 	if (!IsK2PgEnabled() &&
 		rel->rd_rel->relkind != RELKIND_VIEW &&

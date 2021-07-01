@@ -972,8 +972,8 @@ index_create(Relation heapRelation,
 	Assert(indexRelationId == RelationGetRelid(indexRelation));
 
 	/*
-	 * Create index in YugaByte only if it is a secondary index. Primary key is
-	 * an implicit part of the base table in YugaByte and doesn't need to be created.
+	 * Create index in K2PG only if it is a secondary index. Primary key is
+	 * an implicit part of the base table in K2PG and doesn't need to be created.
 	 */
 	if (IsK2PgRelation(indexRelation) && !isprimary)
 	{
@@ -1723,7 +1723,7 @@ index_drop(Oid indexId, bool concurrent)
 
 	/*
 	 * Schedule physical removal of the files (if any)
-	 * If YugaByte is enabled, there aren't any physical files to remove.
+	 * If K2PG is enabled, there aren't any physical files to remove.
 	 */
 	if (!IsK2PgEnabled() &&
 		userIndexRelation->rd_rel->relkind != RELKIND_PARTITIONED_INDEX)
@@ -2804,7 +2804,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 		CHECK_FOR_INTERRUPTS();
 
 		/*
-		 * Skip handling of HOT-chained tuples which does not apply to YugaByte-based
+		 * Skip handling of HOT-chained tuples which does not apply to K2PG-based
 		 * tables.
 		 */
 		if (!IsK2PgEnabled())
@@ -3114,7 +3114,7 @@ IndexBuildHeapRangeScanInternal(Relation heapRelation,
 		 * You'd think we should go ahead and build the index tuple here, but
 		 * some index AMs want to do further processing on the data first.  So
 		 * pass the values[] and isnull[] arrays, instead.
-		 * This is not needed and should be skipped for YugaByte enabled tables.
+		 * This is not needed and should be skipped for K2PG enabled tables.
 		 */
 
 		if (!IsK2PgEnabled() && HeapTupleIsHeapOnly(heapTuple))
@@ -3556,7 +3556,7 @@ validate_index_heapscan(Relation heapRelation,
 	while ((heapTuple = heap_getnext(scan, ForwardScanDirection)) != NULL)
 	{
 		/*
-		 * For YugaByte tables, there is no need to find the root tuple. Just
+		 * For K2PG tables, there is no need to find the root tuple. Just
 		 * insert the fetched tuple.
 		 */
 		if (IsK2PgEnabled())

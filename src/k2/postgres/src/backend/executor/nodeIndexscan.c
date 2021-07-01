@@ -129,7 +129,7 @@ IndexNext(IndexScanState *node)
 	}
 
 	/*
-	 * Setup LIMIT and future execution parameter before calling YugaByte scanning rountines.
+	 * Setup LIMIT and future execution parameter before calling K2PG scanning rountines.
 	 */
 	if (IsK2PgEnabled()) {
 		scandesc->k2pg_exec_params = &estate->k2pg_exec_params;

@@ -1044,7 +1044,7 @@ CatalogCacheInitializeCache(CatCache *cache)
 }
 
 /*
- * YugaByte utility method to set the data for a cache list entry.
+ * K2PG utility method to set the data for a cache list entry.
  * Used during InitCatCachePhase2 (specifically for the procedure name list
  * and for rewrite rules).
  * Code basically takes the second part of SearchCatCacheList (which sets the
@@ -1748,7 +1748,7 @@ SearchCatCacheMiss(CatCache *cache,
 			return NULL;
 
 		/*
-		 * Disable negative entries for YugaByte to handle case where the entry
+		 * Disable negative entries for K2PG to handle case where the entry
 		 * was added by (running a command on) another node.
 		 * We also don't support tuple update as of 14/12/2018.
 		 */

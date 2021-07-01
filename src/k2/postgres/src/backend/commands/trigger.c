@@ -3915,7 +3915,7 @@ GetCurrentFDWTuplestore(AfterTriggerShared evtshared)
 		/*
 		 * Make the tuplestore valid until end of subtransaction.  We really
 		 * only need it until AfterTriggerEndQuery().
-		 * In YugaByte mode deferred trigger will access tuplestore
+		 * In K2PG mode deferred trigger will access tuplestore
 		 * at the end of subtransaction (after AfterTriggerEndQuery).
 		 */
 		MemoryContext oldcxt = MemoryContextSwitchTo(CurTransactionContext);
@@ -4562,7 +4562,7 @@ afterTriggerInvokeEvents(AfterTriggerEventList *events,
 					finfo = rInfo->ri_TrigFunctions;
 					instr = rInfo->ri_TrigInstrument;
 					/*
-					 * Need to create a tuple slot for both YugaByte tables and
+					 * Need to create a tuple slot for both K2PG tables and
 					 * foreign tables
 					 */
 					if (IsK2PgBackedRelation(rel) ||
@@ -5979,7 +5979,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 	}
 
 	/*
-	 * In YugaByte mode we (re)use the FDW trigger flags (since we also use the
+	 * In K2PG mode we (re)use the FDW trigger flags (since we also use the
 	 * FDW tuplestore).
 	 */
 	if (!((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger))
@@ -6038,7 +6038,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		}
 
 		/*
-		 * In YugaByte mode we also use the tuplestore to store/pass tuples
+		 * In K2PG mode we also use the tuplestore to store/pass tuples
 		 * within a query execution.
 		 */
 		if ((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)
@@ -6086,7 +6086,7 @@ AfterTriggerSaveEvent(EState *estate, ResultRelInfo *relinfo,
 		 */
 		new_shared.k2pg_txn_fdw_tuplestore = NULL;
 		/*
-		 * In YugaByte mode we also use the tuplestore to store/pass tuples
+		 * In K2PG mode we also use the tuplestore to store/pass tuples
 		 * within a query execution.
 		 */
 		if ((IsK2PgBackedRelation(rel) || relkind == RELKIND_FOREIGN_TABLE) && row_trigger)

@@ -79,7 +79,7 @@ lnext:
 	if (n_k2pg_relations > 0)
 		ereport(ERROR,
 				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("Mixing Yugabyte relations and not Yugabyte relations with "
+				 errmsg("Mixing K2PG relations and not K2PG relations with "
 						"row locks is not supported")));
 
 	if (TupIsNull(slot))

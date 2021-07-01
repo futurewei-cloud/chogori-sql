@@ -3726,7 +3726,7 @@ static void K2PgPrepareCacheRefreshIfNeeded(MemoryContext oldcontext,
 	*need_retry = false;
 
 	/*
-	 * A retry is only required if the transaction is handled by YugaByte.
+	 * A retry is only required if the transaction is handled by K2PG.
 	 */
 	if (!IsK2PgEnabled())
 		return;

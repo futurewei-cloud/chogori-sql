@@ -347,7 +347,7 @@ static bool IsYugaByteLocalNodeInitdb()
 /*
  * pclose() plus useful error reporting
  *
- * YugaByte-specific version recognizes a special status indicating that initdb
+ * K2PG-specific version recognizes a special status indicating that initdb
  * has already been run, or the cluster has been initialized from a sys catalog
  * snapshot.
  */
@@ -1032,7 +1032,7 @@ test_config_settings(void)
 #define MIN_BUFS_FOR_CONNS(nconns)	((nconns) * 10)
 
 	/*
-	 * For YugaByte we try larger number of connections (300) first.
+	 * For K2PG we try larger number of connections (300) first.
 	 * TODO: we should also consider lowering the shared buffers below
 	 */
 	static const int trial_conns[] = {
@@ -1725,7 +1725,7 @@ setup_depend(FILE *cmdfd)
 
 	for (line = pg_depend_setup; *line != NULL; line++)
 	{
-		/* Skip VACUUM commands in YugaByte mode */
+		/* Skip VACUUM commands in K2PG mode */
 		if (IsK2PgGlobalClusterInitdb() && strncmp(*line, "VACUUM", 6) == 0)
 			continue;
 		PG_CMD_PUTS(*line);
@@ -2435,7 +2435,7 @@ setlocales(void)
 		lc_collate = pg_strdup(kPgDefaultLocaleForSortOrder);
 		fprintf(
 			stderr,
-			_("In YugabyteDB, setting LC_COLLATE to %s and all other locale settings to %s "
+			_("In K2PGDB, setting LC_COLLATE to %s and all other locale settings to %s "
 			  "by default. Locale support will be enhanced as part of addressing "),
 			lc_collate, locale);
 	}
@@ -3542,7 +3542,7 @@ main(int argc, char *argv[])
 	if (authwarning != NULL && !IsK2PgGlobalClusterInitdb())
 		fprintf(stderr, "%s", authwarning);
 
-	/* In YugaByte mode we only call this indirectly and manage starting the server automatically */
+	/* In K2PG mode we only call this indirectly and manage starting the server automatically */
 	if (!IsK2PgGlobalClusterInitdb())
 	{
 

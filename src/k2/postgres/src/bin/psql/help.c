@@ -126,13 +126,13 @@ usage(unsigned short int pager)
 	fprintf(output, _("\nConnection options:\n"));
 	/* Display default host */
 	env = getenv("PGHOST");
-	/* YugaByte use localhost instead of local socket */
+	/* K2PG use localhost instead of local socket */
 	fprintf(output, _("  -h, --host=HOSTNAME      database server host or socket directory (default: \"%s\")\n"),
 			env ? env : "localhost");
-	/* YugaByte end */
+	/* K2PG end */
 	/* Display default port */
 	env = getenv("PGPORT");
-	/* Use YugaByte default port */
+	/* Use K2PG default port */
 	fprintf(output, _("  -p, --port=PORT          database server port (default: \"%s\")\n"),
 			env ? env : DEF_YBPORT_STR);
 	/* Display default user */

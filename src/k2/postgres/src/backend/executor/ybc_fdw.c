@@ -4,6 +4,7 @@
  *		  Foreign-data wrapper for YugabyteDB.
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -1389,7 +1390,7 @@ k2GetForeignPlan(PlannerInfo *root,
 
 	scan_clauses = extract_actual_clauses(scan_clauses, false);
 
-	/* Get the target columns that need to be retrieved from YugaByte */
+	/* Get the target columns that need to be retrieved from K2 platform */
 	foreach(lc, baserel->reltarget->exprs)
 	{
 		Expr *expr = (Expr *) lfirst(lc);
@@ -1436,7 +1437,7 @@ k2GetForeignPlan(PlannerInfo *root,
 							        attnum)));
 					break;
 				case TableOidAttributeNumber:
-					/* Nothing to do in YugaByte: Postgres will handle this. */
+					/* Nothing to do in K2PG: Postgres will handle this. */
 					break;
 				case ObjectIdAttributeNumber:
 				case K2PgTupleIdAttributeNumber:
@@ -1575,7 +1576,6 @@ k2SetupScanTargets(ForeignScanState *node)
 		/*
 		 * We can have no target columns at this point for e.g. a count(*). For now
 		 * we request the first non-dropped column in that case.
-		 * TODO look into handling this on YugaByte side.
 		 */
 		if (!has_targets)
 		{
@@ -1718,12 +1718,7 @@ k2IterateForeignScan(ForeignScanState *node)
 	K2FdwExecState *k2pg_state = (K2FdwExecState *) node->fdw_state;
 	bool           has_data   = false;
 
-	/* Execute the select statement one time.
-	 * TODO(neil) Check whether YugaByte PgGate should combine Exec() and Fetch() into one function.
-	 * - The first fetch from YugaByte PgGate requires a number of operations including allocating
-	 *   operators and protobufs. These operations are done by PgGate_ExecSelect() function.
-	 * - The subsequent fetches don't need to setup the query with these operations again.
-	 */
+	/* Execute the select statement one time. */
 	if (!k2pg_state->is_exec_done) {
 		K2FdwScanPlanData scan_plan;
 		memset(&scan_plan, 0, sizeof(scan_plan));
@@ -1838,7 +1833,7 @@ k2EndForeignScan(ForeignScanState *node)
 
 /*
  * Foreign-data wrapper handler function: return a struct with pointers
- * to YugaByte callback routines.
+ * to K2PG callback routines.
  */
 Datum
 k2_fdw_handler()

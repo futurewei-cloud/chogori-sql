@@ -654,7 +654,7 @@ findDependentObjects(const ObjectAddress *object,
 				 * to lock it; if so, neither it nor the current object are
 				 * interesting anymore.  We test this by checking the
 				 * pg_depend entry (see notes below).
-				 * If YugaByte is enabled, systable_recheck_tuple doesn't work
+				 * If K2PG is enabled, systable_recheck_tuple doesn't work
 				 * since the function uses the buffer to determine the tuple's visibility.
 				 */
 				if (!IsK2PgEnabled() && !systable_recheck_tuple(scan, tup))
@@ -754,7 +754,7 @@ findDependentObjects(const ObjectAddress *object,
 		 * test this cheaply and independently of the object's type by seeing
 		 * if the pg_depend tuple we are looking at is still live. (If the
 		 * object got deleted, the tuple would have been deleted too.)
-		 * If YugaByte is enabled, systable_recheck_tuple doesn't work
+		 * If K2PG is enabled, systable_recheck_tuple doesn't work
 		 * since the function uses the buffer to determine the tuple's visibility.
 		 */
 		if (!IsK2PgEnabled() && !systable_recheck_tuple(scan, tup))

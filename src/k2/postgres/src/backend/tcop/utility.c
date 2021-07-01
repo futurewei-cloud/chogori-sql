@@ -466,7 +466,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 						if  (IsK2PgEnabled()) {
 							ereport(ERROR,
 									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-									errmsg("PREPARE not supported by YugaByte yet")));
+									errmsg("PREPARE not supported by K2PG yet")));
 						}
 						PreventCommandDuringRecovery("PREPARE TRANSACTION");
 						if (!PrepareTransactionBlock(stmt->gid))

@@ -174,7 +174,7 @@ vacuum(int options, List *relations, VacuumParams *params,
 				use_own_xacts;
 
 	/*
-	 * VACUUM currently not supported for Yugabyte.
+	 * VACUUM currently not supported for K2PG
 	 */
 	if (options & VACOPT_VACUUM)
 	{

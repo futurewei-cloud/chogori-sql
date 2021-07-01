@@ -4,6 +4,7 @@
  *	  prototypes for ybcModifyTable.c
  *
  * Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  * in compliance with the License.  You may obtain a copy of the License at
@@ -38,7 +39,7 @@ extern Oid K2PgHeapInsert(TupleTableSlot *slot,
 												 EState *estate);
 
 /*
- * Insert a tuple into a YugaByte table. Will execute within a distributed
+ * Insert a tuple into a K2PG table. Will execute within a distributed
  * transaction if the table is transactional (PSQL default).
  */
 extern Oid K2PgExecuteInsert(Relation rel,
@@ -54,7 +55,7 @@ extern Oid K2PgExecuteNonTxnInsert(Relation rel,
 								  HeapTuple tuple);
 
 /*
- * Insert a tuple into the an index's backing YugaByte index table.
+ * Insert a tuple into the an index's backing K2PG index table.
  */
 extern void K2PgExecuteInsertIndex(Relation rel,
 								  Datum *values,
@@ -63,7 +64,7 @@ extern void K2PgExecuteInsertIndex(Relation rel,
 								  bool is_backfill);
 
 /*
- * Delete a tuple (identified by k2pgctid) from a YugaByte table.
+ * Delete a tuple (identified by k2pgctid) from a K2PG table.
  * If this is a single row op we will return false in the case that there was
  * no row to delete. This can occur because we do not first perform a scan if
  * it is a single row op.
@@ -74,7 +75,7 @@ extern bool K2PgExecuteDelete(Relation rel,
 							 ModifyTableState *mtstate);
 /*
  * Delete a tuple (identified by index columns and base table k2pgctid) from an
- * index's backing YugaByte index table.
+ * index's backing K2PG index table.
  */
 extern void K2PgExecuteDeleteIndex(Relation index,
                                   Datum *values,
@@ -82,7 +83,7 @@ extern void K2PgExecuteDeleteIndex(Relation index,
                                   Datum k2pgctid);
 
 /*
- * Update a row (identified by k2pgctid) in a YugaByte table.
+ * Update a row (identified by k2pgctid) in a K2PG table.
  * If this is a single row op we will return false in the case that there was
  * no row to update. This can occur because we do not first perform a scan if
  * it is a single row op.

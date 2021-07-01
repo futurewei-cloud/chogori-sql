@@ -612,7 +612,7 @@ K2PgReadSequenceTuple(Relation seqrel)
                                         &is_called));
     seqdataform.last_value = last_val;
     seqdataform.is_called = is_called;
-    seqdataform.log_cnt = 0; /* not used by YugaByte, defaults to 0 */
+    seqdataform.log_cnt = 0; /* not used by K2PG, defaults to 0 */
   }
   else
   {
@@ -894,7 +894,7 @@ check_bounds:
 	last_used_seq = elm;
 
 	/*
-	 * YugaByte doesn't use the WAL, and we don't need to free the buffer because we didn't allocate
+	 * K2PG doesn't use the WAL, and we don't need to free the buffer because we didn't allocate
 	 * memory for it. So close the relation and return the result now.
 	 */
 	if (IsK2PgEnabled())
@@ -1113,7 +1113,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	PreventCommandIfParallelMode("setval()");
 
 	/*
-	 * Only read the sequence from a disk page if we are in Postgres mode, since YugaByte stores it
+	 * Only read the sequence from a disk page if we are in Postgres mode, since K2PG stores it
 	 * elsewhere and this will cause an error
 	 */
 	if (!IsK2PgEnabled())
@@ -1149,7 +1149,7 @@ do_setval(Oid relid, int64 next, bool iscalled)
 	elm->cached = elm->last;
 
 	/*
-	 * Update the sequence in the YugaByte backend. YugaByte doesn't use the WAL, and we
+	 * Update the sequence in the K2PG backend. K2PG doesn't use the WAL, and we
 	 * didn't allocate memory for buffer, so no need to free it.
 	 */
 	if (IsK2PgEnabled())

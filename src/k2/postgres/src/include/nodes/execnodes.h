@@ -581,7 +581,7 @@ typedef struct EState
 	struct JitInstrumentation *es_jit_worker_instr;
 
 	/*
-	 * YugaByte-specific fields
+	 * K2PG-specific fields
 	 */
 
 	bool es_k2pg_is_single_row_modify_txn; /* Is this query a single-row modify

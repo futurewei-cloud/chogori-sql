@@ -173,9 +173,9 @@ MemoryContextReset(MemoryContext context)
 
 	/*
 	 * Save a function call if no pallocs since startup or last reset.
-	 * NOTE: When "k2pg_memctx" is not null, ResetOnly() must be called to inform YugaByte code layer
+	 * NOTE: When "k2pg_memctx" is not null, ResetOnly() must be called to inform K2PG code layer
 	 * that resetting is happening. While the state variable "isReset" controls the objects in
-	 * Postgres, and the opaque object "k2pg_memctx" controls YugaByte objects.
+	 * Postgres, and the opaque object "k2pg_memctx" controls K2PG objects.
 	 */
   if (context->k2pg_memctx || !context->isReset)
 		MemoryContextResetOnly(context);
@@ -192,8 +192,8 @@ MemoryContextResetOnly(MemoryContext context)
 	AssertArg(MemoryContextIsValid(context));
 
 	/*
-	 * Reset YugaByte context also.
-	 * Currently reset YugaByte context does not destroy it.  Maybe we should?
+	 * Reset K2PG context also.
+	 * Currently reset K2PG context does not destroy it.  Maybe we should?
 	 */
 	if (context->k2pg_memctx) {
 		HandleK2PgStatus(PgGate_ResetMemctx(context->k2pg_memctx));
@@ -289,7 +289,7 @@ MemoryContextDelete(MemoryContext context)
 	context->methods->delete_context(context);
 
 	/*
-	 * Destroy YugaByte memory context.
+	 * Destroy K2PG memory context.
 	 */
 	HandleK2PgStatus(PgGate_DestroyMemctx(context->k2pg_memctx));
 	context->k2pg_memctx = NULL;
@@ -791,7 +791,7 @@ MemoryContextCreate(MemoryContext node,
 	node->ident = NULL;
 	node->reset_cbs = NULL;
 
-	/* YugaByte memory context handler */
+	/* K2PG memory context handler */
 	node->k2pg_memctx = NULL;
 
 	/* OK to link node into context tree */
@@ -1250,7 +1250,7 @@ pchomp(const char *in)
 }
 
 /*
- * Get the YugaByte current memory context.
+ * Get the K2PG current memory context.
  */
 K2PgMemctx GetCurrentYbMemctx() {
 	MemoryContext context = GetCurrentMemoryContext();
@@ -1258,7 +1258,7 @@ K2PgMemctx GetCurrentYbMemctx() {
 	AssertNotInCriticalSection(context);
 
 	if (context->k2pg_memctx == NULL) {
-		// Create the yugabyte context if this is the first time it is used.
+		// Create the K2PG context if this is the first time it is used.
 		context->k2pg_memctx = PgGate_CreateMemctx();
 	}
 

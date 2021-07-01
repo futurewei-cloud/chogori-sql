@@ -34,8 +34,8 @@ const TableId kPgProcTableId = PgObjectId::GetTableUuid(kTemplate1Oid, kPgProcTa
 //-------------------------------------------------------------------------------------------------
 
 namespace {
-// TODO: get rid of YugaByte 16 byid UUID, and use PG dboid and tabld oid directly.
-// Layout of Postgres database and table 4-byte oids in a YugaByte 16-byte table UUID:
+// TODO: get rid of the 16 byid UUID, and use PG dboid and tabld oid directly.
+// Layout of Postgres database and table 4-byte oids in a the 16-byte table UUID:
 //
 // +-----------------------------------------------------------------------------------------------+
 // |  0  |  1  |  2  |  3  |  4  |  5  |  6  |  7  |  8  |  9  |  10 |  11 |  12 |  13 |  14 |  15 |

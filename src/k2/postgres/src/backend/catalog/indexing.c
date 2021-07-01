@@ -108,7 +108,7 @@ CatalogIndexInsert(CatalogIndexState indstate, HeapTuple heapTuple)
 	for (i = 0; i < numIndexes; i++)
 	{
 		/*
-		 * No need to update YugaByte primary key which is intrinic part of
+		 * No need to update K2PG primary key which is intrinsic part of
 		 * the base table.
 		 */
 		if (IsK2PgEnabled() && relationDescs[i]->rd_index->indisprimary)
@@ -198,7 +198,7 @@ CatalogIndexDelete(CatalogIndexState indstate, HeapTuple heapTuple)
 	for (i = 0; i < numIndexes; i++)
 	{
 		/*
-		 * No need to update YugaByte primary key which is intrinic part of
+		 * No need to update K2PG primary key which is intrinsic part of
 		 * the base table.
 		 */
 		if (IsK2PgEnabled() && relationDescs[i]->rd_index->indisprimary)

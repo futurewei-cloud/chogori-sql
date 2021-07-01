@@ -96,7 +96,7 @@ extern void ResourceOwnerRememberJIT(ResourceOwner owner,
 extern void ResourceOwnerForgetJIT(ResourceOwner owner,
 					   Datum handle);
 
-/* support for YugaByte statement refcount management */
+/* support for K2PG statement refcount management */
 extern void ResourceOwnerEnlargeYugaByteStmts(ResourceOwner owner);
 extern void ResourceOwnerRememberYugaByteStmt(
 	ResourceOwner owner,

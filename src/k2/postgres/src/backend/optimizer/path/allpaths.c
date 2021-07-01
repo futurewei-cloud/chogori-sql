@@ -14,6 +14,7 @@
  * YugaByte development.
  *
  * Portions Copyright (c) YugaByte, Inc.
+ * Portions Copyright (c) 2021 Futurewei Cloud
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you
  * may not use this file except in compliance with the License.
@@ -202,7 +203,7 @@ make_one_rel(PlannerInfo *root, List *joinlist)
 				RangeTblEntry *rte = root->simple_rte_array[rti];
 				if (IsK2PgRelationById(rte->relid)) {
 					/*
-					 * Set the YugaByte FDW routine because we will use the foreign
+					 * Set the K2PG FDW routine because we will use the foreign
 					 * scan API below.
 					 */
 					relation->fdwroutine = (FdwRoutine *) k2_fdw_handler();
@@ -408,7 +409,7 @@ set_rel_size(PlannerInfo *root, RelOptInfo *rel,
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("'TABLESAMPLE' clause is not yet "
-										"supported by YugaByte")));
+										"supported by K2PG")));
 					}
 
 					/* Sampled relation */
@@ -508,7 +509,7 @@ set_rel_pathlist(PlannerInfo *root, RelOptInfo *rel,
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								errmsg("'TABLESAMPLE' clause is not yet "
-									   "supported by YugaByte")));
+									   "supported by K2PG")));
 					}
 
 					/* Sampled relation */

@@ -519,7 +519,7 @@ BootstrapModeMain(void)
 
 
 	/*
-	 * In YugaByte we only need to create the template1 database
+	 * In K2PG we only need to create the template1 database
 	 * (corresponding to creating the "base/1" subdir as its oid is hardcoded).
 	 */
 	if (IsK2PgEnabled())
@@ -540,7 +540,7 @@ BootstrapModeMain(void)
 	boot_yyparse();
 	CommitTransactionCommand();
 
-	/* We do not use a relation map file in YugaByte mode yet */
+	/* We do not use a relation map file in K2PG mode yet */
 	if (!IsK2PgEnabled())
 	{
 		/*
