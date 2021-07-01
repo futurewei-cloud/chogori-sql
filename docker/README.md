@@ -20,15 +20,12 @@ cd build
 cmake ../
 make -j
 ```
-``` sh
 ## Running the integration tests
+``` sh
 cd /host/chogori-sql
 test/integration/integrate.sh
+```
 # Running the regression tests
+``` sh
 test/regression.sh
 ```
-
-
-
-
-
