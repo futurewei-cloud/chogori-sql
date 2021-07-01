@@ -36,6 +36,7 @@ RUN cd /tmp && \
    cd /tmp && \
    rm -rf /tmp/glog && \
    apt install -y libgflags-dev && \
+   pip3 install psycopg2-binary && \
    cd
 
 CMD ["/bin/bash"]
