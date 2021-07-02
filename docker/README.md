@@ -29,3 +29,13 @@ test/integration/integrate.sh
 ``` sh
 test/regression.sh
 ```
+# Starting the Chogori-SQL environment
+``` sh
+cd /host/chogori-sql/pgtest
+./initDB.sh
+./pg_run.sh &
+```
+# Running the sql client
+``` sh
+/host/chogori-sql/src/k2/postgres/bin/psql postgres
+```
