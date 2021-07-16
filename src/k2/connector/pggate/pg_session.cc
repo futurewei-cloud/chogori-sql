@@ -303,9 +303,9 @@ Result<std::shared_ptr<PgTableDesc>> PgSession::LoadTable(const PgObjectId& tabl
     table = cached_table->second;
   }
 
-  std::string t_table_id = table_object_id.GetTableId();
+  PgOid t_table_id = table_object_id.GetObjectOid();
   // check if the t_table_id is for a table or an index
-  if (table->table_id().compare(t_table_id) == 0) {
+  if (table->table_id() == t_table_id) {
     // a table
     return std::make_shared<PgTableDesc>(table);
   }

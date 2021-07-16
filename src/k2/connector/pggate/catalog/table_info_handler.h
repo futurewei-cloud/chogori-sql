@@ -69,7 +69,7 @@ struct ListTablesResult {
 
 struct ListTableIdsResult {
     Status status;
-    std::vector<std::string> tableIds;
+    std::vector<PgOid> tableIds;
 };
 
 struct CopyTableResult {
@@ -100,7 +100,7 @@ struct DeleteIndexResult {
 
 struct GetBaseTableIdResult {
     Status status;
-    std::string baseTableId;
+    PgOid baseTableId;
 };
 
 struct GetTableTypeInfoResult {
@@ -116,7 +116,7 @@ struct CreateIndexTableResult {
 
 struct CreateIndexTableParams {
     std::string index_name;
-    uint32_t table_oid;
+    PgOid table_id;
     Schema index_schema;
     bool is_unique;
     bool is_shared;
@@ -150,15 +150,13 @@ class TableInfoHandler {
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},        // const PgOid CatalogConsts::oid_table_meta = 4800;
                 {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},        // 0
-                {k2::dto::FieldType::STRING, "TableId", false, false},
+                {k2::dto::FieldType::INT64T, "TableId", false, false},
                 {k2::dto::FieldType::STRING, "TableName", false, false},
-                {k2::dto::FieldType::INT64T, "TableOid", false, false},
-                {k2::dto::FieldType::STRING, "TableUuid", false, false},
                 {k2::dto::FieldType::BOOL, "IsSysTable", false, false},
                 {k2::dto::FieldType::BOOL, "IsShared", false, false},
                 {k2::dto::FieldType::BOOL, "IsIndex", false, false},
                 {k2::dto::FieldType::BOOL, "IsUnique", false, false},
-                {k2::dto::FieldType::STRING, "BaseTableId", false, false},
+                {k2::dto::FieldType::INT64T, "BaseTableId", false, false},
                 {k2::dto::FieldType::INT16T, "IndexPermission", false, false},
                 {k2::dto::FieldType::INT32T, "NextColumnId", false, false},
                 {k2::dto::FieldType::INT32T, "SchemaVersion", false, false}},
@@ -173,7 +171,7 @@ class TableInfoHandler {
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},    // const PgOid CatalogConsts::oid_tablecolumn_meta = 4801;
                 {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},    // 0
-                {k2::dto::FieldType::STRING, "TableId", false, false},
+                {k2::dto::FieldType::INT64T, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
                 {k2::dto::FieldType::INT16T, "ColumnType", false, false},
@@ -193,7 +191,7 @@ class TableInfoHandler {
         .fields = std::vector<k2::dto::SchemaField> {
                 {k2::dto::FieldType::INT64T, "SchemaTableId", false, false},    // const PgOid CatalogConsts::oid_indexcolumn_meta = 4802;
                 {k2::dto::FieldType::INT64T, "SchemaIndexId", false, false},    // 0
-                {k2::dto::FieldType::STRING, "TableId", false, false},
+                {k2::dto::FieldType::INT64T, "TableId", false, false},
                 {k2::dto::FieldType::INT32T, "ColumnId", false, false},
                 {k2::dto::FieldType::STRING, "ColumnName", false, false},
                 {k2::dto::FieldType::INT16T, "ColumnType", false, false},
@@ -213,8 +211,8 @@ class TableInfoHandler {
     // Create or update a user defined table fully, including all its secondary indexes if any.
     CreateUpdateTableResult CreateOrUpdateTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const std::string& table_id);
-    GetTableSchemaResult GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id,
+    GetTableResult GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name, const PgOid& table_id);
+    GetTableSchemaResult GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const PgOid& table_id,
                 std::shared_ptr<IndexInfo> index_info,
                 std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db,
                 std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx);
@@ -231,7 +229,7 @@ class TableInfoHandler {
             std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_database_name,
-            const std::string& source_table_id);
+            const PgOid& source_table_id);
 
     CreateSKVSchemaResult CreateIndexSKVSchema(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,
         std::shared_ptr<TableInfo> table, const IndexInfo& index_info);
@@ -242,17 +240,17 @@ class TableInfoHandler {
 
     DeleteTableResult DeleteTableData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, std::shared_ptr<TableInfo> table);
 
-    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const std::string& index_id);
+    DeleteIndexResult DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const PgOid& index_id);
 
-    DeleteIndexResult DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const std::string& index_id);
+    DeleteIndexResult DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name,  const PgOid& index_id);
 
-    GetBaseTableIdResult GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id);
+    GetBaseTableIdResult GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& index_id);
 
     // check if passed id is that for a table or index, and if it is a shared table/index(just one instance shared by all databases and resides in primary cluster)
-    GetTableTypeInfoResult GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+    GetTableTypeInfoResult GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id);
 
     // create index table (handle create if exists flag)
-    CreateIndexTableResult CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, CreateIndexTableParams &index_params);
+    CreateIndexTableResult CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, const CreateIndexTableParams &index_params);
 
     private:
     CopySKVTableResult CopySKVTable(std::shared_ptr<PgTxnHandler> target_txnHandler,
@@ -290,27 +288,27 @@ class TableInfoHandler {
 
     DataType ToSqlType(k2::dto::FieldType type);
 
-    Status FetchTableMetaSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id, k2::dto::SKVRecord& resultSKVRecord);
+    Status FetchTableMetaSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id, k2::dto::SKVRecord& resultSKVRecord);
 
     // TODO: change following API return Status instead of throw exception
 
-    std::vector<k2::dto::SKVRecord> FetchIndexMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& base_table_id);
+    std::vector<k2::dto::SKVRecord> FetchIndexMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& base_table_id);
 
-    std::vector<k2::dto::SKVRecord> FetchTableColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+    std::vector<k2::dto::SKVRecord> FetchTableColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id);
 
-    std::vector<k2::dto::SKVRecord> FetchIndexColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id);
+    std::vector<k2::dto::SKVRecord> FetchIndexColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id);
 
     std::shared_ptr<TableInfo> BuildTableInfo(const std::string& database_id, const std::string& database_name, k2::dto::SKVRecord& table_meta, std::vector<k2::dto::SKVRecord>& table_columns);
 
     IndexInfo BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, k2::dto::SKVRecord& index_table_meta);
 
-    IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
+    IndexInfo BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions);
 
     void AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> schema);
 
     // Build a range record for a scan, optionally using third param table_id when applicable(e.g. in sys table).
-    k2::dto::SKVRecord buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema, PgOid table_oid, PgOid index_oid, std::optional<std::string> table_id);
+    k2::dto::SKVRecord buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema, PgOid table_oid, PgOid index_oid, std::optional<PgOid> table_id);
 
     std::shared_ptr<k2::dto::Schema> table_meta_SKVSchema_;
     std::shared_ptr<k2::dto::Schema> tablecolumn_meta_SKVSchema_;

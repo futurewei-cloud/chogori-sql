@@ -113,7 +113,7 @@ namespace sql {
         return -1;
     }
 
-    Result<const IndexInfo*> IndexMap::FindIndex(const std::string& index_id) const {
+    Result<const IndexInfo*> IndexMap::FindIndex(const PgOid& index_id) const {
         const auto itr = find(index_id);
         if (itr == end()) {
             return STATUS(NotFound, fmt::format("Index id {} not found", index_id));

@@ -32,9 +32,9 @@ namespace sql {
 
         typedef std::shared_ptr<TableInfo> SharedPtr;
 
-        TableInfo(std::string database_id, std::string database_name, uint32_t table_oid, std::string table_name, std::string table_uuid, Schema schema) :
-            database_id_(database_id), database_name_(database_name), table_oid_(table_oid), table_id_(PgObjectId::GetTableId(table_oid)), table_name_(table_name),
-            table_uuid_(table_uuid), schema_(std::move(schema)) {
+        TableInfo(std::string database_id, std::string database_name, PgOid table_id, std::string table_name, Schema schema) :
+            database_id_(database_id), database_name_(database_name), table_id_(table_id), table_name_(table_name),
+            schema_(std::move(schema)) {
         }
 
         const std::string& database_id() const {
@@ -45,7 +45,7 @@ namespace sql {
             return database_name_;
         }
 
-        const std::string& table_id() const {
+        const PgOid& table_id() const {
             return table_id_;
         }
 
@@ -53,16 +53,8 @@ namespace sql {
             return table_name_;
         }
 
-        void set_table_oid(uint32_t table_oid) {
-            table_oid_ = table_oid;
-        }
-
-        uint32_t table_oid() {
-            return table_oid_;
-        }
-
-        const std::string table_uuid() {
-            return table_uuid_;
+        void set_table_id(PgOid table_id) {
+            table_id_ = table_id;
         }
 
         void set_next_column_id(int32_t next_column_id) {
@@ -101,7 +93,7 @@ namespace sql {
             return schema_.num_range_key_columns();
         }
 
-        void add_secondary_index(const std::string& index_id, const IndexInfo& index_info) {
+        void add_secondary_index(const PgOid& index_id, const IndexInfo& index_info) {
             index_map_.emplace(index_id, index_info);
         }
 
@@ -109,11 +101,11 @@ namespace sql {
             return index_map_;
         }
 
-        void drop_index(const std::string& index_id) {
+        void drop_index(const PgOid& index_id) {
             index_map_.erase(index_id);
         }
 
-        Result<const IndexInfo*> FindIndex(const std::string& index_id) const;
+        Result<const IndexInfo*> FindIndex(const PgOid& index_id) const;
 
         void set_is_sys_table(bool is_sys_table) {
             is_sys_table_ = is_sys_table;
@@ -132,17 +124,16 @@ namespace sql {
         }
 
         static std::shared_ptr<TableInfo> Clone(std::shared_ptr<TableInfo> table_info, std::string database_id,
-            std::string database_name, std::string table_uuid, std::string table_name);
+            std::string database_name, std::string table_name);
 
         private:
         std::string database_id_;
         std::string database_name_; // Can be empty, that means the database has not been set yet.
+        
         // PG internal object id
-        uint32_t table_oid_;
-        std::string table_id_;
+        PgOid table_id_;
         std::string table_name_;
-        // cache key and it is unique cross databases
-        std::string table_uuid_;
+        
         Schema schema_;
         IndexMap index_map_;
         int32_t next_column_id_ = 0;

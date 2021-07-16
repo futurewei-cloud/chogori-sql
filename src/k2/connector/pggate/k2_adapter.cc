@@ -497,10 +497,12 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     SqlOpResponse& response = op->response();
 
     k2::Status status;
+    k2::String schemaName = std::to_string(request->table_id);
+
     std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
     for (auto& ybctid_column_value : request->ybctid_column_values) {
         k2::GetSchemaResult schema_result = k23si_->getSchema(request->collection_name,
-                                                    request->table_id, k2::K23SIClient::ANY_VERSION).get();
+                                                    schemaName, k2::K23SIClient::ANY_VERSION).get();
 
         if (!schema_result.status.is2xxOK()) {
             throw std::runtime_error(fmt::format("Failed to get schema for {} in {} due to {}",
@@ -556,7 +558,8 @@ CBFuture<Status> K2Adapter::handleReadOp(std::shared_ptr<K23SITxn> k23SITxn,
         if (request->paging_state && request->paging_state->query) {
             scan = request->paging_state->query;
         } else {
-            auto scan_create_result = k23si_->createScanRead(request->collection_name, request->table_id).get();
+            std::string schema_name = std::to_string(request->table_id);
+            auto scan_create_result = k23si_->createScanRead(request->collection_name, schema_name).get();
             if (!scan_create_result.status.is2xxOK()) {
                 K2LOG_E(log::k2Adapter, "Unable to create scan read request");
                 response.rows_affected_count = 0;
@@ -1047,7 +1050,8 @@ void K2Adapter::SerializeValueToSKVRecord(const SqlValue& value, k2::dto::SKVRec
 
 template <class T> // Works with SqlOpWriteRequest and SqlOpReadRequest types
 std::pair<k2::dto::SKVRecord, Status> K2Adapter::MakeSKVRecordWithKeysSerialized(T& request, bool existYbctids, bool ignoreYBCTID) {
-    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.collection_name, request.table_id,
+    std::string schema_name = std::to_string(request.table_id);
+    CBFuture<k2::GetSchemaResult> schema_f = k23si_->getSchema(request.collection_name, schema_name,
                                                                   request.schema_version);
     // TODO Schemas are cached by SKVClient but we can add a cache to K2 adapter to reduce
     // cross-thread traffic

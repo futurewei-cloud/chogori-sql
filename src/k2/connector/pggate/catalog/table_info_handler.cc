@@ -104,14 +104,14 @@ CreateUpdateTableResult TableInfoHandler::CreateOrUpdateTable(std::shared_ptr<Pg
         }
         response.status = Status(); // OK
     }
-    catch (const std::exception& e) {
+    catch    (const std::exception& e) {
 		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
     }
     return response;
 }
 
 GetTableResult TableInfoHandler::GetTable(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& database_name,
-        const std::string& table_id) {
+        const PgOid& table_id) {
     GetTableResult response;
     try {
         K2LOG_D(log::catalog, "Fetch table schema in skv collection: {}, db name: {}, table id: {}", collection_name, database_name, table_id);
@@ -205,7 +205,7 @@ ListTableIdsResult TableInfoHandler::ListTableIds(std::shared_ptr<PgTxnHandler> 
                 // SchemaIndexId
                 record.deserializeNext<int64_t>();
                 // TableId
-                std::string table_id = record.deserializeNext<k2::String>().value();
+                PgOid table_id = record.deserializeNext<int64_t>().value();
                 // TableName
                 record.deserializeNext<k2::String>();
                 // TableOid
@@ -240,7 +240,7 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
             std::shared_ptr<PgTxnHandler> source_txnHandler,
             const std::string& source_coll_name,
             const std::string& source_database_name,
-            const std::string& source_table_id) {
+            const PgOid& source_table_id) {
     CopyTableResult response;
     try {
         GetTableResult table_result = GetTable(source_txnHandler, source_coll_name, source_database_name, source_table_id);
@@ -251,10 +251,10 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
 
         // step 1/2 create target table (including secondary indexes) in target database, cloning the table info/meta from source table info/meta
         std::shared_ptr<TableInfo> source_table = table_result.tableInfo;
-        PgOid source_table_oid = table_result.tableInfo->table_oid();
-        std::string target_table_uuid = PgObjectId::GetTableUuid(target_database_oid, table_result.tableInfo->table_oid());
+        PgOid source_table_oid = table_result.tableInfo->table_id();
+        std::string target_table_uuid = PgObjectId::GetTableUuid(target_database_oid, table_result.tableInfo->table_id());
         std::shared_ptr<TableInfo> target_table = TableInfo::Clone(table_result.tableInfo, target_coll_name,
-                target_database_name, target_table_uuid, table_result.tableInfo->table_name());
+                target_database_name, table_result.tableInfo->table_name());
 
         CreateUpdateTableResult create_result = CreateOrUpdateTable(target_txnHandler, target_coll_name, target_table);
         if (!create_result.status.ok()) {
@@ -267,14 +267,17 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
             K2LOG_D(log::catalog, "Skip copying shared table {} in {}", source_table_id, source_coll_name);
             if(source_table->has_secondary_indexes()) {
                 // the indexes for a shared table should be shared as well
-                for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
+                for (std::pair<PgOid, IndexInfo> secondary_index : source_table->secondary_indexes()) {
                     K2ASSERT(log::catalog, secondary_index.second.is_shared(), "Index for a shared table must be shared");
                     K2LOG_D(log::catalog, "Skip copying shared index {} in {}", secondary_index.first, source_coll_name);
                 }
             }
         } else {  // copy all base table and index rows(SKV record in K2)
-            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_txnHandler, target_coll_name, target_table->table_id(), target_table->schema().version(),
-                source_txnHandler, source_coll_name, source_table_id, source_table->schema().version(), source_table_oid, 0 /*index_oid*/);
+            std::string target_schema_name = std::to_string(target_table->table_id());
+            std::string source_schema_name = std::to_string(source_table_id);
+
+            CopySKVTableResult copy_skv_table_result = CopySKVTable(target_txnHandler, target_coll_name, target_schema_name, target_table->schema().version(),
+                source_txnHandler, source_coll_name, source_schema_name, source_table->schema().version(), source_table_oid, 0 /*index_oid*/);
             if (!copy_skv_table_result.status.ok()) {
                 response.status = std::move(copy_skv_table_result.status);
                 return response;
@@ -282,10 +285,10 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
 
             if(source_table->has_secondary_indexes()) {
                 std::unordered_map<std::string, IndexInfo*> target_index_name_map;
-                for (std::pair<TableId, IndexInfo> secondary_index : target_table->secondary_indexes()) {
+                for (std::pair<PgOid, IndexInfo> secondary_index : target_table->secondary_indexes()) {
                     target_index_name_map[secondary_index.second.table_name()] = &secondary_index.second;
                 }
-                for (std::pair<TableId, IndexInfo> secondary_index : source_table->secondary_indexes()) {
+                for (std::pair<PgOid, IndexInfo> secondary_index : source_table->secondary_indexes()) {
                     K2ASSERT(log::catalog, !secondary_index.second.is_shared(), "Index for a non-shared table must not be shared");
                     // search for target index by name
                     auto found = target_index_name_map.find(secondary_index.second.table_name());
@@ -294,8 +297,10 @@ CopyTableResult TableInfoHandler::CopyTable(std::shared_ptr<PgTxnHandler> target
                         return response;
                     }
                     IndexInfo* target_index = found->second;
-                    CopySKVTableResult copy_skv_index_result = CopySKVTable(target_txnHandler, target_coll_name, secondary_index.first, secondary_index.second.version(),
-                        source_txnHandler, source_coll_name, target_index->table_id(), target_index->version(), source_table_oid/*baseTableId*/, target_index->table_oid()/*index_oid, should be source, but same as target index oid*/);
+                    std::string target_schema_name = std::to_string(secondary_index.first);
+                    std::string source_schema_name = std::to_string(target_index->table_id());
+                    CopySKVTableResult copy_skv_index_result = CopySKVTable(target_txnHandler, target_coll_name, target_schema_name, secondary_index.second.version(),
+                        source_txnHandler, source_coll_name, source_schema_name, target_index->version(), source_table_oid/*baseTableId*/, target_index->table_id()/*index_oid, should be source, but same as target index oid*/);
                     if (!copy_skv_index_result.status.ok()) {
                         response.status = std::move(copy_skv_index_result.status);
                         return response;
@@ -391,7 +396,8 @@ CreateSKVSchemaResult TableInfoHandler::CreateTableSKVSchema(std::shared_ptr<PgT
     try {
         // use table id (string) instead of table name as the schema name
         std::shared_ptr<k2::dto::Schema> outSchema = nullptr;
-        auto result = k2_adapter_->GetSchema(collection_name, table->table_id(), table->schema().version()).get();
+        std::string schema_name = std::to_string(table->table_id());
+        auto result = k2_adapter_->GetSchema(collection_name, schema_name, table->schema().version()).get();
         if (result.status.is2xxOK()) //  schema of specified version already exists, no-op.
         {
             K2LOG_W(log::catalog, "SKV schema {} with specified version already exists in {}, skipping creation", table->table_id(), table->schema().version(), collection_name);
@@ -548,7 +554,7 @@ DeleteTableResult TableInfoHandler::DeleteTableMetadata(std::shared_ptr<PgTxnHan
                 // SchemaIndexId
                 record.deserializeNext<int64_t>();
                 // get table id for the index
-                std::string index_id = record.deserializeNext<k2::String>().value();
+                PgOid index_id = record.deserializeNext<int64_t>().value();
                 // delete meta of index including that of index columns
                 DeleteIndexResult index_result = DeleteIndexMetadata(txnHandler, collection_name, index_id);
                 if (!index_result.status.ok()) {
@@ -660,7 +666,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler
     return response;
 }
 
-GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
+GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& index_id) {
     GetBaseTableIdResult response;
     try {
         // exception would be thrown if the record could not be found
@@ -675,12 +681,8 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
         // SchemaIndexId
         index_table_meta.deserializeNext<int64_t>();
         // TableId
-        index_table_meta.deserializeNext<k2::String>();
-        // TableName
-        index_table_meta.deserializeNext<k2::String>();
-        // TableOid
         index_table_meta.deserializeNext<int64_t>();
-        // TableUuid
+        // TableName
         index_table_meta.deserializeNext<k2::String>();
         // IsSysTable
         index_table_meta.deserializeNext<bool>();
@@ -691,7 +693,7 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
         // IsUnique
         index_table_meta.deserializeNext<bool>();
         // BaseTableId
-        response.baseTableId = index_table_meta.deserializeNext<k2::String>().value();
+        response.baseTableId = index_table_meta.deserializeNext<int64_t>().value();
         response.status = Status(); // OK
     } catch (const std::exception& e) {
 		response.status = STATUS_FORMAT(RuntimeError, "{}", e.what());
@@ -700,7 +702,7 @@ GetBaseTableIdResult TableInfoHandler::GetBaseTableId(std::shared_ptr<PgTxnHandl
     return response;
 }
 
-GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id)
+GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id)
 {
     GetTableTypeInfoResult response;
     try {
@@ -815,7 +817,7 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
 }
 
 
-GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const std::string& table_id, std::shared_ptr<IndexInfo> index_info, std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db, std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx)
+GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, const PgOid& table_id, std::shared_ptr<IndexInfo> index_info, std::function<std::shared_ptr<DatabaseInfo>(const std::string&)> fnc_db, std::function<std::shared_ptr<PgTxnHandler>()> fnc_tx)
 {
     GetTableSchemaResult result;
     std::shared_ptr<PgTxnHandler> localTxnHandler = txnHandler;
@@ -925,7 +927,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
     return result;
 }
 
-IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid, std::string index_uuid,
+IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table_info, std::string index_name, uint32_t table_oid,
                 const Schema& index_schema, bool is_unique, bool is_shared, IndexPermissions index_permissions) {
     std::vector<IndexColumn> columns;
     for (ColumnId col_id: index_schema.column_ids()) {
@@ -955,7 +957,7 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<TableInfo> base_table
                 col_schema.is_hash(), is_range, col_schema.order(), col_schema.sorting_type(), base_column_id);
         columns.push_back(col);
     }
-    IndexInfo index_info(index_name, table_oid, index_uuid, base_table_info->table_id(), index_schema.version(),
+    IndexInfo index_info(index_name, table_oid, base_table_info->table_id(), index_schema.version(),
             is_unique, is_shared, columns, index_permissions);
     return index_info;
 }
@@ -1072,13 +1074,9 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableMetaRecord(const std::string& co
     // SchemaIndexId
     record.serializeNext<int64_t>(0);
     // TableId
-    record.serializeNext<k2::String>(table->table_id());
+    record.serializeNext<int64_t>(table->table_id());
     // TableName
     record.serializeNext<k2::String>(table->table_name());
-    // TableOid
-    record.serializeNext<int64_t>(table->table_oid());
-    // TableUuid
-    record.serializeNext<k2::String>(table->table_uuid());
     // IsSysTable
     record.serializeNext<bool>(table->is_sys_table());
     // IsShared
@@ -1105,13 +1103,9 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableMetaRecordOfIndex(const std::str
     // SchemaIndexId
     record.serializeNext<int64_t>(0);
     // TableId -- indexId saved in this field
-    record.serializeNext<k2::String>(index.table_id());
+    record.serializeNext<int64_t>(index.table_id());
     // TableName -- indexName
     record.serializeNext<k2::String>(index.table_name());
-    // TableOid -- index Oid
-    record.serializeNext<int64_t>(index.table_oid());
-    // TableUuid -- index uuid
-    record.serializeNext<k2::String>(index.table_uuid());
     // IsSysTable
     record.serializeNext<bool>(is_sys_table);
     // IsShared
@@ -1121,7 +1115,7 @@ k2::dto::SKVRecord TableInfoHandler::DeriveTableMetaRecordOfIndex(const std::str
     // IsUnique (for index)
     record.serializeNext<bool>(index.is_unique());
     // BaseTableId
-    record.serializeNext<k2::String>(index.base_table_id());
+    record.serializeNext<int64_t>(index.base_table_id());
     // IndexPermission
     record.serializeNext<int16_t>(index.index_permissions());
     // NextColumnId
@@ -1143,7 +1137,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveTableColumnMetaRecords(c
         // SchemaIndexId
         record.serializeNext<int64_t>(0);
         // TableId
-        record.serializeNext<k2::String>(table->table_id());
+        record.serializeNext<int64_t>(table->table_id());
         // ColumnId
         record.serializeNext<int32_t>(column_id);
         // ColumnName
@@ -1175,7 +1169,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::DeriveIndexColumnMetaRecords(c
         // SchemaIndexId
         record.serializeNext<int64_t>(0);
         // TableId
-        record.serializeNext<k2::String>(index.table_id());
+        record.serializeNext<int64_t>(index.table_id());
         // ColumnId
         record.serializeNext<int32_t>(index_column.column_id);
         // ColumnName
@@ -1253,14 +1247,14 @@ k2::dto::FieldType TableInfoHandler::ToK2Type(DataType type) {
     return field_type;
 }
 
-Status TableInfoHandler::FetchTableMetaSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id, k2::dto::SKVRecord& resultSKVRecord) {
+Status TableInfoHandler::FetchTableMetaSKVRecord(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id, k2::dto::SKVRecord& resultSKVRecord) {
     k2::dto::SKVRecord recordKey(collection_name, table_meta_SKVSchema_);
     // SchemaTableId
     recordKey.serializeNext<int64_t>(CatalogConsts::oid_table_meta);    // 4800
     // SchemaIndexId
     recordKey.serializeNext<int64_t>(0);
     // table_id
-    recordKey.serializeNext<k2::String>(table_id);
+    recordKey.serializeNext<int64_t>(table_id);
 
     K2LOG_D(log::catalog, "Fetching Table meta SKV record for table {}", table_id);
     auto result = k2_adapter_->ReadRecord(txnHandler->GetTxn(), recordKey).get();
@@ -1274,7 +1268,7 @@ Status TableInfoHandler::FetchTableMetaSKVRecord(std::shared_ptr<PgTxnHandler> t
     return Status(); // OK
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& base_table_id) {
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& base_table_id) {
     auto create_result = k2_adapter_->CreateScanRead(collection_name, table_meta_SKVSchema_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
@@ -1289,7 +1283,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexMetaSKVRecords(std::
     std::vector<k2::dto::expression::Expression> exps;
     // find all the indexes for the base table, i.e., by BaseTableId
     values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::BASE_TABLE_ID_COLUMN_NAME));
-    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(base_table_id));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<int64_t>(base_table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
     query->startScanRecord = buildRangeRecord(collection_name, table_meta_SKVSchema_, CatalogConsts::oid_table_meta, 0/*index_oid*/, std::nullopt);
@@ -1313,7 +1307,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexMetaSKVRecords(std::
     return records;
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id) {
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id) {
     auto create_result = k2_adapter_->CreateScanRead(collection_name, tablecolumn_meta_SKVSchema_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
@@ -1328,7 +1322,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnMetaSKVRecords
     std::vector<k2::dto::expression::Expression> exps;
     // find all the columns for a table by TableId
     values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::TABLE_ID_COLUMN_NAME));
-    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<int64_t>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
     query->startScanRecord = buildRangeRecord(collection_name, tablecolumn_meta_SKVSchema_, CatalogConsts::oid_tablecolumn_meta, 0/*index_oid*/, std::make_optional(table_id));
@@ -1351,7 +1345,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchTableColumnMetaSKVRecords
     return records;
 }
 
-std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& table_id) {
+std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnMetaSKVRecords(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& table_id) {
     auto create_result = k2_adapter_->CreateScanRead(collection_name, indexcolumn_meta_SKVSchema_->name).get();
     if (!create_result.status.is2xxOK()) {
         auto msg = fmt::format("Failed to create scan read for {} in {} due to {}",
@@ -1366,7 +1360,7 @@ std::vector<k2::dto::SKVRecord> TableInfoHandler::FetchIndexColumnMetaSKVRecords
     std::vector<k2::dto::expression::Expression> exps;
     // find all the columns for an index table by TableId
     values.emplace_back(k2::dto::expression::makeValueReference(CatalogConsts::TABLE_ID_COLUMN_NAME));
-    values.emplace_back(k2::dto::expression::makeValueLiteral<k2::String>(table_id));
+    values.emplace_back(k2::dto::expression::makeValueLiteral<int64_t>(table_id));
     k2::dto::expression::Expression filterExpr = k2::dto::expression::makeExpression(k2::dto::expression::Operation::EQ, std::move(values), std::move(exps));
     query->setFilterExpression(std::move(filterExpr));
     query->startScanRecord = buildRangeRecord(collection_name, indexcolumn_meta_SKVSchema_, CatalogConsts::oid_indexcolumn_meta, 0/*index_oid*/, std::make_optional(table_id));
@@ -1397,13 +1391,9 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
     // SchemaIndexId
     table_meta.deserializeNext<int64_t>();
     // TableId
-    std::string table_id = table_meta.deserializeNext<k2::String>().value();
+    PgOid table_id = table_meta.deserializeNext<int64_t>().value();
     // TableName
     std::string table_name = table_meta.deserializeNext<k2::String>().value();
-    // TableOid
-    uint32_t table_oid = table_meta.deserializeNext<int64_t>().value();
-    // TableUuid
-    std::string table_uuid = table_meta.deserializeNext<k2::String>().value();
     // IsSysTable
     bool is_sys_table = table_meta.deserializeNext<bool>().value();
     // IsShared
@@ -1411,12 +1401,12 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
     // IsIndex
     bool is_index = table_meta.deserializeNext<bool>().value();
     if (is_index) {
-        throw std::runtime_error("Table " + table_id + " should not be an index");
+        throw std::runtime_error(fmt::format("Table {} should not be an index", table_id));
     }
     // IsUnique
     table_meta.deserializeNext<bool>();
     // BaseTableId
-    table_meta.deserializeNext<k2::String>();
+    table_meta.deserializeNext<int64_t>();
     // IndexPermission
     table_meta.deserializeNext<int16_t>();
     // NextColumnId
@@ -1434,7 +1424,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
         // SchemaIndexId
         column.deserializeNext<int64_t>();
         // TableId
-        std::string tb_id = column.deserializeNext<k2::String>().value();
+        PgOid tb_id = column.deserializeNext<int64_t>().value();
         // ColumnId
         int32_t col_id = column.deserializeNext<int32_t>().value();
         // ColumnName
@@ -1461,7 +1451,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
     }
     Schema table_schema(cols, ids, key_columns);
     table_schema.set_version(version);
-    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(database_id, database_name, table_oid, table_name, table_uuid, table_schema);
+    std::shared_ptr<TableInfo> table_info = std::make_shared<TableInfo>(database_id, database_name, table_id, table_name, table_schema);
     table_info->set_next_column_id(next_column_id);
     table_info->set_is_sys_table(is_sys_table);
     table_info->set_is_shared_table(is_shared);
@@ -1475,13 +1465,9 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHand
     // SchemaIndexId
     index_table_meta.deserializeNext<int64_t>();
     // TableId
-    std::string table_id = index_table_meta.deserializeNext<k2::String>().value();
+    PgOid table_id = index_table_meta.deserializeNext<int64_t>().value();
     // TableName
     std::string table_name = index_table_meta.deserializeNext<k2::String>().value();
-    // TableOid
-    uint32_t table_oid = index_table_meta.deserializeNext<int64_t>().value();
-    // TableUuid
-    std::string table_uuid = index_table_meta.deserializeNext<k2::String>().value();
     // IsSysTable
     index_table_meta.deserializeNext<bool>();
     // IsShared
@@ -1489,12 +1475,12 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHand
     // IsIndex
     bool is_index = index_table_meta.deserializeNext<bool>().value();
     if (!is_index) {
-        throw std::runtime_error("Table " + table_id + " should be an index");
+        throw std::runtime_error(fmt::format("Table {} should be an index", table_id));
     }
     // IsUnique
     bool is_unique = index_table_meta.deserializeNext<bool>().value();
     // BaseTableId
-    std::string base_table_id = index_table_meta.deserializeNext<k2::String>().value();
+    PgOid base_table_id = index_table_meta.deserializeNext<int64_t>().value();
     // IndexPermission
     IndexPermissions index_perm = static_cast<IndexPermissions>(index_table_meta.deserializeNext<int16_t>().value());
     // NextColumnId
@@ -1513,7 +1499,7 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHand
         // SchemaIndexId
         column.deserializeNext<int64_t>();
         // TableId
-        std::string tb_id = column.deserializeNext<k2::String>().value();
+        PgOid tb_id = column.deserializeNext<int64_t>().value();
         // ColumnId
         int32_t col_id = column.deserializeNext<int32_t>().value();
         // ColumnName
@@ -1538,11 +1524,11 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHand
         columns.push_back(std::move(index_column));
     }
 
-    IndexInfo index_info(table_name, table_oid, table_uuid, base_table_id, version, is_unique, is_shared, columns, index_perm);
+    IndexInfo index_info(table_name, table_id, base_table_id, version, is_unique, is_shared, columns, index_perm);
     return index_info;
 }
 
-k2::dto::SKVRecord TableInfoHandler::buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema, PgOid table_oid, PgOid index_oid, std::optional<std::string> table_id) {
+k2::dto::SKVRecord TableInfoHandler::buildRangeRecord(const std::string& collection_name, std::shared_ptr<k2::dto::Schema> schema, PgOid table_oid, PgOid index_oid, std::optional<PgOid> table_id) {
     k2::dto::SKVRecord record(collection_name, schema);
     // SchemaTableId
     record.serializeNext<int64_t>(table_oid);

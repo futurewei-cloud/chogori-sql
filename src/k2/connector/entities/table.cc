@@ -20,17 +20,17 @@
 namespace k2pg {
 namespace sql {
 
-    Result<const IndexInfo*> TableInfo::FindIndex(const std::string& index_id) const {
+    Result<const IndexInfo*> TableInfo::FindIndex(const PgOid& index_id) const {
         return index_map_.FindIndex(index_id);
     }
 
     std::shared_ptr<TableInfo> TableInfo::Clone(std::shared_ptr<TableInfo> table_info, std::string database_id,
-            std::string database_name, std::string table_uuid, std::string table_name) {
-        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(database_id, database_name, table_info->table_oid(), table_name, table_uuid, table_info->schema());
+            std::string database_name, std::string table_name) {
+        std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(database_id, database_name, table_info->table_id(), table_name, table_info->schema());
         new_table_info->set_next_column_id(table_info->next_column_id());
         new_table_info->set_is_sys_table(table_info->is_sys_table());
         if (table_info->has_secondary_indexes()) {
-            for (std::pair<std::string, IndexInfo> secondary_index : table_info->secondary_indexes()) {
+            for (std::pair<PgOid, IndexInfo> secondary_index : table_info->secondary_indexes()) {
                 new_table_info->add_secondary_index(secondary_index.first, secondary_index.second);
             }
         }

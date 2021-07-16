@@ -638,7 +638,7 @@ namespace catalog {
         }
         // generate table uuid from database oid and table oid
         std::string base_table_uuid = PgObjectId::GetTableUuid(request.databaseOid, request.baseTableOid);
-        std::string base_table_id = PgObjectId::GetTableId(request.baseTableOid);
+        PgOid base_table_id = request.baseTableOid;
 
         // check if the base table exists or not
         std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_uuid);
@@ -664,7 +664,7 @@ namespace catalog {
 
         CreateIndexTableParams index_params;
         index_params.index_name = request.tableName;
-        index_params.table_oid = request.tableOid;
+        index_params.table_id = request.tableOid;
         index_params.index_schema = request.schema;
         index_params.is_unique = request.isUnique;
         index_params.is_shared = request.isSharedTable;
@@ -738,7 +738,7 @@ namespace catalog {
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
         GetTableSchemaResult table_schema_result = table_info_handler_->GetTableSchema(txnHandler, database_info,
-                table_id,
+                request.tableOid,
                 index_info,
                 [this] (const string &db_id) { return CheckAndLoadDatabaseById(db_id); },
                 [this] () { return NewTransaction(); }

@@ -98,7 +98,7 @@ namespace gate {
         string client_id;
         int64_t stmt_id;
         std::string collection_name;
-        std::string table_id;
+        PgOid table_id;
         PgOid base_table_oid;   // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
         PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         // K2 SKV schema version
@@ -141,7 +141,7 @@ namespace gate {
         int64_t stmt_id;
         StmtType stmt_type;
         std::string collection_name;
-        std::string table_id;
+        PgOid table_id;
         PgOid base_table_oid;   // if is_index_, this is oid of the base table, otherwise, it is oid of this table.
         PgOid index_oid;        // if is_index_, this is oid of the index, otherwiese 0
         uint64_t schema_version;
