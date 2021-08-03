@@ -614,7 +614,7 @@ DeleteTableResult TableInfoHandler::DeleteTableData(std::shared_ptr<PgTxnHandler
 }
 
 // Delete index_info from tablemeta and indexcolumnmeta tables
-DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
+DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& index_id) {
     DeleteIndexResult response;
     try {
         // fetch and delete index columns first
