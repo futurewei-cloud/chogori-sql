@@ -132,7 +132,6 @@ namespace k2pg {
 
             explicit IndexInfo(std::string table_name,
                 PgOid table_id,
-                std::string table_uuid,
                 PgOid base_table_id,
                 uint32_t schema_version,
                 bool is_unique,

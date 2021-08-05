@@ -653,7 +653,7 @@ DeleteIndexResult TableInfoHandler::DeleteIndexMetadata(std::shared_ptr<PgTxnHan
 }
 
 // Delete the actual index records from SKV that are stored with the SKV schema name to be table_id as in index_info
-DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const std::string& index_id) {
+DeleteIndexResult TableInfoHandler::DeleteIndexData(std::shared_ptr<PgTxnHandler> txnHandler, const std::string& collection_name, const PgOid& index_id) {
     DeleteIndexResult response;
     try {
         // TODO: add a task to delete the actual data from SKV
@@ -738,17 +738,17 @@ GetTableTypeInfoResult TableInfoHandler::GetTableTypeInfo(std::shared_ptr<PgTxnH
     return response;
 }
 
-CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, CreateIndexTableParams &index_params) {
+CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnHandler> txnHandler, std::shared_ptr<DatabaseInfo> database_info, std::shared_ptr<TableInfo> base_table_info, const CreateIndexTableParams &index_params) {
     CreateIndexTableResult result;
-    std::string index_table_id = PgObjectId::GetTableId(index_params.table_oid);
-    std::string index_table_uuid = PgObjectId::GetTableUuid(database_info->GetDatabaseOid(), index_params.table_oid);
+    std::string index_table_id = PgObjectId::GetTableId(index_params.table_id);
+    std::string index_table_uuid = PgObjectId::GetTableUuid(database_info->GetDatabaseOid(), index_params.table_id);
 
     K2LOG_D(log::catalog, "Creating index ns name: {}, index name: {}, base table oid: {}",
-            database_info->GetDatabaseId(), index_params.index_name, base_table_info->table_oid());
+            database_info->GetDatabaseId(), index_params.index_name, base_table_info->table_id());
 
     if (base_table_info->has_secondary_indexes()) {
         const IndexMap& index_map = base_table_info->secondary_indexes();
-        const auto itr = index_map.find(index_table_id);
+        const auto itr = index_map.find(index_params.table_id);
         // the index has already been defined
         if (itr != index_map.end()) {
             // return if 'create .. if not exist' clause is specified
@@ -768,8 +768,8 @@ CreateIndexTableResult TableInfoHandler::CreateIndexTable(std::shared_ptr<PgTxnH
     }
     try {
        // use default index permission, could be customized by user/api
-        IndexInfo new_index_info = BuildIndexInfo(base_table_info, database_info->GetDatabaseId(), index_params.table_oid, index_table_uuid,
-                index_params.index_schema, index_params.is_unique, index_params.is_shared, index_params.index_permissions);
+        IndexInfo new_index_info = BuildIndexInfo(base_table_info, database_info->GetDatabaseId(), index_params.table_id,
+                    index_params.index_schema, index_params.is_unique, index_params.is_shared, index_params.index_permissions);
 
         K2LOG_D(log::catalog, "Persisting index table id: {}, name: {} in {}", new_index_info.table_id(), new_index_info.table_name(), database_info->GetDatabaseId());
         // persist the index metadata to the system catalog SKV tables
@@ -883,7 +883,8 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
             result.tableInfo->table_name(), result.tableInfo->table_id());
         return result;
     }
-    std::string base_table_id;
+    // TODO: FIND the invalid PgOid
+    PgOid base_table_id = 0;
     if (index_info == nullptr) {
         // not founnd in cache, try to check the base table id from SKV
         GetBaseTableIdResult table_id_result = GetBaseTableId(localTxnHandler, physical_collection, table_id);
@@ -900,7 +901,7 @@ GetTableSchemaResult TableInfoHandler::GetTableSchema(std::shared_ptr<PgTxnHandl
         base_table_id = index_info->base_table_id();
     }
 
-    if (base_table_id.empty()) {
+    if (base_table_id == 0) {
         // cannot find the id as either a table id or an index id
         localTxnHandler->AbortTransaction();
         K2LOG_E(log::catalog, "Failed to find base table id for index {} in {}", table_id, physical_collection);
@@ -979,7 +980,8 @@ void TableInfoHandler::AddDefaultPartitionKeys(std::shared_ptr<k2::dto::Schema> 
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveSKVSchemaFromTableInfo(std::shared_ptr<TableInfo> table) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
-    schema->name = table->table_id();
+    std::string schemaName = std::to_string(table->table_id());
+    schema->name = schemaName;
     schema->version = table->schema().version();
     // add two partitionkey fields
     AddDefaultPartitionKeys(schema);
@@ -1028,7 +1030,8 @@ std::vector<std::shared_ptr<k2::dto::Schema>> TableInfoHandler::DeriveIndexSchem
 
 std::shared_ptr<k2::dto::Schema> TableInfoHandler::DeriveIndexSchema(const IndexInfo& index_info) {
     std::shared_ptr<k2::dto::Schema> schema = std::make_shared<k2::dto::Schema>();
-    schema->name = index_info.table_id();
+    std::string schemaName = std::to_string(index_info.table_id());
+    schema->name = schemaName;
     schema->version = index_info.version();
     // add two partitionkey fields: base table id + index table id
     AddDefaultPartitionKeys(schema);
@@ -1424,7 +1427,7 @@ std::shared_ptr<TableInfo> TableInfoHandler::BuildTableInfo(const std::string& d
         // SchemaIndexId
         column.deserializeNext<int64_t>();
         // TableId
-        PgOid tb_id = column.deserializeNext<int64_t>().value();
+        column.deserializeNext<int64_t>().value();
         // ColumnId
         int32_t col_id = column.deserializeNext<int32_t>().value();
         // ColumnName
@@ -1499,7 +1502,7 @@ IndexInfo TableInfoHandler::BuildIndexInfo(std::shared_ptr<PgTxnHandler> txnHand
         // SchemaIndexId
         column.deserializeNext<int64_t>();
         // TableId
-        PgOid tb_id = column.deserializeNext<int64_t>().value();
+        column.deserializeNext<int64_t>().value();
         // ColumnId
         int32_t col_id = column.deserializeNext<int32_t>().value();
         // ColumnName
@@ -1535,7 +1538,7 @@ k2::dto::SKVRecord TableInfoHandler::buildRangeRecord(const std::string& collect
     // SchemaIndexId
     record.serializeNext<int64_t>(index_oid);
     if (table_id != std::nullopt) {
-        record.serializeNext<k2::String>(table_id.value());
+        record.serializeNext<int64_t>(table_id.value());
     }
     return record;
 }

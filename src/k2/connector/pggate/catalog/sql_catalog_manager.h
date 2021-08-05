@@ -323,23 +323,23 @@ namespace catalog {
 
         void ClearTableCache(std::shared_ptr<TableInfo> table_info);
 
-        void ClearIndexCacheForTable(const std::string& base_table_id);
+        void ClearIndexCacheForTable(const std::string& database_id, const PgOid& base_table_id);
 
         void UpdateIndexCacheForTable(std::shared_ptr<TableInfo> table_info);
 
-        void AddIndexCache(std::shared_ptr<IndexInfo> index_info);
+        void AddIndexCache(const std::string& database_id, std::shared_ptr<IndexInfo> index_info);
 
         std::shared_ptr<DatabaseInfo> GetCachedDatabaseById(const std::string& database_id);
 
         std::shared_ptr<DatabaseInfo> GetCachedDatabaseByName(const std::string& database_name);
 
-        std::shared_ptr<TableInfo> GetCachedTableInfoById(const std::string& table_uuid);
+        std::shared_ptr<TableInfo> GetCachedTableInfoById(const std::string& database_id, const PgOid& table_id);
 
         std::shared_ptr<TableInfo> GetCachedTableInfoByName(const std::string& database_id, const std::string& table_name);
 
-        std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& index_uuid);
+        std::shared_ptr<IndexInfo> GetCachedIndexInfoById(const std::string& database_id, const PgOid& index_uuid);
 
-        std::shared_ptr<TableInfo> GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid);
+        std::shared_ptr<TableInfo> GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const PgOid& index_id);
 
         Status CacheTablesFromStorage(const std::string& databaseName, bool isSysTableIncluded);
 
@@ -385,13 +385,13 @@ namespace catalog {
 
         // a table is uniquely referenced by its id, which is generated based on its
         // database (database) PgOid and table PgOid, as a result, no database name is required here
-        std::unordered_map<std::string, std::shared_ptr<TableInfo>> table_uuid_map_;
+        std::unordered_map<std::string, std::unordered_map<PgOid, std::shared_ptr<TableInfo>>> table_uuid_map_;
 
         // to reference a table by its name, we have to use both databaseId and table name
         std::unordered_map<TableNameKey, std::shared_ptr<TableInfo>, boost::hash<TableNameKey>> table_name_map_;
 
         // index id to quickly search for the index information and base table id
-        std::unordered_map<std::string, std::shared_ptr<IndexInfo>> index_uuid_map_;
+        std::unordered_map<std::string, std::unordered_map<PgOid, std::shared_ptr<IndexInfo>>> index_uuid_map_;
 
         // background task
         std::unique_ptr<SingleThreadedPeriodicTask> catalog_version_task_ = nullptr;

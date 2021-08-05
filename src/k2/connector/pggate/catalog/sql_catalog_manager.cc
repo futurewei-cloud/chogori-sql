@@ -587,7 +587,7 @@ namespace catalog {
         Schema table_schema = request.schema;
         table_schema.set_version(schema_version);
         std::shared_ptr<TableInfo> new_table_info = std::make_shared<TableInfo>(database_info->GetDatabaseId(), request.databaseName,
-                request.tableOid, request.tableName, uuid, table_schema);
+                request.tableOid, request.tableName, table_schema);
         new_table_info->set_is_sys_table(request.isSysCatalogTable);
         new_table_info->set_is_shared_table(request.isSharedTable);
         new_table_info->set_next_column_id(table_schema.max_col_id() + 1);
@@ -641,7 +641,8 @@ namespace catalog {
         PgOid base_table_id = request.baseTableOid;
 
         // check if the base table exists or not
-        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_uuid);
+        std::shared_ptr<TableInfo> base_table_info =
+            GetCachedTableInfoById(PgObjectId::GetDatabaseUuid(request.databaseOid), request.baseTableOid);
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
@@ -682,7 +683,7 @@ namespace catalog {
 
             // update index cache
             std::shared_ptr<IndexInfo> new_index_info_ptr = std::move(index_table_result.indexInfo);
-            AddIndexCache(new_index_info_ptr);
+            AddIndexCache(PgObjectId::GetDatabaseUuid(request.databaseOid), new_index_info_ptr);
 
             // commit and return the new index table
             response.indexInfo = new_index_info_ptr;
@@ -708,7 +709,8 @@ namespace catalog {
         K2LOG_D(log::catalog, "Get table schema ns oid: {}, table oid: {}, table id: {}",
             request.databaseOid, request.tableOid, table_id);
         // check the table schema from cache
-        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
+        std::shared_ptr<TableInfo> table_info =
+            GetCachedTableInfoById(PgObjectId::GetDatabaseUuid(request.databaseOid), request.tableOid);
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {}", table_info->table_name(), table_info->table_id());
             response.tableInfo = table_info;
@@ -717,7 +719,7 @@ namespace catalog {
         }
 
         // check if passed in id is that of an index and if so return base table info by index uuid
-        table_info = GetCachedBaseTableInfoByIndexId(request.databaseOid, table_uuid);
+        table_info = GetCachedBaseTableInfoByIndexId(request.databaseOid, request.tableOid);
         if (table_info != nullptr) {
             K2LOG_D(log::catalog, "Returned cached table schema name: {}, id: {} for index {}",
                 table_info->table_name(), table_info->table_id(), table_uuid);
@@ -736,7 +738,7 @@ namespace catalog {
             return response;
         }
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
+        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(database_id, request.tableOid);
         GetTableSchemaResult table_schema_result = table_info_handler_->GetTableSchema(txnHandler, database_info,
                 request.tableOid,
                 index_info,
@@ -790,7 +792,7 @@ namespace catalog {
         response.databaseId = database_id;
         response.tableId = table_id;
 
-        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(table_uuid);
+        std::shared_ptr<TableInfo> table_info = GetCachedTableInfoById(database_id, request.tableOid);
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
         if (table_info == nullptr) {
             // try to find table from SKV by looking at database first
@@ -803,7 +805,7 @@ namespace catalog {
 
             // fetch the table from SKV
             GetTableResult table_result = table_info_handler_->GetTable(txnHandler, database_info->GetDatabaseId(), database_info->GetDatabaseName(),
-                table_id);
+                request.tableOid);
             if (!table_result.status.ok()) {
                 txnHandler->AbortTransaction();
                 response.status = std::move(table_result.status);
@@ -858,10 +860,10 @@ namespace catalog {
         }
 
         std::shared_ptr<PgTxnHandler> txnHandler = NewTransaction();
-        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(table_uuid);
-        std::string base_table_id;
+        std::shared_ptr<IndexInfo> index_info = GetCachedIndexInfoById(database_id, request.tableOid);
+        PgOid base_table_id;
         if (index_info == nullptr) {
-            GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(txnHandler, database_id, table_id);
+            GetBaseTableIdResult index_result = table_info_handler_->GetBaseTableId(txnHandler, database_id, request.tableOid);
             if (!index_result.status.ok()) {
                 response.status = std::move(index_result.status);
                 txnHandler->AbortTransaction();
@@ -872,7 +874,7 @@ namespace catalog {
             base_table_id = index_info->base_table_id();
         }
 
-        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(base_table_id);
+        std::shared_ptr<TableInfo> base_table_info = GetCachedTableInfoById(database_id, request.tableOid);
         // try to fetch the table from SKV if not found
         if (base_table_info == nullptr) {
             GetTableResult table_result = table_info_handler_->GetTable(txnHandler, database_id, database_info->GetDatabaseName(),
@@ -893,7 +895,7 @@ namespace catalog {
         }
 
         // delete index data
-        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(txnHandler, database_id, table_id);
+        DeleteIndexResult delete_data_result = table_info_handler_->DeleteIndexData(txnHandler, database_id, request.tableOid);
         if (!delete_data_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_data_result.status);
@@ -901,7 +903,7 @@ namespace catalog {
         }
 
         // delete index metadata
-        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(txnHandler, database_id, table_id);
+        DeleteIndexResult delete_metadata_result = table_info_handler_->DeleteIndexMetadata(txnHandler, database_id, request.tableOid);
         if (!delete_metadata_result.status.ok()) {
             txnHandler->AbortTransaction();
             response.status = std::move(delete_metadata_result.status);
@@ -910,10 +912,10 @@ namespace catalog {
 
         txnHandler->CommitTransaction();
         // remove index from the table_info object
-        base_table_info->drop_index(table_id);
+        base_table_info->drop_index(request.tableOid);
         // update table cache with the index removed, index cache is updated accordingly
         UpdateTableCache(base_table_info);
-        response.baseIndexTableOid = base_table_info->table_oid();
+        response.baseIndexTableOid = base_table_info->table_id();
         response.status = Status(); // OK;
         return response;
     }
@@ -987,7 +989,7 @@ namespace catalog {
     // update table caches
     void SqlCatalogManager::UpdateTableCache(std::shared_ptr<TableInfo> table_info) {
         std::lock_guard<std::mutex> l(lock_);
-        table_uuid_map_[table_info->table_uuid()] = table_info;
+        table_uuid_map_[table_info->database_id()][table_info->table_id()] = table_info;
         // TODO: add logic to remove table with old name if rename table is called
         TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_[key] = table_info;
@@ -998,40 +1000,42 @@ namespace catalog {
     // remove table info from table cache and its related indexes from index cache
     void SqlCatalogManager::ClearTableCache(std::shared_ptr<TableInfo> table_info) {
         std::lock_guard<std::mutex> l(lock_);
-        ClearIndexCacheForTable(table_info->table_id());
-        table_uuid_map_.erase(table_info->table_uuid());
+        ClearIndexCacheForTable(table_info->database_id(), table_info->table_id());
+        table_uuid_map_[table_info->database_id()].erase(table_info->table_id());
         TableNameKey key = std::make_pair(table_info->database_id(), table_info->table_name());
         table_name_map_.erase(key);
     }
 
     // clear index infos for a table in the index cache
-    void SqlCatalogManager::ClearIndexCacheForTable(const std::string& base_table_id) {
-        std::vector<std::string> index_uuids;
-        for (std::pair<std::string, std::shared_ptr<IndexInfo>> pair : index_uuid_map_) {
+    void SqlCatalogManager::ClearIndexCacheForTable(const std::string& database_id, const PgOid& base_table_id) {
+        std::vector<PgOid> index_ids;
+        if (index_uuid_map_[database_id].empty())
+            return;
+        for (std::pair<PgOid, std::shared_ptr<IndexInfo>> pair : index_uuid_map_[database_id]) {
             // first find all indexes that belong to the table
             if (base_table_id == pair.second->base_table_id()) {
-                index_uuids.push_back(pair.second->table_uuid());
+                index_ids.push_back(pair.second->table_id());
             }
         }
         // delete the indexes in cache
-        for (std::string index_uuid : index_uuids) {
-            index_uuid_map_.erase(index_uuid);
+        for (PgOid index_id : index_ids) {
+            index_uuid_map_[database_id].erase(index_id);
         }
     }
 
     void SqlCatalogManager::UpdateIndexCacheForTable(std::shared_ptr<TableInfo> table_info) {
         // clear existing index informaton first
-        ClearIndexCacheForTable(table_info->table_id());
+        ClearIndexCacheForTable(table_info->database_id(), table_info->table_id());
         // add the new indexes to the index cache
         if (table_info->has_secondary_indexes()) {
-            for (std::pair<std::string, IndexInfo> pair : table_info->secondary_indexes()) {
-                AddIndexCache(std::make_shared<IndexInfo>(pair.second));
+            for (std::pair<PgOid, IndexInfo> pair : table_info->secondary_indexes()) {
+                AddIndexCache(table_info->database_id(), std::make_shared<IndexInfo>(pair.second));
             }
         }
     }
 
-    void SqlCatalogManager::AddIndexCache(std::shared_ptr<IndexInfo> index_info) {
-        index_uuid_map_[index_info->table_uuid()] = index_info;
+    void SqlCatalogManager::AddIndexCache(const std::string& database_id, std::shared_ptr<IndexInfo> index_info) {
+        index_uuid_map_[database_id][index_info->table_id()] = index_info;
     }
 
     std::shared_ptr<DatabaseInfo> SqlCatalogManager::GetCachedDatabaseById(const std::string& database_id) {
@@ -1054,10 +1058,10 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoById(const std::string& table_uuid) {
-        if (!table_uuid_map_.empty()) {
-            const auto itr = table_uuid_map_.find(table_uuid);
-            if (itr != table_uuid_map_.end()) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedTableInfoById(const std::string& database_id, const PgOid &table_id) {
+        if (!table_uuid_map_.empty() && !table_uuid_map_[database_id].empty()) {
+            const auto itr = table_uuid_map_[database_id].find(table_id);
+            if (itr != table_uuid_map_[database_id].end()) {
                 return itr->second;
             }
         }
@@ -1075,21 +1079,23 @@ namespace catalog {
         return nullptr;
     }
 
-    std::shared_ptr<IndexInfo> SqlCatalogManager::GetCachedIndexInfoById(const std::string& index_uuid) {
-        if (!index_uuid_map_.empty()) {
-            const auto itr = index_uuid_map_.find(index_uuid);
-            if (itr != index_uuid_map_.end()) {
+    std::shared_ptr<IndexInfo> SqlCatalogManager::GetCachedIndexInfoById(const string& database_id, const PgOid& index_id) {
+        if (!index_uuid_map_.empty() && !index_uuid_map_[database_id].empty()) {
+            const auto itr = index_uuid_map_[database_id].find(index_id);
+            if (itr != index_uuid_map_[database_id].end()) {
                 return itr->second;
             }
         }
         return nullptr;
     }
 
-    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const std::string& index_uuid) {
+    std::shared_ptr<TableInfo> SqlCatalogManager::GetCachedBaseTableInfoByIndexId(uint32_t databaseOid, const PgOid& index_id) {
         std::shared_ptr<IndexInfo> index_info = nullptr;
-        if (!index_uuid_map_.empty()) {
-            const auto itr = index_uuid_map_.find(index_uuid);
-            if (itr != index_uuid_map_.end()) {
+        std::string database_id = PgObjectId::GetDatabaseUuid(databaseOid);
+
+        if (!index_uuid_map_.empty() && !index_uuid_map_[database_id].empty()) {
+            const auto itr = index_uuid_map_[database_id].find(index_id);
+            if (itr != index_uuid_map_[database_id].end()) {
                 index_info = itr->second;
             }
         }
@@ -1098,13 +1104,11 @@ namespace catalog {
         }
 
         // get base table uuid from database oid and base table id
-        uint32_t base_table_oid = PgObjectId::GetTableOidByTableUuid(index_info->base_table_id());
-        if (base_table_oid == kPgInvalidOid) {
+        if (index_info->base_table_id() == kPgInvalidOid) {
             K2LOG_W(log::catalog, "Invalid base table id {}", index_info->base_table_id());
             return nullptr;
         }
-        std::string base_table_uuid = PgObjectId::GetTableUuid(databaseOid, base_table_oid);
-        return GetCachedTableInfoById(base_table_uuid);
+        return GetCachedTableInfoById(database_id , index_info->base_table_id());
     }
 
     // TODO: return Status instead of throw exception.

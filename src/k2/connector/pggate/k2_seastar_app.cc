@@ -306,7 +306,8 @@ seastar::future<> PGK2Client::_pollWriteQ() {
         // Copy SKVRecord to make RDMA safe
         k2::dto::SKVRecord copy = req.record.deepCopy();
         // TODO RDMA initDB may require rejectIfExits=false
-        return fiter->second.write(copy, req.erase, req.rejectIfExists)
+        return fiter->second.write(copy, req.erase,
+            req.rejectIfExists?k2::dto::ExistencePrecondition::Exists : k2::dto::ExistencePrecondition::None)
             .then([this, &req](auto&& writeResult) {
                 K2LOG_D(log::k2ss, "Written... {}", writeResult);
                 req.prom.set_value(std::move(writeResult));
