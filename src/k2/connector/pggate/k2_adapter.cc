@@ -909,7 +909,7 @@ CBFuture<Status> K2Adapter::BatchExec(std::shared_ptr<K23SITxn> k23SITxn, const 
 
 std::string K2Adapter::SerializeSKVRecordToString(k2::dto::SKVRecord& record) {
     const k2::dto::SKVRecord::Storage& storage = record.getStorage();
-    k2::Payload payload(k2::Payload::DefaultAllocator);
+    k2::Payload payload(k2::Payload::DefaultAllocator());
     // Since Storage itself contains a nested Payload, we cannot do anything fancy to avoid the extra
     // copy to a new payload here, because the implementation of write() with a payload argument is to
     // share the underlying buffers but here we need one continguous piece of memory
