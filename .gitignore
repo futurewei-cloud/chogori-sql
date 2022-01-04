@@ -13,3 +13,4 @@ src/k2/postgres/bin
 src/k2/postgres/share
 src/k2/postgres/lib
 src/k2/postgres/include
+*.pyc

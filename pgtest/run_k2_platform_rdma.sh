@@ -18,7 +18,7 @@ rm -rf ${CPODIR}
 PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --prometheus_port 63000 --txn_heartbeat_deadline=1s ${RDMA[@]} -m1G --assignment_timeout=500ms --nodepool_endpoints ${EPS} --tso_endpoints ${K2_TSO_ADDRESS} --persistence_endpoints ${PERSISTENCE} --heartbeat_interval=1s&
+cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --prometheus_port 63000 --txn_heartbeat_deadline=1s ${RDMA[@]} -m1G --assignment_timeout=10s --nodepool_endpoints ${EPS} --tso_endpoints ${K2_TSO_ADDRESS} --persistence_endpoints ${PERSISTENCE} --heartbeat_interval=1s&
 cpo_child_pid=$!
 
 # start nodepool
