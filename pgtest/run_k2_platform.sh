@@ -10,17 +10,17 @@ rm -rf ${CPODIR}
 export PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63000 --heartbeat_deadline=2s --thread-affinity false --assignment_timeout=500ms &
+cpo_main -c1 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --reactor-backend epoll --prometheus_port 63000 --txn_heartbeat_deadline=2s --thread-affinity false --assignment_timeout=500ms --nodepool_endpoints ${EPS} --tso_endpoints ${K2_TSO_ADDRESS} --persistence_endpoints ${PERSISTENCE} --heartbeat_interval=1s &
 cpo_child_pid=$!
 
 # start nodepool
-nodepool -c4 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} -m16G --thread-affinity false &
+nodepool -c4 --tcp_endpoints ${EPS} --k23si_persistence_endpoint ${PERSISTENCE} --prometheus_port 63001 -m16G --thread-affinity false &
 nodepool_child_pid=$!
 
 # start persistence
-persistence -c1 --tcp_endpoints ${PERSISTENCE} --enable_tx_checksum true --prometheus_port 63002 --thread-affinity false &
+persistence -c1 --tcp_endpoints ${PERSISTENCE} --prometheus_port 63002 --thread-affinity false &
 persistence_child_pid=$!
 
 # start tso
-tso -c2 --tcp_endpoints ${K2_TSO_ADDRESS} 13001 --enable_tx_checksum true --reactor-backend epoll --prometheus_port 63003 --thread-affinity false &
+tso -c1 --tcp_endpoints ${K2_TSO_ADDRESS} --reactor-backend epoll --prometheus_port 63003 --tso.error_bound=100us --thread-affinity false &
 tso_child_pid=$!

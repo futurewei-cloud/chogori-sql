@@ -500,7 +500,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
     SqlOpResponse& response = op->response();
 
     k2::Status status;
-    std::vector<CBFuture<k2::ReadResult<k2::SKVRecord>>> result_futures;
+    std::vector<CBFuture<k2::ReadResult<k2::dto::SKVRecord>>> result_futures;
     for (auto& k2pgctid_column_value : request->k2pgctid_column_values) {
         k2::GetSchemaResult schema_result = k23si_->getSchema(request->collection_name,
                                                     request->table_id, k2::K23SIClient::ANY_VERSION).get();
@@ -517,7 +517,7 @@ void K2Adapter::handleReadByRowIds(std::shared_ptr<K23SITxn> k23SITxn,
 
     int idx = 0;
     for (auto& result_future : result_futures) {
-        k2::ReadResult<k2::SKVRecord> read = result_future.get();
+        k2::ReadResult<k2::dto::SKVRecord> read = result_future.get();
         if (read.status.is2xxOK()) {
             op->mutable_rows_data()->emplace_back(std::move(read.value));
             // use the last read response as the batch response
@@ -800,12 +800,6 @@ CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_n
         rangeEnds.emplace_back(end);
     }
 
-    std::vector<std::string> stdEndpoints = conf_()["create_collections"][DBName]["endpoints"];
-    std::vector<k2::String> endpoints;
-    for (const std::string& ep : stdEndpoints) {
-        endpoints.emplace_back(ep);
-    }
-
     k2::dto::HashScheme scheme = rangeEnds.size() ? k2::dto::HashScheme::Range : k2::dto::HashScheme::HashCRC32C;
 
     auto createCollectionReq = k2::dto::CollectionCreateRequest{
@@ -821,7 +815,6 @@ CBFuture<k2::Status> K2Adapter::CreateCollection(const std::string& collection_n
             },
             .retentionPeriod = k2::Duration(1h) * 90 * 24  //TODO: get this from config or from param in
         },
-        .clusterEndpoints = std::move(endpoints),
         .rangeEnds = std::move(rangeEnds)
     };
 

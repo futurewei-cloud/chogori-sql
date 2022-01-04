@@ -3,34 +3,34 @@ echo ">>>>>>>>>>>>>>>>>>>>"
 echo "start container with"
 echo docker run --privileged --network=host -v "/dev/:/dev" -v "/sys/:/sys/" -v ${PWD}:/build -it --rm -e RDMAV_HUGEPAGES_SAFE=1  k2-bvu-10001.usrd.futurewei.com/k2sql_builder:latest
 echo ">>>>>>>>>>>>>>>>>>>>"
-export MY_IP=192.168.33.2
-export PROTO="auto-rrdma+k2rpc"
-export RDMA=("--hugepages" "--rdma mlx5_1")
+MY_IP=192.168.33.2
+PROTO="auto-rrdma+k2rpc"
+RDMA=("--hugepages" "--rdma mlx5_1")
 
-export K2_CPO_ADDRESS=${PROTO}://${MY_IP}:9000
-export K2_TSO_ADDRESS=${PROTO}://${MY_IP}:13000
+K2_CPO_ADDRESS=${PROTO}://${MY_IP}:9000
+K2_TSO_ADDRESS=${PROTO}://${MY_IP}:13000
 
-export CPODIR=/tmp/___cpo_dir
-export EPS="${PROTO}://${MY_IP}:10000 ${PROTO}://${MY_IP}:10001 ${PROTO}://${MY_IP}:10002 ${PROTO}://${MY_IP}:10003"
-export PERSISTENCE=${PROTO}://${MY_IP}:12001
+CPODIR=/tmp/___cpo_dir
+EPS="${PROTO}://${MY_IP}:10000 ${PROTO}://${MY_IP}:10001 ${PROTO}://${MY_IP}:10002 ${PROTO}://${MY_IP}:10003"
+PERSISTENCE=${PROTO}://${MY_IP}:12001
 
 rm -rf ${CPODIR}
-export PATH=${PATH}:/usr/local/bin
+PATH=${PATH}:/usr/local/bin
 
 # start CPO
-cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --enable_tx_checksum true --prometheus_port 63000 --heartbeat_deadline=1s ${RDMA[@]} -m1G --assignment_timeout=500ms &
+cpo_main -c1 --cpuset=0 --tcp_endpoints ${K2_CPO_ADDRESS} --data_dir ${CPODIR} --prometheus_port 63000 --txn_heartbeat_deadline=1s ${RDMA[@]} -m1G --assignment_timeout=500ms --nodepool_endpoints ${EPS} --tso_endpoints ${K2_TSO_ADDRESS} --persistence_endpoints ${PERSISTENCE} --heartbeat_interval=1s&
 cpo_child_pid=$!
 
 # start nodepool
-nodepool -c4 --cpuset=1-4 --tcp_endpoints ${EPS} --enable_tx_checksum true --k23si_persistence_endpoint ${PERSISTENCE} --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} --tso_endpoint ${K2_TSO_ADDRESS} -m1G ${RDMA[@]} &
+nodepool -c4 --cpuset=1-4 --tcp_endpoints ${EPS} --k23si_persistence_endpoint ${PERSISTENCE} --prometheus_port 63001 --k23si_cpo_endpoint ${K2_CPO_ADDRESS} -m1G ${RDMA[@]} &
 nodepool_child_pid=$!
 
 # start persistence
-persistence -c1 --cpuset=5 --tcp_endpoints ${PERSISTENCE} --enable_tx_checksum true --prometheus_port 63002 ${RDMA[@]} &
+persistence -c1 --cpuset=5 --tcp_endpoints ${PERSISTENCE} --prometheus_port 63002 ${RDMA[@]} &
 persistence_child_pid=$!
 
 # start tso
-tso -c2 --cpuset=6-7 --tcp_endpoints ${K2_TSO_ADDRESS} ${PROTO}://${MY_IP}:13001 --enable_tx_checksum true --prometheus_port 63003 ${RDMA[@]} &
+tso -c1 --cpuset=6 --tcp_endpoints ${K2_TSO_ADDRESS} --prometheus_port 63003 ${RDMA[@]} &
 tso_child_pid=$!
 
 function finish {

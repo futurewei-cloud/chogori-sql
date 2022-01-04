@@ -98,7 +98,7 @@ CBFuture<ReadResult<dto::SKVRecord>> K23SITxn::read(dto::SKVRecord&& rec) {
     return result;
 }
 
-CBFuture<k2::ReadResult<k2::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::string collectionName) {
+CBFuture<k2::ReadResult<k2::dto::SKVRecord>> K23SITxn::read(k2::dto::Key key, std::string collectionName) {
     _readOps++;
     ReadRequest qr {.mtr = _mtr, .record=k2::dto::SKVRecord(), .key=std::move(key),
                     .collectionName=std::move(collectionName), .prom={}};

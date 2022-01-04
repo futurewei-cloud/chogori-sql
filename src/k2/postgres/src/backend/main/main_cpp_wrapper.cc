@@ -128,7 +128,6 @@ void startK2App() {
     k2pg::session::start();
 
     addNamedArg("cpo");
-    addNamedArg("tso_endpoint");
     addNamedArg("partition_request_timeout");
     addNamedArg("cpo_request_timeout");
     addNamedArg("cpo_request_backoff");
@@ -151,13 +150,12 @@ void startK2App() {
         try {
             K2LOG_I(k2pg::log::main, "Configure app");
             k2::App app("PG");
-            app.addApplet<k2::TSO_ClientLib>();
+            app.addApplet<k2::tso::TSOClient>();
             app.addApplet<k2pg::gate::PGK2Client>();
             app.addOptions()
             // config for dependencies
             ("partition_request_timeout", bpo::value<k2::ParseableDuration>(), "Timeout of K23SI operations, as chrono literals")
             ("cpo", bpo::value<k2::String>(), "URL of Control Plane Oracle (CPO), e.g. 'tcp+k2rpc://192.168.1.2:12345'")
-            ("tso_endpoint", bpo::value<k2::String>(), "URL of Timestamp Oracle (TSO), e.g. 'tcp+k2rpc://192.168.1.2:12345'")
             ("cpo_request_timeout", bpo::value<k2::ParseableDuration>(), "CPO request timeout")
             ("cpo_request_backoff", bpo::value<k2::ParseableDuration>(), "CPO request backoff");
             K2LOG_I(k2pg::log::main, "Starting app");
