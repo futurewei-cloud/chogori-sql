@@ -94,12 +94,12 @@ struct ScanReadRequest {
 
 struct ReadRequest {
     k2::dto::K23SI_MTR mtr;
-    k2::SKVRecord record;
+    k2::dto::SKVRecord record;
     // For key-oriented read without SKVRecord
     k2::dto::Key key = k2::dto::Key();
     std::string collectionName = "";
 
-    std::promise<k2::ReadResult<k2::SKVRecord>> prom;
+    std::promise<k2::ReadResult<k2::dto::SKVRecord>> prom;
     K2_DEF_FMT(ReadRequest, mtr, key, collectionName);
 };
 
@@ -107,14 +107,14 @@ struct WriteRequest {
     k2::dto::K23SI_MTR mtr;
     bool erase = false;
     k2::dto::ExistencePrecondition precondition = k2::dto::ExistencePrecondition::None;
-    k2::SKVRecord record;
+    k2::dto::SKVRecord record;
     std::promise<k2::WriteResult> prom;
     K2_DEF_FMT(WriteRequest, mtr, erase, precondition);
 };
 
 struct UpdateRequest {
     k2::dto::K23SI_MTR mtr;
-    k2::SKVRecord record;
+    k2::dto::SKVRecord record;
     std::vector<uint32_t> fieldsForUpdate;
     k2::dto::Key key = k2::dto::Key();
     std::promise<k2::PartialUpdateResult> prom;

@@ -57,8 +57,8 @@ private:
     // Reads a record from K2.
     // The result future is eventually satisfied with the result of the read.
     // Uncaught exceptions may also be propagated and show up as exceptional futures here.
-    CBFuture<k2::ReadResult<k2::SKVRecord>> read(k2::dto::SKVRecord&& rec);
-    CBFuture<k2::ReadResult<k2::SKVRecord>> read(k2::dto::Key key, std::string collectionName);
+    CBFuture<k2::ReadResult<k2::dto::SKVRecord>> read(k2::dto::SKVRecord&& rec);
+    CBFuture<k2::ReadResult<k2::dto::SKVRecord>> read(k2::dto::Key key, std::string collectionName);
 
     // Writes a record (full) into K2. The erase flag is used if this write should delete
     // the record from K2.

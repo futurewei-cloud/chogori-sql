@@ -193,8 +193,7 @@ seastar::future<> PGK2Client::_pollCreateCollectionQ() {
         if (_stop) {
             return seastar::make_exception_future(std::runtime_error("seastar app has been shutdown"));
         }
-        return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.clusterEndpoints),
-                                       std::move(req.ccr.rangeEnds))
+        return _client->makeCollection(std::move(req.ccr.metadata), std::move(req.ccr.rangeEnds))
             .then([this, &req](auto&& result) {
                 K2LOG_D(log::k2ss, "Collection create received {}", result);
                 req.prom.set_value(std::move(result));

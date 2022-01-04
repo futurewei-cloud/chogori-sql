@@ -29,4 +29,4 @@ Copyright(c) 2020 Futurewei Cloud
 #include <k2/dto/Collection.h>
 #include <k2/dto/SKVRecord.h>
 #include <k2/module/k23si/client/k23si_client.h>
-#include <k2/tso/client/tso_clientlib.h>
+#include <k2/tso/client/Client.h>

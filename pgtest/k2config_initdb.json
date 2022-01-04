@@ -25,7 +25,6 @@
     "prometheus_push_address": "",
 
     "cpo": "tcp+k2rpc://0.0.0.0:9000",
-    "tso_endpoint": "tcp+k2rpc://0.0.0.0:13000",
     "partition_request_timeout": "60s",
     "cpo_request_timeout": "100ms",
     "cpo_request_backoff": "100ms",
@@ -36,7 +35,6 @@
     "rdma": "",
     "thread-affinity": false,
     "reactor-backend": "epoll",
-    "poll-mode": true,
     "enable_tx_checksum": false,
     "log_level": "INFO k2::pggate=INFO k2::pg_catalog=INFO k2::k2Adapter=INFO k2::k2Client=INFO k2::tsoclient=INFO k2::cpo_client=INFO k2::pg_seastar=INFO k2::transport=INFO"
 }
