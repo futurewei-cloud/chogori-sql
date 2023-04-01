@@ -1,3 +1,6 @@
+"This Project has been archived by the owner, who is no longer providing support.  The project remains available to authorized users on a "read only" basis."
+
+
 # Project description
 
 The Chogori-SQL project is a horizontally scalable SQL service with disaggregated storage provided by the Chogori-Platform(https://github.com/futurewei-cloud/chogori-platform) SKV storage service with focus on performance provided by in-memory data handling and fast, kernel bypass network processing. Our main achievement is that we were able to take the industry-standard SQL engine PostgreSQL and rewrite its storage layer to use our novel K23SI transaction protocol with our rich, schema-aware data model - SKV
